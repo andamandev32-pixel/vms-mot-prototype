@@ -1,0 +1,398 @@
+"use client";
+
+import { useState, useMemo } from "react";
+import Topbar from "@/components/web/Topbar";
+import { Card, CardContent } from "@/components/ui/Card";
+import { Badge } from "@/components/ui/Badge";
+import { Button } from "@/components/ui/Button";
+import { SearchInput } from "@/components/ui/SearchInput";
+import {
+  UserCog,
+  Plus,
+  Upload,
+  Building2,
+  ShieldCheck,
+  DoorOpen,
+  Calendar,
+  Pencil,
+  Info,
+  ToggleLeft,
+  ToggleRight,
+} from "lucide-react";
+import {
+  staffMembers,
+  departments,
+  approverGroups,
+  appointments,
+  type Staff,
+} from "@/lib/mock-data";
+import { cn } from "@/lib/utils";
+
+/* ── helpers ───────────────────────────────────── */
+
+/** Approver groups where this staff is a member */
+function staffApproverGroups(staffId: string) {
+  return approverGroups.filter((g) =>
+    g.members.some((m) => m.staffId === staffId)
+  );
+}
+
+/** Appointments where this staff is the host */
+function staffAppointments(staffId: string) {
+  return appointments.filter((a) => a.host.id === staffId);
+}
+
+const roleLabels: Record<string, { th: string; color: string; bg: string }> = {
+  admin: { th: "ผู้ดูแลระบบ", color: "text-primary-700", bg: "bg-primary-50" },
+  staff: { th: "พนักงาน", color: "text-blue-700", bg: "bg-blue-50" },
+  security: { th: "รปภ.", color: "text-amber-700", bg: "bg-amber-50" },
+};
+
+/* ══════════════════════════════════════════════════
+   PAGE
+   ══════════════════════════════════════════════════ */
+export default function StaffPage() {
+  const [search, setSearch] = useState("");
+  const [filterDept, setFilterDept] = useState("all");
+  const [filterStatus, setFilterStatus] = useState<"all" | "active" | "inactive">("all");
+
+  const filtered = useMemo(() => {
+    return staffMembers.filter((s) => {
+      const q = search.toLowerCase();
+      const matchSearch =
+        !q ||
+        s.name.toLowerCase().includes(q) ||
+        s.nameEn.toLowerCase().includes(q) ||
+        s.employeeId.toLowerCase().includes(q) ||
+        s.email.toLowerCase().includes(q);
+      const matchDept = filterDept === "all" || s.department.id === filterDept;
+      const matchStatus = filterStatus === "all" || s.status === filterStatus;
+      return matchSearch && matchDept && matchStatus;
+    });
+  }, [search, filterDept, filterStatus]);
+
+  const activeCount = staffMembers.filter((s) => s.status === "active").length;
+  const inactiveCount = staffMembers.filter((s) => s.status === "inactive").length;
+
+  return (
+    <>
+      <Topbar title="จัดการพนักงาน" />
+      <main className="flex-1 p-6 space-y-6">
+        {/* header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-bold text-text-primary flex items-center gap-2">
+              <UserCog size={22} className="text-primary" />
+              รายชื่อพนักงานและเจ้าหน้าที่
+            </h3>
+            <p className="text-sm text-text-muted mt-1">
+              จัดการข้อมูลพนักงาน กำหนดสถานะ
+              และดูการมอบหมายในระบบ
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" className="h-10 shadow-sm">
+              <Upload size={18} className="mr-2" />
+              นำเข้าจาก HR
+            </Button>
+            <Button variant="outline" className="h-10 shadow-sm">
+              <Upload size={18} className="mr-2" />
+              นำเข้า Excel
+            </Button>
+            <Button variant="secondary" className="h-10 shadow-sm">
+              <Plus size={18} className="mr-2" />
+              เพิ่มพนักงาน
+            </Button>
+          </div>
+        </div>
+
+        {/* info */}
+        <Card className="border-none shadow-sm bg-info-light border-l-4 !border-l-info">
+          <CardContent className="p-4 flex items-start gap-3">
+            <Info size={20} className="text-info mt-0.5 shrink-0" />
+            <div className="text-sm text-info">
+              <p className="font-medium">การจัดการพนักงาน</p>
+              <ul className="mt-1.5 space-y-0.5 text-xs opacity-90 list-none">
+                <li>
+                  1. นำเข้าข้อมูลจาก <strong>ระบบ HR</strong> หรือ{" "}
+                  <strong>ไฟล์ Excel</strong> ได้ — ข้อมูลจะเข้ามาเป็นสถานะ
+                  &quot;active&quot; อัตโนมัติ
+                </li>
+                <li>
+                  2. ไม่มีปุ่มลบ — ใช้การ <strong>ปิดใช้งาน (inactive)</strong>{" "}
+                  แทน เพื่อรักษาประวัติการมอบหมาย
+                </li>
+                <li>
+                  3. ดู <strong>การมอบหมาย</strong> ของพนักงานแต่ละคน
+                  (กลุ่มผู้อนุมัติ, นัดหมาย) ได้จากแท็กด้านขวา
+                </li>
+              </ul>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* summary */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <SummaryCard
+            label="พนักงานทั้งหมด"
+            value={staffMembers.length}
+            sub="ในระบบ"
+            color="text-primary"
+            bgColor="bg-primary-50"
+          />
+          <SummaryCard
+            label="เปิดใช้งาน"
+            value={activeCount}
+            sub="active"
+            color="text-success"
+            bgColor="bg-success-light"
+          />
+          <SummaryCard
+            label="ปิดใช้งาน"
+            value={inactiveCount}
+            sub="inactive"
+            color="text-warning"
+            bgColor="bg-warning-light"
+          />
+        </div>
+
+        {/* filters */}
+        <div className="flex flex-wrap items-center gap-3">
+          <SearchInput
+            value={search}
+            onValueChange={setSearch}
+            placeholder="ค้นหาชื่อ, รหัส, อีเมล..."
+            className="w-80"
+          />
+          <select
+            value={filterDept}
+            onChange={(e) => setFilterDept(e.target.value)}
+            className="h-10 px-3 text-sm rounded-lg border border-border bg-white text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+          >
+            <option value="all">ทุกแผนก</option>
+            {departments.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.name}
+              </option>
+            ))}
+          </select>
+          <select
+            value={filterStatus}
+            onChange={(e) =>
+              setFilterStatus(e.target.value as "all" | "active" | "inactive")
+            }
+            className="h-10 px-3 text-sm rounded-lg border border-border bg-white text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+          >
+            <option value="all">ทุกสถานะ</option>
+            <option value="active">เปิดใช้งาน</option>
+            <option value="inactive">ปิดใช้งาน</option>
+          </select>
+        </div>
+
+        {/* table */}
+        <Card className="border-none shadow-sm">
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead className="text-xs text-text-secondary uppercase bg-gray-50 border-b border-border">
+                  <tr>
+                    <th className="px-4 py-3">รหัส</th>
+                    <th className="px-4 py-3">ชื่อ — ตำแหน่ง</th>
+                    <th className="px-4 py-3">แผนก</th>
+                    <th className="px-4 py-3">อีเมล</th>
+                    <th className="px-4 py-3 text-center">บทบาท</th>
+                    <th className="px-4 py-3 text-center">สถานะ</th>
+                    <th className="px-4 py-3">การมอบหมาย</th>
+                    <th className="px-4 py-3 text-right">จัดการ</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border">
+                  {filtered.map((staff) => (
+                    <StaffRow key={staff.id} staff={staff} />
+                  ))}
+                  {filtered.length === 0 && (
+                    <tr>
+                      <td
+                        colSpan={8}
+                        className="px-4 py-12 text-center text-text-muted"
+                      >
+                        ไม่พบข้อมูลพนักงาน
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </CardContent>
+        </Card>
+      </main>
+    </>
+  );
+}
+
+/* ══════════════════════════════════════════════════
+   STAFF ROW
+   ══════════════════════════════════════════════════ */
+function StaffRow({ staff }: { staff: Staff }) {
+  const groups = staffApproverGroups(staff.id);
+  const apts = staffAppointments(staff.id);
+  const role = roleLabels[staff.role] ?? {
+    th: staff.role,
+    color: "text-gray-700",
+    bg: "bg-gray-50",
+  };
+
+  return (
+    <tr
+      className={cn(
+        "transition-colors",
+        staff.status === "inactive" ? "opacity-50" : "hover:bg-gray-50"
+      )}
+    >
+      {/* employee id */}
+      <td className="px-4 py-3 text-xs text-text-muted font-mono">
+        {staff.employeeId}
+      </td>
+
+      {/* name + position */}
+      <td className="px-4 py-3">
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary to-primary-dark text-white flex items-center justify-center text-xs font-bold shrink-0">
+            {staff.name.slice(3, 5)}
+          </div>
+          <div>
+            <p className="font-medium text-text-primary text-sm">
+              {staff.name}
+            </p>
+            <p className="text-xs text-text-muted">{staff.position}</p>
+          </div>
+        </div>
+      </td>
+
+      {/* department */}
+      <td className="px-4 py-3">
+        <p className="text-xs text-text-secondary flex items-center gap-1">
+          <Building2 size={12} className="text-text-muted" />
+          {staff.department.name}
+        </p>
+        <p className="text-[10px] text-text-muted">{staff.department.floor}</p>
+      </td>
+
+      {/* email */}
+      <td className="px-4 py-3 text-xs text-text-muted">{staff.email}</td>
+
+      {/* role */}
+      <td className="px-4 py-3 text-center">
+        <span
+          className={cn(
+            "inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold",
+            role.bg,
+            role.color
+          )}
+        >
+          {role.th}
+        </span>
+      </td>
+
+      {/* status */}
+      <td className="px-4 py-3 text-center">
+        {staff.status === "active" ? (
+          <Badge variant="approved">เปิดใช้</Badge>
+        ) : (
+          <Badge variant="rejected">ปิดใช้</Badge>
+        )}
+      </td>
+
+      {/* assignments */}
+      <td className="px-4 py-3">
+        <div className="flex flex-wrap gap-1 max-w-[260px]">
+          {groups.map((g) => (
+            <span
+              key={g.id}
+              className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-medium bg-primary-50 text-primary-700 border border-primary-100"
+              title={g.name}
+            >
+              <ShieldCheck size={9} />
+              {g.name.length > 20 ? g.name.slice(0, 18) + "…" : g.name}
+            </span>
+          ))}
+          {apts.length > 0 && (
+            <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-medium bg-accent-50 text-accent-600 border border-accent-100">
+              <Calendar size={9} />
+              {apts.length} นัดหมาย
+            </span>
+          )}
+          {groups.length === 0 && apts.length === 0 && (
+            <span className="text-[10px] text-text-muted">—</span>
+          )}
+        </div>
+      </td>
+
+      {/* actions */}
+      <td className="px-4 py-3 text-right">
+        <div className="flex items-center justify-end gap-1">
+          <button
+            className="p-2 hover:bg-primary-50 rounded-lg transition-colors text-text-muted hover:text-primary"
+            title="แก้ไข"
+          >
+            <Pencil size={16} />
+          </button>
+          <button
+            className={cn(
+              "p-2 rounded-lg transition-colors",
+              staff.status === "active"
+                ? "hover:bg-warning-light text-text-muted hover:text-warning"
+                : "hover:bg-success-light text-text-muted hover:text-success"
+            )}
+            title={
+              staff.status === "active" ? "ปิดใช้งาน" : "เปิดใช้งาน"
+            }
+          >
+            {staff.status === "active" ? (
+              <ToggleRight size={16} />
+            ) : (
+              <ToggleLeft size={16} />
+            )}
+          </button>
+        </div>
+      </td>
+    </tr>
+  );
+}
+
+/* ══════════════════════════════════════════════════
+   SUMMARY CARD
+   ══════════════════════════════════════════════════ */
+function SummaryCard({
+  label,
+  value,
+  sub,
+  color,
+  bgColor,
+}: {
+  label: string;
+  value: number;
+  sub: string;
+  color: string;
+  bgColor: string;
+}) {
+  return (
+    <Card className="border-none shadow-sm">
+      <CardContent className="p-4 flex items-center gap-4">
+        <div
+          className={cn(
+            "w-12 h-12 rounded-xl flex items-center justify-center text-xl font-bold",
+            bgColor,
+            color
+          )}
+        >
+          {value}
+        </div>
+        <div>
+          <p className="text-sm font-semibold text-text-primary">{label}</p>
+          <p className="text-xs text-text-muted">{sub}</p>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}

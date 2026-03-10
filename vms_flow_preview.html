@@ -1,0 +1,2176 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VMS Flow Diagram — Preview</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700;800&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Sarabun',sans-serif;background:#f0f4f8;color:#1a202c;font-size:18.0px;line-height:1.7}
+.page-header{background:#003580;color:white;padding:20px 32px;display:flex;align-items:center;gap:16px}
+.page-header h1{font-size:24.0px;font-weight:600;letter-spacing:0.3px}
+.badge{background:#FFB700;color:#003580;font-size:16.0px;font-weight:800;padding:4px 12px;border-radius:20px;white-space:nowrap}
+.sub-title{font-size:24.0px;font-weight:600;color:#FFB700;margin-left:auto;letter-spacing:0.2px}
+.tabs{display:flex;background:#002060;padding:0 32px;gap:2px;overflow-x:auto}
+.tab{padding:13px 16px;color:#7fa8d4;font-size:15.0px;font-weight:600;cursor:pointer;border-bottom:3px solid transparent;white-space:nowrap;transition:all .2s}
+.tab.active{color:#FFB700;border-bottom-color:#FFB700}
+.tab:hover{color:white}
+.tab .tn{display:inline-block;background:#003580;color:#FFB700;font-size:15.0px;font-weight:800;width:21px;height:21px;border-radius:50%;line-height:21px;text-align:center;margin-right:6px}
+.tab.active .tn{background:#FFB700;color:#003580}
+.content{padding:26px 32px;max-width:1400px;margin:0 auto}
+.flow-section{display:none}
+.flow-section.active{display:block}
+.sec-head{font-size:20.0px;font-weight:700;color:#003580;margin-bottom:18px;padding-bottom:12px;border-bottom:2px solid #003580;display:flex;align-items:center;gap:12px}
+.sec-head .n{background:#003580;color:white;min-width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:16.0px}
+.path-toggle{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap}
+.path-btn{padding:8px 18px;border-radius:20px;border:2px solid #003580;background:white;color:#003580;font-size:15.0px;font-weight:700;cursor:pointer;transition:all .2s;font-family:'Sarabun',sans-serif}
+.path-btn.active{background:#003580;color:white}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-bottom:16px}
+.card{background:white;border-radius:10px;border:1px solid #d0d8e8;padding:18px}
+.card h3{font-size:17.0px;font-weight:700;color:#003580;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.note{border-radius:8px;padding:12px 16px;font-size:16.0px;margin:10px 0;line-height:1.7}
+.note-yellow{background:#FFFDE7;border:1px dashed #FFB700;color:#5a3e00}
+.note-blue{background:#E8F0FE;border:1px dashed #4285F4;color:#1a3a6e}
+.note-green{background:#E6F4EA;border:1px dashed #34A853;color:#1a5c2a}
+.note-red{background:#FDE8E8;border:1px dashed #EA4335;color:#7a1a1a}
+.box{border-radius:10px;padding:11px 14px;font-size:15.0px;text-align:center;line-height:1.6;flex-shrink:0}
+.box .sub{font-size:15.5px;color:#666;display:block;margin-top:3px}
+.box.start{background:#003580;color:white;border-radius:30px;font-weight:700}
+.box.action{background:white;border:2px solid #003580;color:#1a202c}
+.box.decision{background:#FFF8E1;border:2px solid #FFB700;color:#5a3e00}
+.box.decision::before{content:'◆';display:block;font-size:16.0px;color:#FFB700;margin-bottom:2px}
+.box.success{background:#E6F4EA;border:2px solid #34A853;color:#1a5c2a}
+.box.error{background:#FDE8E8;border:2px solid #EA4335;color:#7a1a1a}
+.box.system{background:#E8F0FE;border:2px solid #4285F4;color:#1a3a6e}
+.box.output{background:#F3E8FF;border:2px solid #7B2FBE;color:#3d1363}
+.box.notify{background:#E8F5E9;border:2px solid #00C853;color:#004d1f}
+.box.line-box{background:#06C755;color:white;border:2px solid #04a844}
+.box.line-box .sub{color:rgba(255,255,255,.8)}
+.box.warn{background:#FFF3E0;border:2px solid #FF6D00;color:#5a2d00}
+.box.end{background:#34A853;color:white;border-radius:30px;font-weight:700}
+.box.end-red{background:#EA4335;color:white;border-radius:30px;font-weight:700}
+.vf{display:flex;flex-direction:column;align-items:center;gap:0}
+.darr{color:#003580;font-size:19.0px;padding:2px 0;text-align:center}
+.darr-r{color:#003580;font-size:19.0px;padding:0 3px;flex-shrink:0}
+.lbl{font-size:15.0px;font-weight:800;padding:2px 8px;border-radius:8px}
+.lbl-y{background:#E6F4EA;color:#1a5c2a}
+.lbl-n{background:#FDE8E8;color:#7a1a1a}
+.branch{display:flex;gap:12px;align-items:flex-start;justify-content:center;width:100%}
+.bcol{display:flex;flex-direction:column;align-items:center;gap:0}
+hr.div{border:none;border-top:1px dashed #c5d0e0;margin:18px 0}
+.steps{list-style:none;display:flex;flex-direction:column;gap:8px}
+.steps li{display:flex;align-items:flex-start;gap:10px;font-size:16.0px;line-height:1.7}
+.steps li .n{background:#003580;color:white;min-width:22px;height:22px;border-radius:50%;font-size:15.0px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
+.steps li .n.y{background:#06C755}
+.steps li .n.r{background:#EA4335}
+.steps li .n.o{background:#FF6D00}
+.steps li .n.g{background:#34A853}
+.ch-head{background:#003580;color:white;border-radius:8px 8px 0 0;padding:10px 16px;font-size:15.0px;font-weight:700}
+.ch-head.green{background:#34A853}
+.ch-head.purple{background:#7B2FBE}
+.ch-head.line-h{background:#06C755}
+.ch-body{background:white;border:1px solid #d0d8e8;border-top:none;border-radius:0 0 8px 8px;padding:16px}
+.line-bubble{background:#E7F5E7;border-radius:12px 12px 12px 3px;padding:12px 14px;font-size:16.0px;color:#1a202c;line-height:1.7;border:1px solid #c3e6c3;max-width:260px}
+.line-btn{background:#06C755;color:white;border:none;border-radius:6px;padding:7px 11px;font-size:16.0px;font-weight:700;cursor:default;font-family:'Sarabun',sans-serif;margin-top:6px;display:block;width:100%;text-align:center}
+.line-btn.gray{background:#607D8B}
+.swim{width:100%;border-collapse:collapse;margin-bottom:16px}
+.swim th{background:#003580;color:white;padding:9px 12px;font-size:16.0px;font-weight:700;text-align:center;border:1px solid #002060}
+.swim th.tg{background:#34A853}
+.swim th.ty{background:#607D8B}
+.swim th.tl{background:#06C755}
+.swim td{padding:9px 12px;vertical-align:top;border:1px solid #d0d8e8;background:white;font-size:16.0px;line-height:1.6}
+.swim tr:nth-child(even) td{background:#f8faff}
+.tag{display:inline-block;font-size:15.0px;font-weight:700;padding:2px 8px;border-radius:10px;margin:1px}
+.tag-b{background:#E8F0FE;color:#1a3a6e}
+.tag-g{background:#E6F4EA;color:#1a5c2a}
+.tag-y{background:#FFF8E1;color:#5a3e00}
+.tag-p{background:#F3E8FF;color:#3d1363}
+.tag-l{background:#E7F5E7;color:#004d1f}
+.w100{width:100%}
+.mt8{margin-top:8px}
+.mt12{margin-top:12px}
+.bold{font-weight:700}
+</style>
+</head>
+<body>
+
+<div class="page-header">
+  <div>
+    <h1>VMS — Process Flow Diagram</h1>
+  </div>
+  <div class="sub-title">กระทรวงการท่องเที่ยวและกีฬา</div>
+</div>
+
+<div class="tabs">
+  <div class="tab active" onclick="showTab('t0',this)"><span class="tn">0</span>ภาพรวมระบบ</div>
+  <div class="tab" onclick="showTab('t1',this)"><span class="tn">1</span>สมัครผู้ใช้งาน</div>
+  <div class="tab" onclick="showTab('t2',this)"><span class="tn">2</span>ขอนัดหมาย (Line/Web)</div>
+  <div class="tab" onclick="showTab('t3',this)"><span class="tn">3</span>อนุมัติ / ปฏิเสธ</div>
+  <div class="tab" onclick="showTab('t4',this)"><span class="tn">4</span>Staff — นัดหมาย / Batch</div>
+  <div class="tab" onclick="showTab('t5',this)"><span class="tn">5</span>Kiosk Check-in</div>
+  <div class="tab" onclick="showTab('t6',this)"><span class="tn">6</span>รปภ. — Walk-in / Appt</div>
+  <div class="tab" onclick="showTab('t7',this)"><span class="tn">7</span>Check-out & แจ้งเตือน</div>
+  <div class="tab" onclick="showTab('t8',this)"><span class="tn">8</span>เตรียมระบบ (Setup)</div>
+</div></div>
+
+<div class="content">
+
+<!-- ===== TAB 0: OVERVIEW ===== -->
+<div id="t0" class="flow-section active">
+  <div class="sec-head"><span class="n">0</span>ภาพรวม Flow ทั้งระบบ (System Overview)</div>
+
+  <!-- System Identity -->
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:16px">
+    <div style="background:#003580;color:white;border-radius:10px;padding:14px">
+      <div style="font-size:16.0px;opacity:.7;margin-bottom:4px">Line OA</div>
+      <div style="font-size:16.0px;font-weight:800">@mots-vms</div>
+      <div style="font-size:16.0px;opacity:.7;margin-top:4px">* ยังไม่ได้กำหนด — ต้องยืนยันกับหน่วยงาน</div>
+    </div>
+    <div style="background:#003580;color:white;border-radius:10px;padding:14px">
+      <div style="font-size:16.0px;opacity:.7;margin-bottom:4px">Web / Domain</div>
+      <div style="font-size:16.0px;font-weight:800">vms.mots.go.th</div>
+      <div style="font-size:16.0px;opacity:.7;margin-top:4px">* ยังไม่ได้กำหนด — ต้องยืนยันกับหน่วยงาน</div>
+    </div>
+    <div style="background:#FFB700;color:#003580;border-radius:10px;padding:14px">
+      <div style="font-size:16.0px;font-weight:700;margin-bottom:4px">สถานที่</div>
+      <div style="font-size:15.0px;font-weight:800">กระทรวงการท่องเที่ยวและกีฬา</div>
+      <div style="font-size:16.0px;margin-top:4px">อาคารหลายชั้น · หลายกรม/กอง</div>
+    </div>
+  </div>
+
+  <div class="ch-head" style="border-radius:8px 8px 0 0;margin-top:24px">📊 Master Flow — Pre-Registration (ภาพรวม)</div>
+  <div class="ch-body" style="margin-bottom:32px">
+    <div style="display:flex;align-items:center;flex-wrap:wrap;gap:5px;padding:8px 0">
+      <div class="box start" style="font-size:15.0px">Visitor<br>สมัครระบบ</div>
+      <div class="darr-r">→</div>
+      <div class="box line-box" style="font-size:15.0px">ขอนัดหมาย<br><span class="sub">Line / Web</span></div>
+      <div class="darr-r">→</div>
+      <div class="box notify" style="font-size:15.0px">Staff รับ<br>Notification</div>
+      <div class="darr-r">→</div>
+      <div class="box decision" style="font-size:15.0px">อนุมัติ?</div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div style="display:flex;align-items:center;gap:4px">
+          <span class="lbl lbl-y">Yes</span><div class="darr-r">→</div>
+          <div class="box line-box" style="font-size:15.0px">ส่ง QR Code<br><span class="sub">Line &amp; / หรือ Email</span></div>
+          <div class="darr-r">→</div>
+          <div class="box success" style="font-size:15.0px">Kiosk Check-in<br><span class="sub">QR/บัตร/ThaiID</span></div>
+          <div class="darr-r">→</div>
+          <div class="box notify" style="font-size:15.0px">แจ้ง Staff<br><span class="sub">Line &amp; / หรือ Email</span></div>
+          <div class="darr-r">→</div>
+          <div class="box output" style="font-size:15.0px">Staff กด<br>Check-out</div>
+          <div class="darr-r">→</div>
+          <div class="box end" style="font-size:15.0px">สิ้นสุด ✓</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:4px">
+          <span class="lbl lbl-n">No</span><div class="darr-r">→</div>
+          <div class="box error" style="font-size:15.0px">แจ้ง Visitor<br><span class="sub">ไม่อนุมัติ</span></div>
+          <div class="darr-r">→</div>
+          <div class="box end-red" style="font-size:15.0px">สิ้นสุด</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Visit Types -->
+  <div class="ch-head" style="border-radius:8px 8px 0 0;margin-top:8px">🏢 ประเภทการเข้าพื้นที่ — กระทรวงการท่องเที่ยวและกีฬา</div>
+  <div class="ch-body" style="margin-bottom:14px">
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
+      <!-- Type 1 -->
+      <div style="background:#E8F0FE;border:2px solid #4285F4;border-radius:10px;padding:12px;text-align:center">
+        <div style="font-size:22.0px;margin-bottom:4px">🤝</div>
+        <div style="font-size:16.0px;font-weight:800;color:#1a3a6e">พบเจ้าหน้าที่</div>
+        <div style="font-size:16.0px;color:#444;margin-top:4px">นัดพบบุคลากร<br>ภายในกระทรวง</div>
+      </div>
+      <!-- Type 2 -->
+      <div style="background:#E6F4EA;border:2px solid #34A853;border-radius:10px;padding:12px;text-align:center">
+        <div style="font-size:22.0px;margin-bottom:4px">📋</div>
+        <div style="font-size:16.0px;font-weight:800;color:#1a5c2a">ประชุม / สัมมนา</div>
+        <div style="font-size:16.0px;color:#444;margin-top:4px">เข้าร่วมประชุม<br>หรือสัมมนา</div>
+      </div>
+      <!-- Type 3 -->
+      <div style="background:#FFF8E1;border:2px solid #FFB700;border-radius:10px;padding:12px;text-align:center">
+        <div style="font-size:22.0px;margin-bottom:4px">📄</div>
+        <div style="font-size:16.0px;font-weight:800;color:#5a3e00">ส่งเอกสาร</div>
+        <div style="font-size:16.0px;color:#444;margin-top:4px">ส่ง/รับเอกสาร<br>ราชการ</div>
+      </div>
+      <!-- Type 4 -->
+      <div style="background:#F3E8FF;border:2px solid #7B2FBE;border-radius:10px;padding:12px;text-align:center">
+        <div style="font-size:22.0px;margin-bottom:4px">🔖</div>
+        <div style="font-size:16.0px;font-weight:800;color:#3d1363">อื่นๆ</div>
+        <div style="font-size:16.0px;color:#444;margin-top:4px">ระบุเหตุผล<br>เพิ่มเติม</div>
+      </div>
+    </div>
+
+    <!-- Department + Location examples -->
+    <div style="font-size:16.0px;font-weight:800;color:#003580;margin-bottom:8px">📍 ตัวอย่างสถานที่ / หน่วยงานที่ Visitor เลือกได้ (กำหนดตามจริงก่อน Go-Live)</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px">
+      <div style="background:#f8faff;border:1px solid #d0d8e8;border-radius:8px;padding:10px;font-size:15.5px">
+        <div style="font-weight:800;color:#003580;margin-bottom:6px">🏛️ สำนักงาน ก / กรม ก</div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <span>📍 Lobby ชั้น 1</span>
+          <span>📍 ห้องรับรอง ชั้น 2</span>
+          <span>📍 ห้องประชุม 1 ชั้น 3</span>
+          <span style="font-size:16.0px;color:#666">→ QR Code เฉพาะ: A-FL1, A-FL3-M1</span>
+        </div>
+      </div>
+      <div style="background:#f8faff;border:1px solid #d0d8e8;border-radius:8px;padding:10px;font-size:15.5px">
+        <div style="font-weight:800;color:#003580;margin-bottom:6px">🏛️ สำนักงาน ข / กรม ข</div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <span>📍 Lobby ชั้น 3</span>
+          <span>📍 กอง A ชั้น 4</span>
+          <span>📍 ห้องประชุม 2 ชั้น 3</span>
+          <span style="font-size:16.0px;color:#666">→ QR Code เฉพาะ: B-FL3, B-FL4-A</span>
+        </div>
+      </div>
+      <div style="background:#f8faff;border:1px solid #d0d8e8;border-radius:8px;padding:10px;font-size:15.5px">
+        <div style="font-weight:800;color:#003580;margin-bottom:6px">🏛️ สำนักงาน ค / กรม ค</div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <span>📍 Lobby ชั้น 5</span>
+          <span>📍 กอง B ชั้น 6</span>
+          <span>📍 ห้องประชุม 3 ชั้น 5</span>
+          <span style="font-size:16.0px;color:#666">→ QR Code เฉพาะ: C-FL5, C-FL6-B</span>
+        </div>
+      </div>
+    </div>
+    <div class="note note-yellow mt8" style="max-width:100%">
+      <strong>📌 หมายเหตุ:</strong> QR Code แต่ละจุดเชื่อมกับ Hikvision Access Control ของพื้นที่นั้นๆ · Visitor ที่ Check-in แล้วจะเข้าได้เฉพาะพื้นที่ที่ได้รับอนุมัติ · ชื่อกรม/กอง/ห้องจริงต้องให้หน่วยงานกำหนดก่อน Setup
+    </div>
+  </div>
+
+  <!-- Channel table -->
+  <div class="note note-blue" style="max-width:100%;margin-bottom:12px">
+    <strong>ช่องทางใช้งาน:</strong>
+    <span class="tag tag-l">Line OA</span>
+    <span class="tag tag-b">Web App</span>
+    <span class="tag tag-g">Self-Service Kiosk</span>
+    &nbsp;|&nbsp; <strong>ระบบแจ้งเตือน:</strong> ใช้ <strong>Email เป็นหลัก</strong> · Line เป็นช่องทางเสริม (ต้องผูกบัญชีก่อน)
+  </div>
+
+  <!-- Notification Channel Logic -->
+  <div class="ch-head" style="border-radius:8px 8px 0 0">🔔 ตรรกะการแจ้งเตือน (Notification Channel Logic)</div>
+  <div class="ch-body" style="margin-bottom:14px">
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:14px">
+
+      <!-- Case 1: Line + Email -->
+      <div style="border:2px solid #06C755;border-radius:10px;overflow:hidden">
+        <div style="background:#06C755;color:white;padding:8px 12px;font-size:16.0px;font-weight:800">
+          📱 กรณีที่ 1 — สมัครผ่าน Line OA + ป้อน Email
+        </div>
+        <div style="padding:12px;background:#f0fff4;font-size:15.5px">
+          <ul class="steps">
+            <li><span class="n y" style="font-size:15.0px">✓</span><span>Add Friend Line OA → สมัครใช้งาน</span></li>
+            <li><span class="n y" style="font-size:15.0px">✓</span><span>ระบุ Email ในขั้นตอนสมัคร</span></li>
+          </ul>
+          <div style="margin-top:10px;padding:8px;background:white;border-radius:6px;border:1px solid #c3e6c3">
+            <div style="font-size:15.0px;font-weight:700;color:#004d1f;margin-bottom:5px">ระบบแจ้งเตือนไป:</div>
+            <div style="display:flex;gap:6px">
+              <span style="background:#06C755;color:white;padding:3px 8px;border-radius:10px;font-size:16.0px;font-weight:700">📱 Line OA</span>
+              <span style="font-size:15.0px;align-self:center">+</span>
+              <span style="background:#003580;color:white;padding:3px 8px;border-radius:10px;font-size:16.0px;font-weight:700">📧 Email</span>
+            </div>
+            <div style="font-size:16.0px;color:#666;margin-top:5px">ทั้งสองช่องทางพร้อมกัน</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Case 2: Web App Email only -->
+      <div style="border:2px solid #4285F4;border-radius:10px;overflow:hidden">
+        <div style="background:#4285F4;color:white;padding:8px 12px;font-size:16.0px;font-weight:800">
+          🖥️ กรณีที่ 2 — สมัครผ่าน Web App (Email เท่านั้น)
+        </div>
+        <div style="padding:12px;background:#f0f4ff;font-size:15.5px">
+          <ul class="steps">
+            <li><span class="n" style="font-size:15.0px;background:#4285F4">✓</span><span>ลงทะเบียนที่ vms.mots.go.th</span></li>
+            <li><span class="n" style="font-size:15.0px;background:#607D8B">—</span><span style="color:#607D8B">ยังไม่ได้ผูก Line</span></li>
+          </ul>
+          <div style="margin-top:10px;padding:8px;background:white;border-radius:6px;border:1px solid #b0c4e8">
+            <div style="font-size:15.0px;font-weight:700;color:#1a3a6e;margin-bottom:5px">ระบบแจ้งเตือนไป:</div>
+            <div style="display:flex;gap:6px">
+              <span style="background:#003580;color:white;padding:3px 8px;border-radius:10px;font-size:16.0px;font-weight:700">📧 Email เท่านั้น</span>
+            </div>
+            <div style="font-size:16.0px;color:#666;margin-top:5px">จนกว่าจะผูก Line เพิ่มภายหลัง</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Case 3: Web App + Link Line -->
+      <div style="border:2px solid #FF6D00;border-radius:10px;overflow:hidden">
+        <div style="background:#FF6D00;color:white;padding:8px 12px;font-size:16.0px;font-weight:800">
+          🔗 กรณีที่ 3 — Web App + ผูก Line ภายหลัง
+        </div>
+        <div style="padding:12px;background:#fff8f0;font-size:15.5px">
+          <ul class="steps">
+            <li><span class="n" style="font-size:15.0px;background:#4285F4">✓</span><span>สมัคร Web App ด้วย Email</span></li>
+            <li><span class="n" style="font-size:15.0px;background:#FF6D00">+</span><span>ผูก Line จาก <strong>Web App → จัดการผู้ใช้งาน</strong></span></li>
+          </ul>
+          <div style="margin-top:10px;padding:8px;background:white;border-radius:6px;border:1px solid #ffc57a">
+            <div style="font-size:15.0px;font-weight:700;color:#7a3800;margin-bottom:5px">ระบบแจ้งเตือนไป:</div>
+            <div style="display:flex;gap:6px">
+              <span style="background:#06C755;color:white;padding:3px 8px;border-radius:10px;font-size:16.0px;font-weight:700">📱 Line OA</span>
+              <span style="font-size:15.0px;align-self:center">+</span>
+              <span style="background:#003580;color:white;padding:3px 8px;border-radius:10px;font-size:16.0px;font-weight:700">📧 Email</span>
+            </div>
+            <div style="font-size:16.0px;color:#666;margin-top:5px">หลังผูก Line สำเร็จ</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Notification Logic Table -->
+    <table style="width:100%;font-size:15.5px;border-collapse:collapse;margin-bottom:12px">
+      <tr style="background:#003580;color:white">
+        <th style="padding:7px 10px;text-align:left">สถานการณ์</th>
+        <th style="padding:7px 10px;text-align:center">📧 Email</th>
+        <th style="padding:7px 10px;text-align:center">📱 Line OA</th>
+        <th style="padding:7px 10px;text-align:left">หมายเหตุ</th>
+      </tr>
+      <tr style="background:#f0fff4">
+        <td style="padding:7px 10px">สมัคร Line OA + ป้อน Email</td>
+        <td style="padding:7px 10px;text-align:center;color:#34A853;font-weight:700">✓</td>
+        <td style="padding:7px 10px;text-align:center;color:#34A853;font-weight:700">✓</td>
+        <td style="padding:7px 10px">แจ้งทั้งสองช่องทางพร้อมกัน</td>
+      </tr>
+      <tr>
+        <td style="padding:7px 10px">สมัคร Line OA (ไม่มี Email)</td>
+        <td style="padding:7px 10px;text-align:center;color:#EA4335;font-weight:700">✗</td>
+        <td style="padding:7px 10px;text-align:center;color:#34A853;font-weight:700">✓</td>
+        <td style="padding:7px 10px">แจ้งเฉพาะ Line</td>
+      </tr>
+      <tr style="background:#f0f4ff">
+        <td style="padding:7px 10px">สมัคร Web App (Email เท่านั้น)</td>
+        <td style="padding:7px 10px;text-align:center;color:#34A853;font-weight:700">✓</td>
+        <td style="padding:7px 10px;text-align:center;color:#EA4335;font-weight:700">✗</td>
+        <td style="padding:7px 10px">แจ้งเฉพาะ Email จนกว่าจะผูก Line</td>
+      </tr>
+      <tr style="background:#fff8f0">
+        <td style="padding:7px 10px">Web App + ผูก Line ภายหลัง</td>
+        <td style="padding:7px 10px;text-align:center;color:#34A853;font-weight:700">✓</td>
+        <td style="padding:7px 10px;text-align:center;color:#34A853;font-weight:700">✓</td>
+        <td style="padding:7px 10px">หลังผูกสำเร็จ แจ้งทั้งสองช่องทาง</td>
+      </tr>
+      <tr>
+        <td style="padding:7px 10px">เปลี่ยน Line ใหม่ (ยกเลิก-ผูกใหม่)</td>
+        <td style="padding:7px 10px;text-align:center;color:#34A853;font-weight:700">✓</td>
+        <td style="padding:7px 10px;text-align:center;color:#FF6D00;font-weight:700">↻</td>
+        <td style="padding:7px 10px">Email ทำงานตลอด · Line เปลี่ยนเป็นบัญชีใหม่</td>
+      </tr>
+    </table>
+
+    <!-- Change Line Flow -->
+    <div style="background:#FFF8E1;border:1px solid #FFB700;border-radius:10px;padding:14px">
+      <div style="font-size:16.0px;font-weight:800;color:#5a3e00;margin-bottom:10px">🔄 Flow การเปลี่ยน Line Account ใหม่</div>
+      <div style="display:flex;align-items:center;flex-wrap:wrap;gap:5px">
+        <div class="box action" style="font-size:15.0px;border-color:#FF6D00">Web App<br>Login</div>
+        <div class="darr-r">→</div>
+        <div class="box action" style="font-size:15.0px;border-color:#FF6D00">หน้า<br>จัดการผู้ใช้งาน</div>
+        <div class="darr-r">→</div>
+        <div class="box action" style="font-size:15.0px;border-color:#FF6D00">กด "ยกเลิก<br>Line เดิม"</div>
+        <div class="darr-r">→</div>
+        <div class="box system" style="font-size:15.0px">ระบบ Unlink<br>Line เดิม</div>
+        <div class="darr-r">→</div>
+        <div class="box action" style="font-size:15.0px;border-color:#06C755">กด "ผูก<br>Line ใหม่"</div>
+        <div class="darr-r">→</div>
+        <div class="box line-box" style="font-size:15.0px">Add Friend<br>Line OA</div>
+        <div class="darr-r">→</div>
+        <div class="box decision" style="font-size:15.0px">ยืนยัน<br>สำเร็จ?</div>
+        <div style="display:flex;flex-direction:column;gap:4px">
+          <div style="display:flex;align-items:center;gap:4px">
+            <span class="lbl lbl-y">Yes</span>
+            <div class="darr-r">→</div>
+            <div class="box end" style="font-size:15.0px">Line ใหม่<br>ทำงานแล้ว ✓</div>
+          </div>
+          <div style="display:flex;align-items:center;gap:4px">
+            <span class="lbl lbl-n">No</span>
+            <div class="darr-r">→</div>
+            <div class="box error" style="font-size:15.0px">แจ้ง Error<br>ลองใหม่</div>
+          </div>
+        </div>
+      </div>
+      <div class="note note-blue mt8" style="max-width:100%">
+        <strong>📌 หมายเหตุ:</strong> ระหว่างที่ยังไม่ผูก Line ใหม่สำเร็จ ระบบยังส่งแจ้งเตือนผ่าน <strong>Email เป็นหลักได้ต่อเนื่อง</strong> ไม่มีการหยุดชะงัก
+      </div>
+    </div>
+  </div>
+
+  <table class="swim">
+    <thead>
+      <tr>
+        <th style="width:15%">ขั้นตอน</th>
+        <th class="tl" style="width:22%">📱 Line OA</th>
+        <th style="width:21%">🖥️ Web App</th>
+        <th class="tg" style="width:21%">🖥️ Kiosk</th>
+        <th class="ty" style="width:21%">👮 Staff / Admin</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td class="bold">1. สมัครผู้ใช้งาน</td>
+        <td>Add Friend @mots-vms → เลือกประเภท → กรอกข้อมูล + Email → ได้ Rich Menu · แจ้งเตือน: Line + Email</td>
+        <td>เข้า vms.mots.go.th → ลงทะเบียนด้วย Email → ผูก Line ภายหลังได้ · แจ้งเตือน: Email (จนกว่าผูก Line)</td>
+        <td>—</td>
+        <td>Admin สร้าง Account ให้เจ้าหน้าที่ · จัดการผูก/เปลี่ยน Line ผ่าน Web App</td>
+      </tr>
+      <tr>
+        <td class="bold">2. ขอนัดหมาย</td>
+        <td>กด "บันทึกนัดหมาย" → เลือกประเภท → เลือกสถานที่ → กรอกฟอร์ม → รอตอบกลับ</td>
+        <td>กด + เพิ่ม → เลือกประเภท → เลือกกรม/กอง/ห้อง → รอตอบกลับ</td>
+        <td>—</td>
+        <td>Staff สร้างรายการแทน Visitor ได้</td>
+      </tr>
+      <tr>
+        <td class="bold">3. อนุมัติ</td>
+        <td>รับ QR Code + แจ้งผล ทาง Line และ/หรือ Email (ตามช่องทางที่ผูกไว้)</td>
+        <td>รับแจ้งผลทาง Email เป็นหลัก + Line หากผูกแล้ว</td>
+        <td>—</td>
+        <td>Staff กดอนุมัติ/ปฏิเสธใน Line OA → ระบบส่งผ่านทุกช่องทางที่ผูกไว้</td>
+      </tr>
+      <tr>
+        <td class="bold">4. Check-in</td>
+        <td>—</td>
+        <td>—</td>
+        <td>Scan QR หรือบัตร → ยืนยันตัวตน → ถ่ายภาพ → WiFi? → พิมพ์ Visit Pass (ระบุสถานที่/ชั้น)</td>
+        <td>Staff ทำรายการแทน หรือ Walk-in ที่เคาน์เตอร์</td>
+      </tr>
+      <tr>
+        <td class="bold">5. Check-out</td>
+        <td>—</td>
+        <td>—</td>
+        <td>—</td>
+        <td>Staff กด "บันทึกออก" ใน Line OA · ระบบแจ้งทุกช่องทาง · แจ้งเตือนหากค้างสิ้นวัน</td>
+      </tr>
+    </tbody>
+  </table>
+
+
+
+</div>
+
+<!-- ===== TAB 1: REGISTRATION ===== -->
+<div id="t1" class="flow-section">
+  <div class="sec-head"><span class="n">1</span>การสมัครผู้ใช้งาน — Visitor & Staff</div>
+  <div class="note note-blue">
+    <strong>รองรับ 2 ช่องทาง:</strong> Line OA และ Web Application · <strong>Staff</strong> ต้องผ่านการตรวจสอบ<strong>เลขประจำตัวพนักงาน</strong> และสถานะ Active ก่อนสมัครได้
+  </div>
+
+  <!-- Visitor vs Staff comparison -->
+  <div class="grid2" style="margin-top:14px">
+    <div>
+      <div class="ch-head line-h">📱 ช่องทาง A — Line OA</div>
+      <div class="ch-body">
+
+        <!-- VISITOR path -->
+        <div style="background:#f0fff4;border:1px solid #c3e6c3;border-radius:8px;padding:12px;margin-bottom:12px">
+          <div style="font-size:16.0px;font-weight:800;color:#004d1f;margin-bottom:8px">👤 กรณี Visitor (ผู้มาติดต่อ)</div>
+          <ul class="steps">
+            <li><span class="n">1</span><span>เพิ่มเพื่อน Line ID @VMS หรือ Scan QR Code</span></li>
+            <li><span class="n">2</span><span>อนุญาตสิทธิ์การทำงานผ่าน Line</span></li>
+            <li><span class="n">3</span><span>กด <strong>"ลงทะเบียนผู้ใช้งาน"</strong></span></li>
+            <li><span class="n">4</span><span>เลือก <span class="tag tag-l">ผู้มาติดต่อ (Visitor)</span></span></li>
+            <li><span class="n">5</span><span>ระบุ ชื่อ-นามสกุล, บริษัท, เบอร์โทร</span></li>
+            <li><span class="n y">✓</span><span style="color:#004d1f">สมัครสำเร็จ → ได้ Rich Menu Visitor</span></li>
+          </ul>
+        </div>
+
+        <!-- STAFF path -->
+        <div style="background:#fff8f0;border:1px solid #ffc57a;border-radius:8px;padding:12px">
+          <div style="font-size:16.0px;font-weight:800;color:#7a3800;margin-bottom:8px">👮 กรณี Staff (พนักงาน) — มีขั้นตอนเพิ่มเติม</div>
+          <ul class="steps">
+            <li><span class="n">1</span><span>เพิ่มเพื่อน Line ID @VMS หรือ Scan QR Code</span></li>
+            <li><span class="n">2</span><span>อนุญาตสิทธิ์การทำงานผ่าน Line</span></li>
+            <li><span class="n">3</span><span>กด <strong>"ลงทะเบียนผู้ใช้งาน"</strong></span></li>
+            <li><span class="n">4</span><span>เลือก <span class="tag tag-g">พนักงาน (Staff)</span></span></li>
+            <li><span class="n" style="background:#FF6D00">5</span><span><strong>ระบุเลขประจำตัวพนักงาน</strong> (Employee ID)</span></li>
+            <li><span class="n" style="background:#4285F4">6</span><span>ระบบตรวจสอบกับฐานข้อมูลพนักงาน → สถานะ <strong>Active</strong>?</span></li>
+            <li><span class="n y">✓</span><span style="color:#004d1f">พบ + Active → ระบุชื่อ, แผนก, เบอร์โทร → สมัครสำเร็จ</span></li>
+            <li><span class="n r">✗</span><span style="color:#7a1a1a">ไม่พบ / Inactive → แจ้งข้อผิดพลาด ไม่อนุญาตให้สมัคร</span></li>
+          </ul>
+        </div>
+
+        <div style="display:flex;gap:10px;margin-top:12px">
+          <div style="flex:1">
+            <div style="background:#06C755;color:white;text-align:center;border-radius:6px 6px 0 0;padding:5px;font-size:15.0px;font-weight:700">Rich Menu — Visitor</div>
+            <div style="background:#f0fff4;border:1px solid #c3e6c3;border-radius:0 0 6px 6px;padding:8px;font-size:15.0px">
+              📋 บันทึกนัดหมาย<br>📅 รายการนัดหมาย<br>👤 ข้อมูลส่วนตัว
+            </div>
+          </div>
+          <div style="flex:1">
+            <div style="background:#003580;color:white;text-align:center;border-radius:6px 6px 0 0;padding:5px;font-size:15.0px;font-weight:700">Rich Menu — Staff</div>
+            <div style="background:#f0f4ff;border:1px solid #b0c4e8;border-radius:0 0 6px 6px;padding:8px;font-size:15.0px">
+              ✅ อนุมัติรายการ<br>📋 รายการผู้เข้าพบ<br>🔔 การแจ้งเตือน<br>🚪 บันทึกออกพื้นที่
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div>
+      <div class="ch-head">🖥️ ช่องทาง B — Web Application</div>
+      <div class="ch-body">
+        <!-- Visitor -->
+        <div style="background:#f0fff4;border:1px solid #c3e6c3;border-radius:8px;padding:12px;margin-bottom:12px">
+          <div style="font-size:16.0px;font-weight:800;color:#004d1f;margin-bottom:8px">👤 กรณี Visitor</div>
+          <ul class="steps">
+            <li><span class="n">1</span><span>เข้าเว็บ → กด <strong>"ลงทะเบียน"</strong></span></li>
+            <li><span class="n">2</span><span>เลือก <span class="tag tag-l">Visitor</span></span></li>
+            <li><span class="n">3</span><span>กรอกชื่อ, อีเมล, บริษัท, เบอร์โทร</span></li>
+            <li><span class="n y">✓</span><span style="color:#004d1f">กดยอมรับ → สมัครสำเร็จ → Login ได้</span></li>
+          </ul>
+        </div>
+        <!-- Staff -->
+        <div style="background:#fff8f0;border:1px solid #ffc57a;border-radius:8px;padding:12px">
+          <div style="font-size:16.0px;font-weight:800;color:#7a3800;margin-bottom:8px">👮 กรณี Staff — มีขั้นตอนเพิ่มเติม</div>
+          <ul class="steps">
+            <li><span class="n">1</span><span>เข้าเว็บ → กด <strong>"ลงทะเบียน"</strong></span></li>
+            <li><span class="n">2</span><span>เลือก <span class="tag tag-g">พนักงาน (Staff)</span></span></li>
+            <li><span class="n" style="background:#FF6D00">3</span><span><strong>ระบุเลขประจำตัวพนักงาน</strong> (Employee ID)</span></li>
+            <li><span class="n" style="background:#4285F4">4</span><span>ระบบตรวจสอบสถานะ <strong>Active</strong> กับฐานข้อมูล HR</span></li>
+            <li><span class="n y">✓</span><span style="color:#004d1f">Active → กรอกอีเมล, แผนก → กดยอมรับ → สมัครสำเร็จ</span></li>
+            <li><span class="n r">✗</span><span style="color:#7a1a1a">ไม่พบ / Inactive → แจ้งเตือน ไม่อนุญาตให้สมัคร</span></li>
+          </ul>
+          <div class="note note-yellow mt8" style="max-width:100%">
+            <strong>Admin:</strong> สามารถสร้าง / จัดการ Account Staff ได้โดยตรงผ่าน Admin Panel
+          </div>
+        </div>
+        <div class="note note-blue mt8" style="max-width:100%">
+          <strong>Web App แสดงสถานะ 3 แทป:</strong> <span class="tag tag-y">นัดหมาย</span> รอการอนุมัติ · <span class="tag tag-b">กำลังเข้าพบ</span> Check-in แล้ว · <span class="tag tag-g">ประวัติทั้งหมด</span> Check-out + ยกเลิก
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Flow diagram: Staff path with employee check -->
+  <div class="ch-head" style="border-radius:8px 8px 0 0;margin-top:12px">📊 Flow การสมัครผู้ใช้งาน (เน้นขั้นตอน Staff)</div>
+  <div class="ch-body">
+    <div style="display:flex;align-items:flex-start;flex-wrap:wrap;gap:0">
+      <!-- common start -->
+      <div class="vf" style="align-items:center">
+        <div class="box start">เริ่มต้น</div><div class="darr">↓</div>
+        <div class="box action">เลือกช่องทาง<br><span class="sub">Line / Web</span></div><div class="darr">↓</div>
+        <div class="box decision">ประเภท<br>ผู้ใช้งาน?</div>
+      </div>
+      <div class="darr-r" style="align-self:center;padding:0 8px">→</div>
+      <!-- Branch -->
+      <div style="display:flex;gap:20px;align-items:flex-start">
+        <!-- Visitor branch -->
+        <div class="vf" style="align-items:center">
+          <span class="lbl lbl-y" style="margin-bottom:4px">Visitor</span>
+          <div class="box action" style="font-size:15.0px">กรอกข้อมูล<br>ส่วนบุคคล</div><div class="darr">↓</div>
+          <div class="box decision" style="font-size:15.0px">ข้อมูลถูกต้อง?</div>
+          <div class="branch">
+            <div class="bcol"><span class="lbl lbl-y">Yes</span><div class="darr">↓</div><div class="box end" style="font-size:16.0px">สมัครสำเร็จ<br>Rich Menu Visitor</div></div>
+            <div class="bcol"><span class="lbl lbl-n">No</span><div class="darr">↓</div><div class="box error" style="font-size:16.0px">แจ้ง Error</div></div>
+          </div>
+        </div>
+        <!-- Staff branch -->
+        <div class="vf" style="align-items:center">
+          <span class="lbl" style="background:#fff8f0;color:#7a3800;border:1px solid #ffc57a;margin-bottom:4px">Staff</span>
+          <div class="box action" style="font-size:15.0px;border-color:#FF6D00">ระบุ<br><strong>Employee ID</strong></div><div class="darr">↓</div>
+          <div class="box system" style="font-size:15.0px">ระบบตรวจสอบ<br>ฐานข้อมูล HR</div><div class="darr">↓</div>
+          <div class="box decision" style="font-size:15.0px">พบ + Active?</div>
+          <div class="branch">
+            <div class="bcol">
+              <span class="lbl lbl-y">Yes</span><div class="darr">↓</div>
+              <div class="box action" style="font-size:16.0px">กรอกข้อมูล<br>เพิ่มเติม</div><div class="darr">↓</div>
+              <div class="box end" style="font-size:16.0px">สมัครสำเร็จ<br>Rich Menu Staff</div>
+            </div>
+            <div class="bcol">
+              <span class="lbl lbl-n">No</span><div class="darr">↓</div>
+              <div class="box error" style="font-size:16.0px;border-color:#EA4335">ไม่พบ /<br>Inactive<br>ไม่อนุญาต</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Line Account Management -->
+  <hr class="div">
+  <div class="ch-head" style="border-radius:8px 8px 0 0">🔗 การจัดการ Line Account — ผูก / เปลี่ยน / ยกเลิก</div>
+  <div class="ch-body">
+    <div class="note note-blue" style="max-width:100%;margin-bottom:14px">
+      <strong>หลักการ:</strong> ระบบใช้ <strong>Email เป็น Primary Key</strong> ของบัญชีผู้ใช้ · Line เป็นช่องทางแจ้งเตือนเสริม · สามารถผูก เปลี่ยน หรือยกเลิก Line ได้ตลอดเวลาผ่าน Web App โดยไม่กระทบข้อมูลบัญชีหลัก
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px">
+
+      <!-- Link Line -->
+      <div style="border:2px solid #06C755;border-radius:10px;overflow:hidden">
+        <div style="background:#06C755;color:white;padding:8px 12px;font-size:16.0px;font-weight:800">➕ ผูก Line (ครั้งแรก / หลังสมัคร Web)</div>
+        <div style="padding:12px;background:#f0fff4">
+          <ul class="steps">
+            <li><span class="n">1</span><span>Login Web App → <strong>จัดการผู้ใช้งาน</strong></span></li>
+            <li><span class="n">2</span><span>กดปุ่ม <strong>"ผูก Line Account"</strong></span></li>
+            <li><span class="n">3</span><span>ระบบ Redirect ไปหน้า Line Login / Add Friend</span></li>
+            <li><span class="n">4</span><span>อนุญาตสิทธิ์ → ระบบดึง Line User ID</span></li>
+            <li><span class="n y">✓</span><span style="color:#004d1f">ผูกสำเร็จ → แจ้งเตือนผ่าน Line + Email</span></li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Change Line -->
+      <div style="border:2px solid #FF6D00;border-radius:10px;overflow:hidden">
+        <div style="background:#FF6D00;color:white;padding:8px 12px;font-size:16.0px;font-weight:800">🔄 เปลี่ยน Line Account ใหม่</div>
+        <div style="padding:12px;background:#fff8f0">
+          <ul class="steps">
+            <li><span class="n">1</span><span>Login Web App → <strong>จัดการผู้ใช้งาน</strong></span></li>
+            <li><span class="n">2</span><span>กดปุ่ม <strong>"ยกเลิก Line เดิม"</strong></span></li>
+            <li><span class="n">3</span><span>ยืนยันการยกเลิก → ระบบ Unlink Line เดิม</span></li>
+            <li><span class="n" style="background:#FF6D00">4</span><span>กดปุ่ม <strong>"ผูก Line ใหม่"</strong></span></li>
+            <li><span class="n" style="background:#FF6D00">5</span><span>Add Friend @mots-vms ด้วยบัญชี Line ใหม่</span></li>
+            <li><span class="n y">✓</span><span style="color:#004d1f">ยืนยันสำเร็จ → Line ใหม่ทำงานแทน</span></li>
+          </ul>
+          <div class="note note-yellow mt8" style="max-width:100%;font-size:16.5px">
+            ⚠️ ระหว่างเปลี่ยน ระบบยังส่ง Email ได้ต่อเนื่อง ไม่มีการหยุดชะงัก
+          </div>
+        </div>
+      </div>
+
+      <!-- Unlink Line -->
+      <div style="border:2px solid #EA4335;border-radius:10px;overflow:hidden">
+        <div style="background:#EA4335;color:white;padding:8px 12px;font-size:16.0px;font-weight:800">🔓 ยกเลิก Line (ไม่ใช้แล้ว)</div>
+        <div style="padding:12px;background:#fff4f4">
+          <ul class="steps">
+            <li><span class="n">1</span><span>Login Web App → <strong>จัดการผู้ใช้งาน</strong></span></li>
+            <li><span class="n">2</span><span>กดปุ่ม <strong>"ยกเลิก Line Account"</strong></span></li>
+            <li><span class="n">3</span><span>ยืนยันการยกเลิก</span></li>
+            <li><span class="n r">✗</span><span style="color:#7a1a1a">ระบบหยุดส่งแจ้งเตือนผ่าน Line</span></li>
+            <li><span class="n y">✓</span><span style="color:#004d1f">ระบบยังส่ง Email ได้ตามปกติ</span></li>
+          </ul>
+          <div class="note note-red mt8" style="max-width:100%;font-size:16.5px">
+            บัญชีหลัก (Email) ไม่ถูกลบ · ผูก Line ใหม่ได้ตลอดเวลา
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Notification state diagram -->
+    <div style="margin-top:14px;background:#f8faff;border:1px solid #d0d8e8;border-radius:10px;padding:14px">
+      <div style="font-size:16.0px;font-weight:800;color:#003580;margin-bottom:10px">📊 สถานะช่องทางแจ้งเตือนตามการผูก Line</div>
+      <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+        <div style="background:#f0f4ff;border:2px solid #4285F4;border-radius:8px;padding:10px 14px;text-align:center;font-size:15.0px">
+          <div style="font-weight:700;color:#1a3a6e">สมัคร Web App<br>Email เท่านั้น</div>
+          <div style="margin-top:5px"><span style="background:#003580;color:white;padding:2px 6px;border-radius:8px;font-size:16.0px">📧 Email ✓</span></div>
+          <div style="margin-top:3px"><span style="background:#ddd;color:#888;padding:2px 6px;border-radius:8px;font-size:16.0px">📱 Line ✗</span></div>
+        </div>
+        <div style="font-size:20.0px;color:#FF6D00">→</div>
+        <div style="background:#fff8f0;border:2px solid #FF6D00;border-radius:8px;padding:10px 14px;text-align:center;font-size:15.0px">
+          <div style="font-weight:700;color:#7a3800">กด "ผูก Line"</div>
+          <div style="font-size:16.0px;color:#666;margin-top:3px">Web App → จัดการผู้ใช้</div>
+        </div>
+        <div style="font-size:20.0px;color:#34A853">→</div>
+        <div style="background:#f0fff4;border:2px solid #34A853;border-radius:8px;padding:10px 14px;text-align:center;font-size:15.0px">
+          <div style="font-weight:700;color:#1a5c2a">ผูก Line สำเร็จ</div>
+          <div style="margin-top:5px"><span style="background:#003580;color:white;padding:2px 6px;border-radius:8px;font-size:16.0px">📧 Email ✓</span></div>
+          <div style="margin-top:3px"><span style="background:#06C755;color:white;padding:2px 6px;border-radius:8px;font-size:16.0px">📱 Line ✓</span></div>
+        </div>
+        <div style="font-size:20.0px;color:#FF6D00">→</div>
+        <div style="background:#fff8f0;border:2px solid #FF6D00;border-radius:8px;padding:10px 14px;text-align:center;font-size:15.0px">
+          <div style="font-weight:700;color:#7a3800">เปลี่ยน Line ใหม่</div>
+          <div style="font-size:16.0px;color:#666;margin-top:3px">ยกเลิกเดิม → ผูกใหม่</div>
+        </div>
+        <div style="font-size:20.0px;color:#34A853">→</div>
+        <div style="background:#f0fff4;border:2px solid #34A853;border-radius:8px;padding:10px 14px;text-align:center;font-size:15.0px">
+          <div style="font-weight:700;color:#1a5c2a">Line ใหม่ทำงาน</div>
+          <div style="margin-top:5px"><span style="background:#003580;color:white;padding:2px 6px;border-radius:8px;font-size:16.0px">📧 Email ✓</span></div>
+          <div style="margin-top:3px"><span style="background:#06C755;color:white;padding:2px 6px;border-radius:8px;font-size:16.0px">📱 Line ใหม่ ✓</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="t2" class="flow-section">
+  <div class="sec-head"><span class="n">2</span>การขอนัดหมายล่วงหน้า — Line OA & Web App</div>
+
+  <div class="path-toggle">
+    <button class="path-btn active" onclick="showPath('p2','p2a',this)">📱 Line OA</button>
+    <button class="path-btn" onclick="showPath('p2','p2b',this)">🖥️ Web Application</button>
+  </div>
+
+  <div id="p2a">
+    <div class="grid2">
+      <div class="card">
+        <h3>📱 ขั้นตอนผ่าน Line OA (Visitor)</h3>
+        <ul class="steps">
+          <li><span class="n">1</span><span>กดปุ่ม <strong>"บันทึกนัดหมาย"</strong> จาก Rich Menu</span></li>
+          <li><span class="n">2</span><span>เลือกประเภทการเข้าพื้นที่ <span class="tag tag-b">Visitor</span> <span class="tag tag-g">Contractor</span> เป็นต้น</span></li>
+          <li><span class="n">3</span><span>ระบุ <strong>ผู้ต้องการเข้าพบ (Staff)</strong> — ชื่อพนักงาน/แผนก</span></li>
+          <li><span class="n">4</span><span>ระบุ <strong>วันที่และเวลา</strong> ที่ต้องการ</span></li>
+          <li><span class="n">5</span><span>ระบุรายละเอียดรถยนต์ (ไม่บังคับ)</span></li>
+          <li><span class="n">6</span><span>ระบุจำนวนผู้ติดตาม (ถ้ามี)</span></li>
+          <li><span class="n">7</span><span>ระบุรายการอุปกรณ์นำเข้าพื้นที่ (ถ้ามี)</span></li>
+          <li><span class="n">8</span><span>ระบุหมายเหตุ (ถ้ามี)</span></li>
+          <li><span class="n">9</span><span>ตรวจสอบข้อมูล → กดบันทึก → ส่งคำขอ</span></li>
+          <li><span class="n y">→</span><span style="color:#004d1f">รับข้อความ <strong>"รอการตอบกลับ"</strong> ทาง Line ทันที</span></li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>💬 ตัวอย่าง Line Messages — Visitor รับ</h3>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div>
+            <div style="font-size:16.0px;color:#666;margin-bottom:4px">① หลังส่งคำขอ:</div>
+            <div class="line-bubble">📋 <strong>คำขอนัดหมายของคุณ</strong><br>สถานะ: ⏳ รอการตอบกลับ<br>วันที่: [วันที่] เวลา: [เวลา]<br>เข้าพบ: [ชื่อ Staff / แผนก]</div>
+          </div>
+          <div>
+            <div style="font-size:16.0px;color:#666;margin-bottom:4px">② กรณีอนุมัติ:</div>
+            <div class="line-bubble">✅ <strong>อนุมัติรายการแล้ว</strong><br>วันที่: [วันที่] [เวลา]<br>กรุณาแสดง QR Code ที่ Kiosk<br>[🔲 QR Code]<br><em style="font-size:16.0px">* ส่ง Email สำรองด้วย</em></div>
+          </div>
+          <div>
+            <div style="font-size:16.0px;color:#666;margin-bottom:4px">③ กรณีไม่อนุมัติ:</div>
+            <div class="line-bubble">❌ <strong>ไม่อนุมัติรายการ</strong><br>วันที่: [วันที่]<br>หมายเหตุ: [เหตุผล]<br><em style="font-size:16.0px">* ส่ง Email แจ้งด้วย</em></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="ch-head" style="border-radius:8px 8px 0 0">📊 Flow (Line OA)</div>
+    <div class="ch-body">
+      <div style="display:flex;align-items:center;flex-wrap:wrap;gap:5px">
+        <div class="box start" style="font-size:15.0px">Visitor กด<br>Rich Menu</div><div class="darr-r">→</div>
+        <div class="box line-box" style="font-size:15.0px">กรอกฟอร์ม<br>นัดหมาย</div><div class="darr-r">→</div>
+        <div class="box system" style="font-size:15.0px">ระบบบันทึก<br>ส่งคำขอ</div><div class="darr-r">→</div>
+        <div class="box line-box" style="font-size:15.0px">Visitor รับ<br>"รอตอบกลับ"</div><div class="darr-r">→</div>
+        <div class="box notify" style="font-size:15.0px">Staff รับ<br>Notification</div><div class="darr-r">→</div>
+        <div class="box decision" style="font-size:15.0px">Staff<br>อนุมัติ?</div>
+        <div style="display:flex;flex-direction:column;gap:5px">
+          <div style="display:flex;align-items:center;gap:4px">
+            <span class="lbl lbl-y">Yes</span><div class="darr-r">→</div>
+            <div class="box line-box" style="font-size:15.0px">ส่ง QR Code<br><span class="sub">Line + Email</span></div>
+          </div>
+          <div style="display:flex;align-items:center;gap:4px">
+            <span class="lbl lbl-n">No</span><div class="darr-r">→</div>
+            <div class="box error" style="font-size:15.0px">แจ้ง Visitor<br><span class="sub">Line + Email</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="p2b" style="display:none">
+    <div class="grid2">
+      <div class="card">
+        <h3>🖥️ ขั้นตอนผ่าน Web Application</h3>
+        <ul class="steps">
+          <li><span class="n">1</span><span>Login เข้าระบบ → ไปหน้า <strong>"รายการนัดหมาย"</strong></span></li>
+          <li><span class="n">2</span><span>กดปุ่ม <strong>"+ เพิ่ม"</strong> สร้างรายการใหม่</span></li>
+          <li><span class="n">3</span><span>เลือกประเภทการเข้าพื้นที่</span></li>
+          <li><span class="n">4</span><span>ระบุข้อมูลผู้ต้องการเข้าพบ (Staff)</span></li>
+          <li><span class="n">5</span><span>ระบุวันที่ เวลา จำนวนผู้ติดตาม รถยนต์ อุปกรณ์</span></li>
+          <li><span class="n">6</span><span>ตรวจสอบข้อมูล → กดบันทึกส่งคำขอ</span></li>
+          <li><span class="n y">→</span><span style="color:#004d1f">รับแจ้งผลทาง Line + Email</span></li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>📊 Flow (Web App)</h3>
+        <div class="vf">
+          <div class="box start w100">Login เข้าระบบ</div><div class="darr">↓</div>
+          <div class="box action w100">กด + เพิ่มนัดหมาย</div><div class="darr">↓</div>
+          <div class="box action w100">กรอกฟอร์มนัดหมาย</div><div class="darr">↓</div>
+          <div class="box system w100">ระบบบันทึก + แจ้ง Staff</div><div class="darr">↓</div>
+          <div class="box action w100">แสดงสถานะ "รอการอนุมัติ"</div><div class="darr">↓</div>
+          <div class="branch">
+            <div class="bcol">
+              <span class="lbl lbl-y">อนุมัติ</span><div class="darr">↓</div>
+              <div class="box success" style="font-size:15.0px">ได้รับ QR Code<br>(Line + Email)</div>
+            </div>
+            <div class="bcol">
+              <span class="lbl lbl-n">ปฏิเสธ</span><div class="darr">↓</div>
+              <div class="box error" style="font-size:15.0px">รับแจ้ง<br>ไม่อนุมัติ</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== TAB 3: APPROVAL ===== -->
+<div id="t3" class="flow-section">
+  <div class="sec-head"><span class="n">3</span>การอนุมัติ / ปฏิเสธ — Staff (เจ้าหน้าที่ผู้รับผิดชอบ)</div>
+  <div class="note note-yellow">
+    <strong>Staff</strong> = พนักงานที่ Visitor ระบุว่าต้องการเข้าพบ · รับ Notification ทาง <strong>Line OA</strong> พร้อมรายละเอียดคำขอ
+  </div>
+
+  <div class="grid2" style="margin-top:14px">
+    <div class="card">
+      <h3>✅ ขั้นตอนการอนุมัติ (Staff ผ่าน Line OA)</h3>
+      <ul class="steps">
+        <li><span class="n">1</span><span>Staff รับ Line Notification แจ้งคำขอนัดหมายจาก Visitor</span></li>
+        <li><span class="n">2</span><span>กดปุ่ม <strong>"ทำรายการ | Action"</strong> เพื่อเปิดฟอร์มตรวจสอบ</span></li>
+        <li><span class="n">3</span><span>ตรวจสอบรายละเอียดข้อมูลการขอนัดหมาย</span></li>
+        <li><span class="n">4</span><span>แก้ไข/ปรับปรุงข้อมูล Visitor (ถ้ามี)</span></li>
+        <li><span class="n">5</span><span>เพิ่มรายการรับรอง + ห้องประชุม เพื่อแจ้ง GA (ถ้ามี)</span></li>
+        <li><span class="n g">✓</span><span>กดปุ่ม <strong>"อนุมัติรายการ"</strong><br>→ ระบบส่ง QR Code ทาง <strong>Line + Email</strong> ให้ Visitor ทันที</span></li>
+        <li><span class="n r">✗</span><span>หรือกดปุ่ม <strong>"ไม่อนุมัติ"</strong><br>→ ระบบแจ้ง Visitor ทาง Line + Email</span></li>
+      </ul>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="card">
+        <h3>💬 Line Notification ที่ Staff รับ</h3>
+        <div class="line-bubble" style="max-width:100%">
+          🔔 <strong>คำขอนัดหมายใหม่</strong><br>
+          ผู้ขอ: [ชื่อ Visitor] บริษัท [ชื่อบริษัท]<br>
+          วันที่: [วันที่] เวลา: [เวลา]<br>
+          ประเภท: Visitor / ผู้มาติดต่อ<br>
+          ผู้ติดตาม: [จำนวน] คน<br>
+          รถยนต์: [ทะเบียน] (ถ้ามี)<br>
+          หมายเหตุ: [ข้อความ]<br>
+          <button class="line-btn">✏️ ทำรายการ | Action</button>
+        </div>
+      </div>
+      <div class="card">
+        <h3>📊 Flow การอนุมัติ</h3>
+        <div style="display:flex;align-items:center;flex-wrap:wrap;gap:5px">
+          <div class="box notify" style="font-size:15.0px">Staff รับ<br>Notification</div><div class="darr-r">→</div>
+          <div class="box action" style="font-size:15.0px">กด Action<br>ตรวจสอบ</div><div class="darr-r">→</div>
+          <div class="box decision" style="font-size:15.0px">อนุมัติ?</div>
+          <div style="display:flex;flex-direction:column;gap:5px">
+            <div style="display:flex;align-items:center;gap:4px">
+              <span class="lbl lbl-y">Yes</span><div class="darr-r">→</div>
+              <div class="box line-box" style="font-size:15.0px">ส่ง QR Code<br><span class="sub">Line + Email</span></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:4px">
+              <span class="lbl lbl-n">No</span><div class="darr-r">→</div>
+              <div class="box error" style="font-size:15.0px">แจ้ง Visitor<br><span class="sub">ปฏิเสธ</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== TAB 4: STAFF / BATCH ===== -->
+<div id="t4" class="flow-section">
+  <div class="sec-head"><span class="n">4</span>Staff — สร้างนัดหมาย / Batch Import Excel</div>
+
+  <div class="note note-blue" style="max-width:100%;margin-bottom:14px">
+    <strong>👔 Staff (พนักงานหน่วยงาน)</strong> ใช้ <strong>Web App</strong> สร้างนัดหมายล่วงหน้าแทน Visitor หรือ Import รายชื่อกลุ่ม · Visitor Check-in เองที่ Kiosk (Tab 5) หรือผ่าน Counter รปภ. (Tab 6)
+  </div>
+
+  <!-- Sub-tabs -->
+  <div class="path-toggle" style="margin-top:4px">
+    <button class="path-btn active" onclick="showPath('p5','p5d',this)">👔 สร้างนัดหมายแทน Visitor</button>
+    <button class="path-btn" onclick="showPath('p5','p5c',this)">📊 Batch Import Excel</button>
+  </div>
+
+
+  <!-- ===== BATCH IMPORT (Staff พนักงาน) ===== -->
+  <div id="p5c" style="display:none">
+    <div class="note note-blue" style="max-width:100%;margin-bottom:12px">
+      <strong>👔 Staff (พนักงานหน่วยงาน) — Batch Import:</strong> เจ้าหน้าที่ของหน่วยงานจัดทำรายชื่อกลุ่มผู้มาติดต่อล่วงหน้าผ่าน <strong>Web App</strong> · แต่ละคน Check-in เองที่ Kiosk หรือผ่าน Counter รปภ.
+    </div>
+    <div class="grid2">
+      <div class="card">
+        <h3>📊 ขั้นตอน — Batch Import Excel (Staff พนักงาน)</h3>
+        <ul class="steps">
+          <li><span class="n">1</span><span><strong>Staff (พนักงาน)</strong> Login Web App → ไปที่เมนู Batch Import</span></li>
+          <li><span class="n">2</span><span>Download Template Excel ที่กำหนด</span></li>
+          <li><span class="n">3</span><span>กรอกรายชื่อ: ชื่อ-สกุล, บัตร/Passport, บริษัท, วัตถุประสงค์, วันเวลา</span></li>
+          <li><span class="n">4</span><span>Upload ไฟล์ → ระบบ Validate ข้อมูลทุกแถว</span></li>
+          <li><span class="n">5</span><span>ตรวจสอบ Preview → ยืนยัน Import</span></li>
+          <li><span class="n y">✓</span><span style="color:#1a5c2a">ระบบสร้าง APT-XXX ให้ทุกคนในรายการ</span></li>
+          <li><span class="n y">✓</span><span style="color:#1a5c2a">แต่ละคน <strong>Check-in แยกกันได้อิสระ</strong> ที่ Kiosk หรือ Counter</span></li>
+        </ul>
+
+        <table style="width:100%;font-size:15.0px;border-collapse:collapse;margin-top:12px">
+          <tr style="background:#003580;color:white"><th style="padding:5px;text-align:left">กรณี</th><th style="padding:5px;text-align:center">Check-in แยก</th><th style="padding:5px;text-align:left">หมายเหตุ</th></tr>
+          <tr style="background:#f5f5f5"><td style="padding:5px">Import Excel ครบทุกชื่อ</td><td style="padding:5px;text-align:center;color:#34A853;font-weight:700">✓ ได้</td><td style="padding:5px">ทุกคนมี APT ของตัวเอง</td></tr>
+          <tr><td style="padding:5px">เฉพาะผู้ติดต่อหลัก 1 คน</td><td style="padding:5px;text-align:center;color:#EA4335;font-weight:700">✗ คนอื่นไม่ได้</td><td style="padding:5px">ไม่มี APT ของผู้ติดตาม</td></tr>
+          <tr style="background:#f5f5f5"><td style="padding:5px">มีเพียงชื่อ-นามสกุล</td><td style="padding:5px;text-align:center;color:#FF6D00;font-weight:700">เฉพาะชื่อตรง</td><td style="padding:5px">ไม่มีเลขบัตรยืนยัน</td></tr>
+        </table>
+
+        <div class="note note-yellow mt8" style="max-width:100%">
+          <strong>วิธี Check-in หลัง Batch Import:</strong> แต่ละคน Scan QR ที่ Kiosk (Tab 4A) · หรือรปภ. ค้นหาชื่อที่ Counter (Tab 5B)
+        </div>
+      </div>
+      <div class="card">
+        <h3>📊 Flow — Batch Import (Staff พนักงาน)</h3>
+        <div class="vf" style="align-items:flex-start;gap:4px">
+          <div class="box action w100" style="text-align:left;border-color:#003580"><strong>Staff (พนักงาน)</strong> Login Web App</div><div class="darr" style="align-self:center">↓</div>
+          <div class="box action w100" style="text-align:left">จัดทำ / Upload Excel<br><span class="sub">รายชื่อกลุ่มผู้มาติดต่อ</span></div><div class="darr" style="align-self:center">↓</div>
+          <div class="box decision w100">Validate ผ่าน?</div>
+          <div class="branch" style="width:100%">
+            <div class="bcol" style="flex:2">
+              <span class="lbl lbl-y">Pass</span><div class="darr">↓</div>
+              <div class="box system" style="font-size:15.0px;width:100%">ระบบสร้าง APT-XXX<br>ให้ทุกคนในรายการ</div><div class="darr">↓</div>
+              <div class="box notify" style="font-size:15.0px;width:100%">ส่ง QR Code ให้แต่ละคน<br>(Line / Email)</div><div class="darr">↓</div>
+              <div class="box decision" style="font-size:15.0px;width:100%">แต่ละคน Check-in ที่ไหน?</div>
+              <div class="branch">
+                <div class="bcol">
+                  <span class="lbl" style="background:#34A853;color:white;font-size:15.0px">Kiosk</span><div class="darr">↓</div>
+                  <div class="box success" style="font-size:16.0px">Scan QR<br>Tab 4A</div>
+                </div>
+                <div class="bcol">
+                  <span class="lbl" style="background:#4A1A8C;color:white;font-size:15.0px">Counter</span><div class="darr">↓</div>
+                  <div class="box action" style="font-size:16.0px;border-color:#4A1A8C">รปภ. ค้นหา<br>Tab 5B</div>
+                </div>
+              </div>
+            </div>
+            <div class="bcol" style="flex:1">
+              <span class="lbl lbl-n">Fail</span><div class="darr">↓</div>
+              <div class="box error" style="font-size:15.0px">แสดง Error<br>แก้ไข Excel</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ===== STAFF สร้างนัดหมายแทน ===== -->
+  <div id="p5d">
+    <div class="note note-blue" style="max-width:100%;margin-bottom:12px">
+      <strong>👔 Staff (พนักงาน) — สร้างนัดหมายแทน Visitor:</strong> เจ้าหน้าที่สร้างนัดหมายให้ Visitor ทีละรายการผ่าน Web App → ส่ง QR ให้ Visitor → Visitor Check-in เองที่ Kiosk
+    </div>
+    <div class="grid2">
+      <div class="card">
+        <h3>👔 ขั้นตอน — Staff สร้างนัดหมายแทน</h3>
+        <ul class="steps">
+          <li><span class="n">1</span><span><strong>Staff (พนักงาน)</strong> Login Web App → กด <strong>"+ สร้างนัดหมาย"</strong></span></li>
+          <li><span class="n">2</span><span>กรอกข้อมูล Visitor: ชื่อ, บัตร/Passport, บริษัท, เบอร์โทร</span></li>
+          <li><span class="n">3</span><span>เลือกประเภทการติดต่อ + ผู้ที่จะพบ + วันเวลา + สถานที่</span></li>
+          <li><span class="n">4</span><span>อนุมัติรายการ (Staff อนุมัติเองได้ หรือส่งให้ผู้รับผิดชอบอนุมัติ)</span></li>
+          <li><span class="n y">✓</span><span style="color:#004d1f">ระบบส่ง QR Code + รายละเอียดให้ Visitor ทาง <strong>Line และ/หรือ Email</strong></span></li>
+          <li><span class="n y">→</span><span>Visitor นำ QR Scan ที่ Kiosk → <strong>Tab 4 ช่องทาง A</strong></span></li>
+          <li><span class="n g">→</span><span>หรือ Visitor ใช้บัตรที่ Kiosk → <strong>Tab 4 ช่องทาง B</strong></span></li>
+          <li><span class="n" style="background:#4A1A8C">→</span><span>หรือ รปภ. ค้นหานัดหมายที่ Counter → <strong>Tab 5 Appointment</strong></span></li>
+        </ul>
+      </div>
+      <div class="card">
+        <h3>📊 Flow — Staff สร้างนัดหมายแทน</h3>
+        <div class="vf" style="align-items:flex-start;gap:4px">
+          <div class="box action w100" style="text-align:left;border-color:#003580"><strong>Staff (พนักงาน)</strong> Login Web App</div><div class="darr" style="align-self:center">↓</div>
+          <div class="box action w100" style="text-align:left">กรอกข้อมูล Visitor<br><span class="sub">ชื่อ / บัตร / วัตถุประสงค์ / วันเวลา</span></div><div class="darr" style="align-self:center">↓</div>
+          <div class="box action w100" style="text-align:left">อนุมัติรายการ</div><div class="darr" style="align-self:center">↓</div>
+          <div class="box notify w100">ส่ง QR Code ให้ Visitor<br><span class="sub">Line และ/หรือ Email</span></div><div class="darr" style="align-self:center">↓</div>
+          <div class="box decision w100">Visitor Check-in ที่ไหน?</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap;width:100%">
+            <div class="vf" style="align-items:center;flex:1">
+              <span class="lbl" style="background:#34A853;color:white;font-size:16.0px">Kiosk (QR)</span><div class="darr">↓</div>
+              <div class="box success" style="font-size:16.0px">Tab 4A</div>
+            </div>
+            <div class="vf" style="align-items:center;flex:1">
+              <span class="lbl" style="background:#4285F4;color:white;font-size:16.0px">Kiosk (บัตร)</span><div class="darr">↓</div>
+              <div class="box success" style="font-size:16.0px">Tab 4B</div>
+            </div>
+            <div class="vf" style="align-items:center;flex:1">
+              <span class="lbl" style="background:#4A1A8C;color:white;font-size:16.0px">Counter รปภ.</span><div class="darr">↓</div>
+              <div class="box action" style="font-size:16.0px;border-color:#4A1A8C">Tab 5B</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ===== TAB 5: KIOSK ===== -->
+<div id="t5" class="flow-section">
+  <div class="sec-head"><span class="n">5</span>Kiosk Check-in — นัดหมายล่วงหน้า (Pre-Registration)</div>
+  <div class="note note-yellow">
+    <strong>⚠️ สำคัญ:</strong> ยืนยันตัวตนเฉพาะ <strong>ผู้ติดต่อหลัก 1 คนเท่านั้น</strong> · หากลงทะเบียนไว้แค่ชื่อ-นามสกุล ระบบตรวจสอบเฉพาะชื่อนามสกุล · ชื่อไม่ตรง → "ไม่พบข้อมูลการนัดหมาย"
+  </div>
+
+  <div class="path-toggle">
+    <button class="path-btn active" onclick="showPath('p4','p4a',this)">📱 ช่องทาง A — Scan QR Code</button>
+    <button class="path-btn" onclick="showPath('p4','p4b',this)">🪪 ช่องทาง B — บัตรประชาชน / Passport / ThaiID</button>
+  </div>
+
+  <div id="p4a">
+    <div class="grid2">
+      <div class="card">
+        <h3>🖥️ ขั้นตอน — ช่องทาง A (QR Code)</h3>
+        <ul class="steps">
+          <li><span class="n">1</span><span>เลือกเมนู <strong>"นัดหมายไว้แล้ว"</strong></span></li>
+          <li><span class="n">2</span><span>เลือก <strong>"Scan QR Code"</strong></span></li>
+          <li><span class="n">3</span><span>ระบบอ่าน QR → ค้นหาข้อมูลนัดหมาย</span></li>
+          <li><span class="n">4</span><span>แสดงรายละเอียดนัดหมาย → ยืนยัน</span></li>
+          <li><span class="n">5</span><span>ยืนยันตัวตน: บัตรประชาชน / Passport / ThaiID</span></li>
+          <li><span class="n g">✓</span><span>ชื่อตรง → ถ่ายภาพ → Preview → กดยืนยัน</span></li>
+          <li><span class="n">6</span><span>ระบบถาม: <em>"รับรหัส WiFi ด้วยไหม?"</em></span></li>
+          <li><span class="n y">✓</span><span style="color:#7B2FBE">Yes → สร้าง WiFi → พิมพ์ใน Visit Pass</span></li>
+          <li><span class="n" style="background:#607D8B">—</span><span style="color:#607D8B">No → พิมพ์ Visit Pass (ไม่มี WiFi)</span></li>
+        </ul>
+      </div>
+      <div class="vf">
+        <div class="box start">Visitor มาถึง Kiosk</div><div class="darr">↓</div>
+        <div class="box action">เลือก "นัดหมายไว้แล้ว"</div><div class="darr">↓</div>
+        <div class="box action">Scan QR Code</div><div class="darr">↓</div>
+        <div class="box decision">พบข้อมูลนัดหมาย?</div>
+        <div class="branch">
+          <div class="bcol">
+            <span class="lbl lbl-y">Yes</span><div class="darr">↓</div>
+            <div class="box action" style="font-size:15.0px">แสดงรายละเอียด<br>Visitor ยืนยัน</div><div class="darr">↓</div>
+            <div class="box action" style="font-size:15.0px">ยืนยันตัวตน<br>บัตร/Passport/ThaiID</div><div class="darr">↓</div>
+            <div class="box decision" style="font-size:15.0px">ชื่อตรงกัน?</div>
+            <div class="branch">
+              <div class="bcol">
+                <span class="lbl lbl-y">Yes</span><div class="darr">↓</div>
+                <div class="box action" style="font-size:16.0px">ถ่ายภาพ<br>Preview<br>ยืนยัน</div><div class="darr">↓</div>
+                <div class="box decision" style="font-size:16.0px">WiFi?</div>
+                <div class="branch">
+                  <div class="bcol"><span class="lbl lbl-y" style="font-size:15.0px">Yes</span><div class="darr">↓</div><div class="box output" style="font-size:15.0px">Pass+WiFi</div></div>
+                  <div class="bcol"><span class="lbl lbl-n" style="font-size:15.0px">No</span><div class="darr">↓</div><div class="box output" style="font-size:15.0px">Visit Pass</div></div>
+                </div>
+                <div class="darr">↓</div><div class="box end" style="font-size:16.0px">Check-in ✓</div>
+              </div>
+              <div class="bcol">
+                <span class="lbl lbl-n">No</span><div class="darr">↓</div>
+                <div class="box error" style="font-size:16.0px">ไม่พบ<br>นัดหมาย</div>
+              </div>
+            </div>
+          </div>
+          <div class="bcol">
+            <span class="lbl lbl-n">No</span><div class="darr">↓</div>
+            <div class="box error" style="font-size:15.0px">ไม่พบข้อมูล QR</div>
+            <div class="darr">↓</div><div class="box end-red" style="font-size:15.0px">สิ้นสุด</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="p4b" style="display:none">
+    <div class="grid2">
+      <div class="card">
+        <h3>🪪 ขั้นตอน — ช่องทาง B (บัตร/ThaiID)</h3>
+        <ul class="steps">
+          <li><span class="n">1</span><span>เลือกเมนู <strong>"นัดหมายไว้แล้ว"</strong></span></li>
+          <li><span class="n">2</span><span>เลือก <strong>"บัตรประชาชน / Passport / ThaiID"</strong></span></li>
+          <li><span class="n">3</span><span>สแกน/อ่านบัตร → ระบบค้นหานัดหมาย<strong>วันนี้</strong></span></li>
+          <li><span class="n">4</span><span>พบ → Preview รายการนัดหมาย → กดยืนยัน</span></li>
+          <li><span class="n">5</span><span>ถ่ายภาพ → Preview → กดยืนยัน</span></li>
+          <li><span class="n">6</span><span>ระบบถาม: <em>"รับรหัส WiFi ด้วยไหม?"</em></span></li>
+          <li><span class="n y">✓</span><span style="color:#7B2FBE">Yes → สร้าง WiFi → พิมพ์ใน Visit Pass</span></li>
+        </ul>
+      </div>
+      <div class="vf">
+        <div class="box start">Visitor มาถึง Kiosk</div><div class="darr">↓</div>
+        <div class="box action">เลือก "นัดหมายไว้แล้ว"</div><div class="darr">↓</div>
+        <div class="box action">ยืนยันตัวตนด้วยบัตร<br><span class="sub">บัตรประชาชน/Passport/ThaiID</span></div><div class="darr">↓</div>
+        <div class="box system">ระบบค้นหานัดหมายวันนี้</div><div class="darr">↓</div>
+        <div class="box decision">พบนัดหมาย + ชื่อตรง?</div>
+        <div class="branch">
+          <div class="bcol">
+            <span class="lbl lbl-y">Yes</span><div class="darr">↓</div>
+            <div class="box action" style="font-size:15.0px">Preview นัดหมาย<br>Visitor ยืนยัน</div><div class="darr">↓</div>
+            <div class="box action" style="font-size:15.0px">ถ่ายภาพ→Preview→ยืนยัน</div><div class="darr">↓</div>
+            <div class="box decision" style="font-size:15.0px">รับ WiFi?</div>
+            <div class="branch">
+              <div class="bcol"><span class="lbl lbl-y" style="font-size:15.0px">Yes</span><div class="darr">↓</div><div class="box output" style="font-size:15.0px">Pass+WiFi</div></div>
+              <div class="bcol"><span class="lbl lbl-n" style="font-size:15.0px">No</span><div class="darr">↓</div><div class="box output" style="font-size:15.0px">Visit Pass</div></div>
+            </div>
+            <div class="darr">↓</div><div class="box end" style="font-size:15.0px">Check-in ✓</div>
+          </div>
+          <div class="bcol">
+            <span class="lbl lbl-n">No</span><div class="darr">↓</div>
+            <div class="box error" style="font-size:15.0px">ไม่พบข้อมูล<br>นัดหมาย</div>
+            <div class="darr">↓</div><div class="box end-red" style="font-size:15.0px">สิ้นสุด</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== TAB 6: SECURITY ===== -->
+<div id="t6" class="flow-section">
+  <div class="sec-head"><span class="n">6</span>รปภ. (Counter App) — Check-in ที่เคาน์เตอร์</div>
+
+  <div class="note note-blue" style="max-width:100%;margin-bottom:14px">
+    <strong>🛡️ เจ้าหน้าที่ รปภ.</strong> ประจำเคาน์เตอร์อาคาร · ใช้ <strong>Counter App</strong> · ทำ Check-in แทน Visitor ด้วยตนเอง · รองรับทั้ง Walk-in (ไม่มีนัด) และ Appointment (มีนัดล่วงหน้า) · <strong>ไม่ต้องยืนยันตัวตนผ่าน ThaiD</strong> — อ่านบัตรประชาชน / Passport หรือพิมพ์ชื่อ
+  </div>
+
+  <div class="path-toggle" style="margin-top:4px">
+    <button class="path-btn active" onclick="showPath('p6','p6a',this)">🚶 Walk-in (ไม่มีนัด)</button>
+    <button class="path-btn" onclick="showPath('p6','p6b',this)">📅 Appointment (มีนัดหมาย)</button>
+  </div>
+
+  <!-- ===== WALK-IN (รปภ) ===== -->
+  <div id="p6a">
+    <div class="note note-yellow" style="max-width:100%;margin-bottom:12px">
+      <strong>🛡️ รปภ. — Walk-in:</strong> Visitor มาโดยไม่ได้นัดล่วงหน้า · รปภ.บันทึกข้อมูลที่เคาน์เตอร์ · ออก Visit Pass พร้อม QR Code + WiFi ทันที
+    </div>
+    <div class="grid2">
+      <div class="card">
+        <h3>🖥️ ขั้นตอน — Walk-in (รปภ. ทำรายการ)</h3>
+
+        <div style="background:#E8F0FE;border-radius:8px;padding:12px;margin-bottom:10px">
+          <div style="font-size:15.5px;font-weight:800;color:#1a3a6e;margin-bottom:8px">① อ่านข้อมูลผู้มาติดต่อ</div>
+          <div style="display:flex;gap:8px;margin-bottom:8px">
+            <div style="flex:1;background:white;border:1.5px solid #4285F4;border-radius:8px;padding:8px;text-align:center;font-size:15.0px">
+              <div style="font-size:18.0px">💳</div>
+              <div style="font-weight:700;color:#1a3a6e">บัตรประชาชน</div>
+              <div style="font-size:16.0px;color:#666;margin-top:3px">เสียบบัตร Smart Card Reader<br>ดึงข้อมูลอัตโนมัติ</div>
+              <div style="margin-top:5px"><span style="background:#E8F0FE;color:#1a3a6e;padding:2px 6px;border-radius:8px;font-size:15.0px">ถ้าติดตั้งอุปกรณ์</span></div>
+            </div>
+            <div style="flex:1;background:white;border:1.5px solid #34A853;border-radius:8px;padding:8px;text-align:center;font-size:15.0px">
+              <div style="font-size:18.0px">📘</div>
+              <div style="font-weight:700;color:#1a5c2a">Passport</div>
+              <div style="font-size:16.0px;color:#666;margin-top:3px">Scan MRZ / เสียบอ่าน<br>ดึงข้อมูลอัตโนมัติ</div>
+              <div style="margin-top:5px"><span style="background:#E6F4EA;color:#1a5c2a;padding:2px 6px;border-radius:8px;font-size:15.0px">ถ้าติดตั้งอุปกรณ์</span></div>
+            </div>
+            <div style="flex:1;background:white;border:1.5px dashed #FF6D00;border-radius:8px;padding:8px;text-align:center;font-size:15.0px">
+              <div style="font-size:18.0px">⌨️</div>
+              <div style="font-weight:700;color:#7a3800">พิมพ์ชื่อเอง</div>
+              <div style="font-size:16.0px;color:#666;margin-top:3px">กรณีไม่มีอุปกรณ์<br>หรืออุปกรณ์ขัดข้อง</div>
+              <div style="margin-top:5px"><span style="background:#FFF8E1;color:#7a3800;padding:2px 6px;border-radius:8px;font-size:15.0px">Fallback เสมอ</span></div>
+            </div>
+          </div>
+        </div>
+
+        <div style="background:#E6F4EA;border-radius:8px;padding:12px;margin-bottom:10px">
+          <div style="font-size:15.5px;font-weight:800;color:#1a5c2a;margin-bottom:8px">② ข้อมูลการติดต่อ</div>
+          <ul class="steps">
+            <li><span class="n" style="background:#34A853">A</span><span>เลือก <strong>ประเภทการติดต่อ</strong>: ติดต่อราชการ / ประชุม / ส่งเอกสาร / อื่นๆ</span></li>
+            <li><span class="n" style="background:#34A853">B</span><span>ค้นหา <strong>ผู้ที่มาพบ / หน่วยงาน</strong> (ชื่อ Staff หรือกอง/กรม)</span></li>
+            <li><span class="n" style="background:#34A853">C</span><span>ระบุ <strong>จำนวนผู้ติดตาม</strong> + ทะเบียนรถ (ถ้ามี)</span></li>
+          </ul>
+        </div>
+
+        <div style="background:#F3E8FF;border-radius:8px;padding:12px;margin-bottom:10px">
+          <div style="font-size:15.5px;font-weight:800;color:#3d1363;margin-bottom:8px">③ ถ่ายภาพผู้มาติดต่อ</div>
+          <ul class="steps">
+            <li><span class="n" style="background:#7B2FBE">1</span><span>กดปุ่ม <strong>"ถ่ายภาพ"</strong> — กล้องหน้า Counter เปิด</span></li>
+            <li><span class="n" style="background:#7B2FBE">2</span><span>Preview ภาพ → ยืนยัน หรือ ถ่ายใหม่</span></li>
+            <li><span class="n y">✓</span><span style="color:#3d1363">ภาพพิมพ์ใน Visit Pass + บันทึกในระบบ</span></li>
+          </ul>
+        </div>
+
+        <div style="background:#FFF8E1;border-radius:8px;padding:12px;margin-bottom:10px">
+          <div style="font-size:15.5px;font-weight:800;color:#5a3e00;margin-bottom:8px">④ WiFi (ถ้ามี FortiGate)</div>
+          <div style="display:flex;gap:8px">
+            <div style="flex:1;background:white;border:1.5px solid #FFB700;border-radius:6px;padding:8px;font-size:15.0px;text-align:center"><div style="font-weight:700">ต้องการ WiFi</div><div style="font-size:16.0px;color:#666;margin-top:3px">ระบบสร้าง Guest Password<br>พิมพ์ใน Visit Pass</div></div>
+            <div style="flex:1;background:white;border:1.5px dashed #aaa;border-radius:6px;padding:8px;font-size:15.0px;text-align:center"><div style="font-weight:700;color:#666">ไม่ต้องการ</div><div style="font-size:16.0px;color:#999;margin-top:3px">พิมพ์ Visit Pass ปกติ</div></div>
+          </div>
+        </div>
+
+        <div style="background:#f0fff4;border:2px solid #34A853;border-radius:8px;padding:12px">
+          <div style="font-size:15.5px;font-weight:800;color:#1a5c2a;margin-bottom:6px">⑤ บันทึก & พิมพ์ Visit Pass (สติ๊กเกอร์)</div>
+          <div style="background:white;border:1px dashed #34A853;border-radius:6px;padding:10px;font-size:15.0px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+              <div style="font-weight:700;color:#003580">🖨️ Thermal Printer · กระดาษสติ๊กเกอร์ความร้อน · ความกว้าง <strong>80 มม.</strong></div>
+            </div>
+            <div style="background:#f8faff;border-radius:6px;padding:8px;border:1px solid #d0d8e8">
+              <div style="font-weight:700;color:#003580;margin-bottom:5px;font-size:16.5px">📋 ข้อมูลบน Visit Pass:</div>
+              <div style="display:grid;grid-template-columns:1fr 1fr;gap:3px;font-size:16.5px">
+                <span>📷 รูปภาพผู้มาติดต่อ</span><span>🔲 QR Code เข้าพื้นที่</span>
+                <span>👤 ชื่อ-นามสกุล</span><span>📅 วัน/เวลา Check-in</span>
+                <span>🏢 ผู้ที่มาพบ / หน่วยงาน</span><span>📍 ชั้น / สถานที่</span>
+                <span>🎫 รหัส (APT-XXX)</span><span>📶 WiFi: User / Password*</span>
+              </div>
+            </div>
+            <div style="font-size:16.0px;color:#888;margin-top:5px">* WiFi พิมพ์เฉพาะกรณีติดตั้ง FortiGate และ Visitor ต้องการ</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>📊 Flow — รปภ. Walk-in</h3>
+        <div class="vf" style="align-items:flex-start;gap:4px">
+          <div class="box start w100">Visitor มาถึงเคาน์เตอร์</div><div class="darr" style="align-self:center">↓</div>
+          <div class="box action w100" style="text-align:left;border-color:#4A1A8C"><strong>รปภ.</strong> เลือก <strong>"Walk-in"</strong><br><span class="sub">ใน Counter App</span></div><div class="darr" style="align-self:center">↓</div>
+          <div class="box decision w100">มีอุปกรณ์อ่านบัตร?</div>
+          <div class="branch" style="width:100%">
+            <div class="bcol" style="flex:1"><span class="lbl lbl-y">มี</span><div class="darr">↓</div><div class="box system" style="font-size:15.0px;width:100%">เสียบบัตร / Scan<br>ดึงข้อมูลอัตโนมัติ</div></div>
+            <div class="bcol" style="flex:1"><span class="lbl" style="background:#FF6D00;color:white">ไม่มี/ขัดข้อง</span><div class="darr">↓</div><div class="box action" style="font-size:15.0px;width:100%;border-color:#FF6D00">พิมพ์ชื่อด้วยตนเอง</div></div>
+          </div>
+          <div class="darr" style="align-self:center">↓</div>
+          <div class="box action w100" style="text-align:left">เลือกประเภท + หน่วยงาน</div><div class="darr" style="align-self:center">↓</div>
+          <div class="box action w100" style="text-align:left;border-color:#7B2FBE">ถ่ายภาพ → Preview → ยืนยัน</div><div class="darr" style="align-self:center">↓</div>
+          <div class="box decision w100">ต้องการ WiFi?</div>
+          <div class="branch" style="width:100%">
+            <div class="bcol" style="flex:1"><span class="lbl lbl-y">ใช่</span><div class="darr">↓</div><div class="box system" style="font-size:15.0px;width:100%">สร้าง WiFi Password</div></div>
+            <div class="bcol" style="flex:1"><span class="lbl lbl-n">ไม่</span></div>
+          </div>
+          <div class="darr" style="align-self:center">↓</div>
+          <div class="box output w100">กด <strong>"บันทึก &amp; พิมพ์บัตร"</strong></div><div class="darr" style="align-self:center">↓</div>
+          <div class="box end w100">พิมพ์ Visit Pass ✓<br><span class="sub">(ภาพ + QR + WiFi*)</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div style="background:#f8faff;border:1px solid #d0d8e8;border-radius:10px;padding:14px;margin-top:12px">
+      <div style="font-size:16.0px;font-weight:800;color:#003580;margin-bottom:8px">⚙️ Option การติดตั้งอุปกรณ์ที่ Counter รปภ.</div>
+      <table style="width:100%;font-size:15.5px;border-collapse:collapse">
+        <tr style="background:#4A1A8C;color:white"><th style="padding:6px 10px;text-align:left">อุปกรณ์</th><th style="padding:6px 10px;text-align:center">ติดตั้ง</th><th style="padding:6px 10px;text-align:center">ไม่ติดตั้ง/ขัดข้อง</th><th style="padding:6px 10px;text-align:left">หมายเหตุ</th></tr>
+        <tr style="background:#f8faff"><td style="padding:6px 10px">💳 Smart Card Reader</td><td style="padding:6px 10px;text-align:center;color:#34A853;font-weight:700">ดึงข้อมูลอัตโนมัติ</td><td style="padding:6px 10px;text-align:center;color:#FF6D00;font-weight:700">พิมพ์ชื่อแทน</td><td style="padding:6px 10px">เลขบัตร 13 หลัก</td></tr>
+        <tr><td style="padding:6px 10px">📘 Passport Reader (MRZ)</td><td style="padding:6px 10px;text-align:center;color:#34A853;font-weight:700">ดึงข้อมูลอัตโนมัติ</td><td style="padding:6px 10px;text-align:center;color:#FF6D00;font-weight:700">พิมพ์ชื่อแทน</td><td style="padding:6px 10px">ชาวต่างชาติ</td></tr>
+        <tr style="background:#f8faff"><td style="padding:6px 10px">📷 กล้องถ่ายภาพ</td><td style="padding:6px 10px;text-align:center;color:#34A853;font-weight:700">ถ่ายภาพ → พิมพ์ใน Slip</td><td style="padding:6px 10px;text-align:center;color:#607D8B;font-weight:700">ข้ามขั้นตอนได้</td><td style="padding:6px 10px">ระบบข้ามได้ถ้าไม่มีกล้อง</td></tr>
+        <tr><td style="padding:6px 10px">🖨️ Thermal Printer<br><span style="font-size:16.0px;color:#666">กระดาษสติ๊กเกอร์ความร้อน 80 มม.</span></td><td style="padding:6px 10px;text-align:center;color:#34A853;font-weight:700">พิมพ์ Visit Pass</td><td style="padding:6px 10px;text-align:center;color:#EA4335;font-weight:700">ไม่พิมพ์ได้</td><td style="padding:6px 10px">จำเป็นสำหรับ Counter<br><span style="font-size:16.0px;color:#666">80mm width</span></td></tr>
+        <tr style="background:#f8faff"><td style="padding:6px 10px">📶 FortiGate WiFi</td><td style="padding:6px 10px;text-align:center;color:#34A853;font-weight:700">ออก WiFi Password อัตโนมัติ</td><td style="padding:6px 10px;text-align:center;color:#607D8B;font-weight:700">ไม่แสดง Option WiFi</td><td style="padding:6px 10px">Toggle ตามการตั้งค่า</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- ===== APPOINTMENT (รปภ) ===== -->
+  <div id="p6b" style="display:none">
+    <div class="note note-green" style="max-width:100%;margin-bottom:12px">
+      <strong>🛡️ รปภ. — Appointment:</strong> Visitor มีนัดล่วงหน้า · รปภ.ค้นหานัดหมาย → ยืนยันตัวตน → ถ่ายภาพ → พิมพ์ Visit Pass ที่เคาน์เตอร์ทันที
+    </div>
+    <div class="grid2">
+      <div class="card">
+        <h3>📅 ขั้นตอน — Appointment (รปภ. ทำรายการ)</h3>
+        <ul class="steps">
+          <li><span class="n">1</span><span><strong>รปภ.</strong> เลือก <strong>"มีนัดหมาย (Appointment)"</strong> ใน Counter App</span></li>
+          <li><span class="n">2</span><span>ค้นหานัดหมายด้วย <strong>ชื่อ / เลขบัตร / รหัสนัดหมาย (APT-XXX)</strong></span></li>
+          <li><span class="n">3</span><span>ระบบแสดงรายการนัดหมายวันนี้ → รปภ. เลือกรายการ</span></li>
+          <li><span class="n">4</span><span>ยืนยันตัวตน: <span class="tag" style="background:#4285F4;color:white;font-size:16.0px">💳 บัตรประชาชน</span> <span class="tag" style="background:#34A853;color:white;font-size:16.0px">📘 Passport</span> <span class="tag" style="background:#FF6D00;color:white;font-size:16.0px">⌨️ พิมพ์ชื่อ</span></span></li>
+          <li><span class="n">5</span><span>ตรวจสอบชื่อตรงกับนัดหมาย</span></li>
+          <li><span class="n">6</span><span>ถ่ายภาพผู้มาติดต่อ → Preview → ยืนยัน</span></li>
+          <li><span class="n">7</span><span>เลือก WiFi (ถ้ามี FortiGate + ต้องการ)</span></li>
+          <li><span class="n y">✓</span><span style="color:#004d1f">กด <strong>"ยืนยัน Check-in & พิมพ์บัตร"</strong> → Visit Pass ออกทันที</span></li>
+        </ul>
+        <div style="background:#f0fff4;border:1px solid #c3e6c3;border-radius:8px;padding:10px;margin-top:10px;font-size:15.0px">
+          <div style="font-weight:800;color:#1a5c2a;margin-bottom:6px">💬 ตัวอย่างรายการนัดหมายที่แสดง:</div>
+          <div style="display:flex;flex-direction:column;gap:6px">
+            <div style="background:white;border:2px solid #7B2FBE;border-radius:6px;padding:8px"><div style="font-weight:700">APT-001 · นายวิชัย มั่นคง</div><div style="color:#666">พบ: คุณสมศรี รักงาน — ผู้อำนวยการกองกิจการท่องเที่ยว</div><div style="color:#666">📍 สำนักงานปลัดกระทรวง ชั้น 3 · 🕘 09:00–10:30</div></div>
+            <div style="background:white;border:1px solid #d0d8e8;border-radius:6px;padding:8px"><div style="font-weight:700">APT-002 · นางอัญชลี แสงทอง</div><div style="color:#666">พบ: คุณประเสริฐ ศรีวิโล — หัวหน้ากลุ่มงานบริหารทั่วไป</div><div style="color:#666">📍 กองกลาง ชั้น 2 · 🕙 10:00–11:00</div></div>
+            <div style="background:white;border:1px solid #d0d8e8;border-radius:6px;padding:8px"><div style="font-weight:700">APT-003 · Mr. James Wilson</div><div style="color:#666">พบ: คุณกมลพร วงศ์สวัสดิ์ — ผู้เชี่ยวชาญด้านต่างประเทศ</div><div style="color:#666">📍 กองการต่างประเทศ ชั้น 5 · 🕑 13:00–14:30</div></div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>📊 Flow — รปภ. Appointment Check-in</h3>
+        <div class="vf" style="align-items:flex-start;gap:4px">
+          <div class="box start w100">Visitor มาถึงเคาน์เตอร์</div><div class="darr" style="align-self:center">↓</div>
+          <div class="box action w100" style="text-align:left;border-color:#4A1A8C"><strong>รปภ.</strong> เลือก <strong>"มีนัดหมาย"</strong></div><div class="darr" style="align-self:center">↓</div>
+          <div class="box action w100" style="text-align:left">ค้นหานัดหมาย<br><span class="sub">ชื่อ / เลขบัตร / APT-XXX</span></div><div class="darr" style="align-self:center">↓</div>
+          <div class="box decision w100">พบนัดหมาย?</div>
+          <div class="branch" style="width:100%">
+            <div class="bcol" style="flex:2">
+              <span class="lbl lbl-y">Yes</span><div class="darr">↓</div>
+              <div class="box action" style="font-size:15.0px;width:100%">เลือกรายการ → ตรวจสอบ</div><div class="darr">↓</div>
+              <div class="box decision" style="font-size:15.0px;width:100%">มีอุปกรณ์อ่านบัตร?</div>
+              <div class="branch">
+                <div class="bcol"><span class="lbl lbl-y" style="font-size:15.0px">มี</span><div class="darr">↓</div><div class="box system" style="font-size:16.0px">อ่านบัตรอัตโนมัติ</div></div>
+                <div class="bcol"><span class="lbl" style="background:#FF6D00;color:white;font-size:15.0px">ไม่มี</span><div class="darr">↓</div><div class="box action" style="font-size:16.0px;border-color:#FF6D00">พิมพ์ชื่อ</div></div>
+              </div>
+              <div class="darr">↓</div>
+              <div class="box decision" style="font-size:15.0px;width:100%">ชื่อตรง?</div>
+              <div class="branch">
+                <div class="bcol">
+                  <span class="lbl lbl-y">Yes</span><div class="darr">↓</div>
+                  <div class="box action" style="font-size:16.0px;border-color:#7B2FBE">ถ่ายภาพ</div><div class="darr">↓</div>
+                  <div class="box decision" style="font-size:16.0px">WiFi?</div>
+                  <div class="branch">
+                    <div class="bcol"><span class="lbl lbl-y" style="font-size:15.0px">ใช่</span><div class="darr">↓</div><div class="box system" style="font-size:16.0px">สร้าง Password</div></div>
+                    <div class="bcol"><span class="lbl lbl-n" style="font-size:15.0px">ไม่</span></div>
+                  </div>
+                  <div class="darr">↓</div>
+                  <div class="box end" style="font-size:16.0px">พิมพ์ Visit Pass ✓</div>
+                </div>
+                <div class="bcol"><span class="lbl lbl-n">No</span><div class="darr">↓</div><div class="box error" style="font-size:16.0px">ตรวจสอบใหม่</div></div>
+              </div>
+            </div>
+            <div class="bcol" style="flex:1"><span class="lbl lbl-n">No</span><div class="darr">↓</div><div class="box error" style="font-size:15.0px">ไม่พบนัด<br>→ ใช้ Walk-in</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+
+<!-- ===== TAB 7: CHECKOUT ===== -->
+<div id="t7" class="flow-section">
+  <div class="sec-head"><span class="n">7</span>Check-out & การแจ้งเตือน — Line OA (e-Stamp)</div>
+  <div class="note note-green">
+    <strong>หลักการ:</strong> ระบบ <strong>ไม่ตัดรายการอัตโนมัติ</strong> — Staff ต้องกดยืนยัน Check-out เอง เพื่อความถูกต้องของข้อมูลการเข้าพบ
+  </div>
+
+  <div class="grid2" style="margin-top:14px">
+    <div class="card">
+      <h3>📊 Flow Check-out</h3>
+      <div class="vf" style="align-items:flex-start;width:100%">
+        <div class="box end w100">Visitor Check-in สำเร็จ ✓</div><div class="darr" style="align-self:center">↓</div>
+        <div class="box notify w100" style="text-align:left">ส่ง Line Notification ให้ Staff<br><span class="sub" style="color:#004d1f">"[ชื่อ] มาถึงแล้ว" พร้อมข้อมูลนัดหมาย + ปุ่ม Check-out</span></div><div class="darr" style="align-self:center">↓</div>
+        <div class="box action w100" style="text-align:left">Staff พบ Visitor / ดูแลการเข้าพื้นที่</div><div class="darr" style="align-self:center">↓</div>
+        <div class="box decision w100">Visitor ออกจากพื้นที่?</div>
+        <div class="branch" style="width:100%;align-items:flex-start">
+          <div class="bcol" style="flex:1">
+            <span class="lbl lbl-y">ออกแล้ว</span><div class="darr">↓</div>
+            <div class="box notify" style="font-size:15.0px;width:100%;text-align:left">Staff กดปุ่ม<br><strong>"บันทึกออกจากพื้นที่"</strong><br>ใน Line OA (e-Stamp)</div><div class="darr">↓</div>
+            <div class="box end" style="font-size:15.0px">Check-out ✓<br>บันทึกเวลาออก</div>
+          </div>
+          <div class="bcol" style="flex:1">
+            <span class="lbl lbl-n">ยังอยู่/ลืมกด</span><div class="darr">↓</div>
+            <div class="box action" style="font-size:15.0px;width:100%;text-align:left">ถึงเวลาที่กำหนด<br>หรือสิ้นวัน</div><div class="darr">↓</div>
+            <div class="box warn" style="font-size:15.0px;width:100%;text-align:left">ระบบส่งแจ้งเตือน<br><strong>"มีรายการค้าง"</strong><br>ให้ Staff ตรวจสอบ</div><div class="darr">↓</div>
+            <div class="box decision" style="font-size:15.0px;width:100%">ออกจริงแล้ว?</div>
+            <div class="branch">
+              <div class="bcol"><span class="lbl lbl-y">ใช่</span><div class="darr">↓</div><div class="box end" style="font-size:16.0px">กดบันทึกออก ✓</div></div>
+              <div class="bcol"><span class="lbl lbl-n">ไม่</span><div class="darr">↓</div><div class="box action" style="font-size:16.0px">ประสานงาน</div></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="card">
+        <h3>💬 Line Notifications</h3>
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div>
+            <div style="font-size:16.0px;color:#666;margin-bottom:3px">① แจ้ง Staff เมื่อ Check-in:</div>
+            <div class="line-bubble" style="max-width:100%">
+              ✅ <strong>Visitor มาถึงแล้ว</strong><br>
+              ชื่อ: [ชื่อ Visitor]<br>
+              บริษัท: [ชื่อบริษัท]<br>
+              วันที่/เวลา: [วันที่ เวลา]<br>
+              วัตถุประสงค์: [เหตุผล]<br>
+              ผู้ติดตาม: [จำนวน] คน<br>
+              <button class="line-btn">✅ บันทึกออกจากพื้นที่</button>
+            </div>
+          </div>
+          <div>
+            <div style="font-size:16.0px;color:#666;margin-bottom:3px">② แจ้งเตือนรายการค้าง:</div>
+            <div class="line-bubble" style="max-width:100%;border-left:3px solid #FF6D00">
+              ⚠️ <strong>มีรายการค้างในระบบ</strong><br>
+              [ชื่อ Visitor] ยังไม่ Check-out<br>
+              กรุณาตรวจสอบว่าออกแล้วหรือยัง<br>
+              <button class="line-btn">✅ บันทึกออกจากพื้นที่</button>
+              <button class="line-btn gray" style="margin-top:4px">📋 ดูรายละเอียด</button>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <h3>📋 กฎสำคัญ</h3>
+        <ul class="steps">
+          <li><span class="n y">✓</span><span>ส่ง Notification ทันทีที่ Check-in สำเร็จ</span></li>
+          <li><span class="n y">✓</span><span>ปุ่ม Check-out ฝัง<strong>ใน Line OA</strong> (e-Stamp)</span></li>
+          <li><span class="n o">!</span><span><strong>ไม่ตัดรายการอัตโนมัติ</strong> ต้องให้ Staff กดเอง</span></li>
+          <li><span class="n o">!</span><span>สิ้นวัน/เวลากำหนดค้าง → ระบบส่งแจ้งเตือน</span></li>
+          <li><span class="n" style="background:#003580">i</span><span>มีไว้ให้เจ้าหน้าที่ตรวจสอบข้อมูลการเข้าพบเอง</span></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== TAB 8: SYSTEM SETUP ===== -->
+<div id="t8" class="flow-section">
+  <div class="sec-head"><span class="n">8</span>ขั้นตอนการเตรียมระบบก่อนใช้งาน (System Setup Checklist)</div>
+
+
+
+  <div class="note note-yellow" style="max-width:100%">
+    <strong>⚠️ ต้องดำเนินการก่อน Go-Live:</strong> รายการต่อไปนี้เป็นขั้นตอนที่ต้องประสานงานระหว่างทีม VMS และหน่วยงาน (กระทรวงการท่องเที่ยวและกีฬา) ก่อนเปิดใช้งานระบบจริง
+  </div>
+
+  <!-- Setup sub-tabs -->
+  <div class="path-toggle" style="margin-top:14px">
+    <button class="path-btn active" onclick="showPath('ps','ps0',this)">📋 0. ข้อมูลที่หน่วยงานต้องเตรียม</button>
+    <button class="path-btn" onclick="showPath('ps','ps1',this)">🖥️ 1. VM / Server</button>
+    <button class="path-btn" onclick="showPath('ps','ps2',this)">🔐 2. Hikvision Access Control</button>
+    <button class="path-btn" onclick="showPath('ps','ps3',this)">📶 3. WiFi / FortiGate</button>
+    <button class="path-btn" onclick="showPath('ps','ps4',this)">🪪 4. ThaiD Integration</button>
+  </div>
+
+  <!-- ---- PS0: Data to Prepare ---- -->
+  <div id="ps0">
+    <div class="note note-yellow" style="max-width:100%;margin-bottom:14px">
+      <strong>📌 ก่อน Setup ระบบ:</strong> หน่วยงานต้องจัดทำและส่งข้อมูลต่อไปนี้ให้ทีม VMS เพื่อนำเข้าระบบ (Master Data) ตามกำหนดระยะเวลาที่ตกลงกัน
+    </div>
+
+    <!-- Timeline strip -->
+    <div style="background:white;border:1px solid #d0d8e8;border-radius:10px;padding:16px;margin-bottom:14px">
+      <div style="font-size:16.0px;font-weight:800;color:#003580;margin-bottom:12px">📅 กำหนดระยะเวลาเตรียมข้อมูล</div>
+      <div style="display:flex;gap:0;align-items:stretch">
+        <div style="flex:2;background:#003580;color:white;padding:10px 12px;border-radius:8px 0 0 8px;font-size:15.0px;text-align:center"><div style="font-weight:800;margin-bottom:4px">สัปดาห์ที่ 1–2</div><div>Kick-off<br>รวบรวมข้อมูล</div></div>
+        <div style="flex:1;background:#0052cc;color:white;padding:10px 12px;font-size:15.0px;text-align:center"><div style="font-weight:800;margin-bottom:4px">สัปดาห์ที่ 3</div><div>Design UI &amp;<br>Process Confirmation</div></div>
+        <div style="flex:7;background:#1565C0;color:white;padding:10px 12px;font-size:15.0px;text-align:center"><div style="font-weight:800;margin-bottom:4px">สัปดาห์ที่ 4–10</div><div>Coding Production</div></div>
+        <div style="flex:1;background:#4285F4;color:white;padding:10px 12px;font-size:15.0px;text-align:center"><div style="font-weight:800;margin-bottom:4px">สัปดาห์ที่ 10</div><div>Setup &amp; Config</div></div>
+        <div style="flex:1;background:#FF6D00;color:white;padding:10px 12px;font-size:15.0px;text-align:center"><div style="font-weight:800;margin-bottom:4px">สัปดาห์ที่ 11</div><div>ทดสอบ UAT</div></div>
+        <div style="flex:1;background:#34A853;color:white;padding:10px 12px;border-radius:0 8px 8px 0;font-size:15.0px;text-align:center"><div style="font-weight:800;margin-bottom:4px">สัปดาห์ที่ 12+</div><div>Go-Live</div></div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+
+      <!-- Col 1: Core Data -->
+      <div style="display:flex;flex-direction:column;gap:12px">
+
+        <div class="card">
+          <h3>🏢 1. โครงสร้างองค์กรและสถานที่</h3>
+          <table style="width:100%;font-size:15.0px;border-collapse:collapse">
+            <tr style="background:#003580;color:white"><th style="padding:5px;text-align:left">รายการ</th><th style="padding:5px;text-align:center;width:70px">รูปแบบ</th><th style="padding:5px;text-align:center;width:40px">สถานะ</th></tr>
+            <tr style="background:#f8faff"><td style="padding:5px">รายชื่อกรม / กอง / สำนัก ทั้งหมด พร้อมชั้นที่ตั้ง</td><td style="padding:5px;text-align:center"><span class="tag tag-g">Excel</span></td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_1" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_1_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_1_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_1" oninput="saveInlineNote('rnote_1')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+            <tr><td style="padding:5px">รายการห้องประชุม พร้อมชั้น ความจุ</td><td style="padding:5px;text-align:center"><span class="tag tag-g">Excel</span></td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_2" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_2_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_2_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_2" oninput="saveInlineNote('rnote_2')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+            <tr style="background:#f8faff"><td style="padding:5px">จุด Lobby / จุดรับรอง แต่ละชั้น</td><td style="padding:5px;text-align:center"><span class="tag tag-g">Excel</span></td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_3" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_3_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_3_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_3" oninput="saveInlineNote('rnote_3')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+            <tr><td style="padding:5px">แผนผังอาคาร (Floor Plan) ระบุตำแหน่ง Kiosk และกล้อง</td><td style="padding:5px;text-align:center"><span class="tag tag-b">PDF/IMG</span></td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_4" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_4_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_4_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_4" oninput="saveInlineNote('rnote_4')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+            <tr style="background:#f8faff"><td style="padding:5px">ชื่อและรหัสสถานที่ QR Code ที่จะใช้ เช่น B-FL3-M1</td><td style="padding:5px;text-align:center"><span class="tag tag-g">Excel</span></td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_5" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_5_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_5_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_5" oninput="saveInlineNote('rnote_5')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+          </table>
+        </div>
+
+        <div class="card">
+          <h3>👤 2. รายชื่อพนักงาน (Staff Database)</h3>
+          <div class="note note-red" style="max-width:100%;margin-bottom:8px;font-size:15.0px">
+            ⚠️ ใช้สำหรับตรวจสอบ Employee ID เมื่อสมัคร Staff · ต้องอัปเดตเมื่อมีการเปลี่ยนแปลง
+          </div>
+          <table style="width:100%;font-size:15.0px;border-collapse:collapse">
+            <tr style="background:#003580;color:white"><th style="padding:5px;text-align:left">ฟิลด์ที่ต้องการ</th><th style="padding:5px;text-align:center;width:60px">จำเป็น</th></tr>
+            <tr style="background:#f8faff"><td style="padding:5px">เลขประจำตัวพนักงาน (Employee ID)</td><td style="padding:5px;text-align:center;color:#EA4335;font-weight:700">บังคับ</td></tr>
+            <tr><td style="padding:5px">ชื่อ-นามสกุล (ภาษาไทย)</td><td style="padding:5px;text-align:center;color:#EA4335;font-weight:700">บังคับ</td></tr>
+            <tr style="background:#f8faff"><td style="padding:5px">กรม / กอง / สำนักที่สังกัด</td><td style="padding:5px;text-align:center;color:#EA4335;font-weight:700">บังคับ</td></tr>
+            <tr><td style="padding:5px">ตำแหน่งงาน</td><td style="padding:5px;text-align:center;color:#EA4335;font-weight:700">บังคับ</td></tr>
+            <tr style="background:#f8faff"><td style="padding:5px">อีเมลราชการ</td><td style="padding:5px;text-align:center;color:#EA4335;font-weight:700">บังคับ</td></tr>
+            <tr><td style="padding:5px">เบอร์โทรภายใน</td><td style="padding:5px;text-align:center;color:#FF6D00;font-weight:700">แนะนำ</td></tr>
+            <tr style="background:#f8faff"><td style="padding:5px">สถานะ (Active / Inactive)</td><td style="padding:5px;text-align:center;color:#EA4335;font-weight:700">บังคับ</td></tr>
+            <tr><td style="padding:5px">ระดับสิทธิ์ใน VMS (Staff / Admin / Staff)</td><td style="padding:5px;text-align:center;color:#EA4335;font-weight:700">บังคับ</td></tr>
+          </table>
+          <div style="font-size:16.0px;color:#888;margin-top:6px">รูปแบบไฟล์: Excel (.xlsx) · กำหนดส่งภายใน: สัปดาห์ที่ 1</div>
+        </div>
+
+        <div class="card">
+          <h3>🔐 3. ประเภทการเข้าพื้นที่ + เงื่อนไขการอนุมัติ</h3>
+          <table style="width:100%;font-size:15.0px;border-collapse:collapse">
+            <tr style="background:#003580;color:white"><th style="padding:5px;text-align:left">รายการ</th><th style="padding:5px;text-align:center;width:40px">สถานะ</th></tr>
+            <tr style="background:#f8faff"><td style="padding:5px">รายการประเภทการเข้าพื้นที่ที่ใช้จริง เช่น พบเจ้าหน้าที่, ประชุม, ส่งเอกสาร, อื่นๆ</td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_6" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_6_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_6_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_6" oninput="saveInlineNote('rnote_6')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+            <tr><td style="padding:5px">เงื่อนไขการอนุมัติแต่ละประเภท: ใครเป็น Staff, ระยะเวลาอนุมัติ</td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_7" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_7_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_7_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_7" oninput="saveInlineNote('rnote_7')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+            <tr style="background:#f8faff"><td style="padding:5px">สิทธิ์การเข้าพื้นที่ตามประเภท: ชั้นไหน / ห้องไหน / Zone ไหน</td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_8" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_8_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_8_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_8" oninput="saveInlineNote('rnote_8')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+            <tr><td style="padding:5px">เวลาทำการรับผู้มาติดต่อ (วัน/เวลา)</td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_9" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_9_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_9_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_9" oninput="saveInlineNote('rnote_9')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+            <tr style="background:#f8faff"><td style="padding:5px">ระยะเวลาสูงสุดที่ Visitor อยู่ในพื้นที่ได้ก่อนระบบแจ้งเตือน</td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_10" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_10_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_10_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_10" oninput="saveInlineNote('rnote_10')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+            <tr><td style="padding:5px">Mapping: ประเภทเข้าพื้นที่ → ประตู/Gate ใน Hikvision ที่เปิดให้</td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_11" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_11_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_11_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_11" oninput="saveInlineNote('rnote_11')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+          </table>
+        </div>
+      </div>
+
+      <!-- Col 2: System & Network Data -->
+      <div style="display:flex;flex-direction:column;gap:12px">
+
+        <div class="card">
+          <h3>🌐 4. ข้อมูล Domain / Line OA</h3>
+          <table style="width:100%;font-size:15.0px;border-collapse:collapse">
+            <tr style="background:#003580;color:white"><th style="padding:5px;text-align:left">รายการ</th><th style="padding:5px;text-align:center;width:40px">สถานะ</th></tr>
+            <tr style="background:#f8faff"><td style="padding:5px">ยืนยัน Domain name ที่จะใช้ เช่น <strong>vms.mots.go.th</strong></td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_12" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_12_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_12_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_12" oninput="saveInlineNote('rnote_12')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+            <tr><td style="padding:5px">จัดสรร Subdomain และขอ DNS Record จากผู้ดูแล Domain</td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_13" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_13_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_13_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_13" oninput="saveInlineNote('rnote_13')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+            <tr style="background:#f8faff"><td style="padding:5px">ยืนยัน Line OA ID เช่น <strong>@mots-vms</strong> และสร้าง Official Account</td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_14" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_14_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_14_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_14" oninput="saveInlineNote('rnote_14')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+            <tr><td style="padding:5px">ตั้งค่า Line Messaging API: Channel ID, Channel Secret, Access Token</td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_15" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_15_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_15_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_15" oninput="saveInlineNote('rnote_15')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+            <tr style="background:#f8faff"><td style="padding:5px">ตั้งค่า Webhook URL ของ Line → ชี้ไปที่ VMS Server</td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_16" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_16_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_16_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_16" oninput="saveInlineNote('rnote_16')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+            <tr><td style="padding:5px">ออกแบบ Rich Menu สำหรับ Visitor และ Staff (ภาพ + Layout)</td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_17" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_17_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_17_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_17" oninput="saveInlineNote('rnote_17')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+            <tr style="background:#f8faff"><td style="padding:5px">กำหนด Email ระบบ (Sender) สำหรับส่งแจ้งเตือน Visitor</td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_18" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_18_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_18_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_18" oninput="saveInlineNote('rnote_18')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+          </table>
+        </div>
+
+        <div class="card">
+          <h3>🖨️ 5. Visit Pass / สติ๊กเกอร์</h3>
+          <div style="background:#FFF8E1;border:1px solid #FFB700;border-radius:8px;padding:10px;margin-bottom:10px;font-size:15.0px">
+            <div style="font-weight:800;color:#5a3e00;margin-bottom:4px">📋 ข้อกำหนดระบบ (Fixed Specification)</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px">
+              <span>🖨️ เครื่องพิมพ์: <strong>Thermal Printer</strong></span>
+              <span>📏 ความกว้างกระดาษ: <strong>80 มม.</strong></span>
+              <span>🏷️ ประเภทกระดาษ: <strong>สติ๊กเกอร์ความร้อน</strong></span>
+              <span>🔲 QR Code: <strong>พิมพ์ทุกใบ</strong></span>
+            </div>
+          </div>
+          <table style="width:100%;font-size:15.0px;border-collapse:collapse">
+            <tr style="background:#003580;color:white"><th style="padding:5px;text-align:left">รายการที่ต้องยืนยัน</th><th style="padding:5px;text-align:center;width:40px">สถานะ</th></tr>
+
+            <tr><td style="padding:5px">ทดสอบพิมพ์กระดาษสติ๊กเกอร์ความร้อน 80 มม. ออกมาตรฐาน</td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_19" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_19_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_19_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_19" oninput="saveInlineNote('rnote_19')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+            <tr style="background:#f8faff"><td style="padding:5px">ข้อมูลที่แสดง: ชื่อ, รูปภาพ, QR Code, วัน/เวลา, ชั้น/สถานที่, WiFi*</td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_20" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_20_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_20_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_20" oninput="saveInlineNote('rnote_20')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+            <tr><td style="padding:5px">โลโก้กระทรวงและ Template สติ๊กเกอร์ (ยืนยันกับหน่วยงาน)</td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_21" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_21_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_21_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_21" oninput="saveInlineNote('rnote_21')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+            <tr style="background:#f8faff"><td style="padding:5px">ทดสอบ QR Code บน Visit Pass สแกนเปิดประตู Hikvision ได้จริง</td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_22" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_22_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_22_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_22" oninput="saveInlineNote('rnote_22')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+          </table>
+          <div style="font-size:16.0px;color:#888;margin-top:5px">* WiFi Username/Password พิมพ์เฉพาะกรณีติดตั้ง FortiGate</div>
+        </div>
+
+        <div class="card">
+          <h3>📱 6. ข้อมูล Kiosk / Hardware</h3>
+          <table style="width:100%;font-size:15.0px;border-collapse:collapse">
+            <tr style="background:#003580;color:white"><th style="padding:5px;text-align:left">รายการ</th><th style="padding:5px;text-align:center;width:40px">สถานะ</th></tr>
+
+            <tr><td style="padding:5px">IP Address / Network ของเครื่อง Kiosk แต่ละเครื่อง</td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_23" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_23_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_23_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_23" oninput="saveInlineNote('rnote_23')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+            <tr style="background:#f8faff"><td style="padding:5px">ยืนยันการเชื่อมต่อ Kiosk → VMS Server (เครือข่ายภายใน)</td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_24" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_24_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_24_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_24" oninput="saveInlineNote('rnote_24')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+            <tr><td style="padding:5px">ทดสอบอุปกรณ์: เครื่องอ่านบัตร, กล้อง, เครื่องพิมพ์</td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_25" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_25_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_25_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_25" oninput="saveInlineNote('rnote_25')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+          </table>
+        </div>
+
+        <div class="card">
+          <h3>🛡️ 7. ความปลอดภัยและ PDPA</h3>
+          <table style="width:100%;font-size:15.0px;border-collapse:collapse">
+            <tr style="background:#003580;color:white"><th style="padding:5px;text-align:left">รายการ</th><th style="padding:5px;text-align:center;width:40px">สถานะ</th></tr>
+            <tr style="background:#f8faff"><td style="padding:5px">นโยบายการเก็บข้อมูลผู้มาติดต่อ (ระยะเวลา, การลบ)</td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_26" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_26_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_26_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_26" oninput="saveInlineNote('rnote_26')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+            <tr><td style="padding:5px">ข้อความแจ้ง PDPA Consent ที่จะแสดงบน Kiosk</td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_27" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_27_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_27_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_27" oninput="saveInlineNote('rnote_27')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+            <tr style="background:#f8faff"><td style="padding:5px">ผู้รับผิดชอบ (DPO / ผู้ดูแลระบบ) พร้อมข้อมูลติดต่อ</td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_28" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_28_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_28_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_28" oninput="saveInlineNote('rnote_28')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+            <tr><td style="padding:5px">นโยบายการเก็บภาพถ่ายของ Visitor (ระยะเวลา, การลบ)</td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_29" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_29_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_29_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_29" oninput="saveInlineNote('rnote_29')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- Summary checklist download note -->
+    <div class="note note-green" style="max-width:100%;margin-top:8px">
+      <strong>✅ สรุปไฟล์ที่หน่วยงานต้องส่ง:</strong>
+      <span class="tag tag-g">โครงสร้างองค์กร.xlsx</span>
+      <span class="tag tag-g">รายชื่อพนักงาน.xlsx</span>
+      <span class="tag tag-g">ประเภทเข้าพื้นที่+เงื่อนไข.xlsx</span>
+      <span class="tag tag-b">แผนผังอาคาร.pdf</span>
+      <span class="tag tag-y">Template Visit Pass</span>
+      <span class="tag tag-p">PDPA Consent Text</span>
+    </div>
+  </div>
+
+  <!-- ---- PS1: VM ---- -->
+  <div id="ps1" style="display:none">
+    <div class="grid2">
+      <div class="card">
+        <h3>🖥️ รายการที่หน่วยงานต้องเตรียม (VM / Server)</h3>
+        <table style="width:100%;font-size:15.5px;border-collapse:collapse">
+          <tr style="background:#003580;color:white">
+            <th style="padding:6px;text-align:left">#</th>
+            <th style="padding:6px;text-align:left">รายการ</th>
+            <th style="padding:6px;text-align:center">ผู้รับผิดชอบ</th>
+            <th style="padding:6px;text-align:center">สถานะ</th>
+          </tr>
+          <tr style="background:#f8faff"><td style="padding:6px">1</td><td style="padding:6px">จัดเตรียม VM หรือ Server สำหรับติดตั้งระบบ VMS</td><td style="padding:6px;text-align:center"><span class="tag tag-y">หน่วยงาน</span></td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_30" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_30_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_30_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_30" oninput="saveInlineNote('rnote_30')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+          <tr><td style="padding:6px">2</td><td style="padding:6px">OS: Ubuntu Server 22.04 LTS หรือตามที่ระบบกำหนด</td><td style="padding:6px;text-align:center"><span class="tag tag-y">หน่วยงาน</span></td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_31" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_31_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_31_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_31" oninput="saveInlineNote('rnote_31')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+          <tr style="background:#f8faff"><td style="padding:6px">3</td><td style="padding:6px">Spec: RAM ≥ 8 GB · CPU ≥ 4 Core · Storage ≥ 100 GB</td><td style="padding:6px;text-align:center"><span class="tag tag-y">หน่วยงาน</span></td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_32" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_32_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_32_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_32" oninput="saveInlineNote('rnote_32')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+          <tr><td style="padding:6px">4</td><td style="padding:6px">เปิด Port: 80, 443, 8080 และ Port Database</td><td style="padding:6px;text-align:center"><span class="tag tag-y">หน่วยงาน</span></td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_33" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_33_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_33_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_33" oninput="saveInlineNote('rnote_33')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+          <tr style="background:#f8faff"><td style="padding:6px">5</td><td style="padding:6px">กำหนด Domain: <strong>vms.mots.go.th</strong> + Static IP + DNS Record</td><td style="padding:6px;text-align:center"><span class="tag tag-y">หน่วยงาน</span></td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_34" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_34_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_34_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_34" oninput="saveInlineNote('rnote_34')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+          <tr><td style="padding:6px">6</td><td style="padding:6px">ติดตั้ง SSL Certificate (HTTPS) สำหรับ vms.mots.go.th</td><td style="padding:6px;text-align:center"><span class="tag tag-b">ร่วมกัน</span></td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_35" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_35_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_35_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_35" oninput="saveInlineNote('rnote_35')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+          <tr style="background:#f8faff"><td style="padding:6px">7</td><td style="padding:6px">ตั้งค่า Firewall อนุญาต IP เครื่อง Kiosk และ Admin</td><td style="padding:6px;text-align:center"><span class="tag tag-y">หน่วยงาน</span></td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_36" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_36_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_36_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_36" oninput="saveInlineNote('rnote_36')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+          <tr><td style="padding:6px">8</td><td style="padding:6px">ติดตั้งแอปพลิเคชัน VMS โดยทีมพัฒนา</td><td style="padding:6px;text-align:center"><span class="tag tag-g">ทีม VMS</span></td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_37" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_37_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_37_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_37" oninput="saveInlineNote('rnote_37')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+          <tr style="background:#f8faff"><td style="padding:6px">9</td><td style="padding:6px">นำเข้า Master Data: กรม/กอง, พนักงาน, ประเภทการเข้าพื้นที่, สถานที่</td><td style="padding:6px;text-align:center"><span class="tag tag-b">ร่วมกัน</span></td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_38" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_38_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_38_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_38" oninput="saveInlineNote('rnote_38')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+          <tr><td style="padding:6px">10</td><td style="padding:6px">ทดสอบการเชื่อมต่อและการทำงานพื้นฐานของระบบ (UAT)</td><td style="padding:6px;text-align:center"><span class="tag tag-b">ร่วมกัน</span></td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_39" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_39_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_39_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_39" oninput="saveInlineNote('rnote_39')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+        </table>
+      </div>
+      <div class="card">
+        <h3>📊 Flow การเตรียม VM</h3>
+        <div class="vf" style="align-items:flex-start;gap:4px">
+          <div class="box action w100" style="text-align:left">หน่วยงานจัดเตรียม VM/Server<br><span class="sub">Spec, OS, Network, Domain: vms.mots.go.th</span></div><div class="darr" style="align-self:center">↓</div>
+          <div class="box system w100" style="text-align:left">ทีม VMS ตรวจสอบ Spec<br><span class="sub">ยืนยันความพร้อมก่อนติดตั้ง</span></div><div class="darr" style="align-self:center">↓</div>
+          <div class="box decision w100">ผ่านเกณฑ์?</div>
+          <div class="branch" style="width:100%">
+            <div class="bcol" style="flex:1">
+              <span class="lbl lbl-y">Yes</span><div class="darr">↓</div>
+              <div class="box action" style="font-size:15.0px;width:100%;text-align:left">ทีม VMS ติดตั้งระบบ<br>+ Config Database + SSL</div><div class="darr">↓</div>
+              <div class="box action" style="font-size:15.0px;width:100%;text-align:left">นำเข้า Master Data<br>(กรม/กอง/พนักงาน/สถานที่)</div><div class="darr">↓</div>
+              <div class="box success" style="font-size:15.0px;width:100%;text-align:left">ทดสอบ UAT<br>ร่วมกับหน่วยงาน</div><div class="darr">↓</div>
+              <div class="box end" style="font-size:15.0px">พร้อมใช้งาน ✓</div>
+            </div>
+            <div class="bcol" style="flex:1">
+              <span class="lbl lbl-n">No</span><div class="darr">↓</div>
+              <div class="box error" style="font-size:15.0px;width:100%;text-align:left">แจ้งหน่วยงาน<br>ปรับปรุง Spec</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ---- PS2: Hikvision ---- -->
+  <div id="ps2" style="display:none">
+    <div class="note note-blue" style="max-width:100%">
+      <strong>Hikvision Access Control</strong> ใช้สำหรับควบคุมการเปิด/ปิดประตูและ Turnstile Gate ร่วมกับระบบ VMS โดยอิงจากข้อมูล Check-in/Check-out
+    </div>
+    <div class="grid2" style="margin-top:12px">
+      <div class="card">
+        <h3>🔐 รายการที่ต้องดำเนินการ — Hikvision Integration</h3>
+        <table style="width:100%;font-size:15.5px;border-collapse:collapse">
+          <tr style="background:#003580;color:white">
+            <th style="padding:6px;text-align:left">#</th>
+            <th style="padding:6px;text-align:left">รายการ</th>
+            <th style="padding:6px;text-align:center">ผู้รับผิดชอบ</th>
+            <th style="padding:6px;text-align:center">สถานะ</th>
+          </tr>
+          <tr style="background:#f8faff"><td style="padding:6px">1</td><td style="padding:6px">ตรวจสอบรุ่น/version ของอุปกรณ์ Hikvision ที่ติดตั้งอยู่</td><td style="padding:6px;text-align:center"><span class="tag tag-b">Hikvision Vendor</span></td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_40" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_40_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_40_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_40" oninput="saveInlineNote('rnote_40')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+          <tr><td style="padding:6px">2</td><td style="padding:6px">ขอ API Key / Credentials สำหรับเชื่อมต่อ Hikvision ISAPI หรือ Open API</td><td style="padding:6px;text-align:center"><span class="tag tag-b">Hikvision Vendor</span></td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_41" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_41_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_41_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_41" oninput="saveInlineNote('rnote_41')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+          <tr style="background:#f8faff"><td style="padding:6px">3</td><td style="padding:6px">กำหนด IP Address ของ Controller / Door Station ของ Hikvision</td><td style="padding:6px;text-align:center"><span class="tag tag-b">Hikvision Vendor</span></td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_42" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_42_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_42_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_42" oninput="saveInlineNote('rnote_42')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+          <tr><td style="padding:6px">4</td><td style="padding:6px">เปิด Port สำหรับ VMS เรียก API ของ Hikvision (ปกติ 443 หรือ 8000)</td><td style="padding:6px;text-align:center"><span class="tag tag-b">Hikvision Vendor</span></td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_43" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_43_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_43_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_43" oninput="saveInlineNote('rnote_43')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+          <tr style="background:#f8faff"><td style="padding:6px">5</td><td style="padding:6px">ทดสอบ API Call: เปิด/ปิดประตูผ่าน VMS → Hikvision ตอบสนอง</td><td style="padding:6px;text-align:center"><span class="tag tag-b">ร่วมกัน</span></td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_44" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_44_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_44_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_44" oninput="saveInlineNote('rnote_44')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+          <tr><td style="padding:6px">6</td><td style="padding:6px">กำหนด Permission Zone: ระบุว่า Check-in สำเร็จ → เปิดประตูไหนได้บ้าง</td><td style="padding:6px;text-align:center"><span class="tag tag-b">ร่วมกัน</span></td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_45" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_45_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_45_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_45" oninput="saveInlineNote('rnote_45')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+          <tr style="background:#f8faff"><td style="padding:6px">7</td><td style="padding:6px">กำหนด Time Schedule: เวลาที่ประตูสามารถเปิดได้ (เช่น 08.00–17.00)</td><td style="padding:6px;text-align:center"><span class="tag tag-b">ร่วมกัน</span></td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_46" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_46_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_46_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_46" oninput="saveInlineNote('rnote_46')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+          <tr><td style="padding:6px">8</td><td style="padding:6px">ทดสอบ End-to-End: Check-in ที่ Kiosk → Hikvision เปิดประตู</td><td style="padding:6px;text-align:center"><span class="tag tag-b">ร่วมกัน</span></td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_47" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_47_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_47_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_47" oninput="saveInlineNote('rnote_47')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+          <tr style="background:#f8faff"><td style="padding:6px">9</td><td style="padding:6px">ทดสอบ Check-out: บันทึกออก → Hikvision บันทึกสถานะ</td><td style="padding:6px;text-align:center"><span class="tag tag-b">ร่วมกัน</span></td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_48" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_48_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_48_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_48" oninput="saveInlineNote('rnote_48')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+          <tr><td style="padding:6px">10</td><td style="padding:6px">จัดทำเอกสาร Mapping ประตู-Zone-สิทธิ์การเข้าถึง</td><td style="padding:6px;text-align:center"><span class="tag tag-b">ร่วมกัน</span></td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_49" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_49_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_49_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_49" oninput="saveInlineNote('rnote_49')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+        </table>
+      </div>
+      <div class="card">
+        <h3>📊 กระบวนการเชื่อมต่อ VMS ↔ Hikvision</h3>
+        <div class="vf" style="align-items:flex-start;gap:4px">
+          <div class="box action w100" style="text-align:left">รวบรวมข้อมูล Hikvision<br><span class="sub">IP, Port, API Key, รุ่นอุปกรณ์</span></div><div class="darr" style="align-self:center">↓</div>
+          <div class="box system w100" style="text-align:left">Config VMS → Hikvision Connector<br><span class="sub">ใส่ Credentials + Endpoint URL</span></div><div class="darr" style="align-self:center">↓</div>
+          <div class="box decision w100">Connection Test?</div>
+          <div class="branch" style="width:100%">
+            <div class="bcol" style="flex:1">
+              <span class="lbl lbl-y">Pass</span><div class="darr">↓</div>
+              <div class="box action" style="font-size:15.0px;width:100%;text-align:left">กำหนด Zone Mapping<br>ประตู → สิทธิ์ประเภทผู้เข้าพบ</div><div class="darr">↓</div>
+              <div class="box action" style="font-size:15.0px;width:100%;text-align:left">ทดสอบ Check-in → เปิดประตู<br>ทดสอบ Check-out → บันทึก</div><div class="darr">↓</div>
+              <div class="box success" style="font-size:15.0px;width:100%">Integration สำเร็จ ✓</div>
+            </div>
+            <div class="bcol" style="flex:1">
+              <span class="lbl lbl-n">Fail</span><div class="darr">↓</div>
+              <div class="box error" style="font-size:15.0px;width:100%;text-align:left">ตรวจสอบ Network<br>/ Credentials / Port</div>
+            </div>
+          </div>
+        </div>
+        <div class="note note-yellow mt8" style="max-width:100%">
+          <strong>หมายเหตุ:</strong> รองรับ Hikvision ISAPI และ Open Platform SDK · กรณีใช้ Turnstile ต้องตรวจสอบ Firmware version ให้รองรับ API
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ---- PS3: FortiGate WiFi ---- -->
+  <div id="ps3" style="display:none">
+    <div class="note note-blue" style="max-width:100%">
+      <strong>FortiGate WiFi Integration</strong> ใช้สำหรับสร้าง Temporary WiFi Password ให้ Visitor อัตโนมัติเมื่อ Check-in สำเร็จ → พิมพ์ลงใน Visit Pass
+    </div>
+    <div class="grid2" style="margin-top:12px">
+      <div class="card">
+        <h3>📶 รายการที่ต้องดำเนินการ — FortiGate WiFi</h3>
+        <table style="width:100%;font-size:15.5px;border-collapse:collapse">
+          <tr style="background:#003580;color:white">
+            <th style="padding:6px;text-align:left">#</th>
+            <th style="padding:6px;text-align:left">รายการ</th>
+            <th style="padding:6px;text-align:center">ผู้รับผิดชอบ</th>
+            <th style="padding:6px;text-align:center">สถานะ</th>
+          </tr>
+          <tr style="background:#f8faff"><td style="padding:6px">1</td><td style="padding:6px">ตรวจสอบ FortiGate รุ่น/version และรองรับ Guest WiFi API</td><td style="padding:6px;text-align:center"><span class="tag tag-y">หน่วยงาน</span></td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_50" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_50_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_50_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_50" oninput="saveInlineNote('rnote_50')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+          <tr><td style="padding:6px">2</td><td style="padding:6px">สร้าง Guest SSID สำหรับ Visitor โดยเฉพาะ (แยกจาก Internal Network)</td><td style="padding:6px;text-align:center"><span class="tag tag-y">หน่วยงาน</span></td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_51" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_51_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_51_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_51" oninput="saveInlineNote('rnote_51')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+          <tr style="background:#f8faff"><td style="padding:6px">3</td><td style="padding:6px">เปิดใช้งาน FortiGate REST API / FortiOS API สำหรับ Guest User Management</td><td style="padding:6px;text-align:center"><span class="tag tag-y">หน่วยงาน</span></td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_52" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_52_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_52_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_52" oninput="saveInlineNote('rnote_52')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+          <tr><td style="padding:6px">4</td><td style="padding:6px">สร้าง API Token สำหรับ VMS ใช้เรียก FortiGate API</td><td style="padding:6px;text-align:center"><span class="tag tag-y">หน่วยงาน</span></td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_53" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_53_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_53_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_53" oninput="saveInlineNote('rnote_53')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+          <tr style="background:#f8faff"><td style="padding:6px">5</td><td style="padding:6px">กำหนด Policy: Bandwidth Limit, Access Time, VLAN สำหรับ Guest</td><td style="padding:6px;text-align:center"><span class="tag tag-b">ร่วมกัน</span></td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_54" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_54_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_54_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_54" oninput="saveInlineNote('rnote_54')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+          <tr><td style="padding:6px">6</td><td style="padding:6px">Config VMS: ใส่ FortiGate API Endpoint + Token + SSID Name</td><td style="padding:6px;text-align:center"><span class="tag tag-g">ทีม VMS</span></td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_55" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_55_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_55_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_55" oninput="saveInlineNote('rnote_55')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+          <tr style="background:#f8faff"><td style="padding:6px">7</td><td style="padding:6px">ทดสอบ: VMS สร้าง Guest User → FortiGate สร้าง Password สำเร็จ</td><td style="padding:6px;text-align:center"><span class="tag tag-b">ร่วมกัน</span></td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_56" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_56_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_56_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_56" oninput="saveInlineNote('rnote_56')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+          <tr><td style="padding:6px">8</td><td style="padding:6px">ทดสอบ: Password พิมพ์ใน Visit Pass → Visitor ใช้งาน WiFi ได้จริง</td><td style="padding:6px;text-align:center"><span class="tag tag-b">ร่วมกัน</span></td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_57" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_57_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_57_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_57" oninput="saveInlineNote('rnote_57')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+          <tr style="background:#f8faff"><td style="padding:6px">9</td><td style="padding:6px">ทดสอบ: Check-out หรือหมดเวลา → ระบบลบ Guest User อัตโนมัติ</td><td style="padding:6px;text-align:center"><span class="tag tag-b">ร่วมกัน</span></td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_58" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_58_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_58_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_58" oninput="saveInlineNote('rnote_58')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+          <tr><td style="padding:6px">10</td><td style="padding:6px">จัดทำเอกสาร WiFi Policy และ Guest Access Policy</td><td style="padding:6px;text-align:center"><span class="tag tag-b">ร่วมกัน</span></td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_59" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_59_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_59_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_59" oninput="saveInlineNote('rnote_59')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+        </table>
+      </div>
+      <div class="card">
+        <h3>📊 Flow การสร้าง WiFi Password อัตโนมัติ</h3>
+        <div class="vf" style="align-items:flex-start;gap:4px">
+          <div class="box end w100" style="font-size:15.0px">Visitor Check-in สำเร็จ</div><div class="darr" style="align-self:center">↓</div>
+          <div class="box decision w100" style="font-size:15.0px">Visitor ต้องการ WiFi?</div>
+          <div class="branch" style="width:100%">
+            <div class="bcol" style="flex:1">
+              <span class="lbl lbl-y">Yes</span><div class="darr">↓</div>
+              <div class="box system" style="font-size:15.0px;width:100%;text-align:left">VMS เรียก FortiGate API<br>สร้าง Guest User + Password</div><div class="darr">↓</div>
+              <div class="box decision" style="font-size:15.0px;width:100%">FortiGate ตอบสนอง?</div>
+              <div class="branch">
+                <div class="bcol">
+                  <span class="lbl lbl-y">OK</span><div class="darr">↓</div>
+                  <div class="box output" style="font-size:16.0px">พิมพ์ WiFi<br>ใน Visit Pass</div><div class="darr">↓</div>
+                  <div class="box end" style="font-size:16.0px">ใช้งานได้ ✓</div>
+                </div>
+                <div class="bcol">
+                  <span class="lbl lbl-n">Error</span><div class="darr">↓</div>
+                  <div class="box error" style="font-size:16.0px">พิมพ์ Pass<br>ไม่มี WiFi<br>แจ้ง Admin</div>
+                </div>
+              </div>
+            </div>
+            <div class="bcol" style="flex:1">
+              <span class="lbl lbl-n">No</span><div class="darr">↓</div>
+              <div class="box action" style="font-size:15.0px;width:100%">พิมพ์ Visit Pass<br>(ไม่มี WiFi)</div>
+            </div>
+          </div>
+          <div style="margin-top:8px;width:100%">
+            <div style="background:#FFF3E0;border-left:3px solid #FF6D00;padding:8px;border-radius:0 6px 6px 0;font-size:15.0px">
+              <strong>⏱️ Auto Expire:</strong> เมื่อ Check-out หรือครบกำหนดเวลา → VMS เรียก API ลบ Guest User → WiFi หมดอายุอัตโนมัติ
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ---- PS4: ThaiD ---- -->
+  <div id="ps4" style="display:none">
+    <div class="note note-red" style="max-width:100%">
+      <strong>⚠️ ThaiD Integration</strong> ต้องขออนุญาตจากหน่วยงานที่เกี่ยวข้อง (DOPA / ETDA) และดำเนินการเป็นทางการผ่านหนังสือระหว่างหน่วยงานก่อนนำมาทดสอบและใช้งานจริง
+    </div>
+    <div class="grid2" style="margin-top:12px">
+      <div class="card">
+        <h3>🪪 ขั้นตอนการขออนุญาตและ Integration ThaiD</h3>
+        <div style="display:flex;flex-direction:column;gap:10px">
+
+          <div style="background:#E8F0FE;border-radius:8px;padding:12px;border-left:4px solid #4285F4">
+            <div style="font-size:16.0px;font-weight:800;color:#1a3a6e;margin-bottom:8px">Phase 1 — ขออนุญาตใช้งาน ThaiD</div>
+            <ul class="steps">
+              <li><span class="n" style="background:#4285F4">1</span><span>หน่วยงาน (กระทรวงฯ) จัดทำ <strong>หนังสือราชการ</strong> ขอใช้บริการ ThaiD สำหรับระบบ VMS</span></li>
+              <li><span class="n" style="background:#4285F4">2</span><span>ยื่นหนังสือต่อ <strong>กรมการปกครอง (DOPA)</strong> หรือ <strong>ETDA</strong> ตามแนวทางที่กำหนด</span></li>
+              <li><span class="n" style="background:#4285F4">3</span><span>แนบเอกสาร: วัตถุประสงค์การใช้งาน, ขอบเขตข้อมูลที่ต้องการ, มาตรการรักษาความปลอดภัย</span></li>
+              <li><span class="n" style="background:#4285F4">4</span><span>รอผลการพิจารณาและอนุมัติจากหน่วยงานต้นสังกัด</span></li>
+              <li><span class="n y">✓</span><span style="color:#1a3a6e">ได้รับ <strong>Client ID + Client Secret</strong> สำหรับเรียก ThaiD API</span></li>
+            </ul>
+          </div>
+
+          <div style="background:#F3E8FF;border-radius:8px;padding:12px;border-left:4px solid #7B2FBE">
+            <div style="font-size:16.0px;font-weight:800;color:#3d1363;margin-bottom:8px">Phase 2 — การเชื่อมต่อและทดสอบ</div>
+            <ul class="steps">
+              <li><span class="n" style="background:#7B2FBE">1</span><span>ทีม VMS Config Client ID/Secret ใน Backend สำหรับ ThaiD OAuth2</span></li>
+              <li><span class="n" style="background:#7B2FBE">2</span><span>ทดสอบ OAuth2 Flow: Redirect → ThaiD App → Callback → รับ Token</span></li>
+              <li><span class="n" style="background:#7B2FBE">3</span><span>ทดสอบดึงข้อมูล: ชื่อ-นามสกุล, เลขบัตร, วันเกิด จาก ThaiD API</span></li>
+              <li><span class="n" style="background:#7B2FBE">4</span><span>ทดสอบกับอุปกรณ์จริงที่ Kiosk: ผู้ใช้เปิด ThaiD App → Scan QR → ยืนยัน</span></li>
+              <li><span class="n" style="background:#7B2FBE">5</span><span>ทดสอบ Error cases: ปฏิเสธ, Timeout, ข้อมูลไม่ตรง</span></li>
+              <li><span class="n y">✓</span><span style="color:#3d1363">ผ่านการทดสอบ → นำเข้าสู่ Production</span></li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;flex-direction:column;gap:12px">
+        <div class="card">
+          <h3>📊 Flow การขออนุญาต ThaiD</h3>
+          <div class="vf" style="align-items:flex-start;gap:4px">
+            <div class="box action w100" style="text-align:left;border-color:#4285F4">หน่วยงานจัดทำหนังสือราชการ<br><span class="sub">ขอใช้บริการ ThaiD API</span></div><div class="darr" style="align-self:center">↓</div>
+            <div class="box system w100" style="text-align:left">ยื่นต่อ DOPA / ETDA<br><span class="sub">พร้อมเอกสารประกอบ</span></div><div class="darr" style="align-self:center">↓</div>
+            <div class="box decision w100">อนุมัติ?</div>
+            <div class="branch" style="width:100%">
+              <div class="bcol" style="flex:1">
+                <span class="lbl lbl-y">อนุมัติ</span><div class="darr">↓</div>
+                <div class="box output" style="font-size:15.0px;width:100%;text-align:left">รับ Client ID<br>+ Client Secret</div><div class="darr">↓</div>
+                <div class="box system" style="font-size:15.0px;width:100%;text-align:left">Config ใน VMS<br>+ ทดสอบ OAuth2 Flow</div><div class="darr">↓</div>
+                <div class="box action" style="font-size:15.0px;width:100%;text-align:left">ทดสอบที่ Kiosk<br>End-to-End</div><div class="darr">↓</div>
+                <div class="box end" style="font-size:15.0px">ThaiD พร้อมใช้ ✓</div>
+              </div>
+              <div class="bcol" style="flex:1">
+                <span class="lbl lbl-n">ไม่อนุมัติ</span><div class="darr">↓</div>
+                <div class="box error" style="font-size:15.0px;width:100%;text-align:left">แก้ไขเอกสาร<br>/ ยื่นใหม่</div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h3>📋 เอกสารที่ต้องเตรียม</h3>
+          <ul class="steps">
+            <li><span class="n" style="background:#4285F4">1</span><span>หนังสือราชการขอใช้บริการ ThaiD (ลงนามโดยผู้มีอำนาจ)</span></li>
+            <li><span class="n" style="background:#4285F4">2</span><span>เอกสารอธิบายระบบ VMS และวัตถุประสงค์การใช้ ThaiD</span></li>
+            <li><span class="n" style="background:#4285F4">3</span><span>รายการข้อมูลที่ต้องการเข้าถึง (Data Scope)</span></li>
+            <li><span class="n" style="background:#4285F4">4</span><span>มาตรการรักษาความปลอดภัยของระบบ (Security Policy)</span></li>
+            <li><span class="n" style="background:#4285F4">5</span><span>Privacy Policy และการจัดการข้อมูลส่วนบุคคล (PDPA)</span></li>
+            <li><span class="n" style="background:#4285F4">6</span><span>URL ของระบบ (Production + Callback URL)</span></li>
+          </ul>
+          <div class="note note-red mt8" style="max-width:100%">
+            <strong>ระยะเวลา:</strong> กระบวนการขออนุมัติอาจใช้เวลา 4–8 สัปดาห์ · ควรดำเนินการล่วงหน้า
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Progress Bar (bottom) ── -->
+  <div style="background:white;border:1px solid #d0d8e8;border-radius:10px;padding:18px;margin-top:24px">
+    <div style="font-size:16px;font-weight:700;color:#003580;margin-bottom:12px">📊 ความคืบหน้า Checklist</div>
+    <div style="background:#e8edf4;border-radius:20px;height:22px;overflow:hidden">
+      <div id="chk_progress_bar" style="height:100%;border-radius:20px;width:0%;transition:width .5s ease;background:#EA4335"></div>
+    </div>
+    <div id="chk_progress_label" style="font-size:15px;color:#555;margin-top:8px;text-align:right;font-weight:600">0 / 59 รายการ (0%)</div>
+    <div style="display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;align-items:center">
+      <button onclick="saveToFile()" style="font-family:inherit;font-size:15px;background:#003580;color:white;border:none;border-radius:8px;padding:9px 20px;cursor:pointer;font-weight:700">💾 บันทึกลงไฟล์เดิม</button>
+      <button onclick="window.print()" style="font-family:inherit;font-size:15px;background:#34A853;color:white;border:none;border-radius:8px;padding:9px 20px;cursor:pointer;font-weight:700">🖨️ พิมพ์ / PDF</button>
+      <button onclick="resetChecklist()" style="font-family:inherit;font-size:15px;background:#f0f4f8;color:#EA4335;border:1px solid #EA4335;border-radius:8px;padding:9px 20px;cursor:pointer;font-weight:700">🗑️ ล้างข้อมูล</button>
+      <span id="last_saved_label" style="font-size:13px;color:#888;margin-left:4px"></span>
+    </div>
+    <div style="font-size:13px;color:#888;margin-top:10px;background:#f8faff;border-radius:6px;padding:8px 12px;line-height:1.6">
+      💡 <strong>วิธีใช้:</strong> กด "บันทึกลงไฟล์เดิม" → browser จะถามให้เลือกไฟล์ HTML นี้ครั้งแรก → ระบบเขียนทับไฟล์เดิมทันที · ครั้งถัดไปไม่ต้องเลือกใหม่ตลอด session
+    </div>
+  </div>
+
+  <!-- Last saved footer stamp (embedded on save) -->
+  <div style="text-align:right;margin-top:8px;font-size:12px;color:#aaa" id="last_saved_footer_wrap">
+    บันทึกล่าสุด: <span id="last_saved_footer">—</span>
+  </div>
+
+</div>
+
+</div>
+
+<script>
+function showTab(id,el){
+  document.querySelectorAll('.flow-section').forEach(s=>s.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  el.classList.add('active');
+}
+function showPath(group,id,el){
+  var all = ['p2a','p2b','p4a','p4b','p5a','p5b','p5c','p5d','p6a','p6b','ps0','ps1','ps2','ps3','ps4'];
+  all.filter(x=>x.startsWith(group)).forEach(x=>{
+    var e=document.getElementById(x); if(e) e.style.display='none';
+  });
+  document.querySelectorAll('.path-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById(id).style.display='block';
+  el.classList.add('active');
+}
+
+/* ===== CHECKLIST — FILE SYSTEM ACCESS API (overwrite same file) ===== */
+
+var _fileHandle = null;  // holds the file handle after first pick
+
+function collectState() {
+  var html = document.documentElement.outerHTML;
+
+  // Remove previous saved-state markers before re-injecting
+  html = html.replace(/ checked onchange="onCheckChange\(\)"/g, ' onchange="onCheckChange()"');
+  html = html.replace(/ data-val="[^"]*"/g, '');
+  html = html.replace(/style="display:table-row"/g, 'style="display:none"');
+
+  // Inject checkbox states
+  document.querySelectorAll('#t8 input[type=checkbox]').forEach(function(cb) {
+    if (cb.checked) {
+      html = html.replace(
+        'id="' + cb.id + '" onchange="onCheckChange()"',
+        'id="' + cb.id + '" checked onchange="onCheckChange()"'
+      );
+    }
+  });
+
+  // Inject textarea values
+  document.querySelectorAll('#t8 textarea').forEach(function(ta) {
+    if (!ta.id || !ta.value.trim()) return;
+    var escaped = ta.value
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    html = html.replace('id="' + ta.id + '"', 'id="' + ta.id + '" data-val="' + escaped + '"');
+  });
+
+  // Inject open note rows
+  document.querySelectorAll('.note-row').forEach(function(row) {
+    if (row.style.display === 'table-row') {
+      html = html.replace(
+        'id="' + row.id + '" class="note-row" style="display:none"',
+        'id="' + row.id + '" class="note-row" style="display:table-row"'
+      );
+    }
+  });
+
+  return html;
+}
+
+function onCheckChange() { updateProgress(); }
+
+async function saveToFile() {
+  if (!window.showOpenFilePicker && !_fileHandle) {
+    alert('Browser นี้ไม่รองรับการบันทึกทับไฟล์เดิม กรุณาใช้ Chrome หรือ Edge');
+    return;
+  }
+  if (!_fileHandle) {
+    try {
+      var picks = await window.showOpenFilePicker({
+        types: [{ description: 'HTML File', accept: { 'text/html': ['.html'] } }],
+        multiple: false
+      });
+      _fileHandle = picks[0];
+    } catch(e) { return; }
+  }
+  try {
+    var writable = await _fileHandle.createWritable();
+    await writable.write(collectState());
+    await writable.close();
+    updateSavedTime();
+  } catch(e) {
+    alert('บันทึกไม่สำเร็จ: ' + e.message);
+  }
+}
+
+function updateSavedTime() {
+  var now = new Date();
+  var buddhistYear = now.getFullYear() + 543;
+  var dd = String(now.getDate()).padStart(2,'0');
+  var mm = String(now.getMonth()+1).padStart(2,'0');
+  var hh = String(now.getHours()).padStart(2,'0');
+  var mn = String(now.getMinutes()).padStart(2,'0');
+  var label = dd + '/' + mm + '/' + buddhistYear + ' เวลา ' + hh + ':' + mn + ' น.';
+  var el = document.getElementById('last_saved_label');
+  if (el) el.textContent = '💾 บันทึกล่าสุด: ' + label;
+  var el2 = document.getElementById('last_saved_footer');
+  if (el2) el2.textContent = label;
+}
+
+function toggleRowNote(rowId) {
+  var row = document.getElementById(rowId);
+  if (!row) return;
+  row.style.display = (row.style.display === 'none' || row.style.display === '') ? 'table-row' : 'none';
+}
+
+function saveInlineNote(nid) { /* live input — state saved on saveChecklist */ }
+
+function updateProgress() {
+  var all     = document.querySelectorAll('#t8 input[type=checkbox]');
+  var checked = document.querySelectorAll('#t8 input[type=checkbox]:checked');
+  var pct = all.length ? Math.round(checked.length / all.length * 100) : 0;
+  var bar   = document.getElementById('chk_progress_bar');
+  var label = document.getElementById('chk_progress_label');
+  var color = pct < 40 ? '#EA4335' : pct < 80 ? '#FF6D00' : '#34A853';
+  if (bar)   { bar.style.width = pct + '%'; bar.style.background = color; }
+  if (label) label.textContent = checked.length + ' / ' + all.length + ' รายการ (' + pct + '%)';
+}
+
+function resetChecklist() {
+  if (!confirm('ล้างข้อมูล Checklist ทั้งหมด?')) return;
+  document.querySelectorAll('#t8 input[type=checkbox]').forEach(function(cb){ cb.checked = false; });
+  document.querySelectorAll('#t8 textarea').forEach(function(ta){ ta.value = ''; });
+  document.querySelectorAll('.note-row').forEach(function(r){ r.style.display = 'none'; });
+  updateProgress();
+}
+
+/* On load: restore textarea values from data-val attribute */
+window.addEventListener('load', function() {
+  document.querySelectorAll('#t8 textarea[data-val]').forEach(function(ta) {
+    var v = ta.getAttribute('data-val');
+    if (v) {
+      ta.value = v.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"');
+      var row = ta.closest('.note-row');
+      if (row) row.style.display = 'table-row';
+    }
+  });
+  updateProgress();
+});
+</script>
+
+<style>
+@media print {
+  .tabs, .path-toggle, .page-header .sub-title { display: none !important; }
+  .flow-section { display: block !important; }
+  .flow-section:not(#t8) { display: none !important; }
+  #t8 { display: block !important; }
+  [id^=ps] { display: block !important; }
+  body { background: white; font-size: 13px; }
+  .card { break-inside: avoid; }
+  button { display: none !important; }
+  textarea { border: 1px solid #ccc; min-height: 30px; }
+}
+</style>
+</body>
+</html>
