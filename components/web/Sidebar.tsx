@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, Calendar, Users, Briefcase, Search, FileText, Settings, Shield, LogOut, ChevronRight, ClipboardList, DoorOpen, ShieldCheck, UserCog } from "lucide-react";
+import { LayoutDashboard, Calendar, Users, Briefcase, Search, FileText, Settings, Shield, LogOut, ChevronRight, ClipboardList, DoorOpen, ShieldCheck, UserCog, Monitor, FileCheck, Clock, Bell, Printer } from "lucide-react";
 import VmsLogo from "@/components/ui/VmsLogo";
 
 export default function Sidebar() {
@@ -21,6 +21,11 @@ export default function Sidebar() {
         { href: "/web/settings/access-zones", label: "โซนเข้าพื้นที่", icon: <DoorOpen size={20} /> },
         { href: "/web/settings/approver-groups", label: "กลุ่มผู้อนุมัติ", icon: <ShieldCheck size={20} /> },
         { href: "/web/settings/staff", label: "จัดการพนักงาน", icon: <UserCog size={20} /> },
+        { href: "/web/settings/service-points", label: "จุดให้บริการ Kiosk/Counter", icon: <Monitor size={20} /> },
+        { href: "/web/settings/document-types", label: "ประเภทเอกสาร", icon: <FileCheck size={20} /> },
+        { href: "/web/settings/business-hours", label: "เวลาทำการ", icon: <Clock size={20} /> },
+        { href: "/web/settings/notification-templates", label: "เทมเพลตแจ้งเตือน", icon: <Bell size={20} /> },
+        { href: "/web/settings/visit-slips", label: "แบบฟอร์ม Visit Slip", icon: <Printer size={20} /> },
     ];
 
     return (

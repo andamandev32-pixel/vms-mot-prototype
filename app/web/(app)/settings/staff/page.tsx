@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { SearchInput } from "@/components/ui/SearchInput";
+import { Drawer } from "@/components/ui/Drawer";
 import {
   UserCog,
   Plus,
@@ -18,6 +19,9 @@ import {
   Info,
   ToggleLeft,
   ToggleRight,
+  Save,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import {
   staffMembers,
@@ -55,6 +59,9 @@ export default function StaffPage() {
   const [search, setSearch] = useState("");
   const [filterDept, setFilterDept] = useState("all");
   const [filterStatus, setFilterStatus] = useState<"all" | "active" | "inactive">("all");
+  const [drawerData, setDrawerData] = useState<{ mode: "add" | "edit"; staff?: Staff } | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 5;
 
   const filtered = useMemo(() => {
     return staffMembers.filter((s) => {
@@ -70,6 +77,10 @@ export default function StaffPage() {
       return matchSearch && matchDept && matchStatus;
     });
   }, [search, filterDept, filterStatus]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const safePage = Math.min(currentPage, totalPages);
+  const paged = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
 
   const activeCount = staffMembers.filter((s) => s.status === "active").length;
   const inactiveCount = staffMembers.filter((s) => s.status === "inactive").length;
@@ -99,7 +110,7 @@ export default function StaffPage() {
               <Upload size={18} className="mr-2" />
               นำเข้า Excel
             </Button>
-            <Button variant="secondary" className="h-10 shadow-sm">
+            <Button variant="secondary" className="h-10 shadow-sm" onClick={() => setDrawerData({ mode: "add" })}>
               <Plus size={18} className="mr-2" />
               เพิ่มพนักงาน
             </Button>
@@ -207,8 +218,8 @@ export default function StaffPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">
-                  {filtered.map((staff) => (
-                    <StaffRow key={staff.id} staff={staff} />
+                  {paged.map((staff) => (
+                    <StaffRow key={staff.id} staff={staff} onEdit={() => setDrawerData({ mode: "edit", staff })} />
                   ))}
                   {filtered.length === 0 && (
                     <tr>
@@ -223,8 +234,50 @@ export default function StaffPage() {
                 </tbody>
               </table>
             </div>
+
+            {/* Pagination */}
+            {filtered.length > pageSize && (
+              <div className="px-4 py-3 border-t border-border flex items-center justify-between">
+                <p className="text-sm text-text-muted">
+                  แสดง {(safePage - 1) * pageSize + 1}–{Math.min(safePage * pageSize, filtered.length)} จาก {filtered.length} รายการ
+                </p>
+                <div className="flex items-center gap-1">
+                  <button
+                    disabled={safePage <= 1}
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    className="p-2 rounded-lg border border-border hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((pg) => (
+                    <button
+                      key={pg}
+                      onClick={() => setCurrentPage(pg)}
+                      className={cn(
+                        "w-9 h-9 rounded-lg text-sm font-medium transition-colors",
+                        pg === safePage
+                          ? "bg-primary text-white"
+                          : "hover:bg-gray-50 text-text-secondary"
+                      )}
+                    >
+                      {pg}
+                    </button>
+                  ))}
+                  <button
+                    disabled={safePage >= totalPages}
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    className="p-2 rounded-lg border border-border hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
+
+        {/* Drawer */}
+        <StaffDrawer data={drawerData} onClose={() => setDrawerData(null)} />
       </main>
     </>
   );
@@ -233,7 +286,7 @@ export default function StaffPage() {
 /* ══════════════════════════════════════════════════
    STAFF ROW
    ══════════════════════════════════════════════════ */
-function StaffRow({ staff }: { staff: Staff }) {
+function StaffRow({ staff, onEdit }: { staff: Staff; onEdit: () => void }) {
   const groups = staffApproverGroups(staff.id);
   const apts = staffAppointments(staff.id);
   const role = roleLabels[staff.role] ?? {
@@ -334,6 +387,7 @@ function StaffRow({ staff }: { staff: Staff }) {
           <button
             className="p-2 hover:bg-primary-50 rounded-lg transition-colors text-text-muted hover:text-primary"
             title="แก้ไข"
+            onClick={onEdit}
           >
             <Pencil size={16} />
           </button>
@@ -394,5 +448,154 @@ function SummaryCard({
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+/* ══════════════════════════════════════════════════
+   STAFF DRAWER (Add / Edit)
+   ══════════════════════════════════════════════════ */
+const roleOptions = [
+  { value: "admin", label: "ผู้ดูแลระบบ" },
+  { value: "staff", label: "พนักงาน" },
+  { value: "security", label: "รปภ." },
+];
+
+function StaffDrawer({
+  data,
+  onClose,
+}: {
+  data: { mode: "add" | "edit"; staff?: Staff } | null;
+  onClose: () => void;
+}) {
+  const staff = data?.staff;
+  const isEdit = data?.mode === "edit";
+
+  const [name, setName] = useState(staff?.name ?? "");
+  const [nameEn, setNameEn] = useState(staff?.nameEn ?? "");
+  const [employeeId, setEmployeeId] = useState(staff?.employeeId ?? "");
+  const [position, setPosition] = useState(staff?.position ?? "");
+  const [departmentId, setDepartmentId] = useState(staff?.department.id ?? "");
+  const [email, setEmail] = useState(staff?.email ?? "");
+  const [phone, setPhone] = useState(staff?.phone ?? "");
+  const [role, setRole] = useState(staff?.role ?? "staff");
+  const [status, setStatus] = useState<"active" | "inactive">(
+    (staff?.status === "active" || staff?.status === "inactive") ? staff.status : "active"
+  );
+
+  useState(() => {
+    if (staff) {
+      setName(staff.name); setNameEn(staff.nameEn); setEmployeeId(staff.employeeId);
+      setPosition(staff.position); setDepartmentId(staff.department.id);
+      setEmail(staff.email); setPhone(staff.phone); setRole(staff.role);
+      setStatus(staff.status === "inactive" ? "inactive" : "active");
+    }
+  });
+
+  return (
+    <Drawer
+      open={data !== null}
+      onClose={onClose}
+      title={isEdit ? "แก้ไขข้อมูลพนักงาน" : "เพิ่มพนักงานใหม่"}
+      subtitle={isEdit ? staff?.name : "กรอกข้อมูลพนักงาน"}
+    >
+      <div className="p-6 space-y-5">
+        {/* Avatar preview */}
+        <div className="flex items-center gap-4">
+          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-primary to-primary-dark text-white flex items-center justify-center text-lg font-bold">
+            {name.slice(3, 5) || "??"}
+          </div>
+          <div>
+            <p className="font-bold text-text-primary">{name || "ชื่อพนักงาน"}</p>
+            <p className="text-xs text-text-muted">{nameEn || "Staff Name"}</p>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-text-primary mb-1">รหัสพนักงาน <span className="text-error">*</span></label>
+            <input value={employeeId} onChange={(e) => setEmployeeId(e.target.value)} placeholder="EMP-001" className="w-full h-10 px-3 text-sm font-mono rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-primary/20" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-text-primary mb-1">บทบาท</label>
+            <select value={role} onChange={(e) => setRole(e.target.value as Staff["role"])} className="w-full h-10 px-3 text-sm rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-primary/20">
+              {roleOptions.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+            </select>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-text-primary mb-1">ชื่อ-นามสกุล (ไทย) <span className="text-error">*</span></label>
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="นายสมชาย ใจดี" className="w-full h-10 px-3 text-sm rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-primary/20" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-text-primary mb-1">ชื่อ-นามสกุล (EN)</label>
+            <input value={nameEn} onChange={(e) => setNameEn(e.target.value)} placeholder="Somchai Jaidee" className="w-full h-10 px-3 text-sm rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-primary/20" />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-text-primary mb-1">ตำแหน่ง</label>
+          <input value={position} onChange={(e) => setPosition(e.target.value)} placeholder="นักวิชาการ" className="w-full h-10 px-3 text-sm rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-primary/20" />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-text-primary mb-1">แผนก <span className="text-error">*</span></label>
+          <select value={departmentId} onChange={(e) => setDepartmentId(e.target.value)} className="w-full h-10 px-3 text-sm rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-primary/20">
+            <option value="">— เลือกแผนก —</option>
+            {departments.map((d) => <option key={d.id} value={d.id}>{d.name} ({d.floor})</option>)}
+          </select>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-text-primary mb-1">อีเมล <span className="text-error">*</span></label>
+            <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="somchai@mots.go.th" className="w-full h-10 px-3 text-sm rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-primary/20" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-text-primary mb-1">โทรศัพท์</label>
+            <input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="081-xxx-xxxx" className="w-full h-10 px-3 text-sm rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-primary/20" />
+          </div>
+        </div>
+
+        {/* Status */}
+        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+          <div>
+            <p className="text-sm font-medium text-text-primary">สถานะ</p>
+            <p className="text-xs text-text-muted">{status === "active" ? "เปิดใช้งาน" : "ปิดใช้งาน"}</p>
+          </div>
+          <button type="button" onClick={() => setStatus(status === "active" ? "inactive" : "active")} className={cn("w-12 h-7 rounded-full transition-colors relative", status === "active" ? "bg-primary" : "bg-gray-300")}>
+            <span className={cn("absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform", status === "active" ? "translate-x-5" : "translate-x-0.5")} />
+          </button>
+        </div>
+
+        {/* Assignments preview (edit mode) */}
+        {isEdit && staff && (
+          <div className="p-4 bg-primary-50/50 rounded-lg border border-primary/10">
+            <p className="text-xs font-medium text-text-muted mb-2">การมอบหมายปัจจุบัน</p>
+            <div className="flex flex-wrap gap-1">
+              {staffApproverGroups(staff.id).map((g) => (
+                <span key={g.id} className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-medium bg-primary-50 text-primary border border-primary/20">
+                  <ShieldCheck size={10} /> {g.name}
+                </span>
+              ))}
+              {staffAppointments(staff.id).length > 0 && (
+                <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-full text-[10px] font-medium bg-accent-50 text-accent-600 border border-accent-200">
+                  <Calendar size={10} /> {staffAppointments(staff.id).length} นัดหมาย
+                </span>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="sticky bottom-0 px-6 py-4 bg-white border-t border-border flex items-center justify-end gap-3">
+        <Button variant="outline" onClick={onClose}>ยกเลิก</Button>
+        <Button variant="primary" onClick={onClose}>
+          <Save size={16} className="mr-2" />
+          {isEdit ? "บันทึกการเปลี่ยนแปลง" : "เพิ่มพนักงาน"}
+        </Button>
+      </div>
+    </Drawer>
   );
 }

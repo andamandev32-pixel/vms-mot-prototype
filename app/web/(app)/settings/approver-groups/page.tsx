@@ -5,6 +5,7 @@ import Topbar from "@/components/web/Topbar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { Drawer } from "@/components/ui/Drawer";
 import {
   Users,
   Plus,
@@ -22,6 +23,7 @@ import {
   Building2,
   Info,
   Check,
+  Save,
 } from "lucide-react";
 import {
   approverGroups,
@@ -79,6 +81,7 @@ const channelConfig: Record<
 export default function ApproverGroupsPage() {
   const [groups] = useState<ApproverGroup[]>(approverGroups);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [drawerData, setDrawerData] = useState<{ mode: "add" | "edit"; group?: ApproverGroup } | null>(null);
 
   const toggle = (id: string) =>
     setExpandedId((prev) => (prev === id ? null : id));
@@ -109,7 +112,7 @@ export default function ApproverGroupsPage() {
               พร้อมช่องทางการแจ้งเตือน
             </p>
           </div>
-          <Button variant="secondary" className="h-10 shadow-sm">
+          <Button variant="secondary" className="h-10 shadow-sm" onClick={() => setDrawerData({ mode: "add" })}>
             <Plus size={18} className="mr-2" />
             เพิ่มกลุ่มผู้อนุมัติ
           </Button>
@@ -150,6 +153,7 @@ export default function ApproverGroupsPage() {
               group={group}
               isExpanded={expandedId === group.id}
               onToggle={() => toggle(group.id)}
+              onEdit={() => setDrawerData({ mode: "edit", group })}
             />
           ))}
         </div>
@@ -178,6 +182,9 @@ export default function ApproverGroupsPage() {
             bgColor="bg-warning-light"
           />
         </div>
+
+        {/* Drawer */}
+        <ApproverGroupDrawer data={drawerData} onClose={() => setDrawerData(null)} />
       </main>
     </>
   );
@@ -190,10 +197,12 @@ function GroupCard({
   group,
   isExpanded,
   onToggle,
+  onEdit,
 }: {
   group: ApproverGroup;
   isExpanded: boolean;
   onToggle: () => void;
+  onEdit: () => void;
 }) {
   const approvers = group.members.filter((m) => m.canApprove);
   const notifiers = group.members.filter((m) => m.receiveNotification);
@@ -279,7 +288,7 @@ function GroupCard({
             className="flex items-center gap-1 shrink-0"
             onClick={(e) => e.stopPropagation()}
           >
-            <button className="p-2 hover:bg-primary-50 rounded-lg transition-colors text-text-muted hover:text-primary">
+            <button className="p-2 hover:bg-primary-50 rounded-lg transition-colors text-text-muted hover:text-primary" onClick={onEdit}>
               <Pencil size={16} />
             </button>
             <button className="p-2 hover:bg-red-50 rounded-lg transition-colors text-text-muted hover:text-error">
@@ -616,5 +625,218 @@ function SummaryCard({
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+/* ══════════════════════════════════════════════════
+   APPROVER GROUP DRAWER (Add / Edit)
+   ══════════════════════════════════════════════════ */
+function ApproverGroupDrawer({
+  data,
+  onClose,
+}: {
+  data: { mode: "add" | "edit"; group?: ApproverGroup } | null;
+  onClose: () => void;
+}) {
+  const group = data?.group;
+  const isEdit = data?.mode === "edit";
+
+  const [name, setName] = useState(group?.name ?? "");
+  const [nameEn, setNameEn] = useState(group?.nameEn ?? "");
+  const [description, setDescription] = useState(group?.description ?? "");
+  const [departmentId, setDepartmentId] = useState(group?.departmentId ?? "");
+  const [selectedPurposeIds, setSelectedPurposeIds] = useState<string[]>(group?.visitPurposeIds ?? []);
+  const [notifyChannels, setNotifyChannels] = useState<ApproverNotifyChannel[]>(group?.notifyChannels ?? ["line", "web-app"]);
+  const [members, setMembers] = useState<ApproverMember[]>(group?.members ?? []);
+  const [isActive, setIsActive] = useState(group?.isActive ?? true);
+
+  useState(() => {
+    if (group) {
+      setName(group.name); setNameEn(group.nameEn); setDescription(group.description);
+      setDepartmentId(group.departmentId); setSelectedPurposeIds(group.visitPurposeIds);
+      setNotifyChannels(group.notifyChannels); setMembers(group.members);
+      setIsActive(group.isActive);
+    }
+  });
+
+  const togglePurpose = (id: string) =>
+    setSelectedPurposeIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
+
+  const toggleChannel = (ch: ApproverNotifyChannel) =>
+    setNotifyChannels((prev) => prev.includes(ch) ? prev.filter((x) => x !== ch) : [...prev, ch]);
+
+  const toggleMember = (staffId: string) => {
+    setMembers((prev) => {
+      const exists = prev.find((m) => m.staffId === staffId);
+      if (exists) return prev.filter((m) => m.staffId !== staffId);
+      return [...prev, { staffId, canApprove: true, receiveNotification: true }];
+    });
+  };
+
+  const toggleMemberPerm = (staffId: string, field: "canApprove" | "receiveNotification") => {
+    setMembers((prev) =>
+      prev.map((m) => m.staffId === staffId ? { ...m, [field]: !m[field] } : m)
+    );
+  };
+
+  const deptStaff = staffMembers.filter((s) => !departmentId || s.department.id === departmentId);
+
+  return (
+    <Drawer
+      open={data !== null}
+      onClose={onClose}
+      title={isEdit ? "แก้ไขกลุ่มผู้อนุมัติ" : "เพิ่มกลุ่มผู้อนุมัติใหม่"}
+      subtitle={isEdit ? group?.name : "กำหนดกลุ่มผู้อนุมัติและช่องทางแจ้งเตือน"}
+      width="w-[580px]"
+    >
+      <div className="p-6 space-y-5">
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-text-primary mb-1">ชื่อกลุ่ม (ไทย) <span className="text-error">*</span></label>
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="ผู้อนุมัติ สำนักงานปลัด" className="w-full h-10 px-3 text-sm rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-primary/20" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-text-primary mb-1">ชื่อกลุ่ม (EN)</label>
+            <input value={nameEn} onChange={(e) => setNameEn(e.target.value)} placeholder="OPS Approvers" className="w-full h-10 px-3 text-sm rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-primary/20" />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-text-primary mb-1">รายละเอียด</label>
+          <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none" />
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-text-primary mb-1">แผนกที่รับผิดชอบ <span className="text-error">*</span></label>
+          <select value={departmentId} onChange={(e) => setDepartmentId(e.target.value)} className="w-full h-10 px-3 text-sm rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-primary/20">
+            <option value="">— เลือกแผนก —</option>
+            {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+          </select>
+        </div>
+
+        {/* Visit purposes */}
+        <div>
+          <label className="block text-sm font-medium text-text-primary mb-2">วัตถุประสงค์ที่ใช้กลุ่มนี้อนุมัติ</label>
+          <div className="flex flex-wrap gap-2">
+            {visitPurposeConfigs.filter((v) => v.isActive).map((v) => (
+              <button
+                key={v.id}
+                type="button"
+                onClick={() => togglePurpose(v.id)}
+                className={cn(
+                  "px-3 py-1.5 rounded-full text-xs font-medium border transition-all",
+                  selectedPurposeIds.includes(v.id)
+                    ? "bg-accent-50 text-accent-600 border-accent-200"
+                    : "bg-gray-50 text-text-muted border-border hover:border-accent-200"
+                )}
+              >
+                {v.icon} {v.name}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Notify channels */}
+        <div>
+          <label className="block text-sm font-medium text-text-primary mb-2">ช่องทางแจ้งเตือน</label>
+          <div className="space-y-2">
+            {(["line", "email", "web-app"] as ApproverNotifyChannel[]).map((ch) => {
+              const c = channelConfig[ch];
+              const enabled = notifyChannels.includes(ch);
+              return (
+                <button
+                  key={ch}
+                  type="button"
+                  onClick={() => toggleChannel(ch)}
+                  className={cn(
+                    "w-full flex items-center gap-3 p-3 rounded-lg border transition-colors text-left",
+                    enabled ? "border-primary/20 bg-white" : "border-dashed border-gray-200 bg-gray-50 opacity-60"
+                  )}
+                >
+                  <span className={cn("inline-flex items-center justify-center w-8 h-8 rounded-full", enabled ? c.bg : "bg-gray-100")}>
+                    <span className={enabled ? c.color : "text-text-muted"}>{c.icon}</span>
+                  </span>
+                  <span className={cn("text-sm font-medium flex-1", enabled ? "text-text-primary" : "text-text-muted")}>{c.label}</span>
+                  {enabled && <Check size={16} className="text-success shrink-0" />}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Members */}
+        <div>
+          <label className="block text-sm font-medium text-text-primary mb-2">สมาชิกในกลุ่ม ({members.length} คน)</label>
+          <div className="max-h-64 overflow-y-auto border border-border rounded-lg divide-y divide-border">
+            {deptStaff.filter((s) => s.status === "active").map((s) => {
+              const member = members.find((m) => m.staffId === s.id);
+              const selected = !!member;
+              return (
+                <div key={s.id} className="px-3 py-2.5 hover:bg-gray-50">
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="checkbox"
+                      checked={selected}
+                      onChange={() => toggleMember(s.id)}
+                      className="w-4 h-4 rounded border-border text-primary focus:ring-primary/20"
+                    />
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary to-primary-dark text-white flex items-center justify-center text-xs font-bold shrink-0">
+                      {s.name.slice(3, 5)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-text-primary truncate">{s.name}</p>
+                      <p className="text-[11px] text-text-muted">{s.position}</p>
+                    </div>
+                    {selected && (
+                      <div className="flex items-center gap-2 shrink-0">
+                        <button
+                          type="button"
+                          onClick={() => toggleMemberPerm(s.id, "canApprove")}
+                          className={cn("p-1.5 rounded-md transition-colors", member.canApprove ? "bg-success-light text-success" : "bg-gray-100 text-text-muted")}
+                          title="สิทธิ์อนุมัติ"
+                        >
+                          <UserCheck size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => toggleMemberPerm(s.id, "receiveNotification")}
+                          className={cn("p-1.5 rounded-md transition-colors", member.receiveNotification ? "bg-warning-light text-warning" : "bg-gray-100 text-text-muted")}
+                          title="รับแจ้งเตือน"
+                        >
+                          <Bell size={14} />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <p className="text-[11px] text-text-muted mt-1.5 flex items-center gap-2">
+            <span className="inline-flex items-center gap-0.5"><UserCheck size={10} className="text-success" /> = อนุมัติได้</span>
+            <span className="inline-flex items-center gap-0.5"><Bell size={10} className="text-warning" /> = รับแจ้งเตือน</span>
+          </p>
+        </div>
+
+        {/* Active */}
+        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+          <div>
+            <p className="text-sm font-medium text-text-primary">เปิดใช้งาน</p>
+            <p className="text-xs text-text-muted">เปิดใช้กลุ่มผู้อนุมัตินี้</p>
+          </div>
+          <button type="button" onClick={() => setIsActive(!isActive)} className={cn("w-12 h-7 rounded-full transition-colors relative", isActive ? "bg-primary" : "bg-gray-300")}>
+            <span className={cn("absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform", isActive ? "translate-x-5" : "translate-x-0.5")} />
+          </button>
+        </div>
+      </div>
+
+      <div className="sticky bottom-0 px-6 py-4 bg-white border-t border-border flex items-center justify-end gap-3">
+        <Button variant="outline" onClick={onClose}>ยกเลิก</Button>
+        <Button variant="primary" onClick={onClose}>
+          <Save size={16} className="mr-2" />
+          {isEdit ? "บันทึกการเปลี่ยนแปลง" : "เพิ่มกลุ่มผู้อนุมัติ"}
+        </Button>
+      </div>
+    </Drawer>
   );
 }

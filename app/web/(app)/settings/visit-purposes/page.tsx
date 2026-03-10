@@ -5,6 +5,7 @@ import Topbar from "@/components/web/Topbar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { Drawer } from "@/components/ui/Drawer";
 import {
   Settings,
   Check,
@@ -25,13 +26,20 @@ import {
   CircleDot,
   Wifi,
   Users,
+  Save,
+  Camera,
+  CameraOff,
+  FileText,
+  IdCard,
 } from "lucide-react";
 import {
   visitPurposeConfigs,
   departments,
   approverGroups,
+  identityDocumentTypes,
   type VisitPurposeConfig,
   type DepartmentRule,
+  type EntryChannelConfig,
 } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
@@ -63,8 +71,20 @@ function BoolIcon({
    PAGE
    ══════════════════════════════════════════════════ */
 export default function VisitPurposeSettingsPage() {
-  const [configs] = useState<VisitPurposeConfig[]>(visitPurposeConfigs);
+  const [configs, setConfigs] = useState<VisitPurposeConfig[]>(visitPurposeConfigs);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
+
+  /* drawer state */
+  const [drawerMode, setDrawerMode] = useState<"add" | "edit" | null>(null);
+  const [editingConfig, setEditingConfig] = useState<VisitPurposeConfig | null>(null);
+  const [deptDrawer, setDeptDrawer] = useState<{ configId: string; rule?: DepartmentRule } | null>(null);
+
+  const openAdd = () => { setEditingConfig(null); setDrawerMode("add"); };
+  const openEdit = (config: VisitPurposeConfig) => { setEditingConfig(config); setDrawerMode("edit"); };
+  const closeDrawer = () => { setDrawerMode(null); setEditingConfig(null); };
+  const openAddDept = (configId: string) => setDeptDrawer({ configId });
+  const openEditDept = (configId: string, rule: DepartmentRule) => setDeptDrawer({ configId, rule });
+  const closeDeptDrawer = () => setDeptDrawer(null);
 
   const toggle = (id: string) =>
     setExpandedRow((prev) => (prev === id ? null : id));
@@ -107,7 +127,7 @@ export default function VisitPurposeSettingsPage() {
               แล้วตั้งค่าเงื่อนไขแยกรายแผนกได้อิสระ
             </p>
           </div>
-          <Button variant="secondary" className="h-10 shadow-sm">
+          <Button variant="secondary" className="h-10 shadow-sm" onClick={openAdd}>
             <Plus size={18} className="mr-2" />
             เพิ่มวัตถุประสงค์ใหม่
           </Button>
@@ -154,6 +174,9 @@ export default function VisitPurposeSettingsPage() {
               config={config}
               isExpanded={expandedRow === config.id}
               onToggle={() => toggle(config.id)}
+              onEdit={() => openEdit(config)}
+              onAddDept={() => openAddDept(config.id)}
+              onEditDept={(rule) => openEditDept(config.id, rule)}
             />
           ))}
         </div>
@@ -189,6 +212,19 @@ export default function VisitPurposeSettingsPage() {
             bgColor="bg-success-light"
           />
         </div>
+
+        {/* ─── Purpose Add/Edit Drawer ───────────── */}
+        <PurposeDrawer
+          mode={drawerMode}
+          config={editingConfig}
+          onClose={closeDrawer}
+        />
+
+        {/* ─── Department Rule Drawer ────────────── */}
+        <DeptRuleDrawer
+          data={deptDrawer}
+          onClose={closeDeptDrawer}
+        />
       </main>
     </>
   );
@@ -201,10 +237,16 @@ function PurposeCard({
   config,
   isExpanded,
   onToggle,
+  onEdit,
+  onAddDept,
+  onEditDept,
 }: {
   config: VisitPurposeConfig;
   isExpanded: boolean;
   onToggle: () => void;
+  onEdit: () => void;
+  onAddDept: () => void;
+  onEditDept: (rule: DepartmentRule) => void;
 }) {
   const activeRules = config.departmentRules.filter((r) => r.isActive);
 
@@ -250,8 +292,15 @@ function PurposeCard({
               {activeRules.filter((r) => r.requireApproval).length} ต้องอนุมัติ
             </span>
             <span className="flex items-center gap-1.5">
-              <QrCode size={14} className="text-success" />
-              {activeRules.filter((r) => !r.requireApproval).length} QR ทันที
+              <IdCard size={14} className="text-info" />
+              {config.kioskConfig.allowedDocuments.length} เอกสาร
+            </span>
+            <span className="flex items-center gap-1.5">
+              {config.kioskConfig.requirePhoto || config.counterConfig.requirePhoto ? (
+                <><Camera size={14} className="text-success" /> ถ่ายภาพ</>
+              ) : (
+                <><CameraOff size={14} className="text-text-muted" /> ไม่ถ่ายภาพ</>
+              )}
             </span>
           </div>
 
@@ -260,7 +309,7 @@ function PurposeCard({
             className="flex items-center gap-1 shrink-0"
             onClick={(e) => e.stopPropagation()}
           >
-            <button className="p-2 hover:bg-primary-50 rounded-lg transition-colors text-text-muted hover:text-primary">
+            <button className="p-2 hover:bg-primary-50 rounded-lg transition-colors text-text-muted hover:text-primary" onClick={onEdit}>
               <Pencil size={16} />
             </button>
             <button className="p-2 hover:bg-red-50 rounded-lg transition-colors text-text-muted hover:text-error">
@@ -275,16 +324,35 @@ function PurposeCard({
         </CardContent>
       </button>
 
-      {/* ─── Expanded: per-department table ─── */}
+      {/* ─── Expanded: entry channel configs + per-department table ─── */}
       {isExpanded && (
         <div className="border-t border-border">
+          {/* ── Entry Channel Configs (Kiosk / Counter) ── */}
+          <div className="px-5 py-4 bg-gradient-to-r from-primary-50/30 to-accent-50/30">
+            <p className="text-xs font-semibold text-text-secondary flex items-center gap-1.5 mb-3">
+              <IdCard size={14} className="text-primary" />
+              เอกสารยืนยันตัวตน &amp; การถ่ายภาพ — แยกตาม Kiosk / Counter
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <ChannelConfigCard
+                label="Kiosk"
+                icon={<Monitor size={16} className="text-blue-600" />}
+                config={config.kioskConfig}
+              />
+              <ChannelConfigCard
+                label="Counter"
+                icon={<Users size={16} className="text-amber-600" />}
+                config={config.counterConfig}
+              />
+            </div>
+          </div>
           {/* toolbar */}
           <div className="px-5 py-3 bg-gray-50 flex items-center justify-between">
             <p className="text-xs font-semibold text-text-secondary flex items-center gap-1.5">
               <ArrowUpDown size={14} className="text-primary" />
               เงื่อนไขแยกรายแผนก ({config.departmentRules.length} แผนก)
             </p>
-            <Button variant="outline" className="h-8 text-xs px-3">
+            <Button variant="outline" className="h-8 text-xs px-3" onClick={onAddDept}>
               <Plus size={14} className="mr-1" />
               เพิ่มแผนก
             </Button>
@@ -310,7 +378,7 @@ function PurposeCard({
               </thead>
               <tbody className="divide-y divide-border">
                 {config.departmentRules.map((rule) => (
-                  <DeptRuleRow key={rule.departmentId} rule={rule} />
+                  <DeptRuleRow key={rule.departmentId} rule={rule} onEdit={() => onEditDept(rule)} />
                 ))}
               </tbody>
             </table>
@@ -340,7 +408,7 @@ function PurposeCard({
 /* ══════════════════════════════════════════════════
    DEPT RULE ROW
    ══════════════════════════════════════════════════ */
-function DeptRuleRow({ rule }: { rule: DepartmentRule }) {
+function DeptRuleRow({ rule, onEdit }: { rule: DepartmentRule; onEdit: () => void }) {
   const dept = departments.find((d) => d.id === rule.departmentId);
 
   return (
@@ -452,7 +520,7 @@ function DeptRuleRow({ rule }: { rule: DepartmentRule }) {
       {/* actions */}
       <td className="px-5 py-3.5 text-right">
         <div className="flex items-center justify-end gap-1">
-          <button className="p-1.5 hover:bg-primary-50 rounded-md transition-colors text-text-muted hover:text-primary">
+          <button className="p-1.5 hover:bg-primary-50 rounded-md transition-colors text-text-muted hover:text-primary" onClick={onEdit}>
             <Pencil size={14} />
           </button>
           <button className="p-1.5 hover:bg-red-50 rounded-md transition-colors text-text-muted hover:text-error">
@@ -461,6 +529,531 @@ function DeptRuleRow({ rule }: { rule: DepartmentRule }) {
         </div>
       </td>
     </tr>
+  );
+}
+
+/* ══════════════════════════════════════════════════
+   PURPOSE DRAWER (Add / Edit)
+   ══════════════════════════════════════════════════ */
+function PurposeDrawer({
+  mode,
+  config,
+  onClose,
+}: {
+  mode: "add" | "edit" | null;
+  config: VisitPurposeConfig | null;
+  onClose: () => void;
+}) {
+  const defaultChannel: EntryChannelConfig = { allowedDocuments: ["doc-national-id"], requirePhoto: false };
+
+  const [name, setName] = useState("");
+  const [nameEn, setNameEn] = useState("");
+  const [icon, setIcon] = useState("📌");
+  const [isActive, setIsActive] = useState(true);
+  const [order, setOrder] = useState(1);
+  const [kioskDocs, setKioskDocs] = useState<string[]>(defaultChannel.allowedDocuments);
+  const [kioskPhoto, setKioskPhoto] = useState(false);
+  const [counterDocs, setCounterDocs] = useState<string[]>(defaultChannel.allowedDocuments);
+  const [counterPhoto, setCounterPhoto] = useState(false);
+
+  /* reset form when drawer opens */
+  const isOpen = mode !== null;
+  useState(() => {
+    if (mode === "edit" && config) {
+      setName(config.name);
+      setNameEn(config.nameEn);
+      setIcon(config.icon);
+      setIsActive(config.isActive);
+      setOrder(config.order);
+      setKioskDocs(config.kioskConfig.allowedDocuments);
+      setKioskPhoto(config.kioskConfig.requirePhoto);
+      setCounterDocs(config.counterConfig.allowedDocuments);
+      setCounterPhoto(config.counterConfig.requirePhoto);
+    } else {
+      setName("");
+      setNameEn("");
+      setIcon("📌");
+      setIsActive(true);
+      setOrder(visitPurposeConfigs.length + 1);
+      setKioskDocs(["doc-national-id"]);
+      setKioskPhoto(false);
+      setCounterDocs(["doc-national-id"]);
+      setCounterPhoto(false);
+    }
+  });
+
+  const toggleDoc = (list: string[], setList: (v: string[]) => void, docId: string) => {
+    setList(list.includes(docId) ? list.filter((d) => d !== docId) : [...list, docId]);
+  };
+
+  const iconOptions = ["🏛️", "📋", "📄", "🔧", "💼", "🎓", "📦", "🔖", "📌", "🏢", "🤝", "📝"];
+
+  return (
+    <Drawer
+      open={isOpen}
+      onClose={onClose}
+      title={mode === "add" ? "เพิ่มวัตถุประสงค์ใหม่" : "แก้ไขวัตถุประสงค์"}
+      subtitle={mode === "add" ? "กำหนดวัตถุประสงค์การเข้าพื้นที่ใหม่" : `แก้ไข: ${config?.name ?? ""}`}
+    >
+      <div className="p-6 space-y-5">
+        {/* Icon selector */}
+        <div>
+          <label className="block text-sm font-medium text-text-primary mb-2">ไอคอน</label>
+          <div className="flex flex-wrap gap-2">
+            {iconOptions.map((ic) => (
+              <button
+                key={ic}
+                type="button"
+                onClick={() => setIcon(ic)}
+                className={cn(
+                  "w-10 h-10 rounded-lg text-xl flex items-center justify-center border-2 transition-all",
+                  icon === ic ? "border-primary bg-primary-50 shadow-sm" : "border-border hover:border-primary/30"
+                )}
+              >
+                {ic}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Name TH */}
+        <div>
+          <label className="block text-sm font-medium text-text-primary mb-1">ชื่อวัตถุประสงค์ (ภาษาไทย) <span className="text-error">*</span></label>
+          <input
+            type="text"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="เช่น ติดต่อราชการ"
+            className="w-full h-10 px-3 text-sm rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+          />
+        </div>
+
+        {/* Name EN */}
+        <div>
+          <label className="block text-sm font-medium text-text-primary mb-1">ชื่อวัตถุประสงค์ (English)</label>
+          <input
+            type="text"
+            value={nameEn}
+            onChange={(e) => setNameEn(e.target.value)}
+            placeholder="e.g. Official Business"
+            className="w-full h-10 px-3 text-sm rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+          />
+        </div>
+
+        {/* Order */}
+        <div>
+          <label className="block text-sm font-medium text-text-primary mb-1">ลำดับการแสดงผล</label>
+          <input
+            type="number"
+            min={1}
+            value={order}
+            onChange={(e) => setOrder(Number(e.target.value))}
+            className="w-24 h-10 px-3 text-sm rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary"
+          />
+        </div>
+
+        {/* Active toggle */}
+        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+          <div>
+            <p className="text-sm font-medium text-text-primary">เปิดใช้งาน</p>
+            <p className="text-xs text-text-muted">แสดงวัตถุประสงค์นี้ในระบบ</p>
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsActive(!isActive)}
+            className={cn(
+              "w-12 h-7 rounded-full transition-colors relative",
+              isActive ? "bg-primary" : "bg-gray-300"
+            )}
+          >
+            <span className={cn(
+              "absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform",
+              isActive ? "translate-x-5" : "translate-x-0.5"
+            )} />
+          </button>
+        </div>
+
+        {/* ─── Kiosk Channel Config ── */}
+        <div className="space-y-3">
+          <p className="text-sm font-bold text-text-primary flex items-center gap-2">
+            <Monitor size={16} className="text-blue-600" />
+            Kiosk — เอกสารยืนยันตัวตน
+          </p>
+          <div className="space-y-2">
+            {identityDocumentTypes.map((doc) => (
+              <label key={doc.id} className="flex items-center gap-3 p-2.5 bg-gray-50 rounded-lg cursor-pointer hover:bg-blue-50/50 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={kioskDocs.includes(doc.id)}
+                  onChange={() => toggleDoc(kioskDocs, setKioskDocs, doc.id)}
+                  className="w-4 h-4 rounded border-border text-primary focus:ring-primary/20 accent-primary-500"
+                />
+                <span className="text-base">{doc.icon}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-text-primary">{doc.name}</p>
+                  <p className="text-[11px] text-text-muted">{doc.nameEn}</p>
+                </div>
+              </label>
+            ))}
+          </div>
+          <ToggleOption
+            icon={<Camera size={16} className="text-blue-600" />}
+            label="ถ่ายภาพ (Kiosk)"
+            description="ถ่ายภาพผู้เข้าเยี่ยมผ่าน Kiosk"
+            value={kioskPhoto}
+            onChange={setKioskPhoto}
+          />
+        </div>
+
+        {/* ─── Counter Channel Config ── */}
+        <div className="space-y-3">
+          <p className="text-sm font-bold text-text-primary flex items-center gap-2">
+            <Users size={16} className="text-amber-600" />
+            Counter — เอกสารยืนยันตัวตน
+          </p>
+          <div className="space-y-2">
+            {identityDocumentTypes.map((doc) => (
+              <label key={doc.id} className="flex items-center gap-3 p-2.5 bg-gray-50 rounded-lg cursor-pointer hover:bg-amber-50/50 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={counterDocs.includes(doc.id)}
+                  onChange={() => toggleDoc(counterDocs, setCounterDocs, doc.id)}
+                  className="w-4 h-4 rounded border-border text-primary focus:ring-primary/20 accent-primary-500"
+                />
+                <span className="text-base">{doc.icon}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-text-primary">{doc.name}</p>
+                  <p className="text-[11px] text-text-muted">{doc.nameEn}</p>
+                </div>
+              </label>
+            ))}
+          </div>
+          <ToggleOption
+            icon={<Camera size={16} className="text-amber-600" />}
+            label="ถ่ายภาพ (Counter)"
+            description="ถ่ายภาพผู้เข้าเยี่ยมที่เคาน์เตอร์"
+            value={counterPhoto}
+            onChange={setCounterPhoto}
+          />
+        </div>
+
+        {/* Preview */}
+        <div className="p-4 bg-primary-50/50 rounded-lg border border-primary/10">
+          <p className="text-xs font-medium text-text-muted mb-2">ตัวอย่าง</p>
+          <div className="flex items-center gap-3">
+            <span className="text-2xl">{icon}</span>
+            <div>
+              <p className="font-bold text-text-primary">{name || "ชื่อวัตถุประสงค์"}</p>
+              <p className="text-xs text-text-muted">{nameEn || "Purpose Name"}</p>
+            </div>
+            {isActive ? <Badge variant="approved">เปิดใช้</Badge> : <Badge variant="rejected">ปิดใช้</Badge>}
+          </div>
+          <div className="mt-3 grid grid-cols-2 gap-2 text-[11px]">
+            <div className="bg-white rounded-md p-2 border border-border">
+              <p className="font-medium text-text-secondary mb-1">Kiosk</p>
+              <p>{kioskDocs.length} เอกสาร · {kioskPhoto ? "ถ่ายภาพ" : "ไม่ถ่ายภาพ"}</p>
+            </div>
+            <div className="bg-white rounded-md p-2 border border-border">
+              <p className="font-medium text-text-secondary mb-1">Counter</p>
+              <p>{counterDocs.length} เอกสาร · {counterPhoto ? "ถ่ายภาพ" : "ไม่ถ่ายภาพ"}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="sticky bottom-0 px-6 py-4 bg-white border-t border-border flex items-center justify-end gap-3">
+        <Button variant="outline" onClick={onClose}>ยกเลิก</Button>
+        <Button variant="primary" onClick={onClose}>
+          <Save size={16} className="mr-2" />
+          {mode === "add" ? "เพิ่มวัตถุประสงค์" : "บันทึกการเปลี่ยนแปลง"}
+        </Button>
+      </div>
+    </Drawer>
+  );
+}
+
+/* ══════════════════════════════════════════════════
+   DEPARTMENT RULE DRAWER (Add / Edit)
+   ══════════════════════════════════════════════════ */
+function DeptRuleDrawer({
+  data,
+  onClose,
+}: {
+  data: { configId: string; rule?: DepartmentRule } | null;
+  onClose: () => void;
+}) {
+  const isEditing = !!data?.rule;
+  const rule = data?.rule;
+
+  const [deptId, setDeptId] = useState(rule?.departmentId ?? "");
+  const [requirePersonName, setRequirePersonName] = useState(rule?.requirePersonName ?? false);
+  const [requireApproval, setRequireApproval] = useState(rule?.requireApproval ?? false);
+  const [approverGroupId, setApproverGroupId] = useState(rule?.approverGroupId ?? "");
+  const [offerWifi, setOfferWifi] = useState(rule?.offerWifi ?? false);
+  const [showOnLine, setShowOnLine] = useState(rule?.showOnLine ?? true);
+  const [showOnKiosk, setShowOnKiosk] = useState(rule?.showOnKiosk ?? true);
+  const [isActive, setIsActive] = useState(rule?.isActive ?? true);
+
+  /* reset when drawer data changes */
+  useState(() => {
+    if (rule) {
+      setDeptId(rule.departmentId);
+      setRequirePersonName(rule.requirePersonName);
+      setRequireApproval(rule.requireApproval);
+      setApproverGroupId(rule.approverGroupId ?? "");
+      setOfferWifi(rule.offerWifi);
+      setShowOnLine(rule.showOnLine);
+      setShowOnKiosk(rule.showOnKiosk);
+      setIsActive(rule.isActive);
+    } else {
+      setDeptId("");
+      setRequirePersonName(false);
+      setRequireApproval(false);
+      setApproverGroupId("");
+      setOfferWifi(false);
+      setShowOnLine(true);
+      setShowOnKiosk(true);
+      setIsActive(true);
+    }
+  });
+
+  const selectedDept = departments.find((d) => d.id === deptId);
+
+  return (
+    <Drawer
+      open={data !== null}
+      onClose={onClose}
+      title={isEditing ? "แก้ไขเงื่อนไขแผนก" : "เพิ่มแผนก"}
+      subtitle={isEditing ? `แผนก: ${selectedDept?.name ?? deptId}` : "เลือกแผนกและกำหนดเงื่อนไข"}
+    >
+      <div className="p-6 space-y-5">
+        {/* Department selector */}
+        <div>
+          <label className="block text-sm font-medium text-text-primary mb-1">แผนก <span className="text-error">*</span></label>
+          <select
+            value={deptId}
+            onChange={(e) => setDeptId(e.target.value)}
+            disabled={isEditing}
+            className="w-full h-10 px-3 text-sm rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-50"
+          >
+            <option value="">— เลือกแผนก —</option>
+            {departments.map((d) => (
+              <option key={d.id} value={d.id}>{d.name} ({d.floor})</option>
+            ))}
+          </select>
+        </div>
+
+        {selectedDept && (
+          <div className="p-3 bg-gray-50 rounded-lg text-xs text-text-secondary">
+            <p><strong>{selectedDept.name}</strong></p>
+            <p>{selectedDept.nameEn} · {selectedDept.floor} · {selectedDept.building}</p>
+          </div>
+        )}
+
+        {/* Toggle options */}
+        <div className="space-y-3">
+          <p className="text-sm font-bold text-text-primary">เงื่อนไข</p>
+
+          <ToggleOption
+            icon={<UserSearch size={16} className="text-primary" />}
+            label="ต้องระบุชื่อบุคคล"
+            description="ผู้เข้าเยี่ยมต้องค้นหาชื่อบุคคลก่อนเข้าพบ"
+            value={requirePersonName}
+            onChange={setRequirePersonName}
+          />
+
+          <ToggleOption
+            icon={<ShieldCheck size={16} className="text-warning" />}
+            label="ต้องอนุมัติ"
+            description="ต้องรออนุมัติจากผู้มีสิทธิ์ก่อนเข้าพื้นที่"
+            value={requireApproval}
+            onChange={setRequireApproval}
+          />
+
+          {requireApproval && (
+            <div className="ml-8">
+              <label className="block text-xs font-medium text-text-secondary mb-1">กลุ่มผู้อนุมัติ</label>
+              <select
+                value={approverGroupId}
+                onChange={(e) => setApproverGroupId(e.target.value)}
+                className="w-full h-9 px-3 text-sm rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
+              >
+                <option value="">— เลือกกลุ่มผู้อนุมัติ —</option>
+                {approverGroups.map((g) => (
+                  <option key={g.id} value={g.id}>{g.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <ToggleOption
+            icon={<Wifi size={16} className="text-purple-600" />}
+            label="เสนอ WiFi"
+            description="เสนอ WiFi Voucher ให้ผู้เข้าเยี่ยม"
+            value={offerWifi}
+            onChange={setOfferWifi}
+          />
+        </div>
+
+        {/* Channel options */}
+        <div className="space-y-3">
+          <p className="text-sm font-bold text-text-primary">ช่องทางแสดงผล</p>
+
+          <ToggleOption
+            icon={<Smartphone size={16} className="text-green-600" />}
+            label="LINE OA + Web App"
+            description="แสดงวัตถุประสงค์นี้บน LINE และ Web App"
+            value={showOnLine}
+            onChange={setShowOnLine}
+          />
+
+          <ToggleOption
+            icon={<Monitor size={16} className="text-blue-600" />}
+            label="Kiosk"
+            description="แสดงวัตถุประสงค์นี้บน Kiosk"
+            value={showOnKiosk}
+            onChange={setShowOnKiosk}
+          />
+        </div>
+
+        {/* Status */}
+        <ToggleOption
+          icon={<CircleDot size={16} className="text-success" />}
+          label="เปิดใช้งาน"
+          description="เงื่อนไขแผนกนี้เปิดใช้งาน"
+          value={isActive}
+          onChange={setIsActive}
+        />
+
+        {/* Flow preview */}
+        <div className="p-4 bg-primary-50/50 rounded-lg border border-primary/10">
+          <p className="text-xs font-medium text-text-muted mb-2">สรุป Flow</p>
+          <div className="flex flex-wrap items-center gap-2 text-xs">
+            <span className="px-2 py-1 bg-white rounded border border-border">ผู้มาติดต่อ</span>
+            <span className="text-text-muted">→</span>
+            {requirePersonName && (
+              <>
+                <span className="px-2 py-1 bg-primary-50 text-primary rounded border border-primary/20">ระบุชื่อบุคคล</span>
+                <span className="text-text-muted">→</span>
+              </>
+            )}
+            {requireApproval ? (
+              <span className="px-2 py-1 bg-warning-light text-warning rounded border border-warning/20">รออนุมัติ</span>
+            ) : (
+              <span className="px-2 py-1 bg-success-light text-success rounded border border-success/20">QR ทันที</span>
+            )}
+            <span className="text-text-muted">→</span>
+            <span className="px-2 py-1 bg-success-light text-success rounded border border-success/20 font-medium">เข้าพื้นที่</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="sticky bottom-0 px-6 py-4 bg-white border-t border-border flex items-center justify-end gap-3">
+        <Button variant="outline" onClick={onClose}>ยกเลิก</Button>
+        <Button variant="primary" onClick={onClose}>
+          <Save size={16} className="mr-2" />
+          {isEditing ? "บันทึกการเปลี่ยนแปลง" : "เพิ่มแผนก"}
+        </Button>
+      </div>
+    </Drawer>
+  );
+}
+
+/* ── Toggle option helper ──────────────────────── */
+function ToggleOption({
+  icon,
+  label,
+  description,
+  value,
+  onChange,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  description: string;
+  value: boolean;
+  onChange: (v: boolean) => void;
+}) {
+  return (
+    <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+      <div className="flex items-center gap-3">
+        {icon}
+        <div>
+          <p className="text-sm font-medium text-text-primary">{label}</p>
+          <p className="text-xs text-text-muted">{description}</p>
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={() => onChange(!value)}
+        className={cn(
+          "w-11 h-6 rounded-full transition-colors relative shrink-0",
+          value ? "bg-primary" : "bg-gray-300"
+        )}
+      >
+        <span className={cn(
+          "absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform",
+          value ? "translate-x-5" : "translate-x-0.5"
+        )} />
+      </button>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════
+   CHANNEL CONFIG CARD (Kiosk / Counter display)
+   ══════════════════════════════════════════════════ */
+function ChannelConfigCard({
+  label,
+  icon,
+  config,
+}: {
+  label: string;
+  icon: React.ReactNode;
+  config: EntryChannelConfig;
+}) {
+  const docs = identityDocumentTypes.filter((d) =>
+    config.allowedDocuments.includes(d.id)
+  );
+
+  return (
+    <div className="bg-white rounded-xl border border-border p-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          {icon}
+          <span className="text-sm font-bold text-text-primary">{label}</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          {config.requirePhoto ? (
+            <span className="inline-flex items-center gap-1 text-[11px] text-success font-medium bg-success-light px-2 py-0.5 rounded-full">
+              <Camera size={11} /> ถ่ายภาพ
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1 text-[11px] text-text-muted font-medium bg-gray-100 px-2 py-0.5 rounded-full">
+              <CameraOff size={11} /> ไม่ถ่ายภาพ
+            </span>
+          )}
+        </div>
+      </div>
+      <div>
+        <p className="text-[11px] text-text-muted mb-1.5">เอกสารที่ยอมรับ ({docs.length})</p>
+        <div className="flex flex-wrap gap-1.5">
+          {docs.map((doc) => (
+            <span
+              key={doc.id}
+              className="inline-flex items-center gap-1 text-[11px] text-text-secondary bg-gray-50 border border-border px-2 py-1 rounded-lg"
+            >
+              <span>{doc.icon}</span>
+              {doc.name}
+            </span>
+          ))}
+          {docs.length === 0 && (
+            <span className="text-[11px] text-text-muted italic">ไม่ได้กำหนด</span>
+          )}
+        </div>
+      </div>
+    </div>
   );
 }
 

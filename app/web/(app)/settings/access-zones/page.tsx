@@ -5,6 +5,7 @@ import Topbar from "@/components/web/Topbar";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
+import { Drawer } from "@/components/ui/Drawer";
 import { cn } from "@/lib/utils";
 import {
   Settings,
@@ -27,6 +28,7 @@ import {
   Check,
   X,
   Eye,
+  Save,
 } from "lucide-react";
 import {
   buildings,
@@ -40,6 +42,7 @@ import {
   type AccessGroup,
   type AccessZone,
   type AccessZoneType,
+  type DepartmentAccessMapping,
 } from "@/lib/mock-data";
 
 /* ── helpers ───────────────────────────────────── */
@@ -71,6 +74,13 @@ export default function AccessZonesSettingsPage() {
   const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
   const [expandedBuilding, setExpandedBuilding] = useState<string | null>(null);
 
+  /* drawer state — Access Group */
+  const [groupDrawer, setGroupDrawer] = useState<{ mode: "add" | "edit"; group?: AccessGroup } | null>(null);
+  /* drawer state — Zone */
+  const [zoneDrawer, setZoneDrawer] = useState<{ mode: "add" | "edit"; zone?: AccessZone } | null>(null);
+  /* drawer state — Mapping */
+  const [mappingDrawer, setMappingDrawer] = useState<{ mapping?: DepartmentAccessMapping } | null>(null);
+
   const toggleGroup = (id: string) => setExpandedGroup((p) => (p === id ? null : id));
   const toggleBuilding = (id: string) => setExpandedBuilding((p) => (p === id ? null : id));
 
@@ -94,7 +104,7 @@ export default function AccessZonesSettingsPage() {
               กำหนดอาคาร ชั้น โซน และกลุ่มสิทธิ์เข้าพื้นที่ สำหรับส่งไปสร้าง QR Code ในระบบ Hikvision Access Control
             </p>
           </div>
-          <Button variant="secondary" className="h-10 shadow-sm">
+          <Button variant="secondary" className="h-10 shadow-sm" onClick={() => setGroupDrawer({ mode: "add" })}>
             <Plus size={18} className="mr-2" />
             เพิ่ม Access Group
           </Button>
@@ -155,6 +165,7 @@ export default function AccessZonesSettingsPage() {
                 group={group}
                 isExpanded={expandedGroup === group.id}
                 onToggle={() => toggleGroup(group.id)}
+                onEdit={() => setGroupDrawer({ mode: "edit", group })}
               />
             ))}
           </div>
@@ -168,12 +179,19 @@ export default function AccessZonesSettingsPage() {
                 building={bld}
                 isExpanded={expandedBuilding === bld.id}
                 onToggle={() => toggleBuilding(bld.id)}
+                onEditZone={(zone) => setZoneDrawer({ mode: "edit", zone })}
+                onAddZone={() => setZoneDrawer({ mode: "add" })}
               />
             ))}
           </div>
         )}
 
-        {activeTab === "mapping" && <DepartmentMappingTable />}
+        {activeTab === "mapping" && <DepartmentMappingTable onEditMapping={(m) => setMappingDrawer({ mapping: m })} />}
+
+        {/* ─── Drawers ─────────────────────────── */}
+        <AccessGroupDrawer data={groupDrawer} onClose={() => setGroupDrawer(null)} />
+        <ZoneDrawer data={zoneDrawer} onClose={() => setZoneDrawer(null)} />
+        <MappingDrawer data={mappingDrawer} onClose={() => setMappingDrawer(null)} />
       </main>
     </>
   );
@@ -186,10 +204,12 @@ function AccessGroupCard({
   group,
   isExpanded,
   onToggle,
+  onEdit,
 }: {
   group: AccessGroup;
   isExpanded: boolean;
   onToggle: () => void;
+  onEdit: () => void;
 }) {
   const zones = accessZones.filter((z) => group.zoneIds.includes(z.id));
   const mappedDepts = departmentAccessMappings.filter(
@@ -230,7 +250,7 @@ function AccessGroupCard({
 
           {/* actions */}
           <div className="flex items-center gap-1 shrink-0" onClick={(e) => e.stopPropagation()}>
-            <button className="p-2 hover:bg-primary-50 rounded-lg transition-colors text-text-muted hover:text-primary">
+            <button className="p-2 hover:bg-primary-50 rounded-lg transition-colors text-text-muted hover:text-primary" onClick={onEdit}>
               <Pencil size={16} />
             </button>
             <button className="p-2 hover:bg-red-50 rounded-lg transition-colors text-text-muted hover:text-error">
@@ -367,10 +387,14 @@ function BuildingCard({
   building,
   isExpanded,
   onToggle,
+  onEditZone,
+  onAddZone,
 }: {
   building: Building;
   isExpanded: boolean;
   onToggle: () => void;
+  onEditZone: (zone: AccessZone) => void;
+  onAddZone: () => void;
 }) {
   const bldFloors = floors.filter((f) => f.buildingId === building.id);
   const bldZones = accessZones.filter((z) => z.buildingId === building.id);
@@ -473,7 +497,7 @@ function BuildingCard({
                               </td>
                               <td className="px-5 py-2.5 text-right">
                                 <div className="flex items-center justify-end gap-1">
-                                  <button className="p-1.5 hover:bg-primary-50 rounded-md transition-colors text-text-muted hover:text-primary">
+                                  <button className="p-1.5 hover:bg-primary-50 rounded-md transition-colors text-text-muted hover:text-primary" onClick={() => onEditZone(zone)}>
                                     <Pencil size={14} />
                                   </button>
                                   <button className="p-1.5 hover:bg-red-50 rounded-md transition-colors text-text-muted hover:text-error">
@@ -500,7 +524,7 @@ function BuildingCard({
 /* ══════════════════════════════════════════════════
    DEPARTMENT MAPPING TABLE (Mapping tab)
    ══════════════════════════════════════════════════ */
-function DepartmentMappingTable() {
+function DepartmentMappingTable({ onEditMapping }: { onEditMapping: (m: DepartmentAccessMapping) => void }) {
   return (
     <Card className="border-none shadow-sm">
       <div className="px-5 py-3 bg-gray-50 border-b border-border flex items-center justify-between">
@@ -573,7 +597,7 @@ function DepartmentMappingTable() {
                       <button className="p-1.5 hover:bg-primary-50 rounded-md transition-colors text-text-muted hover:text-primary">
                         <Eye size={14} />
                       </button>
-                      <button className="p-1.5 hover:bg-primary-50 rounded-md transition-colors text-text-muted hover:text-primary">
+                      <button className="p-1.5 hover:bg-primary-50 rounded-md transition-colors text-text-muted hover:text-primary" onClick={() => onEditMapping(mapping)}>
                         <Pencil size={14} />
                       </button>
                     </div>
@@ -619,5 +643,403 @@ function SummaryCard({
         </div>
       </CardContent>
     </Card>
+  );
+}
+
+/* ══════════════════════════════════════════════════
+   ACCESS GROUP DRAWER (Add / Edit)
+   ══════════════════════════════════════════════════ */
+const dayLabelsLong = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"];
+const colorOptions = ["#6B7280", "#6A0DAD", "#2563EB", "#059669", "#D97706", "#DC2626", "#7C3AED", "#0891B2", "#BE185D"];
+
+function AccessGroupDrawer({
+  data,
+  onClose,
+}: {
+  data: { mode: "add" | "edit"; group?: AccessGroup } | null;
+  onClose: () => void;
+}) {
+  const group = data?.group;
+  const isEdit = data?.mode === "edit";
+
+  const [name, setName] = useState(group?.name ?? "");
+  const [nameEn, setNameEn] = useState(group?.nameEn ?? "");
+  const [description, setDescription] = useState(group?.description ?? "");
+  const [color, setColor] = useState(group?.color ?? "#6A0DAD");
+  const [hikvisionGroupId, setHikvisionGroupId] = useState(group?.hikvisionGroupId ?? "");
+  const [qrCodePrefix, setQrCodePrefix] = useState(group?.qrCodePrefix ?? "VMS-");
+  const [validityMinutes, setValidityMinutes] = useState(group?.validityMinutes ?? 60);
+  const [selectedZoneIds, setSelectedZoneIds] = useState<string[]>(group?.zoneIds ?? []);
+  const [scheduleDays, setScheduleDays] = useState<number[]>(group?.schedule.daysOfWeek ?? [1, 2, 3, 4, 5]);
+  const [startTime, setStartTime] = useState(group?.schedule.startTime ?? "08:00");
+  const [endTime, setEndTime] = useState(group?.schedule.endTime ?? "17:00");
+  const [isActive, setIsActive] = useState(group?.isActive ?? true);
+
+  useState(() => {
+    if (group) {
+      setName(group.name); setNameEn(group.nameEn); setDescription(group.description);
+      setColor(group.color); setHikvisionGroupId(group.hikvisionGroupId);
+      setQrCodePrefix(group.qrCodePrefix); setValidityMinutes(group.validityMinutes);
+      setSelectedZoneIds(group.zoneIds); setScheduleDays(group.schedule.daysOfWeek);
+      setStartTime(group.schedule.startTime); setEndTime(group.schedule.endTime);
+      setIsActive(group.isActive);
+    }
+  });
+
+  const toggleDay = (d: number) =>
+    setScheduleDays((prev) => prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d].sort());
+
+  const toggleZone = (zid: string) =>
+    setSelectedZoneIds((prev) => prev.includes(zid) ? prev.filter((x) => x !== zid) : [...prev, zid]);
+
+  return (
+    <Drawer
+      open={data !== null}
+      onClose={onClose}
+      title={isEdit ? "แก้ไข Access Group" : "เพิ่ม Access Group ใหม่"}
+      subtitle={isEdit ? group?.name : "กำหนดกลุ่มสิทธิ์เข้าพื้นที่ใหม่"}
+      width="w-[580px]"
+    >
+      <div className="p-6 space-y-5">
+        {/* Color */}
+        <div>
+          <label className="block text-sm font-medium text-text-primary mb-2">สี</label>
+          <div className="flex gap-2">
+            {colorOptions.map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => setColor(c)}
+                className={cn("w-8 h-8 rounded-full border-2 transition-all", color === c ? "border-text-primary scale-110 shadow" : "border-transparent")}
+                style={{ backgroundColor: c }}
+              />
+            ))}
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-text-primary mb-1">ชื่อ (ภาษาไทย) <span className="text-error">*</span></label>
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="ผู้เยี่ยมชมทั่วไป" className="w-full h-10 px-3 text-sm rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-primary/20" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-text-primary mb-1">ชื่อ (English)</label>
+            <input value={nameEn} onChange={(e) => setNameEn(e.target.value)} placeholder="General Visitor" className="w-full h-10 px-3 text-sm rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-primary/20" />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-text-primary mb-1">รายละเอียด</label>
+          <textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={2} className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 resize-none" />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-text-primary mb-1">Hikvision Group ID</label>
+            <input value={hikvisionGroupId} onChange={(e) => setHikvisionGroupId(e.target.value)} placeholder="HIK-GRP-xxx" className="w-full h-10 px-3 text-sm font-mono rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-primary/20" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-text-primary mb-1">QR Code Prefix</label>
+            <input value={qrCodePrefix} onChange={(e) => setQrCodePrefix(e.target.value)} placeholder="VMS-GEN" className="w-full h-10 px-3 text-sm font-mono rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-primary/20" />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-text-primary mb-1">QR หมดอายุ (นาที)</label>
+          <input type="number" min={1} value={validityMinutes} onChange={(e) => setValidityMinutes(Number(e.target.value))} className="w-28 h-10 px-3 text-sm rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-primary/20" />
+        </div>
+
+        {/* Schedule */}
+        <div>
+          <label className="block text-sm font-medium text-text-primary mb-2">ตารางเวลาอนุญาต</label>
+          <div className="flex gap-1 mb-3">
+            {dayLabelsLong.map((d, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => toggleDay(i)}
+                className={cn(
+                  "flex-1 py-2 text-[11px] font-bold rounded-lg transition-all",
+                  scheduleDays.includes(i) ? "bg-primary text-white" : "bg-gray-100 text-gray-400 hover:bg-gray-200"
+                )}
+              >
+                {dayLabels[i]}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center gap-3">
+            <input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} className="h-10 px-3 text-sm rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-primary/20" />
+            <span className="text-text-muted">ถึง</span>
+            <input type="time" value={endTime} onChange={(e) => setEndTime(e.target.value)} className="h-10 px-3 text-sm rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-primary/20" />
+          </div>
+        </div>
+
+        {/* Zone selection */}
+        <div>
+          <label className="block text-sm font-medium text-text-primary mb-2">โซนที่เข้าถึงได้ ({selectedZoneIds.length} โซน)</label>
+          <div className="max-h-48 overflow-y-auto border border-border rounded-lg divide-y divide-border">
+            {accessZones.map((z) => {
+              const floor = floors.find((f) => f.id === z.floorId);
+              return (
+                <label key={z.id} className="flex items-center gap-3 px-3 py-2 hover:bg-gray-50 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={selectedZoneIds.includes(z.id)}
+                    onChange={() => toggleZone(z.id)}
+                    className="w-4 h-4 rounded border-border text-primary focus:ring-primary/20"
+                  />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-text-primary truncate">{z.name}</p>
+                    <p className="text-[11px] text-text-muted">{floor?.name.split("—")[0].trim()}</p>
+                  </div>
+                  <ZoneTypeBadge type={z.type} />
+                </label>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Active */}
+        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+          <div>
+            <p className="text-sm font-medium text-text-primary">เปิดใช้งาน</p>
+            <p className="text-xs text-text-muted">เปิดใช้ Access Group นี้</p>
+          </div>
+          <button type="button" onClick={() => setIsActive(!isActive)} className={cn("w-12 h-7 rounded-full transition-colors relative", isActive ? "bg-primary" : "bg-gray-300")}>
+            <span className={cn("absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform", isActive ? "translate-x-5" : "translate-x-0.5")} />
+          </button>
+        </div>
+      </div>
+
+      <div className="sticky bottom-0 px-6 py-4 bg-white border-t border-border flex items-center justify-end gap-3">
+        <Button variant="outline" onClick={onClose}>ยกเลิก</Button>
+        <Button variant="primary" onClick={onClose}>
+          <Save size={16} className="mr-2" />
+          {isEdit ? "บันทึกการเปลี่ยนแปลง" : "เพิ่ม Access Group"}
+        </Button>
+      </div>
+    </Drawer>
+  );
+}
+
+/* ══════════════════════════════════════════════════
+   ZONE DRAWER (Add / Edit)
+   ══════════════════════════════════════════════════ */
+const zoneTypes: AccessZoneType[] = ["office", "meeting-room", "lobby", "parking", "common", "restricted", "service"];
+
+function ZoneDrawer({
+  data,
+  onClose,
+}: {
+  data: { mode: "add" | "edit"; zone?: AccessZone } | null;
+  onClose: () => void;
+}) {
+  const zone = data?.zone;
+  const isEdit = data?.mode === "edit";
+
+  const [name, setName] = useState(zone?.name ?? "");
+  const [nameEn, setNameEn] = useState(zone?.nameEn ?? "");
+  const [floorId, setFloorId] = useState(zone?.floorId ?? "");
+  const [buildingId, setBuildingId] = useState(zone?.buildingId ?? buildings[0]?.id ?? "");
+  const [type, setType] = useState<AccessZoneType>(zone?.type ?? "office");
+  const [hikvisionDoorId, setHikvisionDoorId] = useState(zone?.hikvisionDoorId ?? "");
+  const [isActive, setIsActive] = useState(zone?.isActive ?? true);
+
+  useState(() => {
+    if (zone) {
+      setName(zone.name); setNameEn(zone.nameEn); setFloorId(zone.floorId);
+      setBuildingId(zone.buildingId); setType(zone.type);
+      setHikvisionDoorId(zone.hikvisionDoorId); setIsActive(zone.isActive);
+    }
+  });
+
+  const bldFloors = floors.filter((f) => f.buildingId === buildingId);
+
+  return (
+    <Drawer
+      open={data !== null}
+      onClose={onClose}
+      title={isEdit ? "แก้ไขโซน" : "เพิ่มโซนใหม่"}
+      subtitle={isEdit ? zone?.name : "กำหนดโซนเข้าพื้นที่ใหม่"}
+    >
+      <div className="p-6 space-y-5">
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-text-primary mb-1">ชื่อโซน (ไทย) <span className="text-error">*</span></label>
+            <input value={name} onChange={(e) => setName(e.target.value)} placeholder="ล็อบบี้ ชั้น 1" className="w-full h-10 px-3 text-sm rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-primary/20" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-text-primary mb-1">ชื่อโซน (EN)</label>
+            <input value={nameEn} onChange={(e) => setNameEn(e.target.value)} placeholder="Lobby 1F" className="w-full h-10 px-3 text-sm rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-primary/20" />
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-text-primary mb-1">อาคาร</label>
+          <select value={buildingId} onChange={(e) => { setBuildingId(e.target.value); setFloorId(""); }} className="w-full h-10 px-3 text-sm rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-primary/20">
+            {buildings.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-text-primary mb-1">ชั้น <span className="text-error">*</span></label>
+          <select value={floorId} onChange={(e) => setFloorId(e.target.value)} className="w-full h-10 px-3 text-sm rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-primary/20">
+            <option value="">— เลือกชั้น —</option>
+            {bldFloors.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
+          </select>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-text-primary mb-2">ประเภทโซน</label>
+          <div className="flex flex-wrap gap-2">
+            {zoneTypes.map((zt) => {
+              const cfg = accessZoneTypeLabels[zt];
+              return (
+                <button
+                  key={zt}
+                  type="button"
+                  onClick={() => setType(zt)}
+                  className={cn(
+                    "px-3 py-2 rounded-lg border-2 text-sm transition-all",
+                    type === zt ? "border-primary bg-primary-50 font-medium" : "border-border hover:border-primary/30"
+                  )}
+                >
+                  {cfg.icon} {cfg.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-text-primary mb-1">Hikvision Door ID <span className="text-error">*</span></label>
+          <input value={hikvisionDoorId} onChange={(e) => setHikvisionDoorId(e.target.value)} placeholder="HIK-DOOR-C1-01" className="w-full h-10 px-3 text-sm font-mono rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-primary/20" />
+        </div>
+
+        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+          <div>
+            <p className="text-sm font-medium text-text-primary">เปิดใช้งาน</p>
+            <p className="text-xs text-text-muted">เปิดใช้โซนนี้ในระบบ</p>
+          </div>
+          <button type="button" onClick={() => setIsActive(!isActive)} className={cn("w-12 h-7 rounded-full transition-colors relative", isActive ? "bg-primary" : "bg-gray-300")}>
+            <span className={cn("absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform", isActive ? "translate-x-5" : "translate-x-0.5")} />
+          </button>
+        </div>
+      </div>
+
+      <div className="sticky bottom-0 px-6 py-4 bg-white border-t border-border flex items-center justify-end gap-3">
+        <Button variant="outline" onClick={onClose}>ยกเลิก</Button>
+        <Button variant="primary" onClick={onClose}>
+          <Save size={16} className="mr-2" />
+          {isEdit ? "บันทึกการเปลี่ยนแปลง" : "เพิ่มโซน"}
+        </Button>
+      </div>
+    </Drawer>
+  );
+}
+
+/* ══════════════════════════════════════════════════
+   MAPPING DRAWER (Edit Department → Access Group)
+   ══════════════════════════════════════════════════ */
+function MappingDrawer({
+  data,
+  onClose,
+}: {
+  data: { mapping?: DepartmentAccessMapping } | null;
+  onClose: () => void;
+}) {
+  const mapping = data?.mapping;
+  const dept = departments.find((d) => d.id === mapping?.departmentId);
+
+  const [defaultGroupId, setDefaultGroupId] = useState(mapping?.defaultAccessGroupId ?? "");
+  const [additionalIds, setAdditionalIds] = useState<string[]>(mapping?.additionalGroupIds ?? []);
+
+  useState(() => {
+    if (mapping) {
+      setDefaultGroupId(mapping.defaultAccessGroupId);
+      setAdditionalIds(mapping.additionalGroupIds);
+    }
+  });
+
+  const toggleAdditional = (gid: string) =>
+    setAdditionalIds((prev) => prev.includes(gid) ? prev.filter((x) => x !== gid) : [...prev, gid]);
+
+  return (
+    <Drawer
+      open={data !== null}
+      onClose={onClose}
+      title="แก้ไข Mapping หน่วยงาน"
+      subtitle={dept ? `${dept.name} (${dept.nameEn})` : ""}
+    >
+      <div className="p-6 space-y-5">
+        {dept && (
+          <div className="p-4 bg-gray-50 rounded-lg">
+            <p className="text-sm font-bold text-text-primary">{dept.name}</p>
+            <p className="text-xs text-text-muted">{dept.nameEn} · {dept.floor} · {dept.building}</p>
+          </div>
+        )}
+
+        <div>
+          <label className="block text-sm font-medium text-text-primary mb-1">Access Group หลัก <span className="text-error">*</span></label>
+          <select value={defaultGroupId} onChange={(e) => setDefaultGroupId(e.target.value)} className="w-full h-10 px-3 text-sm rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-primary/20">
+            <option value="">— เลือก Access Group หลัก —</option>
+            {accessGroups.map((g) => (
+              <option key={g.id} value={g.id}>{g.name} ({g.nameEn})</option>
+            ))}
+          </select>
+          {defaultGroupId && (
+            <div className="mt-2 flex items-center gap-2">
+              <span className="w-3 h-3 rounded-full" style={{ backgroundColor: accessGroups.find((g) => g.id === defaultGroupId)?.color }} />
+              <span className="text-xs text-text-secondary">{accessGroups.find((g) => g.id === defaultGroupId)?.description}</span>
+            </div>
+          )}
+        </div>
+
+        <div>
+          <label className="block text-sm font-medium text-text-primary mb-2">Access Group เพิ่มเติม</label>
+          <div className="space-y-2">
+            {accessGroups.filter((g) => g.id !== defaultGroupId).map((g) => (
+              <label key={g.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors">
+                <input
+                  type="checkbox"
+                  checked={additionalIds.includes(g.id)}
+                  onChange={() => toggleAdditional(g.id)}
+                  className="w-4 h-4 rounded border-border text-primary focus:ring-primary/20"
+                />
+                <span className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: g.color }} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-text-primary truncate">{g.name}</p>
+                  <p className="text-[11px] text-text-muted">{g.nameEn} · {g.zoneIds.length} โซน</p>
+                </div>
+              </label>
+            ))}
+          </div>
+        </div>
+
+        {/* Summary */}
+        <div className="p-4 bg-primary-50/50 rounded-lg border border-primary/10">
+          <p className="text-xs font-medium text-text-muted mb-2">สรุป</p>
+          <p className="text-sm text-text-primary">
+            <strong>{dept?.name}</strong> ใช้{" "}
+            <strong>{1 + additionalIds.length}</strong> Access Group
+            {" "}(เข้าถึง{" "}
+            {new Set(
+              accessGroups
+                .filter((g) => g.id === defaultGroupId || additionalIds.includes(g.id))
+                .flatMap((g) => g.zoneIds)
+            ).size}{" "}
+            โซน)
+          </p>
+        </div>
+      </div>
+
+      <div className="sticky bottom-0 px-6 py-4 bg-white border-t border-border flex items-center justify-end gap-3">
+        <Button variant="outline" onClick={onClose}>ยกเลิก</Button>
+        <Button variant="primary" onClick={onClose}>
+          <Save size={16} className="mr-2" />
+          บันทึก Mapping
+        </Button>
+      </div>
+    </Drawer>
   );
 }

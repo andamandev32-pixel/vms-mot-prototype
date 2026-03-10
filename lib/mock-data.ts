@@ -821,6 +821,23 @@ export function lookupPersonnel(query: string): PersonnelRecord | null {
   ) ?? null;
 }
 
+// ===== IDENTITY DOCUMENT TYPES =====
+
+export interface IdentityDocumentType {
+  id: string;
+  name: string;
+  nameEn: string;
+  icon: string;
+}
+
+export const identityDocumentTypes: IdentityDocumentType[] = [
+  { id: "doc-national-id", name: "บัตรประจำตัวประชาชน", nameEn: "National ID Card", icon: "🪪" },
+  { id: "doc-passport", name: "หนังสือเดินทาง (Passport)", nameEn: "Passport", icon: "📕" },
+  { id: "doc-driver-license", name: "ใบขับขี่", nameEn: "Driver's License", icon: "🚗" },
+  { id: "doc-gov-card", name: "บัตรข้าราชการ / บัตรพนักงานรัฐ", nameEn: "Government Officer Card", icon: "🏛️" },
+  { id: "doc-thai-id-app", name: "AppThaiID", nameEn: "AppThaiID", icon: "📱" },
+];
+
 // ===== VISIT PURPOSE CONFIGURATION =====
 
 export interface DepartmentRule {
@@ -834,12 +851,19 @@ export interface DepartmentRule {
   isActive: boolean;
 }
 
+export interface EntryChannelConfig {
+  allowedDocuments: string[];     // IDs จาก identityDocumentTypes
+  requirePhoto: boolean;          // ต้องถ่ายภาพ
+}
+
 export interface VisitPurposeConfig {
   id: string;
   name: string;
   nameEn: string;
   icon: string;
   departmentRules: DepartmentRule[];
+  kioskConfig: EntryChannelConfig;
+  counterConfig: EntryChannelConfig;
   isActive: boolean;
   order: number;
 }
@@ -850,6 +874,8 @@ export const visitPurposeConfigs: VisitPurposeConfig[] = [
     name: "ติดต่อราชการ",
     nameEn: "Official Business",
     icon: "🏛️",
+    kioskConfig: { allowedDocuments: ["doc-national-id", "doc-passport", "doc-gov-card", "doc-thai-id-app"], requirePhoto: true },
+    counterConfig: { allowedDocuments: ["doc-national-id", "doc-passport", "doc-driver-license", "doc-gov-card", "doc-thai-id-app"], requirePhoto: true },
     departmentRules: [
       { departmentId: "dept-1", requirePersonName: true,  requireApproval: true,  approverGroupId: "apg-1",  offerWifi: true,  showOnLine: true,  showOnKiosk: true,  isActive: true },
       { departmentId: "dept-2", requirePersonName: true,  requireApproval: true,  approverGroupId: "apg-3",  offerWifi: true,  showOnLine: true,  showOnKiosk: true,  isActive: true },
@@ -867,6 +893,8 @@ export const visitPurposeConfigs: VisitPurposeConfig[] = [
     name: "ประชุม / สัมมนา",
     nameEn: "Meeting / Seminar",
     icon: "📋",
+    kioskConfig: { allowedDocuments: ["doc-national-id", "doc-passport", "doc-gov-card", "doc-thai-id-app"], requirePhoto: true },
+    counterConfig: { allowedDocuments: ["doc-national-id", "doc-passport", "doc-driver-license", "doc-gov-card", "doc-thai-id-app"], requirePhoto: false },
     departmentRules: [
       { departmentId: "dept-1", requirePersonName: true,  requireApproval: true,  approverGroupId: "apg-1", offerWifi: true,  showOnLine: true,  showOnKiosk: true,  isActive: true },
       { departmentId: "dept-3", requirePersonName: true,  requireApproval: true,  approverGroupId: "apg-5", offerWifi: true,  showOnLine: true,  showOnKiosk: false, isActive: true },
@@ -881,6 +909,8 @@ export const visitPurposeConfigs: VisitPurposeConfig[] = [
     name: "ส่งเอกสาร / พัสดุ",
     nameEn: "Document / Parcel Delivery",
     icon: "📄",
+    kioskConfig: { allowedDocuments: ["doc-national-id", "doc-driver-license"], requirePhoto: true },
+    counterConfig: { allowedDocuments: ["doc-national-id", "doc-driver-license", "doc-passport"], requirePhoto: false },
     departmentRules: [
       { departmentId: "dept-1", requirePersonName: false, requireApproval: false,                            offerWifi: false, showOnLine: true,  showOnKiosk: true,  isActive: true },
       { departmentId: "dept-2", requirePersonName: false, requireApproval: false,                            offerWifi: false, showOnLine: true,  showOnKiosk: true,  isActive: true },
@@ -894,6 +924,8 @@ export const visitPurposeConfigs: VisitPurposeConfig[] = [
     name: "ผู้รับเหมา / ซ่อมบำรุง",
     nameEn: "Contractor / Maintenance",
     icon: "🔧",
+    kioskConfig: { allowedDocuments: ["doc-national-id", "doc-driver-license"], requirePhoto: true },
+    counterConfig: { allowedDocuments: ["doc-national-id", "doc-passport", "doc-driver-license", "doc-gov-card"], requirePhoto: true },
     departmentRules: [
       { departmentId: "dept-2", requirePersonName: false, requireApproval: true,  approverGroupId: "apg-4", offerWifi: false, showOnLine: false, showOnKiosk: true,  isActive: true },
       { departmentId: "dept-6", requirePersonName: false, requireApproval: true,  approverGroupId: "apg-9", offerWifi: false, showOnLine: false, showOnKiosk: true,  isActive: true },
@@ -906,6 +938,8 @@ export const visitPurposeConfigs: VisitPurposeConfig[] = [
     name: "สมัครงาน / สัมภาษณ์",
     nameEn: "Job Application / Interview",
     icon: "💼",
+    kioskConfig: { allowedDocuments: ["doc-national-id", "doc-passport", "doc-thai-id-app"], requirePhoto: true },
+    counterConfig: { allowedDocuments: ["doc-national-id", "doc-passport", "doc-driver-license", "doc-gov-card", "doc-thai-id-app"], requirePhoto: true },
     departmentRules: [
       { departmentId: "dept-2", requirePersonName: true,  requireApproval: false, offerWifi: false, showOnLine: true,  showOnKiosk: true,  isActive: true },
     ],
@@ -917,6 +951,8 @@ export const visitPurposeConfigs: VisitPurposeConfig[] = [
     name: "เยี่ยมชม / ศึกษาดูงาน",
     nameEn: "Study Visit / Tour",
     icon: "🎓",
+    kioskConfig: { allowedDocuments: ["doc-national-id", "doc-passport", "doc-thai-id-app"], requirePhoto: true },
+    counterConfig: { allowedDocuments: ["doc-national-id", "doc-passport", "doc-driver-license", "doc-gov-card", "doc-thai-id-app"], requirePhoto: false },
     departmentRules: [
       { departmentId: "dept-4", requirePersonName: true,  requireApproval: true,  approverGroupId: "apg-7", offerWifi: true,  showOnLine: true,  showOnKiosk: false, isActive: true },
       { departmentId: "dept-5", requirePersonName: true,  requireApproval: true,  approverGroupId: "apg-8", offerWifi: true,  showOnLine: true,  showOnKiosk: false, isActive: true },
@@ -930,6 +966,8 @@ export const visitPurposeConfigs: VisitPurposeConfig[] = [
     name: "รับ-ส่งสินค้า",
     nameEn: "Delivery / Pickup",
     icon: "📦",
+    kioskConfig: { allowedDocuments: ["doc-national-id", "doc-driver-license"], requirePhoto: false },
+    counterConfig: { allowedDocuments: ["doc-national-id", "doc-driver-license"], requirePhoto: false },
     departmentRules: [
       { departmentId: "dept-1", requirePersonName: false, requireApproval: false, offerWifi: false, showOnLine: false, showOnKiosk: true,  isActive: true },
       { departmentId: "dept-2", requirePersonName: false, requireApproval: false, offerWifi: false, showOnLine: false, showOnKiosk: true,  isActive: true },
@@ -943,6 +981,8 @@ export const visitPurposeConfigs: VisitPurposeConfig[] = [
     name: "อื่นๆ",
     nameEn: "Other",
     icon: "🔖",
+    kioskConfig: { allowedDocuments: ["doc-national-id", "doc-passport"], requirePhoto: false },
+    counterConfig: { allowedDocuments: ["doc-national-id", "doc-passport", "doc-driver-license"], requirePhoto: false },
     departmentRules: [
       { departmentId: "dept-1", requirePersonName: false, requireApproval: true,  approverGroupId: "apg-2", offerWifi: false, showOnLine: true,  showOnKiosk: true,  isActive: true },
       { departmentId: "dept-2", requirePersonName: false, requireApproval: true,  approverGroupId: "apg-3", offerWifi: false, showOnLine: true,  showOnKiosk: true,  isActive: true },
@@ -1224,6 +1264,279 @@ export const accessZoneTypeLabels: Record<AccessZoneType, { label: string; label
   restricted: { label: "พื้นที่ควบคุม", labelEn: "Restricted", icon: "🔒" },
   service: { label: "พื้นที่บริการ / ซ่อมบำรุง", labelEn: "Service / Maintenance", icon: "🔧" },
 };
+
+// ===== SERVICE POINTS (Kiosk & Counter) =====
+
+export type ServicePointType = "kiosk" | "counter";
+export type ServicePointStatus = "online" | "offline" | "maintenance";
+
+export interface ServicePoint {
+  id: string;
+  name: string;
+  nameEn: string;
+  type: ServicePointType;
+  status: ServicePointStatus;
+  location: string;
+  locationEn: string;
+  building: string;
+  floor: string;
+  ipAddress: string;
+  macAddress: string;
+  serialNumber: string;
+  todayTransactions: number;
+  lastOnline?: string;
+  assignedStaffId?: string;
+  notes?: string;
+  allowedPurposeIds: string[];    // IDs จาก visitPurposeConfigs
+  allowedDocumentIds: string[];   // IDs จาก identityDocumentTypes
+  isActive: boolean;
+}
+
+export const servicePoints: ServicePoint[] = [
+  { id: "sp-1", name: "ตู้ Kiosk ล็อบบี้หลัก", nameEn: "Main Lobby Kiosk", type: "kiosk", status: "online", location: "ล็อบบี้ ชั้น 1 ประตูหลัก", locationEn: "Main Lobby, Gate 1", building: "ศูนย์ราชการ อาคาร C", floor: "ชั้น 1", ipAddress: "192.168.1.101", macAddress: "AA:BB:CC:DD:01:01", serialNumber: "KIOSK-2024-001", todayTransactions: 42, lastOnline: "2569-03-08T14:30:00", allowedPurposeIds: ["vpc-1", "vpc-2", "vpc-5"], allowedDocumentIds: ["doc-national-id", "doc-passport", "doc-gov-card", "doc-thai-id-app"], isActive: true },
+  { id: "sp-2", name: "ตู้ Kiosk ล็อบบี้ฝั่งตะวันออก", nameEn: "East Lobby Kiosk", type: "kiosk", status: "offline", location: "ล็อบบี้ ชั้น 1 ประตูฝั่งตะวันออก", locationEn: "East Lobby, Side Gate", building: "ศูนย์ราชการ อาคาร C", floor: "ชั้น 1", ipAddress: "192.168.1.102", macAddress: "AA:BB:CC:DD:01:02", serialNumber: "KIOSK-2024-002", todayTransactions: 28, lastOnline: "2569-03-08T14:28:00", allowedPurposeIds: ["vpc-1", "vpc-3", "vpc-4"], allowedDocumentIds: ["doc-national-id", "doc-driver-license", "doc-thai-id-app"], isActive: true },
+  { id: "sp-3", name: "จุดบริการ Counter 1", nameEn: "Service Counter 1", type: "counter", status: "online", location: "เคาน์เตอร์ รปภ. ประตูหลัก", locationEn: "Security Counter, Main Gate", building: "ศูนย์ราชการ อาคาร C", floor: "ชั้น 1", ipAddress: "192.168.1.201", macAddress: "AA:BB:CC:DD:02:01", serialNumber: "CTR-2024-001", todayTransactions: 67, lastOnline: "2569-03-08T14:30:00", assignedStaffId: "staff-6", allowedPurposeIds: ["vpc-1", "vpc-2", "vpc-3", "vpc-4", "vpc-5"], allowedDocumentIds: ["doc-national-id", "doc-passport", "doc-driver-license", "doc-gov-card", "doc-thai-id-app"], isActive: true },
+  { id: "sp-4", name: "จุดบริการ Counter 2", nameEn: "Service Counter 2", type: "counter", status: "online", location: "เคาน์เตอร์ รปภ. ประตูหลัก", locationEn: "Security Counter, Main Gate", building: "ศูนย์ราชการ อาคาร C", floor: "ชั้น 1", ipAddress: "192.168.1.202", macAddress: "AA:BB:CC:DD:02:02", serialNumber: "CTR-2024-002", todayTransactions: 53, lastOnline: "2569-03-08T14:29:00", assignedStaffId: "staff-7", allowedPurposeIds: ["vpc-1", "vpc-2", "vpc-3", "vpc-4", "vpc-5"], allowedDocumentIds: ["doc-national-id", "doc-passport", "doc-driver-license", "doc-gov-card", "doc-thai-id-app"], isActive: true },
+];
+
+// ===== DOCUMENT TYPES =====
+
+export type DocumentCategory = "identification" | "authorization" | "vehicle" | "other";
+
+export interface DocumentType {
+  id: string;
+  name: string;
+  nameEn: string;
+  category: DocumentCategory;
+  isRequired: boolean;
+  applicableVisitTypes: VisitType[];
+  requirePhoto: boolean;
+  description?: string;
+  isActive: boolean;
+  order: number;
+}
+
+export const documentTypes: DocumentType[] = [
+  { id: "doc-1", name: "บัตรประจำตัวประชาชน", nameEn: "Thai National ID Card", category: "identification", isRequired: true, applicableVisitTypes: ["official", "meeting", "document", "contractor", "delivery", "other"], requirePhoto: true, description: "บัตรประชาชนตัวจริง สำหรับบุคคลสัญชาติไทย", isActive: true, order: 1 },
+  { id: "doc-2", name: "หนังสือเดินทาง (Passport)", nameEn: "Passport", category: "identification", isRequired: true, applicableVisitTypes: ["official", "meeting", "document", "contractor", "delivery", "other"], requirePhoto: true, description: "สำหรับบุคคลต่างชาติ", isActive: true, order: 2 },
+  { id: "doc-3", name: "ใบขับขี่", nameEn: "Driver's License", category: "identification", isRequired: false, applicableVisitTypes: ["official", "meeting", "document", "contractor", "delivery", "other"], requirePhoto: true, description: "ใช้แทนบัตรประชาชนได้เฉพาะกรณี walk-in", isActive: true, order: 3 },
+  { id: "doc-4", name: "บัตรข้าราชการ / บัตรพนักงานรัฐ", nameEn: "Government Officer ID", category: "identification", isRequired: false, applicableVisitTypes: ["official", "meeting"], requirePhoto: true, description: "บัตรประจำตัวข้าราชการ", isActive: true, order: 4 },
+];
+
+export const documentCategoryLabels: Record<DocumentCategory, { label: string; labelEn: string; icon: string }> = {
+  identification: { label: "เอกสารระบุตัวตน", labelEn: "Identification", icon: "🪪" },
+  authorization: { label: "เอกสารมอบอำนาจ / รับรอง", labelEn: "Authorization", icon: "📜" },
+  vehicle: { label: "เอกสารยานพาหนะ", labelEn: "Vehicle", icon: "🚗" },
+  other: { label: "เอกสารอื่นๆ", labelEn: "Other", icon: "📎" },
+};
+
+// ===== BUSINESS HOURS =====
+
+export interface BusinessHoursRule {
+  id: string;
+  name: string;
+  nameEn: string;
+  type: "regular" | "special" | "holiday";
+  daysOfWeek?: number[];          // 0=Sun ... 6=Sat (for regular)
+  specificDate?: string;          // YYYY-MM-DD (for special/holiday)
+  openTime: string;               // HH:mm
+  closeTime: string;              // HH:mm
+  allowWalkin: boolean;
+  allowKiosk: boolean;
+  notes?: string;
+  isActive: boolean;
+}
+
+export const businessHoursRules: BusinessHoursRule[] = [
+  { id: "bh-1", name: "วันทำการปกติ (จ-ศ)", nameEn: "Regular Weekdays (Mon-Fri)", type: "regular", daysOfWeek: [1, 2, 3, 4, 5], openTime: "08:30", closeTime: "16:30", allowWalkin: true, allowKiosk: true, isActive: true },
+  { id: "bh-2", name: "วันเสาร์ (เปิดครึ่งวัน)", nameEn: "Saturday (Half Day)", type: "regular", daysOfWeek: [6], openTime: "09:00", closeTime: "12:00", allowWalkin: true, allowKiosk: true, notes: "เปิดเฉพาะบางแผนก", isActive: true },
+  { id: "bh-3", name: "วันอาทิตย์ (ปิด)", nameEn: "Sunday (Closed)", type: "regular", daysOfWeek: [0], openTime: "00:00", closeTime: "00:00", allowWalkin: false, allowKiosk: false, isActive: true },
+  { id: "bh-4", name: "วันจักรี", nameEn: "Chakri Memorial Day", type: "holiday", specificDate: "2569-04-06", openTime: "00:00", closeTime: "00:00", allowWalkin: false, allowKiosk: false, notes: "วันหยุดราชการ", isActive: true },
+  { id: "bh-5", name: "สงกรานต์", nameEn: "Songkran Festival", type: "holiday", specificDate: "2569-04-13", openTime: "00:00", closeTime: "00:00", allowWalkin: false, allowKiosk: false, notes: "วันหยุดสงกรานต์ 13-15 เม.ย.", isActive: true },
+  { id: "bh-6", name: "งานสัมมนาพิเศษ", nameEn: "Special Seminar Event", type: "special", specificDate: "2569-03-20", openTime: "07:00", closeTime: "20:00", allowWalkin: true, allowKiosk: true, notes: "เปิดนอกเวลาสำหรับสัมมนาประจำปี", isActive: true },
+];
+
+// ===== NOTIFICATION TEMPLATES =====
+
+export type NotificationChannel = "line" | "email" | "sms";
+export type NotificationTrigger = "booking-confirmed" | "booking-approved" | "booking-rejected" | "reminder-1day" | "reminder-1hour" | "checkin-welcome" | "checkout-thankyou" | "overstay-alert" | "wifi-credentials";
+
+export interface NotificationTemplate {
+  id: string;
+  name: string;
+  nameEn: string;
+  trigger: NotificationTrigger;
+  channel: NotificationChannel;
+  subject?: string;
+  bodyTh: string;
+  bodyEn: string;
+  variables: string[];
+  isActive: boolean;
+}
+
+export const notificationTriggerLabels: Record<NotificationTrigger, { label: string; labelEn: string }> = {
+  "booking-confirmed": { label: "ยืนยันการจอง", labelEn: "Booking Confirmed" },
+  "booking-approved": { label: "อนุมัติแล้ว", labelEn: "Booking Approved" },
+  "booking-rejected": { label: "ไม่อนุมัติ", labelEn: "Booking Rejected" },
+  "reminder-1day": { label: "เตือนล่วงหน้า 1 วัน", labelEn: "1-Day Reminder" },
+  "reminder-1hour": { label: "เตือนล่วงหน้า 1 ชม.", labelEn: "1-Hour Reminder" },
+  "checkin-welcome": { label: "ต้อนรับเข้าพื้นที่", labelEn: "Check-in Welcome" },
+  "checkout-thankyou": { label: "ขอบคุณเมื่อออก", labelEn: "Check-out Thank You" },
+  "overstay-alert": { label: "แจ้งเตือนเกินเวลา", labelEn: "Overstay Alert" },
+  "wifi-credentials": { label: "ข้อมูล WiFi", labelEn: "WiFi Credentials" },
+};
+
+export const notificationTemplates: NotificationTemplate[] = [
+  { id: "nt-1", name: "แจ้งยืนยันจอง (LINE)", nameEn: "Booking Confirmed (LINE)", trigger: "booking-confirmed", channel: "line", bodyTh: "สวัสดีค่ะ คุณ{{visitorName}} 🎉\nการจองเลขที่ {{bookingCode}} ได้รับการยืนยันแล้ว\n📅 วันที่: {{date}}\n⏰ เวลา: {{time}}\n📍 สถานที่: {{location}}\n\nกรุณาแสดง QR Code ณ จุดลงทะเบียน", bodyEn: "Hello {{visitorName}} 🎉\nBooking {{bookingCode}} confirmed.\n📅 Date: {{date}}\n⏰ Time: {{time}}\n📍 Location: {{location}}\n\nPlease show your QR Code at the registration point.", variables: ["visitorName", "bookingCode", "date", "time", "location"], isActive: true },
+  { id: "nt-2", name: "แจ้งอนุมัติ (LINE)", nameEn: "Approved (LINE)", trigger: "booking-approved", channel: "line", bodyTh: "✅ คำขอเข้าพื้นที่ {{bookingCode}} ได้รับการอนุมัติแล้ว\nผู้อนุมัติ: {{approverName}}\nกรุณาตรวจสอบรายละเอียดใน LINE Rich Menu", bodyEn: "✅ Visit request {{bookingCode}} has been approved.\nApproved by: {{approverName}}", variables: ["bookingCode", "approverName"], isActive: true },
+  { id: "nt-3", name: "แจ้งไม่อนุมัติ (LINE)", nameEn: "Rejected (LINE)", trigger: "booking-rejected", channel: "line", bodyTh: "❌ คำขอเข้าพื้นที่ {{bookingCode}} ไม่ได้รับการอนุมัติ\nเหตุผล: {{reason}}\nหากมีข้อสงสัย กรุณาติดต่อ {{contactNumber}}", bodyEn: "❌ Visit request {{bookingCode}} was rejected.\nReason: {{reason}}", variables: ["bookingCode", "reason", "contactNumber"], isActive: true },
+  { id: "nt-4", name: "เตือนล่วงหน้า 1 วัน (LINE)", nameEn: "1-Day Reminder (LINE)", trigger: "reminder-1day", channel: "line", bodyTh: "📢 เตือน: พรุ่งนี้คุณมีนัดหมาย {{bookingCode}}\n📅 {{date}} เวลา {{time}}\n📍 {{location}}\nอย่าลืมเตรียมบัตรประชาชน!", bodyEn: "📢 Reminder: Tomorrow you have appointment {{bookingCode}}\n📅 {{date}} at {{time}}\n📍 {{location}}", variables: ["bookingCode", "date", "time", "location"], isActive: true },
+  { id: "nt-5", name: "ต้อนรับ Check-in (LINE)", nameEn: "Welcome Check-in (LINE)", trigger: "checkin-welcome", channel: "line", bodyTh: "🏢 ยินดีต้อนรับคุณ {{visitorName}}\nเข้าพื้นที่สำเร็จเมื่อ {{checkinTime}}\n📍 พื้นที่: {{zone}}\n⏰ กรุณาออกก่อน {{checkoutTime}}", bodyEn: "🏢 Welcome {{visitorName}}\nChecked in at {{checkinTime}}\n📍 Zone: {{zone}}", variables: ["visitorName", "checkinTime", "zone", "checkoutTime"], isActive: true },
+  { id: "nt-6", name: "แจ้งยืนยัน (Email)", nameEn: "Booking Confirmed (Email)", trigger: "booking-confirmed", channel: "email", subject: "ยืนยันการจองเข้าพื้นที่ — {{bookingCode}}", bodyTh: "เรียน คุณ{{visitorName}}\n\nการจองเข้าพื้นที่เลขที่ {{bookingCode}} ได้รับการยืนยันเรียบร้อย\nรายละเอียด:\n- วันที่: {{date}}\n- เวลา: {{time}}\n- สถานที่: {{location}}\n- ผู้ติดต่อ: {{hostName}}\n\nกรุณาเตรียมบัตรประชาชนและแสดง QR Code ณ จุดลงทะเบียน", bodyEn: "Dear {{visitorName}},\n\nYour visit {{bookingCode}} has been confirmed.\nDetails:\n- Date: {{date}}\n- Time: {{time}}\n- Location: {{location}}\n- Host: {{hostName}}", variables: ["visitorName", "bookingCode", "date", "time", "location", "hostName"], isActive: true },
+  { id: "nt-7", name: "แจ้งเตือนเกินเวลา (LINE)", nameEn: "Overstay Alert (LINE)", trigger: "overstay-alert", channel: "line", bodyTh: "⚠️ แจ้งเตือน: คุณ {{visitorName}} อยู่เกินเวลาที่กำหนด\nเวลาที่ควรออก: {{checkoutTime}}\nกรุณาดำเนินการออกจากพื้นที่โดยเร็ว", bodyEn: "⚠️ Alert: {{visitorName}} has exceeded allowed time.\nExpected checkout: {{checkoutTime}}", variables: ["visitorName", "checkoutTime"], isActive: true },
+  { id: "nt-8", name: "ข้อมูล WiFi (LINE)", nameEn: "WiFi Credentials (LINE)", trigger: "wifi-credentials", channel: "line", bodyTh: "📶 ข้อมูล WiFi สำหรับผู้เยี่ยม\nSSID: {{wifiSSID}}\nUsername: {{wifiUsername}}\nPassword: {{wifiPassword}}\nใช้ได้ถึง: {{expiry}}", bodyEn: "📶 Guest WiFi Credentials\nSSID: {{wifiSSID}}\nUsername: {{wifiUsername}}\nPassword: {{wifiPassword}}\nValid until: {{expiry}}", variables: ["wifiSSID", "wifiUsername", "wifiPassword", "expiry"], isActive: true },
+];
+
+// ===== VISIT SLIP TEMPLATES =====
+
+export type SlipSize = "a4" | "a5" | "thermal-80mm" | "thermal-58mm" | "badge-card";
+
+export interface SlipField {
+  key: string;
+  label: string;
+  labelEn: string;
+  enabled: boolean;
+}
+
+export interface VisitSlipTemplate {
+  id: string;
+  name: string;
+  nameEn: string;
+  description: string;
+  size: SlipSize;
+  orientation: "portrait" | "landscape";
+  showLogo: boolean;
+  showQrCode: boolean;
+  showPhoto: boolean;
+  showBarcode: boolean;
+  fields: SlipField[];
+  headerText: string;
+  footerText: string;
+  isDefault: boolean;
+  isActive: boolean;
+  previewColor: string;
+}
+
+export const slipSizeLabels: Record<SlipSize, { label: string; labelEn: string; dimensions: string }> = {
+  a4: { label: "A4", labelEn: "A4", dimensions: "210 × 297 mm" },
+  a5: { label: "A5", labelEn: "A5", dimensions: "148 × 210 mm" },
+  "thermal-80mm": { label: "ใบเสร็จ 80mm", labelEn: "Thermal 80mm", dimensions: "80mm roll" },
+  "thermal-58mm": { label: "ใบเสร็จ 58mm", labelEn: "Thermal 58mm", dimensions: "58mm roll" },
+  "badge-card": { label: "บัตรติดหน้าอก", labelEn: "Badge Card", dimensions: "86 × 54 mm (CR80)" },
+};
+
+export const defaultSlipFields: SlipField[] = [
+  { key: "visitorName", label: "ชื่อ-นามสกุล ผู้เยี่ยม", labelEn: "Visitor Name", enabled: true },
+  { key: "visitorCompany", label: "บริษัท / หน่วยงาน", labelEn: "Company", enabled: true },
+  { key: "idNumber", label: "เลขบัตรประชาชน / Passport", labelEn: "ID Number", enabled: true },
+  { key: "hostName", label: "ผู้ติดต่อ / ผู้รับ", labelEn: "Host Name", enabled: true },
+  { key: "department", label: "แผนก / หน่วยงานที่พบ", labelEn: "Department", enabled: true },
+  { key: "visitPurpose", label: "วัตถุประสงค์", labelEn: "Visit Purpose", enabled: true },
+  { key: "visitDate", label: "วันที่เข้าพื้นที่", labelEn: "Visit Date", enabled: true },
+  { key: "timeIn", label: "เวลาเข้า", labelEn: "Time In", enabled: true },
+  { key: "timeOut", label: "เวลาที่ต้องออก", labelEn: "Time Out", enabled: true },
+  { key: "accessZone", label: "โซนที่อนุญาต", labelEn: "Allowed Zone", enabled: true },
+  { key: "companions", label: "จำนวนผู้ติดตาม", labelEn: "Companions", enabled: false },
+  { key: "vehiclePlate", label: "ทะเบียนรถ", labelEn: "Vehicle Plate", enabled: false },
+  { key: "bookingCode", label: "รหัสนัดหมาย", labelEn: "Booking Code", enabled: true },
+  { key: "wifiInfo", label: "ข้อมูล WiFi", labelEn: "WiFi Info", enabled: false },
+];
+
+export const visitSlipTemplates: VisitSlipTemplate[] = [
+  {
+    id: "slip-1",
+    name: "แบบมาตรฐาน (A5)",
+    nameEn: "Standard (A5)",
+    description: "แบบฟอร์มมาตรฐาน พิมพ์ A5 สำหรับผู้เยี่ยมทั่วไป",
+    size: "a5",
+    orientation: "portrait",
+    showLogo: true, showQrCode: true, showPhoto: false, showBarcode: true,
+    fields: defaultSlipFields.map(f => ({ ...f })),
+    headerText: "บัตรผู้เยี่ยม / Visitor Pass — กระทรวงการท่องเที่ยวและกีฬา",
+    footerText: "กรุณาคืนบัตรเมื่อออกจากพื้นที่ / Please return this pass upon exit",
+    isDefault: true, isActive: true, previewColor: "#6A0DAD",
+  },
+  {
+    id: "slip-2",
+    name: "แบบ Badge Card",
+    nameEn: "Badge Card",
+    description: "บัตรติดหน้าอก ขนาด CR80 สำหรับงานประชุม/สัมมนา",
+    size: "badge-card",
+    orientation: "landscape",
+    showLogo: true, showQrCode: true, showPhoto: true, showBarcode: false,
+    fields: defaultSlipFields.map(f => ({ ...f, enabled: ["visitorName", "visitorCompany", "visitPurpose", "visitDate", "accessZone", "bookingCode"].includes(f.key) })),
+    headerText: "บัตรผู้เยี่ยม / Visitor Badge",
+    footerText: "กรุณาติดบัตรตลอดเวลาที่อยู่ในพื้นที่",
+    isDefault: false, isActive: true, previewColor: "#D4AF37",
+  },
+  {
+    id: "slip-3",
+    name: "แบบ Thermal 80mm (ใบเสร็จ)",
+    nameEn: "Thermal 80mm Receipt",
+    description: "พิมพ์จากเครื่องพิมพ์ thermal สำหรับ Kiosk / Counter",
+    size: "thermal-80mm",
+    orientation: "portrait",
+    showLogo: true, showQrCode: true, showPhoto: false, showBarcode: true,
+    fields: defaultSlipFields.map(f => ({ ...f, enabled: ["visitorName", "visitPurpose", "visitDate", "timeIn", "timeOut", "accessZone", "bookingCode"].includes(f.key) })),
+    headerText: "=== บัตรผู้เยี่ยม ===",
+    footerText: "--- กรุณาคืนบัตรเมื่อออก ---",
+    isDefault: false, isActive: true, previewColor: "#333333",
+  },
+  {
+    id: "slip-4",
+    name: "แบบ VIP (A5 สีทอง)",
+    nameEn: "VIP Pass (A5 Gold)",
+    description: "สำหรับแขก VIP / ผู้บริหารระดับสูง มีธีมสีทอง",
+    size: "a5",
+    orientation: "portrait",
+    showLogo: true, showQrCode: true, showPhoto: true, showBarcode: false,
+    fields: defaultSlipFields.map(f => ({ ...f, enabled: ["visitorName", "visitorCompany", "hostName", "department", "visitPurpose", "visitDate", "timeIn", "accessZone", "bookingCode"].includes(f.key) })),
+    headerText: "VIP Visitor Pass — Ministry of Tourism and Sports",
+    footerText: "Welcome to the Ministry of Tourism and Sports",
+    isDefault: false, isActive: true, previewColor: "#D4AF37",
+  },
+  {
+    id: "slip-5",
+    name: "แบบผู้รับเหมา (A5)",
+    nameEn: "Contractor Pass (A5)",
+    description: "สำหรับผู้รับเหมา/ซ่อมบำรุง แสดงข้อมูลเครื่องมือ",
+    size: "a5",
+    orientation: "portrait",
+    showLogo: true, showQrCode: true, showPhoto: false, showBarcode: true,
+    fields: defaultSlipFields.map(f => ({ ...f, enabled: ["visitorName", "visitorCompany", "idNumber", "hostName", "department", "visitPurpose", "visitDate", "timeIn", "timeOut", "accessZone", "companions", "vehiclePlate", "bookingCode"].includes(f.key) })),
+    headerText: "บัตรผู้รับเหมา / Contractor Pass",
+    footerText: "ห้ามเข้าพื้นที่นอกเหนือจากที่ระบุ / Access restricted to designated zones only",
+    isDefault: false, isActive: true, previewColor: "#E65100",
+  },
+];
+
+// ===== VISIT PURPOSE → SLIP TEMPLATE MAPPING =====
+
+export interface PurposeSlipMapping {
+  visitPurposeId: string;
+  slipTemplateId: string | null;  // null = ใช้แบบ default ของระบบ
+}
+
+export const purposeSlipMappings: PurposeSlipMapping[] = [
+  { visitPurposeId: "vpc-1", slipTemplateId: null },           // ติดต่อราชการ → ใช้แบบมาตรฐาน
+  { visitPurposeId: "vpc-2", slipTemplateId: "slip-2" },       // ประชุม → Badge Card
+  { visitPurposeId: "vpc-3", slipTemplateId: "slip-3" },       // ส่งเอกสาร → Thermal
+  { visitPurposeId: "vpc-4", slipTemplateId: "slip-5" },       // ผู้รับเหมา → Contractor Pass
+  { visitPurposeId: "vpc-5", slipTemplateId: null },           // สมัครงาน → ใช้แบบมาตรฐาน
+  { visitPurposeId: "vpc-6", slipTemplateId: "slip-4" },       // เยี่ยมชม → VIP
+  { visitPurposeId: "vpc-7", slipTemplateId: "slip-3" },       // รับ-ส่งสินค้า → Thermal
+  { visitPurposeId: "vpc-8", slipTemplateId: null },           // อื่นๆ → ใช้แบบมาตรฐาน
+];
 
 // ===== APPROVER GROUPS =====
 
