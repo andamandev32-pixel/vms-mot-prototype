@@ -29,7 +29,7 @@ export default function Sidebar() {
     ];
 
     return (
-        <aside className="w-[260px] bg-gradient-to-b from-primary-dark to-[#004D40] flex flex-col fixed inset-y-0 left-0 z-50 text-white shadow-2xl">
+        <aside className="w-[260px] bg-primary-dark flex flex-col fixed inset-y-0 left-0 z-50 text-white shadow-2xl">
             {/* Brand Header */}
             <div className="h-20 flex items-center px-5 border-b border-white/10 bg-white/5 backdrop-blur-sm">
                 <VmsLogo size={42} showText darkMode />
