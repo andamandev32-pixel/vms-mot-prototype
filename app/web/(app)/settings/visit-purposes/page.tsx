@@ -3,7 +3,9 @@
 import { useState } from "react";
 import Topbar from "@/components/web/Topbar";
 import { DatabaseSchemaModal, DbSchemaButton } from "@/components/web/DatabaseSchemaModal";
+import { FlowchartModal, FlowRulesButton } from "@/components/web/FlowchartModal";
 import { getSchemaByPageId } from "@/lib/database-schema";
+import { getFlowByPageId } from "@/lib/flowchart-data";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -74,7 +76,9 @@ function BoolIcon({
    ══════════════════════════════════════════════════ */
 export default function VisitPurposeSettingsPage() {
   const [showSchema, setShowSchema] = useState(false);
+  const [showFlow, setShowFlow] = useState(false);
   const schema = getSchemaByPageId("visit-purposes")!;
+  const flowData = getFlowByPageId("visit-purposes")!;
   const [configs, setConfigs] = useState<VisitPurposeConfig[]>(visitPurposeConfigs);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
 
@@ -119,6 +123,7 @@ export default function VisitPurposeSettingsPage() {
     <>
       <Topbar title="ตั้งค่าวัตถุประสงค์การเข้าพื้นที่" />
       <DatabaseSchemaModal open={showSchema} onClose={() => setShowSchema(false)} schema={schema} />
+      <FlowchartModal open={showFlow} onClose={() => setShowFlow(false)} flowData={flowData} />
       <main className="flex-1 p-6 space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -127,6 +132,7 @@ export default function VisitPurposeSettingsPage() {
               <Settings size={22} className="text-primary" />
               เงื่อนไขการเข้าพื้นที่
               <DbSchemaButton onClick={() => setShowSchema(true)} />
+              <FlowRulesButton onClick={() => setShowFlow(true)} />
             </h3>
             <p className="text-sm text-text-muted mt-1">
               กำหนดประเภทวัตถุประสงค์ เลือกแผนกที่ต้องการ
@@ -550,7 +556,7 @@ function PurposeDrawer({
   config: VisitPurposeConfig | null;
   onClose: () => void;
 }) {
-  const defaultChannel: EntryChannelConfig = { allowedDocuments: ["doc-national-id"], requirePhoto: false };
+  const defaultChannel: EntryChannelConfig = { allowedDocuments: ["1"], requirePhoto: false };
 
   const [name, setName] = useState("");
   const [nameEn, setNameEn] = useState("");
@@ -581,9 +587,9 @@ function PurposeDrawer({
       setIcon("📌");
       setIsActive(true);
       setOrder(visitPurposeConfigs.length + 1);
-      setKioskDocs(["doc-national-id"]);
+      setKioskDocs(["1"]);
       setKioskPhoto(false);
-      setCounterDocs(["doc-national-id"]);
+      setCounterDocs(["1"]);
       setCounterPhoto(false);
     }
   });

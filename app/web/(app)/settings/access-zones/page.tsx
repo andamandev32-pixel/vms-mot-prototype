@@ -3,7 +3,9 @@
 import { useState, useCallback } from "react";
 import Topbar from "@/components/web/Topbar";
 import { DatabaseSchemaModal, DbSchemaButton } from "@/components/web/DatabaseSchemaModal";
+import { FlowchartModal, FlowRulesButton } from "@/components/web/FlowchartModal";
 import { getSchemaByPageId } from "@/lib/database-schema";
+import { getFlowByPageId } from "@/lib/flowchart-data";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -74,7 +76,9 @@ function ZoneTypeBadge({ type }: { type: AccessZoneType }) {
    ══════════════════════════════════════════════════ */
 export default function AccessZonesSettingsPage() {
   const [showSchema, setShowSchema] = useState(false);
+  const [showFlow, setShowFlow] = useState(false);
   const schema = getSchemaByPageId("access-zones")!;
+  const flowData = getFlowByPageId("access-zones")!;
   const [activeTab, setActiveTab] = useState<"groups" | "zones" | "mapping">("groups");
   const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
   const [expandedBuilding, setExpandedBuilding] = useState<string | null>(null);
@@ -140,6 +144,7 @@ export default function AccessZonesSettingsPage() {
     <>
       <Topbar title="จัดการโซนเข้าพื้นที่ / Access Groups" />
       <DatabaseSchemaModal open={showSchema} onClose={() => setShowSchema(false)} schema={schema} />
+      <FlowchartModal open={showFlow} onClose={() => setShowFlow(false)} flowData={flowData} />
       <main className="flex-1 p-6 space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -148,6 +153,7 @@ export default function AccessZonesSettingsPage() {
               <Settings size={22} className="text-primary" />
               โซนเข้าพื้นที่ &amp; QR Access Groups
               <DbSchemaButton onClick={() => setShowSchema(true)} />
+              <FlowRulesButton onClick={() => setShowFlow(true)} />
             </h3>
             <p className="text-sm text-text-muted mt-1">
               กำหนดอาคาร ชั้น โซน และกลุ่มสิทธิ์เข้าพื้นที่ สำหรับส่งไปสร้าง QR Code ในระบบ Hikvision Access Control

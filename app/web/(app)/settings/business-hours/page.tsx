@@ -3,7 +3,9 @@
 import { useState } from "react";
 import Topbar from "@/components/web/Topbar";
 import { DatabaseSchemaModal, DbSchemaButton } from "@/components/web/DatabaseSchemaModal";
+import { FlowchartModal, FlowRulesButton } from "@/components/web/FlowchartModal";
 import { getSchemaByPageId } from "@/lib/database-schema";
+import { getFlowByPageId } from "@/lib/flowchart-data";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Drawer } from "@/components/ui/Drawer";
@@ -50,7 +52,9 @@ function TypeBadge({ type }: { type: BusinessHoursRule["type"] }) {
    ══════════════════════════════════════════════════ */
 export default function BusinessHoursSettingsPage() {
   const [showSchema, setShowSchema] = useState(false);
+  const [showFlow, setShowFlow] = useState(false);
   const schema = getSchemaByPageId("business-hours")!;
+  const flowData = getFlowByPageId("business-hours")!;
   const [items, setItems] = useState<BusinessHoursRule[]>(businessHoursRules);
   const [filterType, setFilterType] = useState<"all" | BusinessHoursRule["type"]>("all");
   const [drawer, setDrawer] = useState<{ mode: "add" | "edit"; item?: BusinessHoursRule } | null>(null);
@@ -76,6 +80,7 @@ export default function BusinessHoursSettingsPage() {
     <>
       <Topbar title="เวลาทำการ / Business Hours" />
       <DatabaseSchemaModal open={showSchema} onClose={() => setShowSchema(false)} schema={schema} />
+      <FlowchartModal open={showFlow} onClose={() => setShowFlow(false)} flowData={flowData} />
       <main className="flex-1 p-6 space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -84,6 +89,7 @@ export default function BusinessHoursSettingsPage() {
               <Settings size={22} className="text-primary" />
               ตั้งค่าเวลาทำการ
               <DbSchemaButton onClick={() => setShowSchema(true)} />
+              <FlowRulesButton onClick={() => setShowFlow(true)} />
             </h3>
             <p className="text-sm text-text-muted mt-1">กำหนดเวลาเปิด-ปิด ระบบสำหรับวันปกติ วันหยุด และงานพิเศษ</p>
           </div>

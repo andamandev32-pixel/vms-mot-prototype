@@ -3,7 +3,9 @@
 import { useState, useMemo } from "react";
 import Topbar from "@/components/web/Topbar";
 import { DatabaseSchemaModal, DbSchemaButton } from "@/components/web/DatabaseSchemaModal";
+import { FlowchartModal, FlowRulesButton } from "@/components/web/FlowchartModal";
 import { getSchemaByPageId } from "@/lib/database-schema";
+import { getFlowByPageId } from "@/lib/flowchart-data";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Drawer } from "@/components/ui/Drawer";
@@ -64,7 +66,9 @@ function ActiveBadge({ active }: { active: boolean }) {
    ══════════════════════════════════════════════════ */
 export default function LocationsSettingsPage() {
   const [showSchema, setShowSchema] = useState(false);
+  const [showFlow, setShowFlow] = useState(false);
   const schema = getSchemaByPageId("locations")!;
+  const flowData = getFlowByPageId("locations")!;
   const [activeTab, setActiveTab] = useState<"buildings" | "floors" | "departments">("buildings");
   const [buildingList, setBuildingList] = useState<Building[]>(buildings);
   const [deptList, setDeptList] = useState<Department[]>(departments);
@@ -115,6 +119,7 @@ export default function LocationsSettingsPage() {
     <>
       <Topbar title="ตั้งค่าสถานที่และแผนก / Locations & Departments" />
       <DatabaseSchemaModal open={showSchema} onClose={() => setShowSchema(false)} schema={schema} />
+      <FlowchartModal open={showFlow} onClose={() => setShowFlow(false)} flowData={flowData} />
       <main className="flex-1 p-6 space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -123,6 +128,7 @@ export default function LocationsSettingsPage() {
               <Settings size={22} className="text-primary" />
               สถานที่และแผนก
               <DbSchemaButton onClick={() => setShowSchema(true)} />
+              <FlowRulesButton onClick={() => setShowFlow(true)} />
             </h3>
             <p className="text-sm text-text-muted mt-1">
               จัดการอาคาร ชั้น และแผนก/หน่วยงาน ที่ใช้อ้างอิงในระบบ VMS ทั้งหมด

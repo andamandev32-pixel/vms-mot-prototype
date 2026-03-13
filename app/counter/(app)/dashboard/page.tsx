@@ -24,7 +24,7 @@ const MOCK_ID_CARDS = [
 // ข้อมูลนัดหมายจำลอง
 const MOCK_APPOINTMENTS = [
     {
-        id: "APT-001",
+        id: "1",
         visitorName: "นายวิชัย มั่นคง",
         idNumber: "3100500345678",
         host: "คุณสมศรี รักงาน",
@@ -35,7 +35,7 @@ const MOCK_APPOINTMENTS = [
         status: "รอเข้าพบ",
     },
     {
-        id: "APT-002",
+        id: "2",
         visitorName: "นางอัญชลี แสงทอง",
         idNumber: "1500700901234",
         host: "คุณประเสริฐ ศรีวิไล",
@@ -46,7 +46,7 @@ const MOCK_APPOINTMENTS = [
         status: "รอเข้าพบ",
     },
     {
-        id: "APT-003",
+        id: "3",
         visitorName: "Mr. James Wilson",
         idNumber: "AA7890123",
         host: "คุณนภาพร วงศ์สวัสดิ์",

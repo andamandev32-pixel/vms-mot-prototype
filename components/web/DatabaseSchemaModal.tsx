@@ -62,9 +62,13 @@ function generateCreateSQL(table: TableDef): string {
     if (!col.nullable) line += " NOT NULL";
     if (col.defaultValue) {
       const dv = col.defaultValue;
-      if (dv === "CURRENT_TIMESTAMP") line += " DEFAULT CURRENT_TIMESTAMP";
+      if (dv === "CURRENT_TIMESTAMP") {
+        line += " DEFAULT CURRENT_TIMESTAMP";
+        if (col.name === "updated_at") line += " ON UPDATE CURRENT_TIMESTAMP";
+      }
       else if (dv === "true") line += " DEFAULT 1";
       else if (dv === "false") line += " DEFAULT 0";
+      else if (/^\d+$/.test(dv)) line += ` DEFAULT ${dv}`;
       else line += ` DEFAULT '${dv}'`;
     }
     line += ` COMMENT '${col.comment.replace(/'/g, "\\'")}'`;

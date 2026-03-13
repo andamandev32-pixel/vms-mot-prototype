@@ -3,7 +3,9 @@
 import { useState } from "react";
 import Topbar from "@/components/web/Topbar";
 import { DatabaseSchemaModal, DbSchemaButton } from "@/components/web/DatabaseSchemaModal";
+import { FlowchartModal, FlowRulesButton } from "@/components/web/FlowchartModal";
 import { getSchemaByPageId } from "@/lib/database-schema";
+import { getFlowByPageId } from "@/lib/flowchart-data";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Drawer } from "@/components/ui/Drawer";
@@ -29,7 +31,9 @@ import {
    ══════════════════════════════════════════════════ */
 export default function DocumentTypesSettingsPage() {
   const [showSchema, setShowSchema] = useState(false);
+  const [showFlow, setShowFlow] = useState(false);
   const schema = getSchemaByPageId("document-types")!;
+  const flowData = getFlowByPageId("document-types")!;
   const [items, setItems] = useState<DocumentType[]>(documentTypes);
   const [drawer, setDrawer] = useState<{ mode: "add" | "edit"; item?: DocumentType } | null>(null);
 
@@ -44,6 +48,7 @@ export default function DocumentTypesSettingsPage() {
     <>
       <Topbar title="ประเภทเอกสาร / Document Types" />
       <DatabaseSchemaModal open={showSchema} onClose={() => setShowSchema(false)} schema={schema} />
+      <FlowchartModal open={showFlow} onClose={() => setShowFlow(false)} flowData={flowData} />
       <main className="flex-1 p-6 space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -52,6 +57,7 @@ export default function DocumentTypesSettingsPage() {
               <Settings size={22} className="text-primary" />
               ตั้งค่าประเภทเอกสาร
               <DbSchemaButton onClick={() => setShowSchema(true)} />
+              <FlowRulesButton onClick={() => setShowFlow(true)} />
             </h3>
             <p className="text-sm text-text-muted mt-1">กำหนดเอกสารที่ต้องใช้ในการลงทะเบียนตามวัตถุประสงค์การเข้าพื้นที่</p>
           </div>
