@@ -36,6 +36,7 @@ export interface Department {
   nameEn: string;
   floor: string;
   building: string;
+  isActive: boolean;
 }
 
 export interface Staff {
@@ -163,19 +164,19 @@ export const statusConfig: Record<VisitStatus, { label: string; labelEn: string;
 // ===== DEPARTMENTS =====
 
 export const departments: Department[] = [
-  { id: "dept-1", name: "สำนักงานปลัดกระทรวง", nameEn: "Office of the Permanent Secretary", floor: "ชั้น 3", building: "ศูนย์ราชการ อาคาร C" },
-  { id: "dept-2", name: "กองกลาง", nameEn: "General Administration Division", floor: "ชั้น 2", building: "ศูนย์ราชการ อาคาร C" },
-  { id: "dept-3", name: "กองการต่างประเทศ", nameEn: "International Affairs Division", floor: "ชั้น 5", building: "ศูนย์ราชการ อาคาร C" },
-  { id: "dept-4", name: "กองกิจการท่องเที่ยว", nameEn: "Tourism Affairs Division", floor: "ชั้น 4", building: "ศูนย์ราชการ อาคาร C" },
-  { id: "dept-5", name: "กรมการท่องเที่ยว", nameEn: "Department of Tourism", floor: "ชั้น 6", building: "ศูนย์ราชการ อาคาร C" },
-  { id: "dept-6", name: "กรมพลศึกษา", nameEn: "Department of Physical Education", floor: "ชั้น 7", building: "ศูนย์ราชการ อาคาร C" },
-  { id: "dept-7", name: "การกีฬาแห่งประเทศไทย", nameEn: "Sports Authority of Thailand", floor: "ชั้น 8", building: "ศูนย์ราชการ อาคาร C" },
-  { id: "dept-8", name: "สำนักนโยบายและแผน", nameEn: "Policy and Planning Division", floor: "ชั้น 4", building: "ศูนย์ราชการ อาคาร C" },
-  { id: "dept-9", name: "สำนักงานรัฐมนตรี", nameEn: "Minister's Office", floor: "ชั้น 9", building: "ศูนย์ราชการ อาคาร C" },
-  { id: "dept-10", name: "การท่องเที่ยวแห่งประเทศไทย", nameEn: "Tourism Authority of Thailand", floor: "ชั้น 6", building: "ศูนย์ราชการ อาคาร C" },
-  { id: "dept-11", name: "มหาวิทยาลัยการกีฬาแห่งชาติ", nameEn: "National Sports University", floor: "ชั้น 7", building: "ศูนย์ราชการ อาคาร C" },
-  { id: "dept-12", name: "กองบัญชาการตำรวจท่องเที่ยว", nameEn: "Tourist Police Bureau", floor: "ชั้น 8", building: "ศูนย์ราชการ อาคาร C" },
-  { id: "dept-13", name: "องค์การบริหารการพัฒนาพื้นที่พิเศษเพื่อการท่องเที่ยวอย่างยั่งยืน (อพท.)", nameEn: "DASTA", floor: "ชั้น 8", building: "ศูนย์ราชการ อาคาร C" },
+  { id: "dept-1", name: "สำนักงานปลัดกระทรวง", nameEn: "Office of the Permanent Secretary", floor: "ชั้น 3", building: "ศูนย์ราชการ อาคาร C", isActive: true },
+  { id: "dept-2", name: "กองกลาง", nameEn: "General Administration Division", floor: "ชั้น 2", building: "ศูนย์ราชการ อาคาร C", isActive: true },
+  { id: "dept-3", name: "กองการต่างประเทศ", nameEn: "International Affairs Division", floor: "ชั้น 5", building: "ศูนย์ราชการ อาคาร C", isActive: true },
+  { id: "dept-4", name: "กองกิจการท่องเที่ยว", nameEn: "Tourism Affairs Division", floor: "ชั้น 4", building: "ศูนย์ราชการ อาคาร C", isActive: true },
+  { id: "dept-5", name: "กรมการท่องเที่ยว", nameEn: "Department of Tourism", floor: "ชั้น 6", building: "ศูนย์ราชการ อาคาร C", isActive: true },
+  { id: "dept-6", name: "กรมพลศึกษา", nameEn: "Department of Physical Education", floor: "ชั้น 7", building: "ศูนย์ราชการ อาคาร C", isActive: true },
+  { id: "dept-7", name: "การกีฬาแห่งประเทศไทย", nameEn: "Sports Authority of Thailand", floor: "ชั้น 8", building: "ศูนย์ราชการ อาคาร C", isActive: true },
+  { id: "dept-8", name: "สำนักนโยบายและแผน", nameEn: "Policy and Planning Division", floor: "ชั้น 4", building: "ศูนย์ราชการ อาคาร C", isActive: true },
+  { id: "dept-9", name: "สำนักงานรัฐมนตรี", nameEn: "Minister's Office", floor: "ชั้น 9", building: "ศูนย์ราชการ อาคาร C", isActive: true },
+  { id: "dept-10", name: "การท่องเที่ยวแห่งประเทศไทย", nameEn: "Tourism Authority of Thailand", floor: "ชั้น 6", building: "ศูนย์ราชการ อาคาร C", isActive: true },
+  { id: "dept-11", name: "มหาวิทยาลัยการกีฬาแห่งชาติ", nameEn: "National Sports University", floor: "ชั้น 7", building: "ศูนย์ราชการ อาคาร C", isActive: true },
+  { id: "dept-12", name: "กองบัญชาการตำรวจท่องเที่ยว", nameEn: "Tourist Police Bureau", floor: "ชั้น 8", building: "ศูนย์ราชการ อาคาร C", isActive: true },
+  { id: "dept-13", name: "องค์การบริหารการพัฒนาพื้นที่พิเศษเพื่อการท่องเที่ยวอย่างยั่งยืน (อพท.)", nameEn: "DASTA", floor: "ชั้น 8", building: "ศูนย์ราชการ อาคาร C", isActive: true },
 ];
 
 // ===== STAFF =====
@@ -1000,6 +1001,7 @@ export interface Building {
   nameEn: string;
   totalFloors: number;
   description?: string;
+  isActive: boolean;
 }
 
 export interface Floor {
@@ -1055,7 +1057,7 @@ export interface DepartmentAccessMapping {
 // ── Buildings ──
 
 export const buildings: Building[] = [
-  { id: "bld-C", name: "ศูนย์ราชการ อาคาร C", nameEn: "Government Center Building C", totalFloors: 9, description: "กระทรวงการท่องเที่ยวและกีฬา — ทุกหน่วยงานในตึกเดียว" },
+  { id: "bld-C", name: "ศูนย์ราชการ อาคาร C", nameEn: "Government Center Building C", totalFloors: 9, description: "กระทรวงการท่องเที่ยวและกีฬา — ทุกหน่วยงานในตึกเดียว", isActive: true },
 ];
 
 // ── Floors ──

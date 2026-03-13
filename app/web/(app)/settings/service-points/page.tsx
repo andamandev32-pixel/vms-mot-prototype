@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import Topbar from "@/components/web/Topbar";
+import { DatabaseSchemaModal, DbSchemaButton } from "@/components/web/DatabaseSchemaModal";
+import { getSchemaByPageId } from "@/lib/database-schema";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Drawer } from "@/components/ui/Drawer";
@@ -77,6 +79,8 @@ function TypeBadge({ type }: { type: ServicePointType }) {
    PAGE
    ══════════════════════════════════════════════════ */
 export default function ServicePointsSettingsPage() {
+  const [showSchema, setShowSchema] = useState(false);
+  const schema = getSchemaByPageId("service-points")!;
   const [items, setItems] = useState<ServicePoint[]>(servicePoints);
   const [filterType, setFilterType] = useState<"all" | ServicePointType>("all");
   const [filterStatus, setFilterStatus] = useState<"all" | ServicePointStatus>("all");
@@ -115,6 +119,7 @@ export default function ServicePointsSettingsPage() {
   return (
     <>
       <Topbar title="จัดการจุดให้บริการ / Service Points" />
+      <DatabaseSchemaModal open={showSchema} onClose={() => setShowSchema(false)} schema={schema} />
       <main className="flex-1 p-6 space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -122,6 +127,7 @@ export default function ServicePointsSettingsPage() {
             <h3 className="text-lg font-bold text-text-primary flex items-center gap-2">
               <Settings size={22} className="text-primary" />
               จุดให้บริการ Kiosk & Counter
+              <DbSchemaButton onClick={() => setShowSchema(true)} />
             </h3>
             <p className="text-sm text-text-muted mt-1">เพิ่ม ลด และจัดการสถานะเครื่อง Kiosk / Counter ทุกจุดบริการ</p>
           </div>

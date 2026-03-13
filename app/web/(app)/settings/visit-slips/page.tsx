@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import Topbar from "@/components/web/Topbar";
+import { DatabaseSchemaModal, DbSchemaButton } from "@/components/web/DatabaseSchemaModal";
+import { getSchemaByPageId } from "@/lib/database-schema";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Drawer } from "@/components/ui/Drawer";
@@ -129,6 +131,8 @@ function SlipPreview({ template }: { template: VisitSlipTemplate }) {
    PAGE
    ══════════════════════════════════════════════════ */
 export default function VisitSlipTemplatesSettingsPage() {
+  const [showSchema, setShowSchema] = useState(false);
+  const schema = getSchemaByPageId("visit-slips")!;
   const [activeTab, setActiveTab] = useState<"templates" | "mapping">("templates");
   const [templates, setTemplates] = useState<VisitSlipTemplate[]>(visitSlipTemplates);
   const [mappings, setMappings] = useState<PurposeSlipMapping[]>(purposeSlipMappings);
@@ -158,6 +162,7 @@ export default function VisitSlipTemplatesSettingsPage() {
   return (
     <>
       <Topbar title="แบบฟอร์ม Visit Slip / Slip Templates" />
+      <DatabaseSchemaModal open={showSchema} onClose={() => setShowSchema(false)} schema={schema} />
       <main className="flex-1 p-6 space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -165,6 +170,7 @@ export default function VisitSlipTemplatesSettingsPage() {
             <h3 className="text-lg font-bold text-text-primary flex items-center gap-2">
               <Settings size={22} className="text-primary" />
               ตั้งค่าแบบฟอร์มบัตรผู้เยี่ยม (Visit Slip)
+              <DbSchemaButton onClick={() => setShowSchema(true)} />
             </h3>
             <p className="text-sm text-text-muted mt-1">จัดการเทมเพลตบัตรผู้เยี่ยม และเลือกแบบที่ใช้ตามวัตถุประสงค์การเข้าพื้นที่</p>
           </div>

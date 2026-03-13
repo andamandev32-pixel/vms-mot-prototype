@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import Topbar from "@/components/web/Topbar";
+import { DatabaseSchemaModal, DbSchemaButton } from "@/components/web/DatabaseSchemaModal";
+import { getSchemaByPageId } from "@/lib/database-schema";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Drawer } from "@/components/ui/Drawer";
@@ -47,6 +49,8 @@ function TypeBadge({ type }: { type: BusinessHoursRule["type"] }) {
    PAGE
    ══════════════════════════════════════════════════ */
 export default function BusinessHoursSettingsPage() {
+  const [showSchema, setShowSchema] = useState(false);
+  const schema = getSchemaByPageId("business-hours")!;
   const [items, setItems] = useState<BusinessHoursRule[]>(businessHoursRules);
   const [filterType, setFilterType] = useState<"all" | BusinessHoursRule["type"]>("all");
   const [drawer, setDrawer] = useState<{ mode: "add" | "edit"; item?: BusinessHoursRule } | null>(null);
@@ -71,6 +75,7 @@ export default function BusinessHoursSettingsPage() {
   return (
     <>
       <Topbar title="เวลาทำการ / Business Hours" />
+      <DatabaseSchemaModal open={showSchema} onClose={() => setShowSchema(false)} schema={schema} />
       <main className="flex-1 p-6 space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -78,6 +83,7 @@ export default function BusinessHoursSettingsPage() {
             <h3 className="text-lg font-bold text-text-primary flex items-center gap-2">
               <Settings size={22} className="text-primary" />
               ตั้งค่าเวลาทำการ
+              <DbSchemaButton onClick={() => setShowSchema(true)} />
             </h3>
             <p className="text-sm text-text-muted mt-1">กำหนดเวลาเปิด-ปิด ระบบสำหรับวันปกติ วันหยุด และงานพิเศษ</p>
           </div>

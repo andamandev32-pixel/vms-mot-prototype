@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import Topbar from "@/components/web/Topbar";
+import { DatabaseSchemaModal, DbSchemaButton } from "@/components/web/DatabaseSchemaModal";
+import { getSchemaByPageId } from "@/lib/database-schema";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -71,6 +73,8 @@ function BoolIcon({
    PAGE
    ══════════════════════════════════════════════════ */
 export default function VisitPurposeSettingsPage() {
+  const [showSchema, setShowSchema] = useState(false);
+  const schema = getSchemaByPageId("visit-purposes")!;
   const [configs, setConfigs] = useState<VisitPurposeConfig[]>(visitPurposeConfigs);
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
 
@@ -114,6 +118,7 @@ export default function VisitPurposeSettingsPage() {
   return (
     <>
       <Topbar title="ตั้งค่าวัตถุประสงค์การเข้าพื้นที่" />
+      <DatabaseSchemaModal open={showSchema} onClose={() => setShowSchema(false)} schema={schema} />
       <main className="flex-1 p-6 space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -121,6 +126,7 @@ export default function VisitPurposeSettingsPage() {
             <h3 className="text-lg font-bold text-text-primary flex items-center gap-2">
               <Settings size={22} className="text-primary" />
               เงื่อนไขการเข้าพื้นที่
+              <DbSchemaButton onClick={() => setShowSchema(true)} />
             </h3>
             <p className="text-sm text-text-muted mt-1">
               กำหนดประเภทวัตถุประสงค์ เลือกแผนกที่ต้องการ

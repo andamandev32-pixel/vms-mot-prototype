@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, Calendar, Users, Briefcase, Search, FileText, Settings, Shield, LogOut, ChevronRight, ClipboardList, DoorOpen, ShieldCheck, UserCog, Monitor, FileCheck, Clock, Bell, Printer } from "lucide-react";
+import { LayoutDashboard, Calendar, Users, Briefcase, Search, FileText, Settings, Shield, LogOut, ChevronRight, ClipboardList, DoorOpen, ShieldCheck, UserCog, Monitor, FileCheck, Clock, Bell, Printer, Building2 } from "lucide-react";
 import VmsLogo from "@/components/ui/VmsLogo";
 
 export default function Sidebar() {
@@ -18,6 +18,7 @@ export default function Sidebar() {
         { href: "/web/reports", label: "รายงาน", icon: <FileText size={20} /> },
         { href: "/web/settings", label: "ตั้งค่า", icon: <Settings size={20} />, separator: true },
         { href: "/web/settings/visit-purposes", label: "วัตถุประสงค์เข้าพื้นที่", icon: <ClipboardList size={20} /> },
+        { href: "/web/settings/locations", label: "สถานที่และแผนก", icon: <Building2 size={20} /> },
         { href: "/web/settings/access-zones", label: "โซนเข้าพื้นที่", icon: <DoorOpen size={20} /> },
         { href: "/web/settings/approver-groups", label: "กลุ่มผู้อนุมัติ", icon: <ShieldCheck size={20} /> },
         { href: "/web/settings/staff", label: "จัดการพนักงาน", icon: <UserCog size={20} /> },

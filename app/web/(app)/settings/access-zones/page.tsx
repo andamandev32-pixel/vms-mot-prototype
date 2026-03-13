@@ -1,11 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import Topbar from "@/components/web/Topbar";
+import { DatabaseSchemaModal, DbSchemaButton } from "@/components/web/DatabaseSchemaModal";
+import { getSchemaByPageId } from "@/lib/database-schema";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Drawer } from "@/components/ui/Drawer";
+import { ConfirmModal } from "@/components/ui/ConfirmModal";
 import { cn } from "@/lib/utils";
 import {
   Settings,
@@ -31,12 +34,12 @@ import {
   Save,
 } from "lucide-react";
 import {
-  buildings,
-  floors,
-  accessZones,
-  accessGroups,
+  buildings as initialBuildings,
+  floors as initialFloors,
+  accessZones as initialAccessZones,
+  accessGroups as initialAccessGroups,
   departments,
-  departmentAccessMappings,
+  departmentAccessMappings as initialDeptMappings,
   accessZoneTypeLabels,
   type Building,
   type AccessGroup,
@@ -70,9 +73,18 @@ function ZoneTypeBadge({ type }: { type: AccessZoneType }) {
    PAGE
    ══════════════════════════════════════════════════ */
 export default function AccessZonesSettingsPage() {
+  const [showSchema, setShowSchema] = useState(false);
+  const schema = getSchemaByPageId("access-zones")!;
   const [activeTab, setActiveTab] = useState<"groups" | "zones" | "mapping">("groups");
   const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
   const [expandedBuilding, setExpandedBuilding] = useState<string | null>(null);
+
+  /* ── Stateful data ────────────────────────────── */
+  const [accessGroups, setAccessGroups] = useState<AccessGroup[]>(initialAccessGroups);
+  const [accessZones, setAccessZones] = useState<AccessZone[]>(initialAccessZones);
+  const [buildings] = useState<Building[]>(initialBuildings);
+  const [floors] = useState(initialFloors);
+  const [deptMappings, setDeptMappings] = useState<DepartmentAccessMapping[]>(initialDeptMappings);
 
   /* drawer state — Access Group */
   const [groupDrawer, setGroupDrawer] = useState<{ mode: "add" | "edit"; group?: AccessGroup } | null>(null);
@@ -81,8 +93,43 @@ export default function AccessZonesSettingsPage() {
   /* drawer state — Mapping */
   const [mappingDrawer, setMappingDrawer] = useState<{ mapping?: DepartmentAccessMapping } | null>(null);
 
+  /* ── Delete confirm ─────────────────────────── */
+  const [deleteTarget, setDeleteTarget] = useState<{ type: "group" | "zone"; id: string; name: string } | null>(null);
+
   const toggleGroup = (id: string) => setExpandedGroup((p) => (p === id ? null : id));
   const toggleBuilding = (id: string) => setExpandedBuilding((p) => (p === id ? null : id));
+
+  /* ── CRUD handlers ──────────────────────────── */
+  const handleSaveGroup = useCallback((group: AccessGroup, isEdit: boolean) => {
+    setAccessGroups((prev) =>
+      isEdit ? prev.map((g) => (g.id === group.id ? group : g)) : [...prev, group]
+    );
+    setGroupDrawer(null);
+  }, []);
+
+  const handleSaveZone = useCallback((zone: AccessZone, isEdit: boolean) => {
+    setAccessZones((prev) =>
+      isEdit ? prev.map((z) => (z.id === zone.id ? zone : z)) : [...prev, zone]
+    );
+    setZoneDrawer(null);
+  }, []);
+
+  const handleSaveMapping = useCallback((mapping: DepartmentAccessMapping) => {
+    setDeptMappings((prev) =>
+      prev.map((m) => (m.departmentId === mapping.departmentId ? mapping : m))
+    );
+    setMappingDrawer(null);
+  }, []);
+
+  const handleDeleteConfirm = useCallback(() => {
+    if (!deleteTarget) return;
+    if (deleteTarget.type === "group") {
+      setAccessGroups((prev) => prev.filter((g) => g.id !== deleteTarget.id));
+    } else {
+      setAccessZones((prev) => prev.filter((z) => z.id !== deleteTarget.id));
+    }
+    setDeleteTarget(null);
+  }, [deleteTarget]);
 
   /* stats */
   const activeGroups = accessGroups.filter((g) => g.isActive);
@@ -92,6 +139,7 @@ export default function AccessZonesSettingsPage() {
   return (
     <>
       <Topbar title="จัดการโซนเข้าพื้นที่ / Access Groups" />
+      <DatabaseSchemaModal open={showSchema} onClose={() => setShowSchema(false)} schema={schema} />
       <main className="flex-1 p-6 space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -99,6 +147,7 @@ export default function AccessZonesSettingsPage() {
             <h3 className="text-lg font-bold text-text-primary flex items-center gap-2">
               <Settings size={22} className="text-primary" />
               โซนเข้าพื้นที่ &amp; QR Access Groups
+              <DbSchemaButton onClick={() => setShowSchema(true)} />
             </h3>
             <p className="text-sm text-text-muted mt-1">
               กำหนดอาคาร ชั้น โซน และกลุ่มสิทธิ์เข้าพื้นที่ สำหรับส่งไปสร้าง QR Code ในระบบ Hikvision Access Control
@@ -163,9 +212,15 @@ export default function AccessZonesSettingsPage() {
               <AccessGroupCard
                 key={group.id}
                 group={group}
+                allZones={accessZones}
+                allGroups={accessGroups}
+                allFloors={floors}
+                allBuildings={buildings}
+                deptMappings={deptMappings}
                 isExpanded={expandedGroup === group.id}
                 onToggle={() => toggleGroup(group.id)}
                 onEdit={() => setGroupDrawer({ mode: "edit", group })}
+                onDelete={() => setDeleteTarget({ type: "group", id: group.id, name: group.name })}
               />
             ))}
           </div>
@@ -177,21 +232,63 @@ export default function AccessZonesSettingsPage() {
               <BuildingCard
                 key={bld.id}
                 building={bld}
+                allZones={accessZones}
+                allFloors={floors}
+                allGroups={accessGroups}
                 isExpanded={expandedBuilding === bld.id}
                 onToggle={() => toggleBuilding(bld.id)}
                 onEditZone={(zone) => setZoneDrawer({ mode: "edit", zone })}
                 onAddZone={() => setZoneDrawer({ mode: "add" })}
+                onDeleteZone={(zone) => setDeleteTarget({ type: "zone", id: zone.id, name: zone.name })}
               />
             ))}
           </div>
         )}
 
-        {activeTab === "mapping" && <DepartmentMappingTable onEditMapping={(m) => setMappingDrawer({ mapping: m })} />}
+        {activeTab === "mapping" && (
+          <DepartmentMappingTable
+            mappings={deptMappings}
+            allGroups={accessGroups}
+            allFloors={floors}
+            allBuildings={buildings}
+            onEditMapping={(m) => setMappingDrawer({ mapping: m })}
+          />
+        )}
 
         {/* ─── Drawers ─────────────────────────── */}
-        <AccessGroupDrawer data={groupDrawer} onClose={() => setGroupDrawer(null)} />
-        <ZoneDrawer data={zoneDrawer} onClose={() => setZoneDrawer(null)} />
-        <MappingDrawer data={mappingDrawer} onClose={() => setMappingDrawer(null)} />
+        <AccessGroupDrawer
+          data={groupDrawer}
+          onClose={() => setGroupDrawer(null)}
+          onSave={handleSaveGroup}
+          allZones={accessZones}
+          allFloors={floors}
+        />
+        <ZoneDrawer
+          data={zoneDrawer}
+          onClose={() => setZoneDrawer(null)}
+          onSave={handleSaveZone}
+          allBuildings={buildings}
+          allFloors={floors}
+        />
+        <MappingDrawer
+          data={mappingDrawer}
+          onClose={() => setMappingDrawer(null)}
+          onSave={handleSaveMapping}
+          allGroups={accessGroups}
+        />
+
+        {/* ─── Delete Confirm ─────────────────── */}
+        <ConfirmModal
+          open={deleteTarget !== null}
+          onClose={() => setDeleteTarget(null)}
+          onConfirm={handleDeleteConfirm}
+          variant="danger"
+          title={`ลบ${deleteTarget?.type === "group" ? " Access Group" : "โซน"}`}
+          titleEn={`Delete ${deleteTarget?.type === "group" ? "Access Group" : "Zone"}`}
+          description={`คุณต้องการลบ "${deleteTarget?.name}" หรือไม่? การดำเนินการนี้ไม่สามารถย้อนกลับได้`}
+          confirmLabel="ลบ"
+          cancelLabel="ยกเลิก"
+        />
       </main>
     </>
   );
@@ -202,17 +299,29 @@ export default function AccessZonesSettingsPage() {
    ══════════════════════════════════════════════════ */
 function AccessGroupCard({
   group,
+  allZones,
+  allGroups,
+  allFloors,
+  allBuildings,
+  deptMappings,
   isExpanded,
   onToggle,
   onEdit,
+  onDelete,
 }: {
   group: AccessGroup;
+  allZones: AccessZone[];
+  allGroups: AccessGroup[];
+  allFloors: typeof initialFloors;
+  allBuildings: Building[];
+  deptMappings: DepartmentAccessMapping[];
   isExpanded: boolean;
   onToggle: () => void;
   onEdit: () => void;
+  onDelete: () => void;
 }) {
-  const zones = accessZones.filter((z) => group.zoneIds.includes(z.id));
-  const mappedDepts = departmentAccessMappings.filter(
+  const zones = allZones.filter((z) => group.zoneIds.includes(z.id));
+  const mappedDepts = deptMappings.filter(
     (m) => m.defaultAccessGroupId === group.id || m.additionalGroupIds.includes(group.id)
   );
 
@@ -253,7 +362,7 @@ function AccessGroupCard({
             <button className="p-2 hover:bg-primary-50 rounded-lg transition-colors text-text-muted hover:text-primary" onClick={onEdit}>
               <Pencil size={16} />
             </button>
-            <button className="p-2 hover:bg-red-50 rounded-lg transition-colors text-text-muted hover:text-error">
+            <button className="p-2 hover:bg-red-50 rounded-lg transition-colors text-text-muted hover:text-error" onClick={onDelete}>
               <Trash2 size={16} />
             </button>
           </div>
@@ -327,8 +436,8 @@ function AccessGroupCard({
               </thead>
               <tbody className="divide-y divide-border">
                 {zones.map((zone) => {
-                  const floor = floors.find((f) => f.id === zone.floorId);
-                  const bld = buildings.find((b) => b.id === zone.buildingId);
+                  const floor = allFloors.find((f) => f.id === zone.floorId);
+                  const bld = allBuildings.find((b) => b.id === zone.buildingId);
                   return (
                     <tr key={zone.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-5 py-2.5 font-medium text-text-primary">{zone.name}</td>
@@ -385,19 +494,27 @@ function AccessGroupCard({
    ══════════════════════════════════════════════════ */
 function BuildingCard({
   building,
+  allZones,
+  allFloors,
+  allGroups,
   isExpanded,
   onToggle,
   onEditZone,
   onAddZone,
+  onDeleteZone,
 }: {
   building: Building;
+  allZones: AccessZone[];
+  allFloors: typeof initialFloors;
+  allGroups: AccessGroup[];
   isExpanded: boolean;
   onToggle: () => void;
   onEditZone: (zone: AccessZone) => void;
   onAddZone: () => void;
+  onDeleteZone: (zone: AccessZone) => void;
 }) {
-  const bldFloors = floors.filter((f) => f.buildingId === building.id);
-  const bldZones = accessZones.filter((z) => z.buildingId === building.id);
+  const bldFloors = allFloors.filter((f) => f.buildingId === building.id);
+  const bldZones = allZones.filter((z) => z.buildingId === building.id);
   const bldDepts = new Set(bldFloors.flatMap((f) => f.departmentIds));
 
   return (
@@ -471,7 +588,7 @@ function BuildingCard({
                       </thead>
                       <tbody className="divide-y divide-border">
                         {floorZones.map((zone) => {
-                          const zoneGroups = accessGroups.filter((g) => g.zoneIds.includes(zone.id));
+                          const zoneGroups = allGroups.filter((g) => g.zoneIds.includes(zone.id));
                           return (
                             <tr key={zone.id} className="hover:bg-gray-50 transition-colors">
                               <td className="px-5 py-2.5 font-medium text-text-primary">{zone.name}</td>
@@ -500,7 +617,7 @@ function BuildingCard({
                                   <button className="p-1.5 hover:bg-primary-50 rounded-md transition-colors text-text-muted hover:text-primary" onClick={() => onEditZone(zone)}>
                                     <Pencil size={14} />
                                   </button>
-                                  <button className="p-1.5 hover:bg-red-50 rounded-md transition-colors text-text-muted hover:text-error">
+                                  <button className="p-1.5 hover:bg-red-50 rounded-md transition-colors text-text-muted hover:text-error" onClick={() => onDeleteZone(zone)}>
                                     <Trash2 size={14} />
                                   </button>
                                 </div>
@@ -524,13 +641,25 @@ function BuildingCard({
 /* ══════════════════════════════════════════════════
    DEPARTMENT MAPPING TABLE (Mapping tab)
    ══════════════════════════════════════════════════ */
-function DepartmentMappingTable({ onEditMapping }: { onEditMapping: (m: DepartmentAccessMapping) => void }) {
+function DepartmentMappingTable({
+  mappings,
+  allGroups,
+  allFloors,
+  allBuildings,
+  onEditMapping,
+}: {
+  mappings: DepartmentAccessMapping[];
+  allGroups: AccessGroup[];
+  allFloors: typeof initialFloors;
+  allBuildings: Building[];
+  onEditMapping: (m: DepartmentAccessMapping) => void;
+}) {
   return (
     <Card className="border-none shadow-sm">
       <div className="px-5 py-3 bg-gray-50 border-b border-border flex items-center justify-between">
         <p className="text-xs font-semibold text-text-secondary flex items-center gap-1.5">
           <Link2 size={14} className="text-primary" />
-          การผูกหน่วยงาน → Access Group ({departmentAccessMappings.length} หน่วยงาน)
+          การผูกหน่วยงาน → Access Group ({mappings.length} หน่วยงาน)
         </p>
         <Button variant="outline" className="h-8 text-xs px-3">
           <Pencil size={14} className="mr-1" />
@@ -550,13 +679,13 @@ function DepartmentMappingTable({ onEditMapping }: { onEditMapping: (m: Departme
             </tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {departmentAccessMappings.map((mapping) => {
+            {mappings.map((mapping) => {
               const dept = departments.find((d) => d.id === mapping.departmentId);
-              const defaultGroup = accessGroups.find((g) => g.id === mapping.defaultAccessGroupId);
-              const additionalGroups = mapping.additionalGroupIds.map((gid) => accessGroups.find((g) => g.id === gid)).filter(Boolean);
+              const defaultGroup = allGroups.find((g) => g.id === mapping.defaultAccessGroupId);
+              const additionalGroups = mapping.additionalGroupIds.map((gid) => allGroups.find((g) => g.id === gid)).filter(Boolean);
               const allGroupIds = [mapping.defaultAccessGroupId, ...mapping.additionalGroupIds];
               const totalZones = new Set(
-                accessGroups.filter((g) => allGroupIds.includes(g.id)).flatMap((g) => g.zoneIds)
+                allGroups.filter((g) => allGroupIds.includes(g.id)).flatMap((g) => g.zoneIds)
               ).size;
 
               return (
@@ -655,9 +784,15 @@ const colorOptions = ["#6B7280", "#6A0DAD", "#2563EB", "#059669", "#D97706", "#D
 function AccessGroupDrawer({
   data,
   onClose,
+  onSave,
+  allZones,
+  allFloors,
 }: {
   data: { mode: "add" | "edit"; group?: AccessGroup } | null;
   onClose: () => void;
+  onSave: (group: AccessGroup, isEdit: boolean) => void;
+  allZones: AccessZone[];
+  allFloors: typeof initialFloors;
 }) {
   const group = data?.group;
   const isEdit = data?.mode === "edit";
@@ -778,8 +913,8 @@ function AccessGroupDrawer({
         <div>
           <label className="block text-sm font-medium text-text-primary mb-2">โซนที่เข้าถึงได้ ({selectedZoneIds.length} โซน)</label>
           <div className="max-h-48 overflow-y-auto border border-border rounded-lg divide-y divide-border">
-            {accessZones.map((z) => {
-              const floor = floors.find((f) => f.id === z.floorId);
+            {allZones.map((z) => {
+              const floor = allFloors.find((f) => f.id === z.floorId);
               return (
                 <label key={z.id} className="flex items-center gap-3 px-3 py-2 hover:bg-gray-50 cursor-pointer">
                   <input
@@ -813,7 +948,26 @@ function AccessGroupDrawer({
 
       <div className="sticky bottom-0 px-6 py-4 bg-white border-t border-border flex items-center justify-end gap-3">
         <Button variant="outline" onClick={onClose}>ยกเลิก</Button>
-        <Button variant="primary" onClick={onClose}>
+        <Button
+          variant="primary"
+          onClick={() => {
+            const savedGroup: AccessGroup = {
+              id: group?.id ?? `ag-${Date.now()}`,
+              name,
+              nameEn,
+              description,
+              color,
+              hikvisionGroupId,
+              qrCodePrefix,
+              validityMinutes,
+              zoneIds: selectedZoneIds,
+              schedule: { daysOfWeek: scheduleDays, startTime, endTime },
+              allowedVisitTypes: group?.allowedVisitTypes ?? ["official", "meeting"],
+              isActive,
+            };
+            onSave(savedGroup, !!isEdit);
+          }}
+        >
           <Save size={16} className="mr-2" />
           {isEdit ? "บันทึกการเปลี่ยนแปลง" : "เพิ่ม Access Group"}
         </Button>
@@ -830,9 +984,15 @@ const zoneTypes: AccessZoneType[] = ["office", "meeting-room", "lobby", "parking
 function ZoneDrawer({
   data,
   onClose,
+  onSave,
+  allBuildings,
+  allFloors,
 }: {
   data: { mode: "add" | "edit"; zone?: AccessZone } | null;
   onClose: () => void;
+  onSave: (zone: AccessZone, isEdit: boolean) => void;
+  allBuildings: Building[];
+  allFloors: typeof initialFloors;
 }) {
   const zone = data?.zone;
   const isEdit = data?.mode === "edit";
@@ -840,7 +1000,7 @@ function ZoneDrawer({
   const [name, setName] = useState(zone?.name ?? "");
   const [nameEn, setNameEn] = useState(zone?.nameEn ?? "");
   const [floorId, setFloorId] = useState(zone?.floorId ?? "");
-  const [buildingId, setBuildingId] = useState(zone?.buildingId ?? buildings[0]?.id ?? "");
+  const [buildingId, setBuildingId] = useState(zone?.buildingId ?? allBuildings[0]?.id ?? "");
   const [type, setType] = useState<AccessZoneType>(zone?.type ?? "office");
   const [hikvisionDoorId, setHikvisionDoorId] = useState(zone?.hikvisionDoorId ?? "");
   const [isActive, setIsActive] = useState(zone?.isActive ?? true);
@@ -853,7 +1013,7 @@ function ZoneDrawer({
     }
   });
 
-  const bldFloors = floors.filter((f) => f.buildingId === buildingId);
+  const bldFloors = allFloors.filter((f) => f.buildingId === buildingId);
 
   return (
     <Drawer
@@ -877,7 +1037,7 @@ function ZoneDrawer({
         <div>
           <label className="block text-sm font-medium text-text-primary mb-1">อาคาร</label>
           <select value={buildingId} onChange={(e) => { setBuildingId(e.target.value); setFloorId(""); }} className="w-full h-10 px-3 text-sm rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-primary/20">
-            {buildings.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+            {allBuildings.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
           </select>
         </div>
 
@@ -929,7 +1089,22 @@ function ZoneDrawer({
 
       <div className="sticky bottom-0 px-6 py-4 bg-white border-t border-border flex items-center justify-end gap-3">
         <Button variant="outline" onClick={onClose}>ยกเลิก</Button>
-        <Button variant="primary" onClick={onClose}>
+        <Button
+          variant="primary"
+          onClick={() => {
+            const savedZone: AccessZone = {
+              id: zone?.id ?? `zone-${Date.now()}`,
+              name,
+              nameEn,
+              floorId,
+              buildingId,
+              type,
+              hikvisionDoorId,
+              isActive,
+            };
+            onSave(savedZone, !!isEdit);
+          }}
+        >
           <Save size={16} className="mr-2" />
           {isEdit ? "บันทึกการเปลี่ยนแปลง" : "เพิ่มโซน"}
         </Button>
@@ -944,9 +1119,13 @@ function ZoneDrawer({
 function MappingDrawer({
   data,
   onClose,
+  onSave,
+  allGroups,
 }: {
   data: { mapping?: DepartmentAccessMapping } | null;
   onClose: () => void;
+  onSave: (mapping: DepartmentAccessMapping) => void;
+  allGroups: AccessGroup[];
 }) {
   const mapping = data?.mapping;
   const dept = departments.find((d) => d.id === mapping?.departmentId);
@@ -983,14 +1162,14 @@ function MappingDrawer({
           <label className="block text-sm font-medium text-text-primary mb-1">Access Group หลัก <span className="text-error">*</span></label>
           <select value={defaultGroupId} onChange={(e) => setDefaultGroupId(e.target.value)} className="w-full h-10 px-3 text-sm rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-primary/20">
             <option value="">— เลือก Access Group หลัก —</option>
-            {accessGroups.map((g) => (
+            {allGroups.map((g) => (
               <option key={g.id} value={g.id}>{g.name} ({g.nameEn})</option>
             ))}
           </select>
           {defaultGroupId && (
             <div className="mt-2 flex items-center gap-2">
-              <span className="w-3 h-3 rounded-full" style={{ backgroundColor: accessGroups.find((g) => g.id === defaultGroupId)?.color }} />
-              <span className="text-xs text-text-secondary">{accessGroups.find((g) => g.id === defaultGroupId)?.description}</span>
+              <span className="w-3 h-3 rounded-full" style={{ backgroundColor: allGroups.find((g) => g.id === defaultGroupId)?.color }} />
+              <span className="text-xs text-text-secondary">{allGroups.find((g) => g.id === defaultGroupId)?.description}</span>
             </div>
           )}
         </div>
@@ -998,7 +1177,7 @@ function MappingDrawer({
         <div>
           <label className="block text-sm font-medium text-text-primary mb-2">Access Group เพิ่มเติม</label>
           <div className="space-y-2">
-            {accessGroups.filter((g) => g.id !== defaultGroupId).map((g) => (
+            {allGroups.filter((g) => g.id !== defaultGroupId).map((g) => (
               <label key={g.id} className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100 transition-colors">
                 <input
                   type="checkbox"
@@ -1024,7 +1203,7 @@ function MappingDrawer({
             <strong>{1 + additionalIds.length}</strong> Access Group
             {" "}(เข้าถึง{" "}
             {new Set(
-              accessGroups
+              allGroups
                 .filter((g) => g.id === defaultGroupId || additionalIds.includes(g.id))
                 .flatMap((g) => g.zoneIds)
             ).size}{" "}
@@ -1035,7 +1214,18 @@ function MappingDrawer({
 
       <div className="sticky bottom-0 px-6 py-4 bg-white border-t border-border flex items-center justify-end gap-3">
         <Button variant="outline" onClick={onClose}>ยกเลิก</Button>
-        <Button variant="primary" onClick={onClose}>
+        <Button
+          variant="primary"
+          onClick={() => {
+            if (mapping) {
+              onSave({
+                departmentId: mapping.departmentId,
+                defaultAccessGroupId: defaultGroupId,
+                additionalGroupIds: additionalIds,
+              });
+            }
+          }}
+        >
           <Save size={16} className="mr-2" />
           บันทึก Mapping
         </Button>

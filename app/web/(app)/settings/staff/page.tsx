@@ -2,6 +2,8 @@
 
 import { useState, useMemo } from "react";
 import Topbar from "@/components/web/Topbar";
+import { DatabaseSchemaModal, DbSchemaButton } from "@/components/web/DatabaseSchemaModal";
+import { getSchemaByPageId } from "@/lib/database-schema";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -56,6 +58,8 @@ const roleLabels: Record<string, { th: string; color: string; bg: string }> = {
    PAGE
    ══════════════════════════════════════════════════ */
 export default function StaffPage() {
+  const [showSchema, setShowSchema] = useState(false);
+  const schema = getSchemaByPageId("staff")!;
   const [search, setSearch] = useState("");
   const [filterDept, setFilterDept] = useState("all");
   const [filterStatus, setFilterStatus] = useState<"all" | "active" | "inactive">("all");
@@ -88,6 +92,7 @@ export default function StaffPage() {
   return (
     <>
       <Topbar title="จัดการพนักงาน" />
+      <DatabaseSchemaModal open={showSchema} onClose={() => setShowSchema(false)} schema={schema} />
       <main className="flex-1 p-6 space-y-6">
         {/* header */}
         <div className="flex items-center justify-between">
@@ -95,6 +100,7 @@ export default function StaffPage() {
             <h3 className="text-lg font-bold text-text-primary flex items-center gap-2">
               <UserCog size={22} className="text-primary" />
               รายชื่อพนักงานและเจ้าหน้าที่
+              <DbSchemaButton onClick={() => setShowSchema(true)} />
             </h3>
             <p className="text-sm text-text-muted mt-1">
               จัดการข้อมูลพนักงาน กำหนดสถานะ
@@ -102,10 +108,6 @@ export default function StaffPage() {
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <Button variant="outline" className="h-10 shadow-sm">
-              <Upload size={18} className="mr-2" />
-              นำเข้าจาก HR
-            </Button>
             <Button variant="outline" className="h-10 shadow-sm">
               <Upload size={18} className="mr-2" />
               นำเข้า Excel
@@ -125,9 +127,8 @@ export default function StaffPage() {
               <p className="font-medium">การจัดการพนักงาน</p>
               <ul className="mt-1.5 space-y-0.5 text-xs opacity-90 list-none">
                 <li>
-                  1. นำเข้าข้อมูลจาก <strong>ระบบ HR</strong> หรือ{" "}
-                  <strong>ไฟล์ Excel</strong> ได้ — ข้อมูลจะเข้ามาเป็นสถานะ
-                  &quot;active&quot; อัตโนมัติ
+                  1. นำเข้าข้อมูลจาก <strong>ไฟล์ Excel</strong> ได้ —
+                  ข้อมูลจะเข้ามาเป็นสถานะ &quot;active&quot; อัตโนมัติ
                 </li>
                 <li>
                   2. ไม่มีปุ่มลบ — ใช้การ <strong>ปิดใช้งาน (inactive)</strong>{" "}

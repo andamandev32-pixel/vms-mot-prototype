@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import Topbar from "@/components/web/Topbar";
+import { DatabaseSchemaModal, DbSchemaButton } from "@/components/web/DatabaseSchemaModal";
+import { getSchemaByPageId } from "@/lib/database-schema";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Drawer } from "@/components/ui/Drawer";
@@ -26,6 +28,8 @@ import {
    PAGE
    ══════════════════════════════════════════════════ */
 export default function DocumentTypesSettingsPage() {
+  const [showSchema, setShowSchema] = useState(false);
+  const schema = getSchemaByPageId("document-types")!;
   const [items, setItems] = useState<DocumentType[]>(documentTypes);
   const [drawer, setDrawer] = useState<{ mode: "add" | "edit"; item?: DocumentType } | null>(null);
 
@@ -39,6 +43,7 @@ export default function DocumentTypesSettingsPage() {
   return (
     <>
       <Topbar title="ประเภทเอกสาร / Document Types" />
+      <DatabaseSchemaModal open={showSchema} onClose={() => setShowSchema(false)} schema={schema} />
       <main className="flex-1 p-6 space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -46,6 +51,7 @@ export default function DocumentTypesSettingsPage() {
             <h3 className="text-lg font-bold text-text-primary flex items-center gap-2">
               <Settings size={22} className="text-primary" />
               ตั้งค่าประเภทเอกสาร
+              <DbSchemaButton onClick={() => setShowSchema(true)} />
             </h3>
             <p className="text-sm text-text-muted mt-1">กำหนดเอกสารที่ต้องใช้ในการลงทะเบียนตามวัตถุประสงค์การเข้าพื้นที่</p>
           </div>
