@@ -12,7 +12,6 @@ export default function Sidebar() {
     const navItems = [
         { href: "/web/dashboard", label: "ภาพรวม", icon: <LayoutDashboard size={20} /> },
         { href: "/web/appointments", label: "การนัดหมาย", icon: <Calendar size={20} /> },
-        { href: "/web/walkin", label: "Walk-in", icon: <Users size={20} /> },
         { href: "/web/search", label: "ค้นหา", icon: <Search size={20} /> },
         { href: "/web/blocklist", label: "Blocklist", icon: <Shield size={20} /> },
         { href: "/web/reports", label: "รายงาน", icon: <FileText size={20} /> },
@@ -27,6 +26,7 @@ export default function Sidebar() {
         { href: "/web/settings/business-hours", label: "เวลาทำการ", icon: <Clock size={20} /> },
         { href: "/web/settings/notification-templates", label: "เทมเพลตแจ้งเตือน", icon: <Bell size={20} /> },
         { href: "/web/settings/visit-slips", label: "แบบฟอร์ม Visit Slip", icon: <Printer size={20} /> },
+        { href: "/web/settings/pdpa-consent", label: "PDPA / ข้อมูลส่วนบุคคล", icon: <ShieldCheck size={20} /> },
     ];
 
     return (

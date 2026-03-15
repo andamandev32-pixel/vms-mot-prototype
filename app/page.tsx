@@ -64,7 +64,7 @@ export default function Home() {
               <span className="text-2xl font-bold text-white">V</span>
             </div>
             <div className="text-left">
-              <h1 className="text-3xl font-bold text-white tracking-tight">VMS Prototype</h1>
+              <h1 className="text-3xl font-bold text-white tracking-tight">eVMS Prototype</h1>
               <p className="text-white/60 text-sm font-medium">Visitor Management System</p>
             </div>
           </div>

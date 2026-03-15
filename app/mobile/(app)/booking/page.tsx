@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { Card } from "@/components/ui/Card";
-import { ChevronLeft, ChevronRight, Check, Clock, Users, Briefcase, FileText, Wrench, MoreHorizontal, User, Search, MapPin, Building2, Minus, Plus, Car } from "lucide-react";
+import { ChevronLeft, ChevronRight, Check, Clock, Users, Briefcase, FileText, Wrench, MoreHorizontal, User, Search, MapPin, Building2, Minus, Plus } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
@@ -45,9 +45,6 @@ export default function BookingPage() {
     const [phone, setPhone] = useState("081-302-5678");
     const [email, setEmail] = useState("");
     const [purpose, setPurpose] = useState("");
-    const [hasVehicle, setHasVehicle] = useState(false);
-    const [licensePlate, setLicensePlate] = useState("");
-    const [vehicleColor, setVehicleColor] = useState("");
     const [equipmentName, setEquipmentName] = useState("");
     const [equipmentQty, setEquipmentQty] = useState("");
     const [notes, setNotes] = useState("");
@@ -143,12 +140,6 @@ export default function BookingPage() {
                         onEmailChange={setEmail}
                         purpose={purpose}
                         onPurposeChange={setPurpose}
-                        hasVehicle={hasVehicle}
-                        onHasVehicleChange={setHasVehicle}
-                        licensePlate={licensePlate}
-                        onLicensePlateChange={setLicensePlate}
-                        vehicleColor={vehicleColor}
-                        onVehicleColorChange={setVehicleColor}
                         equipmentName={equipmentName}
                         onEquipmentNameChange={setEquipmentName}
                         equipmentQty={equipmentQty}
@@ -168,8 +159,6 @@ export default function BookingPage() {
                         phone={phone}
                         email={email}
                         purpose={purpose}
-                        licensePlate={licensePlate}
-                        vehicleColor={vehicleColor}
                         equipmentName={equipmentName}
                         equipmentQty={equipmentQty}
                         notes={notes}
@@ -398,9 +387,6 @@ function Step3Details({
     phone, onPhoneChange,
     email, onEmailChange,
     purpose, onPurposeChange,
-    hasVehicle, onHasVehicleChange,
-    licensePlate, onLicensePlateChange,
-    vehicleColor, onVehicleColorChange,
     equipmentName, onEquipmentNameChange,
     equipmentQty, onEquipmentQtyChange,
     notes, onNotesChange,
@@ -409,9 +395,6 @@ function Step3Details({
     phone: string; onPhoneChange: (v: string) => void;
     email: string; onEmailChange: (v: string) => void;
     purpose: string; onPurposeChange: (v: string) => void;
-    hasVehicle: boolean; onHasVehicleChange: (v: boolean) => void;
-    licensePlate: string; onLicensePlateChange: (v: string) => void;
-    vehicleColor: string; onVehicleColorChange: (v: string) => void;
     equipmentName: string; onEquipmentNameChange: (v: string) => void;
     equipmentQty: string; onEquipmentQtyChange: (v: string) => void;
     notes: string; onNotesChange: (v: string) => void;
@@ -469,42 +452,6 @@ function Step3Details({
                 </div>
             </div>
 
-            {/* Vehicle */}
-            <div className="bg-white p-4 rounded-xl border border-border space-y-3">
-                <div className="flex justify-between items-center">
-                    <div className="flex items-center gap-2">
-                        <Car size={18} className="text-text-muted" />
-                        <span className="font-medium text-sm text-text-primary">ยานพาหนะ</span>
-                    </div>
-                    <button
-                        onClick={() => onHasVehicleChange(!hasVehicle)}
-                        className={cn(
-                            "relative w-11 h-6 rounded-full transition-colors",
-                            hasVehicle ? "bg-primary" : "bg-gray-300"
-                        )}
-                    >
-                        <div className={cn(
-                            "absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-md transition-transform",
-                            hasVehicle ? "translate-x-5.5" : "translate-x-0.5"
-                        )} />
-                    </button>
-                </div>
-                {hasVehicle && (
-                    <div className="grid grid-cols-2 gap-3 pt-1">
-                        <Input
-                            placeholder="ทะเบียนรถ"
-                            value={licensePlate}
-                            onChange={(e) => onLicensePlateChange(e.target.value)}
-                        />
-                        <Input
-                            placeholder="ประเภท / สี"
-                            value={vehicleColor}
-                            onChange={(e) => onVehicleColorChange(e.target.value)}
-                        />
-                    </div>
-                )}
-            </div>
-
             {/* Equipment */}
             <div className="bg-white p-4 rounded-xl border border-border space-y-3">
                 <h3 className="font-medium text-sm text-text-primary">อุปกรณ์นำเข้าพื้นที่</h3>
@@ -544,14 +491,12 @@ function Step3Details({
 function Step4Confirm({
     typeName, dateStr, timeStart, timeEnd,
     host, companions, phone, email, purpose,
-    licensePlate, vehicleColor,
     equipmentName, equipmentQty,
     notes, agreed, onAgreeChange,
 }: {
     typeName: string; dateStr: string; timeStart: string; timeEnd: string;
     host: typeof staffMembers[0] | null;
     companions: number; phone: string; email: string; purpose: string;
-    licensePlate: string; vehicleColor: string;
     equipmentName: string; equipmentQty: string;
     notes: string; agreed: boolean; onAgreeChange: (v: boolean) => void;
 }) {
@@ -582,13 +527,6 @@ function Step4Confirm({
                     <DetailRow label="เบอร์โทร" value={phone || "-"} />
                     {email && <DetailRow label="อีเมล" value={email} />}
                     {purpose && <DetailRow label="วัตถุประสงค์" value={purpose} />}
-                    {licensePlate && (
-                        <>
-                            <div className="border-t border-border my-2" />
-                            <DetailRow label="ทะเบียนรถ" value={licensePlate} />
-                            {vehicleColor && <DetailRow label="ประเภท/สี" value={vehicleColor} />}
-                        </>
-                    )}
                     {equipmentName && (
                         <>
                             <div className="border-t border-border my-2" />

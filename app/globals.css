@@ -190,6 +190,28 @@ body {
   animation: progress 3s ease-in-out infinite;
 }
 
+@keyframes scanLine {
+  0%, 100% { top: 20%; }
+  50% { top: 80%; }
+}
+
+@keyframes bounceIn {
+  0% { transform: scale(0.3); opacity: 0; }
+  50% { transform: scale(1.05); }
+  70% { transform: scale(0.9); }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes bounceRight {
+  0%, 100% { transform: translateX(0); }
+  50% { transform: translateX(6px); }
+}
+
+@keyframes bounceUp {
+  0%, 100% { transform: translateY(0) rotate(-90deg); }
+  50% { transform: translateY(-6px) rotate(-90deg); }
+}
+
 /* ===== WEB APP THEME (Teal Override) ===== */
 .web-theme {
   --color-primary: #099fb0;

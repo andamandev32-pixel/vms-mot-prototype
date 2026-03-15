@@ -808,7 +808,7 @@ function AccessGroupDrawer({
   const [description, setDescription] = useState(group?.description ?? "");
   const [color, setColor] = useState(group?.color ?? "#6A0DAD");
   const [hikvisionGroupId, setHikvisionGroupId] = useState(group?.hikvisionGroupId ?? "");
-  const [qrCodePrefix, setQrCodePrefix] = useState(group?.qrCodePrefix ?? "VMS-");
+  const [qrCodePrefix, setQrCodePrefix] = useState(group?.qrCodePrefix ?? "eVMS-");
   const [validityMinutes, setValidityMinutes] = useState(group?.validityMinutes ?? 60);
   const [selectedZoneIds, setSelectedZoneIds] = useState<string[]>(group?.zoneIds ?? []);
   const [scheduleDays, setScheduleDays] = useState<number[]>(group?.schedule.daysOfWeek ?? [1, 2, 3, 4, 5]);
@@ -881,7 +881,7 @@ function AccessGroupDrawer({
           </div>
           <div>
             <label className="block text-sm font-medium text-text-primary mb-1">QR Code Prefix</label>
-            <input value={qrCodePrefix} onChange={(e) => setQrCodePrefix(e.target.value)} placeholder="VMS-GEN" className="w-full h-10 px-3 text-sm font-mono rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-primary/20" />
+            <input value={qrCodePrefix} onChange={(e) => setQrCodePrefix(e.target.value)} placeholder="eVMS-GEN" className="w-full h-10 px-3 text-sm font-mono rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-primary/20" />
           </div>
         </div>
 

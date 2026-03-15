@@ -1,4 +1,4 @@
-// ===== VMS MOCK DATA STORE =====
+// ===== eVMS MOCK DATA STORE =====
 // Shared mock data for all surfaces (Mobile, Web, Kiosk, Counter)
 // All data is hardcoded — no backend or API integration
 
@@ -23,6 +23,8 @@ export type VisitType =
   | "contractor"     // ผู้รับเหมา / ซ่อมบำรุง
   | "delivery"       // รับ-ส่งสินค้า
   | "other";         // อื่นๆ
+
+export type EntryMode = "single" | "period";
 
 export type UserRole = "admin" | "supervisor" | "officer" | "staff" | "security" | "visitor";
 
@@ -73,12 +75,6 @@ export interface Visitor {
   blockedDate?: string;
 }
 
-export interface Vehicle {
-  licensePlate: string;
-  type: string;
-  color: string;
-}
-
 export interface Equipment {
   name: string;
   quantity: number;
@@ -86,17 +82,23 @@ export interface Equipment {
 
 export interface Appointment {
   id: string;
-  code: string;            // VMS-XXXXXXXX-XXXX
+  code: string;            // eVMS-XXXXXXXX-XXXX
   visitor: Visitor;
   host: Staff;
   type: VisitType;
   status: VisitStatus;
-  date: string;            // YYYY-MM-DD
+  entryMode: EntryMode;    // "single" = ครั้งเดียว, "period" = ช่วงเวลา
+  date: string;            // YYYY-MM-DD (วันเริ่ม)
+  dateEnd?: string;        // YYYY-MM-DD (วันสิ้นสุด — เฉพาะ period mode)
   timeStart: string;       // HH:mm
   timeEnd: string;         // HH:mm
   purpose: string;
   companions: number;
-  vehicle?: Vehicle;
+  companionNames?: string[];   // รายชื่อผู้ติดตาม (ถ้าระบุ → แต่ละคน check-in แยกได้)
+  createdBy: "visitor" | "staff";  // ใครสร้างรายการ
+  offerWifi?: boolean;          // เสนอ WiFi ให้ผู้มาติดต่อ
+  wifiRequested?: boolean;      // ผู้จองขอรับ WiFi ไว้ตอนนัดหมาย
+  slipPrinted?: boolean;        // พิมพ์ slip แล้วหรือไม่ (ถ้าผูก LINE อาจเลือกไม่พิมพ์)
   equipment?: Equipment[];
   area: string;
   building: string;
@@ -314,6 +316,34 @@ export const staffMembers: Staff[] = [
     shift: "night",
     avatar: undefined,
   },
+  {
+    id: "11",
+    employeeId: "SEC-003",
+    name: "คุณวิรัตน์ เก่งกาจ",
+    nameEn: "Wirat Kengkaj",
+    position: "เจ้าหน้าที่รักษาความปลอดภัย",
+    department: departments[1],
+    email: "wirat.k@mots.go.th",
+    phone: "02-283-1512",
+    role: "security",
+    status: "active",
+    shift: "morning",
+    avatar: undefined,
+  },
+  {
+    id: "12",
+    employeeId: "SEC-004",
+    name: "คุณประยุทธ์ แก้วมั่นคง",
+    nameEn: "Prayut Kaewmankong",
+    position: "เจ้าหน้าที่รักษาความปลอดภัย",
+    department: departments[1],
+    email: "prayut.k@mots.go.th",
+    phone: "02-283-1513",
+    role: "security",
+    status: "active",
+    shift: "afternoon",
+    avatar: undefined,
+  },
 ];
 
 // ===== VISITORS =====
@@ -427,17 +457,19 @@ export const visitors: Visitor[] = [
 export const appointments: Appointment[] = [
   {
     id: "1",
-    code: "VMS-20690308-0001",
+    code: "eVMS-20690308-0001",
     visitor: visitors[0],
     host: staffMembers[0],
     type: "official",
     status: "approved",
+    entryMode: "single",
     date: "2569-03-08",
     timeStart: "09:00",
     timeEnd: "10:30",
     purpose: "หารือแนวทางส่งเสริมการท่องเที่ยวเชิงนิเวศ",
     companions: 0,
-    vehicle: { licensePlate: "กข 1234", type: "รถเก๋ง", color: "ขาว" },
+    createdBy: "visitor",
+    offerWifi: true,
     area: "กองกิจการท่องเที่ยว",
     building: "ศูนย์ราชการ อาคาร C",
     floor: "ชั้น 4",
@@ -448,16 +480,20 @@ export const appointments: Appointment[] = [
   },
   {
     id: "2",
-    code: "VMS-20690308-0002",
+    code: "eVMS-20690308-0002",
     visitor: visitors[1],
     host: staffMembers[1],
     type: "meeting",
     status: "approved",
+    entryMode: "single",
     date: "2569-03-08",
     timeStart: "10:00",
     timeEnd: "11:00",
     purpose: "ประชุมเตรียมงานมหกรรมท่องเที่ยวนานาชาติ",
     companions: 2,
+    companionNames: ["นายสุรชัย วิทยา", "นางสาวปรียา สุขสวัสดิ์"],
+    createdBy: "visitor",
+    offerWifi: true,
     area: "กองกลาง",
     building: "ศูนย์ราชการ อาคาร C",
     floor: "ชั้น 2",
@@ -468,16 +504,20 @@ export const appointments: Appointment[] = [
   },
   {
     id: "3",
-    code: "VMS-20690308-0003",
+    code: "eVMS-20690308-0003",
     visitor: visitors[2],
     host: staffMembers[2],
     type: "official",
     status: "approved",
+    entryMode: "single",
     date: "2569-03-08",
     timeStart: "13:00",
     timeEnd: "14:30",
     purpose: "Discuss bilateral tourism cooperation agreement",
     companions: 1,
+    companionNames: ["Ms. Sarah Johnson"],
+    createdBy: "staff",
+    offerWifi: true,
     area: "กองการต่างประเทศ",
     building: "ศูนย์ราชการ อาคาร C",
     floor: "ชั้น 5",
@@ -487,17 +527,20 @@ export const appointments: Appointment[] = [
   },
   {
     id: "4",
-    code: "VMS-20690308-0004",
+    code: "eVMS-20690308-0004",
     visitor: visitors[3],
     host: staffMembers[1],
     type: "contractor",
     status: "pending",
+    entryMode: "period",
     date: "2569-03-08",
-    timeStart: "14:00",
-    timeEnd: "16:00",
+    dateEnd: "2569-03-12",
+    timeStart: "08:00",
+    timeEnd: "17:00",
     purpose: "สำรวจพื้นที่ซ่อมแซมห้องประชุมชั้น 3",
     companions: 3,
-    vehicle: { licensePlate: "2กบ 5678", type: "รถกระบะ", color: "ดำ" },
+    companionNames: ["นายวิทยา ช่างดี", "นายสุภาพ แข็งแรง", "นายอดิศร ไฟฟ้า"],
+    createdBy: "staff",
     equipment: [
       { name: "กล่องเครื่องมือช่าง", quantity: 2 },
       { name: "บันได้อลูมิเนียม", quantity: 1 },
@@ -509,16 +552,19 @@ export const appointments: Appointment[] = [
   },
   {
     id: "5",
-    code: "VMS-20690309-0001",
+    code: "eVMS-20690309-0001",
     visitor: visitors[4],
     host: staffMembers[3],
     type: "official",
     status: "pending",
+    entryMode: "single",
     date: "2569-03-09",
     timeStart: "10:00",
     timeEnd: "11:30",
     purpose: "สัมภาษณ์ผู้บริหารเรื่องแผนส่งเสริมท่องเที่ยวปี 2570",
     companions: 1,
+    companionNames: ["นายสมชาย ช่างภาพ"],
+    createdBy: "visitor",
     equipment: [
       { name: "กล้องถ่ายรูป", quantity: 1 },
       { name: "ขาตั้งกล้อง", quantity: 1 },
@@ -530,16 +576,19 @@ export const appointments: Appointment[] = [
   },
   {
     id: "6",
-    code: "VMS-20690308-0005",
+    code: "eVMS-20690308-0005",
     visitor: visitors[0],
     host: staffMembers[0],
     type: "official",
     status: "checked-in",
+    entryMode: "single",
     date: "2569-03-08",
     timeStart: "09:00",
     timeEnd: "10:30",
     purpose: "หารือแนวทางส่งเสริมการท่องเที่ยวเชิงนิเวศ",
     companions: 0,
+    createdBy: "visitor",
+    offerWifi: true,
     area: "กองกิจการท่องเที่ยว",
     building: "ศูนย์ราชการ อาคาร C",
     floor: "ชั้น 4",
@@ -552,16 +601,20 @@ export const appointments: Appointment[] = [
   },
   {
     id: "7",
-    code: "VMS-20690307-0001",
+    code: "eVMS-20690307-0001",
     visitor: visitors[6],
     host: staffMembers[2],
     type: "meeting",
     status: "checked-out",
-    date: "2569-03-07",
-    timeStart: "10:00",
-    timeEnd: "12:00",
+    entryMode: "period",
+    date: "2569-03-05",
+    dateEnd: "2569-03-07",
+    timeStart: "09:00",
+    timeEnd: "17:00",
     purpose: "Workshop: Japan-Thailand Tourism Exchange Program",
     companions: 0,
+    createdBy: "staff",
+    offerWifi: true,
     area: "กองการต่างประเทศ",
     building: "ศูนย์ราชการ อาคาร C",
     floor: "ชั้น 5",
@@ -575,22 +628,315 @@ export const appointments: Appointment[] = [
   },
   {
     id: "8",
-    code: "VMS-20690306-0001",
+    code: "eVMS-20690306-0001",
     visitor: visitors[4],
     host: staffMembers[3],
     type: "document",
     status: "rejected",
+    entryMode: "single",
     date: "2569-03-06",
     timeStart: "14:00",
     timeEnd: "15:00",
     purpose: "ส่งเอกสารประกอบการพิจารณาโครงการ",
     companions: 0,
+    createdBy: "visitor",
     area: "สำนักนโยบายและแผน",
     building: "ศูนย์ราชการ อาคาร C",
     floor: "ชั้น 4",
     createdAt: "2569-03-05T08:00:00",
     rejectedAt: "2569-03-05T09:30:00",
     rejectedReason: "วันที่ขอมาตรงกับวันหยุดราชการ กรุณาเลือกวันใหม่",
+  },
+  // --- Additional appointments for dashboard coverage ---
+  {
+    id: "9",
+    code: "eVMS-20690308-0006",
+    visitor: visitors[7],
+    host: staffMembers[4],
+    type: "delivery",
+    status: "checked-in",
+    entryMode: "single",
+    date: "2569-03-08",
+    timeStart: "08:30",
+    timeEnd: "09:30",
+    purpose: "ส่งอุปกรณ์คอมพิวเตอร์ชุดใหม่",
+    companions: 1,
+    companionNames: ["นายสมหมาย ขับรถ"],
+    createdBy: "staff",
+    equipment: [{ name: "กล่องอุปกรณ์", quantity: 5 }],
+    area: "สำนักงานปลัดกระทรวง",
+    building: "ศูนย์ราชการ อาคาร C",
+    floor: "ชั้น 3",
+    createdAt: "2569-03-07T14:00:00",
+    approvedAt: "2569-03-07T15:00:00",
+    approvedBy: "คุณอนันต์ มั่นคง",
+    checkinAt: "2569-03-08T08:25:00",
+  },
+  {
+    id: "10",
+    code: "eVMS-20690308-0007",
+    visitor: visitors[1],
+    host: staffMembers[3],
+    type: "document",
+    status: "checked-in",
+    entryMode: "single",
+    date: "2569-03-08",
+    timeStart: "09:30",
+    timeEnd: "10:00",
+    purpose: "ส่งรายงานผลการดำเนินงานประจำปี",
+    companions: 0,
+    createdBy: "visitor",
+    area: "สำนักนโยบายและแผน",
+    building: "ศูนย์ราชการ อาคาร C",
+    floor: "ชั้น 4",
+    createdAt: "2569-03-06T10:00:00",
+    approvedAt: "2569-03-06T14:00:00",
+    approvedBy: "คุณวิภาดา ชัยมงคล",
+    checkinAt: "2569-03-08T09:25:00",
+  },
+  {
+    id: "11",
+    code: "eVMS-20690308-0008",
+    visitor: visitors[3],
+    host: staffMembers[7],
+    type: "contractor",
+    status: "overstay",
+    entryMode: "period",
+    date: "2569-03-08",
+    dateEnd: "2569-03-10",
+    timeStart: "08:00",
+    timeEnd: "17:00",
+    purpose: "ซ่อมบำรุงระบบปรับอากาศชั้น 7",
+    companions: 2,
+    companionNames: ["นายวิทยา ช่างแอร์", "นายสุภาพ ช่างไฟ"],
+    createdBy: "staff",
+    equipment: [
+      { name: "เครื่องมือซ่อมแอร์", quantity: 1 },
+      { name: "อะไหล่", quantity: 3 },
+    ],
+    area: "กรมพลศึกษา",
+    building: "ศูนย์ราชการ อาคาร C",
+    floor: "ชั้น 7",
+    createdAt: "2569-03-06T09:00:00",
+    approvedAt: "2569-03-06T11:00:00",
+    approvedBy: "คุณปิยะนุช สุขใจ",
+    checkinAt: "2569-03-08T07:55:00",
+  },
+  {
+    id: "12",
+    code: "eVMS-20690308-0009",
+    visitor: visitors[6],
+    host: staffMembers[2],
+    type: "meeting",
+    status: "checked-in",
+    entryMode: "single",
+    date: "2569-03-08",
+    timeStart: "13:30",
+    timeEnd: "15:00",
+    purpose: "Japan-Thailand Tourism Cooperation Follow-up",
+    companions: 0,
+    createdBy: "staff",
+    offerWifi: true,
+    area: "กองการต่างประเทศ",
+    building: "ศูนย์ราชการ อาคาร C",
+    floor: "ชั้น 5",
+    room: "ห้องประชุม 2",
+    createdAt: "2569-03-06T08:00:00",
+    approvedAt: "2569-03-06T10:00:00",
+    approvedBy: "คุณกมลพร วงศ์สวัสดิ์",
+    checkinAt: "2569-03-08T13:20:00",
+    wifiUsername: "guest_yuki",
+    wifiPassword: "MOTS2569y",
+  },
+  {
+    id: "13",
+    code: "eVMS-20690308-0010",
+    visitor: visitors[4],
+    host: staffMembers[0],
+    type: "official",
+    status: "checked-out",
+    entryMode: "single",
+    date: "2569-03-08",
+    timeStart: "08:00",
+    timeEnd: "09:00",
+    purpose: "สัมภาษณ์สำหรับข่าวโครงการท่องเที่ยวสีเขียว",
+    companions: 1,
+    companionNames: ["นายสมชาย ช่างภาพ"],
+    createdBy: "visitor",
+    area: "กองกิจการท่องเที่ยว",
+    building: "ศูนย์ราชการ อาคาร C",
+    floor: "ชั้น 4",
+    createdAt: "2569-03-06T14:00:00",
+    approvedAt: "2569-03-07T09:00:00",
+    approvedBy: "คุณสมศรี รักงาน",
+    checkinAt: "2569-03-08T07:50:00",
+    checkoutAt: "2569-03-08T09:10:00",
+    checkoutBy: "คุณสมศรี รักงาน",
+  },
+  {
+    id: "14",
+    code: "eVMS-20690308-0011",
+    visitor: visitors[2],
+    host: staffMembers[6],
+    type: "meeting",
+    status: "auto-checkout",
+    entryMode: "single",
+    date: "2569-03-08",
+    timeStart: "09:00",
+    timeEnd: "10:30",
+    purpose: "UNESCO Heritage Site Coordination Meeting",
+    companions: 1,
+    companionNames: ["Ms. Sarah Johnson"],
+    createdBy: "staff",
+    offerWifi: true,
+    area: "กรมการท่องเที่ยว",
+    building: "ศูนย์ราชการ อาคาร C",
+    floor: "ชั้น 6",
+    createdAt: "2569-03-05T10:00:00",
+    approvedAt: "2569-03-05T14:00:00",
+    approvedBy: "คุณธนพล จิตรดี",
+    checkinAt: "2569-03-08T08:50:00",
+    checkoutAt: "2569-03-08T12:00:00",
+    checkoutBy: "ระบบอัตโนมัติ",
+  },
+  {
+    id: "15",
+    code: "eVMS-20690308-0012",
+    visitor: visitors[7],
+    host: staffMembers[1],
+    type: "other",
+    status: "pending",
+    entryMode: "single",
+    date: "2569-03-08",
+    timeStart: "15:00",
+    timeEnd: "16:00",
+    purpose: "เข้าสำรวจพื้นที่ติดตั้งระบบ CCTV",
+    companions: 2,
+    companionNames: ["นายวิศวะ ช่างกล้อง", "นายชาญชัย ไฟฟ้า"],
+    createdBy: "staff",
+    equipment: [{ name: "กล้อง CCTV ตัวอย่าง", quantity: 2 }],
+    area: "กองกลาง",
+    building: "ศูนย์ราชการ อาคาร C",
+    floor: "ชั้น 2",
+    createdAt: "2569-03-08T08:00:00",
+  },
+  {
+    id: "16",
+    code: "eVMS-20690308-0013",
+    visitor: visitors[0],
+    host: staffMembers[6],
+    type: "delivery",
+    status: "checked-out",
+    entryMode: "single",
+    date: "2569-03-08",
+    timeStart: "07:30",
+    timeEnd: "08:30",
+    purpose: "ส่งเอกสารและของที่ระลึกงานท่องเที่ยว",
+    companions: 0,
+    createdBy: "visitor",
+    area: "กรมการท่องเที่ยว",
+    building: "ศูนย์ราชการ อาคาร C",
+    floor: "ชั้น 6",
+    createdAt: "2569-03-07T16:30:00",
+    approvedAt: "2569-03-07T17:00:00",
+    approvedBy: "คุณธนพล จิตรดี",
+    checkinAt: "2569-03-08T07:25:00",
+    checkoutAt: "2569-03-08T08:20:00",
+    checkoutBy: "คุณธนพล จิตรดี",
+  },
+  {
+    id: "17",
+    code: "eVMS-20690308-0014",
+    visitor: visitors[1],
+    host: staffMembers[0],
+    type: "meeting",
+    status: "cancelled",
+    entryMode: "single",
+    date: "2569-03-08",
+    timeStart: "11:00",
+    timeEnd: "12:00",
+    purpose: "ประชุมเตรียมงาน Amazing Thailand Grand Sale",
+    companions: 0,
+    createdBy: "visitor",
+    area: "กองกิจการท่องเที่ยว",
+    building: "ศูนย์ราชการ อาคาร C",
+    floor: "ชั้น 4",
+    createdAt: "2569-03-06T13:00:00",
+    approvedAt: "2569-03-06T15:00:00",
+    approvedBy: "คุณสมศรี รักงาน",
+    notes: "ผู้มาติดต่อแจ้งยกเลิก — ติดภารกิจ",
+  },
+  {
+    id: "18",
+    code: "eVMS-20690309-0002",
+    visitor: visitors[7],
+    host: staffMembers[7],
+    type: "contractor",
+    status: "approved",
+    entryMode: "period",
+    date: "2569-03-09",
+    dateEnd: "2569-03-12",
+    timeStart: "08:00",
+    timeEnd: "17:00",
+    purpose: "ติดตั้งระบบ Network ชั้น 7-8",
+    companions: 3,
+    companionNames: ["นายวิศวะ ช่างเน็ต", "นายชาญชัย สายไฟ", "นายอดิศร เดินสาย"],
+    createdBy: "staff",
+    equipment: [
+      { name: "สาย LAN CAT6", quantity: 20 },
+      { name: "Switch Hub", quantity: 3 },
+    ],
+    area: "กรมพลศึกษา",
+    building: "ศูนย์ราชการ อาคาร C",
+    floor: "ชั้น 7",
+    createdAt: "2569-03-07T09:00:00",
+    approvedAt: "2569-03-07T14:00:00",
+    approvedBy: "คุณปิยะนุช สุขใจ",
+  },
+  {
+    id: "19",
+    code: "eVMS-20690308-0015",
+    visitor: visitors[4],
+    host: staffMembers[3],
+    type: "document",
+    status: "approved",
+    entryMode: "single",
+    date: "2569-03-08",
+    timeStart: "14:30",
+    timeEnd: "15:30",
+    purpose: "ส่งเอกสารแผนยุทธศาสตร์ท่องเที่ยว 5 ปี",
+    companions: 0,
+    createdBy: "visitor",
+    area: "สำนักนโยบายและแผน",
+    building: "ศูนย์ราชการ อาคาร C",
+    floor: "ชั้น 4",
+    createdAt: "2569-03-07T11:00:00",
+    approvedAt: "2569-03-07T16:00:00",
+    approvedBy: "คุณวิภาดา ชัยมงคล",
+  },
+  {
+    id: "20",
+    code: "eVMS-20690308-0016",
+    visitor: visitors[3],
+    host: staffMembers[4],
+    type: "contractor",
+    status: "checked-in",
+    entryMode: "single",
+    date: "2569-03-08",
+    timeStart: "10:00",
+    timeEnd: "12:00",
+    purpose: "ตรวจสอบระบบดับเพลิงประจำปี",
+    companions: 1,
+    companionNames: ["นายสุภาพ ช่างตรวจ"],
+    createdBy: "staff",
+    equipment: [{ name: "เครื่องมือตรวจสอบ", quantity: 1 }],
+    area: "สำนักงานปลัดกระทรวง",
+    building: "ศูนย์ราชการ อาคาร C",
+    floor: "ชั้น 3",
+    createdAt: "2569-03-06T10:00:00",
+    approvedAt: "2569-03-06T14:00:00",
+    approvedBy: "คุณอนันต์ มั่นคง",
+    checkinAt: "2569-03-08T09:55:00",
   },
 ];
 
@@ -655,7 +1001,7 @@ export const notifications: VisitNotification[] = [
     type: "system",
     title: "ระบบปรับปรุงเวอร์ชันใหม่",
     titleEn: "System Update",
-    body: "VMS v2.0 อัปเดต: รองรับ ThaiD, Passport MRZ scan",
+    body: "eVMS v2.0 อัปเดต: รองรับ ThaiD, Passport MRZ scan",
     timestamp: "2569-03-01T09:00:00",
     isRead: true,
   },
@@ -863,6 +1209,7 @@ export interface VisitPurposeConfig {
   nameEn: string;
   icon: string;
   departmentRules: DepartmentRule[];
+  allowedEntryModes: EntryMode[];  // ประเภทการเข้าที่อนุญาต
   kioskConfig: EntryChannelConfig;
   counterConfig: EntryChannelConfig;
   isActive: boolean;
@@ -875,6 +1222,7 @@ export const visitPurposeConfigs: VisitPurposeConfig[] = [
     name: "ติดต่อราชการ",
     nameEn: "Official Business",
     icon: "🏛️",
+    allowedEntryModes: ["single", "period"],
     kioskConfig: { allowedDocuments: ["1", "2", "4", "5"], requirePhoto: true },
     counterConfig: { allowedDocuments: ["1", "2", "3", "4", "5"], requirePhoto: true },
     departmentRules: [
@@ -894,6 +1242,7 @@ export const visitPurposeConfigs: VisitPurposeConfig[] = [
     name: "ประชุม / สัมมนา",
     nameEn: "Meeting / Seminar",
     icon: "📋",
+    allowedEntryModes: ["single", "period"],
     kioskConfig: { allowedDocuments: ["1", "2", "4", "5"], requirePhoto: true },
     counterConfig: { allowedDocuments: ["1", "2", "3", "4", "5"], requirePhoto: false },
     departmentRules: [
@@ -910,6 +1259,7 @@ export const visitPurposeConfigs: VisitPurposeConfig[] = [
     name: "ส่งเอกสาร / พัสดุ",
     nameEn: "Document / Parcel Delivery",
     icon: "📄",
+    allowedEntryModes: ["single"],
     kioskConfig: { allowedDocuments: ["1", "3"], requirePhoto: true },
     counterConfig: { allowedDocuments: ["1", "3", "2"], requirePhoto: false },
     departmentRules: [
@@ -925,6 +1275,7 @@ export const visitPurposeConfigs: VisitPurposeConfig[] = [
     name: "ผู้รับเหมา / ซ่อมบำรุง",
     nameEn: "Contractor / Maintenance",
     icon: "🔧",
+    allowedEntryModes: ["single", "period"],
     kioskConfig: { allowedDocuments: ["1", "3"], requirePhoto: true },
     counterConfig: { allowedDocuments: ["1", "2", "3", "4"], requirePhoto: true },
     departmentRules: [
@@ -939,6 +1290,7 @@ export const visitPurposeConfigs: VisitPurposeConfig[] = [
     name: "สมัครงาน / สัมภาษณ์",
     nameEn: "Job Application / Interview",
     icon: "💼",
+    allowedEntryModes: ["single"],
     kioskConfig: { allowedDocuments: ["1", "2", "5"], requirePhoto: true },
     counterConfig: { allowedDocuments: ["1", "2", "3", "4", "5"], requirePhoto: true },
     departmentRules: [
@@ -952,6 +1304,7 @@ export const visitPurposeConfigs: VisitPurposeConfig[] = [
     name: "เยี่ยมชม / ศึกษาดูงาน",
     nameEn: "Study Visit / Tour",
     icon: "🎓",
+    allowedEntryModes: ["single", "period"],
     kioskConfig: { allowedDocuments: ["1", "2", "5"], requirePhoto: true },
     counterConfig: { allowedDocuments: ["1", "2", "3", "4", "5"], requirePhoto: false },
     departmentRules: [
@@ -967,6 +1320,7 @@ export const visitPurposeConfigs: VisitPurposeConfig[] = [
     name: "รับ-ส่งสินค้า",
     nameEn: "Delivery / Pickup",
     icon: "📦",
+    allowedEntryModes: ["single"],
     kioskConfig: { allowedDocuments: ["1", "3"], requirePhoto: false },
     counterConfig: { allowedDocuments: ["1", "3"], requirePhoto: false },
     departmentRules: [
@@ -982,6 +1336,7 @@ export const visitPurposeConfigs: VisitPurposeConfig[] = [
     name: "อื่นๆ",
     nameEn: "Other",
     icon: "🔖",
+    allowedEntryModes: ["single"],
     kioskConfig: { allowedDocuments: ["1", "2"], requirePhoto: false },
     counterConfig: { allowedDocuments: ["1", "2", "3"], requirePhoto: false },
     departmentRules: [
@@ -1118,7 +1473,7 @@ export const accessGroups: AccessGroup[] = [
     description: "เข้าได้เฉพาะล็อบบี้และพื้นที่ส่วนกลาง ชั้น 1",
     zoneIds: ["1", "20"],
     hikvisionGroupId: "HIK-GRP-GENERAL",
-    qrCodePrefix: "VMS-GEN",
+    qrCodePrefix: "eVMS-GEN",
     validityMinutes: 60,
     schedule: { daysOfWeek: [1, 2, 3, 4, 5], startTime: "08:00", endTime: "17:00" },
     allowedVisitTypes: ["document", "delivery", "other"],
@@ -1132,7 +1487,7 @@ export const accessGroups: AccessGroup[] = [
     description: "เข้าล็อบบี้ + สำนักงานชั้น 2-5 (ปลัด, กองกลาง, กิจการท่องเที่ยว, ต่างประเทศ)",
     zoneIds: ["1", "4", "5", "6", "7", "8", "9", "10", "11"],
     hikvisionGroupId: "HIK-GRP-FL2-5",
-    qrCodePrefix: "VMS-OFA",
+    qrCodePrefix: "eVMS-OFA",
     validityMinutes: 120,
     schedule: { daysOfWeek: [1, 2, 3, 4, 5], startTime: "08:00", endTime: "17:00" },
     allowedVisitTypes: ["official", "meeting", "document"],
@@ -1146,7 +1501,7 @@ export const accessGroups: AccessGroup[] = [
     description: "เข้าล็อบบี้ + ชั้น 6 (กรมการท่องเที่ยว / ททท.)",
     zoneIds: ["1", "12", "13"],
     hikvisionGroupId: "HIK-GRP-FL6",
-    qrCodePrefix: "VMS-OFB",
+    qrCodePrefix: "eVMS-OFB",
     validityMinutes: 120,
     schedule: { daysOfWeek: [1, 2, 3, 4, 5], startTime: "08:00", endTime: "17:00" },
     allowedVisitTypes: ["official", "meeting", "document"],
@@ -1160,7 +1515,7 @@ export const accessGroups: AccessGroup[] = [
     description: "เข้าล็อบบี้ + ชั้น 7-8 (กรมพลศึกษา, มกช., กกท., ตร.ท่องเที่ยว, อพท.)",
     zoneIds: ["1", "14", "15", "16"],
     hikvisionGroupId: "HIK-GRP-FL7-8",
-    qrCodePrefix: "VMS-OFC",
+    qrCodePrefix: "eVMS-OFC",
     validityMinutes: 120,
     schedule: { daysOfWeek: [1, 2, 3, 4, 5], startTime: "08:00", endTime: "17:00" },
     allowedVisitTypes: ["official", "meeting"],
@@ -1174,7 +1529,7 @@ export const accessGroups: AccessGroup[] = [
     description: "เข้าได้เฉพาะห้องประชุมทุกชั้น (ไม่รวมห้องประชุมรัฐมนตรี)",
     zoneIds: ["1", "5", "7", "9", "11", "13", "15", "20"],
     hikvisionGroupId: "HIK-GRP-MEETING",
-    qrCodePrefix: "VMS-MTG",
+    qrCodePrefix: "eVMS-MTG",
     validityMinutes: 180,
     schedule: { daysOfWeek: [1, 2, 3, 4, 5], startTime: "07:30", endTime: "18:00" },
     allowedVisitTypes: ["meeting"],
@@ -1188,7 +1543,7 @@ export const accessGroups: AccessGroup[] = [
     description: "เข้าชั้น 9 (ต้องได้รับอนุมัติพิเศษ)",
     zoneIds: ["1", "18", "19"],
     hikvisionGroupId: "HIK-GRP-VIP",
-    qrCodePrefix: "VMS-VIP",
+    qrCodePrefix: "eVMS-VIP",
     validityMinutes: 60,
     schedule: { daysOfWeek: [1, 2, 3, 4, 5], startTime: "09:00", endTime: "16:00" },
     allowedVisitTypes: ["official", "meeting"],
@@ -1202,7 +1557,7 @@ export const accessGroups: AccessGroup[] = [
     description: "เข้าพื้นที่ซ่อมบำรุง + ที่จอดรถ (มีเวลาจำกัด)",
     zoneIds: ["1", "2", "3"],
     hikvisionGroupId: "HIK-GRP-MAINT",
-    qrCodePrefix: "VMS-CTR",
+    qrCodePrefix: "eVMS-CTR",
     validityMinutes: 240,
     schedule: { daysOfWeek: [1, 2, 3, 4, 5, 6], startTime: "07:00", endTime: "18:00" },
     allowedVisitTypes: ["contractor"],
@@ -1216,7 +1571,7 @@ export const accessGroups: AccessGroup[] = [
     description: "เข้าได้เฉพาะลานจอดรถ",
     zoneIds: ["2"],
     hikvisionGroupId: "HIK-GRP-PARK",
-    qrCodePrefix: "VMS-PKG",
+    qrCodePrefix: "eVMS-PKG",
     validityMinutes: 480,
     schedule: { daysOfWeek: [1, 2, 3, 4, 5], startTime: "06:00", endTime: "20:00" },
     allowedVisitTypes: ["official", "meeting", "contractor", "delivery", "other"],
@@ -1230,7 +1585,7 @@ export const accessGroups: AccessGroup[] = [
     description: "เข้าล็อบบี้ + ที่จอดรถ (จำกัดเวลา 30 นาที)",
     zoneIds: ["1", "2"],
     hikvisionGroupId: "HIK-GRP-DELIVERY",
-    qrCodePrefix: "VMS-DLV",
+    qrCodePrefix: "eVMS-DLV",
     validityMinutes: 30,
     schedule: { daysOfWeek: [1, 2, 3, 4, 5, 6], startTime: "06:00", endTime: "18:00" },
     allowedVisitTypes: ["delivery"],
@@ -1292,14 +1647,134 @@ export interface ServicePoint {
   allowedPurposeIds: string[];    // IDs จาก visitPurposeConfigs
   allowedDocumentIds: string[];   // IDs จาก identityDocumentTypes
   isActive: boolean;
+  /** Timeout settings per screen (seconds). Configurable from web admin. */
+  timeoutConfig?: {
+    pdpaConsent: number;       // default 120
+    selectIdMethod: number;    // default 60
+    idVerification: number;    // default 60
+    dataPreview: number;       // default 120
+    selectPurpose: number;     // default 60
+    faceCapture: number;       // default 60
+    qrScan: number;            // default 60
+    appointmentPreview: number;// default 120
+    successRedirect: number;   // default 10
+  };
+  /** WiFi configuration for guest visitors */
+  wifiConfig?: {
+    ssid: string;                  // default "MOTS-Guest"
+    passwordPattern: string;       // default "mots{year}" — supports {year}, {yearBE}
+    validityMode: "business-hours-close" | "fixed-duration"; // default "business-hours-close"
+    fixedDurationMinutes?: number; // default 480 (8 hours)
+  };
+  /** PDPA consent screen configuration */
+  pdpaConfig?: {
+    requireScroll: boolean;  // default true — must scroll before accept
+    retentionDays: number;   // default 90
+  };
+  /** Visit slip template overrides */
+  slipConfig?: {
+    headerText: string;      // default "กระทรวงการท่องเที่ยวและกีฬา"
+    footerText: string;      // default "กรุณาส่งคืนบัตรเมื่อออกจากอาคาร"
+  };
+  /** Whether this kiosk/counter follows business hours rules */
+  followBusinessHours?: boolean; // default true
+  /** ID number masking pattern */
+  idMaskingPattern?: string;     // default "show-first1-last5"
+  /** Admin PIN for kiosk configuration (5 digits) */
+  adminPin?: string;             // default "10210"
 }
 
 export const servicePoints: ServicePoint[] = [
-  { id: "1", name: "ตู้ Kiosk ล็อบบี้หลัก", nameEn: "Main Lobby Kiosk", type: "kiosk", status: "online", location: "ล็อบบี้ ชั้น 1 ประตูหลัก", locationEn: "Main Lobby, Gate 1", building: "ศูนย์ราชการ อาคาร C", floor: "ชั้น 1", ipAddress: "192.168.1.101", macAddress: "AA:BB:CC:DD:01:01", serialNumber: "KIOSK-2024-001", todayTransactions: 42, lastOnline: "2569-03-08T14:30:00", allowedPurposeIds: ["1", "2", "5"], allowedDocumentIds: ["1", "2", "4", "5"], isActive: true },
-  { id: "2", name: "ตู้ Kiosk ล็อบบี้ฝั่งตะวันออก", nameEn: "East Lobby Kiosk", type: "kiosk", status: "offline", location: "ล็อบบี้ ชั้น 1 ประตูฝั่งตะวันออก", locationEn: "East Lobby, Side Gate", building: "ศูนย์ราชการ อาคาร C", floor: "ชั้น 1", ipAddress: "192.168.1.102", macAddress: "AA:BB:CC:DD:01:02", serialNumber: "KIOSK-2024-002", todayTransactions: 28, lastOnline: "2569-03-08T14:28:00", allowedPurposeIds: ["1", "3", "4"], allowedDocumentIds: ["1", "3", "5"], isActive: true },
-  { id: "3", name: "จุดบริการ Counter 1", nameEn: "Service Counter 1", type: "counter", status: "online", location: "เคาน์เตอร์ รปภ. ประตูหลัก", locationEn: "Security Counter, Main Gate", building: "ศูนย์ราชการ อาคาร C", floor: "ชั้น 1", ipAddress: "192.168.1.201", macAddress: "AA:BB:CC:DD:02:01", serialNumber: "CTR-2024-001", todayTransactions: 67, lastOnline: "2569-03-08T14:30:00", assignedStaffId: "6", allowedPurposeIds: ["1", "2", "3", "4", "5"], allowedDocumentIds: ["1", "2", "3", "4", "5"], isActive: true },
-  { id: "4", name: "จุดบริการ Counter 2", nameEn: "Service Counter 2", type: "counter", status: "online", location: "เคาน์เตอร์ รปภ. ประตูหลัก", locationEn: "Security Counter, Main Gate", building: "ศูนย์ราชการ อาคาร C", floor: "ชั้น 1", ipAddress: "192.168.1.202", macAddress: "AA:BB:CC:DD:02:02", serialNumber: "CTR-2024-002", todayTransactions: 53, lastOnline: "2569-03-08T14:29:00", assignedStaffId: "7", allowedPurposeIds: ["1", "2", "3", "4", "5"], allowedDocumentIds: ["1", "2", "3", "4", "5"], isActive: true },
+  {
+    id: "1", name: "ตู้ Kiosk ล็อบบี้หลัก", nameEn: "Main Lobby Kiosk", type: "kiosk", status: "online",
+    location: "ล็อบบี้ ชั้น 1 ประตูหลัก", locationEn: "Main Lobby, Gate 1",
+    building: "ศูนย์ราชการ อาคาร C", floor: "ชั้น 1",
+    ipAddress: "192.168.1.101", macAddress: "AA:BB:CC:DD:01:01", serialNumber: "KIOSK-2024-001",
+    todayTransactions: 42, lastOnline: "2569-03-08T14:30:00",
+    allowedPurposeIds: ["1", "2", "5"], allowedDocumentIds: ["1", "2", "4", "5"], isActive: true,
+    timeoutConfig: { pdpaConsent: 120, selectIdMethod: 60, idVerification: 60, dataPreview: 120, selectPurpose: 60, faceCapture: 60, qrScan: 60, appointmentPreview: 120, successRedirect: 10 },
+    wifiConfig: { ssid: "MOTS-Guest", passwordPattern: "mots{year}", validityMode: "business-hours-close", fixedDurationMinutes: 480 },
+    pdpaConfig: { requireScroll: true, retentionDays: 90 },
+    slipConfig: { headerText: "กระทรวงการท่องเที่ยวและกีฬา", footerText: "กรุณาส่งคืนบัตรเมื่อออกจากอาคาร" },
+    followBusinessHours: true,
+    idMaskingPattern: "show-first1-last5",
+    adminPin: "10210",
+  },
+  {
+    id: "2", name: "ตู้ Kiosk ล็อบบี้ฝั่งตะวันออก", nameEn: "East Lobby Kiosk", type: "kiosk", status: "offline",
+    location: "ล็อบบี้ ชั้น 1 ประตูฝั่งตะวันออก", locationEn: "East Lobby, Side Gate",
+    building: "ศูนย์ราชการ อาคาร C", floor: "ชั้น 1",
+    ipAddress: "192.168.1.102", macAddress: "AA:BB:CC:DD:01:02", serialNumber: "KIOSK-2024-002",
+    todayTransactions: 28, lastOnline: "2569-03-08T14:28:00",
+    allowedPurposeIds: ["1", "3", "4"], allowedDocumentIds: ["1", "3", "5"], isActive: true,
+    timeoutConfig: { pdpaConsent: 120, selectIdMethod: 60, idVerification: 60, dataPreview: 120, selectPurpose: 60, faceCapture: 60, qrScan: 60, appointmentPreview: 120, successRedirect: 10 },
+    wifiConfig: { ssid: "MOTS-Guest", passwordPattern: "mots{year}", validityMode: "business-hours-close", fixedDurationMinutes: 480 },
+    pdpaConfig: { requireScroll: true, retentionDays: 90 },
+    slipConfig: { headerText: "กระทรวงการท่องเที่ยวและกีฬา", footerText: "กรุณาส่งคืนบัตรเมื่อออกจากอาคาร" },
+    followBusinessHours: true,
+    idMaskingPattern: "show-first1-last5",
+    adminPin: "10210",
+  },
+  {
+    id: "3", name: "จุดบริการ Counter 1", nameEn: "Service Counter 1", type: "counter", status: "online",
+    location: "เคาน์เตอร์ รปภ. ประตูหลัก", locationEn: "Security Counter, Main Gate",
+    building: "ศูนย์ราชการ อาคาร C", floor: "ชั้น 1",
+    ipAddress: "192.168.1.201", macAddress: "AA:BB:CC:DD:02:01", serialNumber: "CTR-2024-001",
+    todayTransactions: 67, lastOnline: "2569-03-08T14:30:00", assignedStaffId: "6",
+    allowedPurposeIds: ["1", "2", "3", "4", "5"], allowedDocumentIds: ["1", "2", "3", "4", "5"], isActive: true,
+    followBusinessHours: true,
+    adminPin: "10210",
+  },
+  {
+    id: "4", name: "จุดบริการ Counter 2", nameEn: "Service Counter 2", type: "counter", status: "online",
+    location: "เคาน์เตอร์ รปภ. ประตูหลัก", locationEn: "Security Counter, Main Gate",
+    building: "ศูนย์ราชการ อาคาร C", floor: "ชั้น 1",
+    ipAddress: "192.168.1.202", macAddress: "AA:BB:CC:DD:02:02", serialNumber: "CTR-2024-002",
+    todayTransactions: 53, lastOnline: "2569-03-08T14:29:00", assignedStaffId: "7",
+    allowedPurposeIds: ["1", "2", "3", "4", "5"], allowedDocumentIds: ["1", "2", "3", "4", "5"], isActive: true,
+    followBusinessHours: true,
+    adminPin: "10210",
+  },
 ];
+
+// ===== COUNTER STAFF ASSIGNMENTS =====
+
+export interface CounterStaffAssignment {
+  id: number;
+  servicePointId: string;
+  staffId: string;
+  isPrimary: boolean;
+  assignedAt: string;
+}
+
+export const counterStaffAssignments: CounterStaffAssignment[] = [
+  { id: 1, servicePointId: "3", staffId: "6", isPrimary: true, assignedAt: "2569-01-15T09:00:00" },
+  { id: 2, servicePointId: "3", staffId: "11", isPrimary: false, assignedAt: "2569-02-01T09:00:00" },
+  { id: 3, servicePointId: "4", staffId: "12", isPrimary: true, assignedAt: "2569-01-15T09:00:00" },
+  { id: 4, servicePointId: "4", staffId: "6", isPrimary: false, assignedAt: "2569-02-10T09:00:00" },
+  { id: 5, servicePointId: "4", staffId: "11", isPrimary: false, assignedAt: "2569-03-01T09:00:00" },
+];
+
+/** คืน counter ที่พนักงานคนนี้มีสิทธิ์ทำงานได้ (เฉพาะ online + active) */
+export function getAuthorizedCounters(staffId: string): ServicePoint[] {
+  const assignedIds = counterStaffAssignments
+    .filter((a) => a.staffId === staffId)
+    .map((a) => a.servicePointId);
+  return servicePoints.filter(
+    (sp) => sp.type === "counter" && sp.isActive && assignedIds.includes(sp.id)
+  );
+}
+
+/** คืนเจ้าหน้าที่ที่ assign อยู่ใน counter นี้ */
+export function getAssignedStaff(servicePointId: string): (Staff & { isPrimary: boolean })[] {
+  const assignments = counterStaffAssignments.filter((a) => a.servicePointId === servicePointId);
+  return assignments
+    .map((a) => {
+      const staff = staffMembers.find((s) => s.id === a.staffId);
+      return staff ? { ...staff, isPrimary: a.isPrimary } : null;
+    })
+    .filter(Boolean) as (Staff & { isPrimary: boolean })[];
+}
 
 // ===== DOCUMENT TYPES =====
 

@@ -4,7 +4,7 @@ export default function CounterAppLayout({
     children: React.ReactNode;
 }) {
     return (
-        <div className="bg-bg min-h-screen">
+        <div className="bg-bg h-screen overflow-hidden web-theme">
             {children}
         </div>
     );

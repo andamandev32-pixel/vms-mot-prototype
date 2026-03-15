@@ -1,4 +1,4 @@
-# VMS Database Schema — Settings Module
+# eVMS Database Schema — Settings Module
 
 > **สำหรับ DEV**: เอกสารนี้แสดง Schema ฐานข้อมูลทั้งหมดที่ใช้ในส่วนตั้งค่า (Settings)
 > ออกแบบจาก Mock-up Data ที่ใช้ใน Prototype — พร้อมตัวอย่างข้อมูล Seed
@@ -14,11 +14,12 @@
 | 3 | [โซนเข้าพื้นที่](#3-โซนเข้าพื้นที่) | 6 ตาราง | `/web/settings/access-zones` |
 | 4 | [กลุ่มผู้อนุมัติ](#4-กลุ่มผู้อนุมัติ) | 4 ตาราง | `/web/settings/approver-groups` |
 | 5 | [จัดการพนักงาน](#5-จัดการพนักงาน) | 1 ตาราง | `/web/settings/staff` |
-| 6 | [จุดให้บริการ Kiosk/Counter](#6-จุดให้บริการ-kioskcounter) | 3 ตาราง | `/web/settings/service-points` |
+| 6 | [จุดให้บริการ Kiosk/Counter](#6-จุดให้บริการ-kioskcounter) | 4 ตาราง | `/web/settings/service-points` |
 | 7 | [ประเภทเอกสาร](#7-ประเภทเอกสาร) | 3 ตาราง | `/web/settings/document-types` |
 | 8 | [เวลาทำการ](#8-เวลาทำการ) | 1 ตาราง | `/web/settings/business-hours` |
 | 9 | [เทมเพลตแจ้งเตือน](#9-เทมเพลตแจ้งเตือน) | 2 ตาราง | `/web/settings/notification-templates` |
 | 10 | [แบบฟอร์ม Visit Slip](#10-แบบฟอร์ม-visit-slip) | 3 ตาราง | `/web/settings/visit-slips` |
+| 12 | [ข้อมูลธุรกรรม Visit Records](#12-ข้อมูลธุรกรรม-visit-records) | 1 ตาราง | `/web/appointments` |
 
 **รวมทั้งหมด: 31 ตาราง**
 
@@ -52,7 +53,10 @@
             ┌───────▼──────┐  ┌──────▼───────┐ ┌─────▼──────────┐
             │service_points │  │notification_ │ │visit_purposes  │
             │(จุดบริการ)    │  │templates     │ │(วัตถุประสงค์)   │
-            └──────────────┘  └──────────────┘ └──────┬─────────┘
+            └──────┬───────┘  └──────────────┘ └──────┬─────────┘
+                    │
+            counter_staff_assignments
+            (เจ้าหน้าที่ประจำ Counter, M:N → staff)
                                                        │
                                                purpose_slip_mappings
                                                        │
@@ -292,7 +296,7 @@
 | name / name_en | VARCHAR(100) | ✗ | ชื่อกลุ่ม |
 | description | TEXT | ✗ | คำอธิบายขอบเขตการเข้าถึง |
 | hikvision_group_id 🔒 | VARCHAR(50) | ✗ | รหัสกลุ่มบน Hikvision (UNIQUE) |
-| qr_code_prefix | VARCHAR(20) | ✗ | Prefix QR Code เช่น VMS-GEN |
+| qr_code_prefix | VARCHAR(20) | ✗ | Prefix QR Code เช่น eVMS-GEN |
 | validity_minutes | INT | ✗ | อายุ QR Code (นาที) |
 | schedule_days_of_week | JSON | ✗ | วันที่อนุญาต [0=อา..6=ส] |
 | schedule_start_time / end_time | TIME | ✗ | เวลาเริ่ม-สิ้นสุด |
@@ -304,15 +308,15 @@
 
 | id | name | qr_code_prefix | validity_minutes | color |
 |----|------|----------------|-----------------|-------|
-| ag-1 | ผู้เยี่ยมชมทั่วไป | VMS-GEN | 60 | #6B7280 |
-| ag-2 | ติดต่อราชการ ชั้น 2-5 | VMS-OFA | 120 | #6A0DAD |
-| ag-3 | ติดต่อราชการ ชั้น 6 | VMS-OFB | 120 | #2563EB |
-| ag-4 | ติดต่อราชการ ชั้น 7-8 | VMS-OFC | 120 | #059669 |
-| ag-5 | ห้องประชุมรวม | VMS-MTG | 180 | #0891B2 |
-| ag-6 | VIP — สำนักงานรัฐมนตรี | VMS-VIP | 60 | #DC2626 |
-| ag-7 | ผู้รับเหมา / ซ่อมบำรุง | VMS-CTR | 240 | #92400E |
-| ag-8 | ที่จอดรถ | VMS-PKG | 480 | #4B5563 |
-| ag-9 | รับ-ส่งสินค้า | VMS-DLV | 30 | #7C3AED |
+| ag-1 | ผู้เยี่ยมชมทั่วไป | eVMS-GEN | 60 | #6B7280 |
+| ag-2 | ติดต่อราชการ ชั้น 2-5 | eVMS-OFA | 120 | #6A0DAD |
+| ag-3 | ติดต่อราชการ ชั้น 6 | eVMS-OFB | 120 | #2563EB |
+| ag-4 | ติดต่อราชการ ชั้น 7-8 | eVMS-OFC | 120 | #059669 |
+| ag-5 | ห้องประชุมรวม | eVMS-MTG | 180 | #0891B2 |
+| ag-6 | VIP — สำนักงานรัฐมนตรี | eVMS-VIP | 60 | #DC2626 |
+| ag-7 | ผู้รับเหมา / ซ่อมบำรุง | eVMS-CTR | 240 | #92400E |
+| ag-8 | ที่จอดรถ | eVMS-PKG | 480 | #4B5563 |
+| ag-9 | รับ-ส่งสินค้า | eVMS-DLV | 30 | #7C3AED |
 
 </details>
 
@@ -456,10 +460,38 @@
 | assigned_staff_id 🔗 | VARCHAR(20) | ✓ | FK → staff.id (เฉพาะ counter) |
 | notes | TEXT | ✓ | หมายเหตุ |
 | is_active | BOOLEAN | ✗ | สถานะ |
+| wifi_ssid | VARCHAR(50) | ✓ | WiFi SSID สำหรับผู้เยี่ยม เช่น "MOTS-Guest" |
+| wifi_password_pattern | VARCHAR(50) | ✓ | รูปแบบรหัสผ่าน WiFi เช่น "mots{year}" |
+| wifi_validity_mode | ENUM('business-hours-close','fixed-duration') | ✓ | วิธีคำนวณหมดอายุ WiFi |
+| wifi_fixed_duration_min | INT | ✓ | ระยะเวลา WiFi (นาที) ถ้าใช้ fixed-duration |
+| pdpa_require_scroll | BOOLEAN | ✓ | บังคับเลื่อนอ่าน PDPA ก่อนยินยอม (default: true) |
+| pdpa_retention_days | INT | ✓ | จำนวนวันเก็บข้อมูลที่แสดงในข้อความ PDPA (default: 90) |
+| slip_header_text | VARCHAR(200) | ✓ | ข้อความหัวใบ slip |
+| slip_footer_text | VARCHAR(200) | ✓ | ข้อความท้ายใบ slip |
+| follow_business_hours | BOOLEAN | ✓ | ใช้เวลาทำการหรือเปิดตลอด (default: true) |
+| id_masking_pattern | VARCHAR(30) | ✓ | รูปแบบปิดบังเลขบัตร: show-last-4, show-first-last, full-mask |
+| admin_pin | VARCHAR(5) | ✓ | PIN 5 หลักสำหรับเข้าเมนูตั้งค่าบน Kiosk (default: "10210") |
 
 ### 6.2 `service_point_purposes` — จุดบริการ ↔ วัตถุประสงค์ (M:N)
 
 ### 6.3 `service_point_documents` — จุดบริการ ↔ เอกสาร (M:N)
+
+### 6.4 `counter_staff_assignments` — เจ้าหน้าที่ประจำ Counter (M:N)
+
+| คอลัมน์ | ประเภท | Null | คำอธิบาย | Default |
+|---------|--------|------|----------|--------|
+| **id** 🔑 | INT AUTO_INCREMENT | ✗ | รหัส assignment (PK) เลข run อัตโนมัติ | |
+| service_point_id 🔗 | INT | ✗ | FK → service_points.id (เฉพาะ counter) | |
+| staff_id 🔗 | INT | ✗ | FK → staff.id (role=security/officer) | |
+| is_primary | BOOLEAN | ✗ | เจ้าหน้าที่หลักประจำ counter นี้ | false |
+| assigned_at | TIMESTAMP | ✗ | วันที่มอบหมาย | CURRENT_TIMESTAMP |
+
+**Business Rules:**
+- พนักงาน 1 คนสามารถ assign ได้หลาย counter
+- Counter 1 จุดมีเจ้าหน้าที่ได้หลายคน
+- เจ้าหน้าที่ต้อง `status = active` และ `role = security` หรือ `officer`
+- แต่ละ counter ควรมี `is_primary = true` อย่างน้อย 1 คน
+- ใช้ตอน Counter Login → กรองเฉพาะ counter ที่พนักงานมีสิทธิ์
 
 <details>
 <summary>📦 Seed Data (4 rows)</summary>
@@ -670,3 +702,67 @@
 > **หมายเหตุ:** Schema นี้ออกแบบจาก Mock-up ของ Prototype สำหรับใช้สื่อสารกับทีม DEV
 > สามารถดูรายละเอียด schema เต็มพร้อม seed data ได้ที่ `lib/database-schema.ts`
 > หรือกดปุ่ม 🗄️ DB Schema ที่ header ของแต่ละหน้าตั้งค่าใน Web App
+
+---
+
+## 12. ข้อมูลธุรกรรม Visit Records
+
+**เมนู:** รายการนัดหมาย / เข้าพื้นที่
+**Path:** `/web/appointments`
+
+### 12.1 `visit_records` — ตารางบันทึกการนัดหมาย/เข้าพื้นที่
+
+| คอลัมน์ | ประเภท | Null | คำอธิบาย | Default |
+|---------|--------|------|----------|---------|
+| **id** 🔑 | SERIAL | ✗ | รหัส Auto-increment (PK) | |
+| booking_code 🔒 | VARCHAR(30) | ✗ | รหัสนัดหมาย eVMS-YYYYMMDD-XXXX | |
+| visitor_id 🔗 | INT | ✗ | FK → visitors.id | |
+| host_staff_id 🔗 | INT | ✓ | FK → staff.id ผู้ที่ต้องการพบ | |
+| visit_purpose_id 🔗 | INT | ✗ | FK → visit_purposes.id | |
+| department_id 🔗 | INT | ✗ | FK → departments.id | |
+| entry_mode | ENUM('single','period') | ✗ | ครั้งเดียว / ช่วงเวลา | single |
+| date_start | DATE | ✗ | วันเริ่มต้น | |
+| date_end | DATE | ✓ | วันสิ้นสุด (เฉพาะ period mode) | |
+| time_start | TIME | ✗ | เวลาเริ่ม | |
+| time_end | TIME | ✗ | เวลาสิ้นสุด | |
+| status | ENUM(...) | ✗ | สถานะรายการ | pending |
+| created_channel | ENUM('line','web','kiosk','counter') | ✗ | ช่องทางที่สร้างรายการ | |
+| checkin_channel | ENUM('kiosk','counter') | ✓ | ช่องทางที่ Check-in จริง | |
+| **wifi_requested** | BOOLEAN | ✗ | **ผู้จองขอรับ WiFi ไว้ตอนนัดหมายล่วงหน้า** | false |
+| wifi_accepted | BOOLEAN | ✓ | ผู้เยี่ยมยืนยันรับ WiFi ตอน Check-in | |
+| wifi_ssid | VARCHAR(50) | ✓ | SSID ที่แจก (ถ้ารับ WiFi) | |
+| wifi_password | VARCHAR(50) | ✓ | รหัส WiFi ที่แจก | |
+| wifi_valid_until | TIMESTAMP | ✓ | WiFi ใช้ได้ถึงเมื่อไร | |
+| **line_linked** | BOOLEAN | ✗ | **ผู้เยี่ยมผูก LINE OA ไว้** | false |
+| **slip_printed** | BOOLEAN | ✓ | **พิมพ์ slip หรือไม่** (null=ไม่ถาม, true=พิมพ์, false=ส่ง LINE) | |
+| slip_number | VARCHAR(30) | ✓ | เลขที่ slip | |
+| companions_count | INT | ✗ | จำนวนผู้ติดตาม | 0 |
+| vehicle_plate | VARCHAR(20) | ✓ | เลขทะเบียนรถ | |
+| face_photo_path | VARCHAR(255) | ✓ | ที่เก็บภาพถ่ายใบหน้า | |
+| id_method | ENUM(...) | ✓ | วิธียืนยันตัวตนที่ใช้ตอน Check-in | |
+| service_point_id 🔗 | INT | ✓ | FK → service_points.id จุดบริการ | |
+| checkin_at | TIMESTAMP | ✓ | วันเวลา Check-in จริง | |
+| checkout_at | TIMESTAMP | ✓ | วันเวลา Check-out | |
+
+**Business Rules — WiFi Pre-selection:**
+- `wifi_requested = true` → ผู้จองขอ WiFi ไว้ตอนนัดหมายผ่าน LINE/Web
+- **Kiosk** จะ pre-select "รับ WiFi" ให้อัตโนมัติ แต่ผู้เยี่ยมสามารถเปลี่ยนได้
+- `wifi_accepted` = ค่าสุดท้ายที่ผู้เยี่ยมยืนยันตอน Check-in
+
+**Business Rules — LINE Print/Skip:**
+- `line_linked = true` → ผู้เยี่ยมผูกบัญชี LINE OA ไว้แล้ว
+- Kiosk จะ **ถามว่าต้องการพิมพ์ slip หรือไม่** เพราะจะส่งข้อมูลผ่าน LINE อยู่แล้ว
+- ช่วยลดการใช้กระดาษ — ถ้าไม่จำเป็นต้องพิมพ์สามารถรับผ่าน LINE ได้
+- `slip_printed = false` + `line_linked = true` → ส่ง Visitor Pass ผ่าน LINE แทน
+- `slip_printed = null` → ผู้เยี่ยมไม่มี LINE (ไม่ถาม → พิมพ์อัตโนมัติ)
+
+<details>
+<summary>📦 Seed Data (3 rows)</summary>
+
+| id | booking_code | wifi_requested | line_linked | slip_printed | status |
+|----|-------------|----------------|-------------|-------------|--------|
+| 1 | eVMS-20260315-0042 | ✅ | ✅ | — (ยังไม่ check-in) | approved |
+| 2 | eVMS-20260315-0043 | ❌ | ❌ | ✅ (พิมพ์แล้ว) | checked-in |
+| 3 | eVMS-20260315-0044 | ✅ | ✅ | ❌ (รับผ่าน LINE) | checked-in |
+
+</details>

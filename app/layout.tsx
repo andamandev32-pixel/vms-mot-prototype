@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "VMS - Visitor Management System",
+  title: "eVMS - Visitor Management System",
   description: "ระบบจัดการผู้มาติดต่อ กระทรวงการท่องเที่ยวและกีฬา",
 };
 

@@ -59,7 +59,7 @@ export default function QRCodePage() {
                         <InfoRow icon={<Calendar size={18} />} label="วันที่" value="จ. 20 ม.ค. 2568 • 10:00-16:00 น." />
                         <InfoRow icon={<User size={18} />} label="พบ" value="คุณสมชาย • สำนักนโยบาย" />
                         <InfoRow icon={<MapPin size={18} />} label="พื้นที่" value="ชั้น 3 อาคาร A" />
-                        <InfoRow icon={<Hash size={18} />} label="รหัสอ้างอิง" value="VMS-0042" />
+                        <InfoRow icon={<Hash size={18} />} label="รหัสอ้างอิง" value="eVMS-0042" />
                     </div>
                 </Card>
 

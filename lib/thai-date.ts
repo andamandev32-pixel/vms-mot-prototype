@@ -1,6 +1,6 @@
-// ===== VMS THAI DATE UTILITY =====
+// ===== eVMS THAI DATE UTILITY =====
 // Thai Buddhist Era (พุทธศักราช) date formatting
-// All dates in the VMS use พ.ศ. (BE = CE + 543)
+// All dates in the eVMS use พ.ศ. (BE = CE + 543)
 
 const THAI_DAYS = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"] as const;
 const THAI_DAYS_SHORT = ["อา.", "จ.", "อ.", "พ.", "พฤ.", "ศ.", "ส."] as const;

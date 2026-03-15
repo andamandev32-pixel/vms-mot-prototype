@@ -31,7 +31,7 @@ interface StatusBadgeProps extends React.HTMLAttributes<HTMLDivElement> {
 }
 
 /**
- * StatusBadge — wraps Badge with VMS visit status semantics.
+ * StatusBadge — wraps Badge with eVMS visit status semantics.
  * Accepts a VisitStatus and renders the appropriate variant + Thai label.
  */
 export function StatusBadge({

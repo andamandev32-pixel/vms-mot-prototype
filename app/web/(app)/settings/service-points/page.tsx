@@ -39,12 +39,24 @@ import {
   FileText,
   Target,
   Check,
+  Timer,
+  Shield,
+  Printer,
+  Clock,
+  Eye,
+  KeyRound,
+  UserPlus,
+  X,
+  Star,
+  Users,
 } from "lucide-react";
 import {
   servicePoints,
   staffMembers,
   visitPurposeConfigs,
   identityDocumentTypes,
+  counterStaffAssignments,
+  getAssignedStaff,
   type ServicePoint,
   type ServicePointType,
   type ServicePointStatus,
@@ -202,7 +214,7 @@ export default function ServicePointsSettingsPage() {
         {/* Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {filtered.map((sp) => {
-            const assignedStaff = sp.assignedStaffId ? staffMembers.find((s) => s.id === sp.assignedStaffId) : null;
+            const assignedStaffList = getAssignedStaff(sp.id);
             return (
               <Card key={sp.id} className={cn("border shadow-sm transition-all hover:shadow-md", !sp.isActive && "opacity-60")}>
                 <CardContent className="p-5">
@@ -234,9 +246,18 @@ export default function ServicePointsSettingsPage() {
                     <div className="flex items-center gap-1.5 text-text-secondary">
                       <Hash size={13} className="text-text-muted" /> S/N: {sp.serialNumber}
                     </div>
-                    {assignedStaff && (
-                      <div className="flex items-center gap-1.5 text-text-secondary col-span-2">
-                        <User size={13} className="text-text-muted" /> ผู้รับผิดชอบ: {assignedStaff.name}
+                    {assignedStaffList.length > 0 && (
+                      <div className="flex items-start gap-1.5 text-text-secondary col-span-2">
+                        <Users size={13} className="text-text-muted mt-0.5" />
+                        <div>
+                          <span className="text-xs">เจ้าหน้าที่: </span>
+                          {assignedStaffList.map((s, i) => (
+                            <span key={s.id} className="text-xs">
+                              {s.name}{s.isPrimary && <Star size={10} className="inline text-accent-600 ml-0.5" />}
+                              {i < assignedStaffList.length - 1 && ", "}
+                            </span>
+                          ))}
+                        </div>
                       </div>
                     )}
                     {sp.notes && (
@@ -333,6 +354,83 @@ function ServicePointForm({ initial, onSave, onCancel }: { initial?: ServicePoin
   const [status, setStatus] = useState<ServicePointStatus>(initial?.status ?? "offline");
   const [selectedPurposes, setSelectedPurposes] = useState<string[]>(initial?.allowedPurposeIds ?? []);
   const [selectedDocs, setSelectedDocs] = useState<string[]>(initial?.allowedDocumentIds ?? []);
+  const [showTimeouts, setShowTimeouts] = useState(false);
+  const [showWifiConfig, setShowWifiConfig] = useState(false);
+  const [showPdpaConfig, setShowPdpaConfig] = useState(false);
+  const [showSlipConfig, setShowSlipConfig] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
+  const [showStaffAssign, setShowStaffAssign] = useState(false);
+
+  // Staff assignment state (counter only)
+  const initialAssignedStaff = initial ? counterStaffAssignments.filter((a) => a.servicePointId === initial.id) : [];
+  const [assignedStaffIds, setAssignedStaffIds] = useState<{ staffId: string; isPrimary: boolean }[]>(
+    initialAssignedStaff.map((a) => ({ staffId: a.staffId, isPrimary: a.isPrimary }))
+  );
+
+  const eligibleStaff = staffMembers.filter((s) => (s.role === "security" || s.role === "admin") && s.status === "active");
+  const unassignedStaff = eligibleStaff.filter((s) => !assignedStaffIds.some((a) => a.staffId === s.id));
+
+  const addStaffAssignment = (staffId: string) => {
+    setAssignedStaffIds((prev) => [...prev, { staffId, isPrimary: prev.length === 0 }]);
+  };
+  const removeStaffAssignment = (staffId: string) => {
+    setAssignedStaffIds((prev) => {
+      const next = prev.filter((a) => a.staffId !== staffId);
+      if (next.length > 0 && !next.some((a) => a.isPrimary)) {
+        next[0].isPrimary = true;
+      }
+      return next;
+    });
+  };
+  const setPrimaryStaff = (staffId: string) => {
+    setAssignedStaffIds((prev) =>
+      prev.map((a) => ({ ...a, isPrimary: a.staffId === staffId }))
+    );
+  };
+
+  const defaultTimeouts = {
+    pdpaConsent: 120,
+    selectIdMethod: 60,
+    idVerification: 60,
+    dataPreview: 120,
+    selectPurpose: 60,
+    faceCapture: 60,
+    qrScan: 60,
+    appointmentPreview: 120,
+    successRedirect: 10,
+  };
+  const [timeouts, setTimeouts] = useState(initial?.timeoutConfig ?? defaultTimeouts);
+
+  // WiFi config state
+  const [wifiSsid, setWifiSsid] = useState(initial?.wifiConfig?.ssid ?? "MOTS-Guest");
+  const [wifiPassword, setWifiPassword] = useState(initial?.wifiConfig?.passwordPattern ?? "mots{year}");
+  const [wifiValidityMode, setWifiValidityMode] = useState<"business-hours-close" | "fixed-duration">(initial?.wifiConfig?.validityMode ?? "business-hours-close");
+  const [wifiFixedDuration, setWifiFixedDuration] = useState(initial?.wifiConfig?.fixedDurationMinutes ?? 480);
+
+  // PDPA config state
+  const [pdpaRequireScroll, setPdpaRequireScroll] = useState(initial?.pdpaConfig?.requireScroll ?? true);
+  const [pdpaRetentionDays, setPdpaRetentionDays] = useState(initial?.pdpaConfig?.retentionDays ?? 90);
+
+  // Slip config state
+  const [slipHeader, setSlipHeader] = useState(initial?.slipConfig?.headerText ?? "กระทรวงการท่องเที่ยวและกีฬา");
+  const [slipFooter, setSlipFooter] = useState(initial?.slipConfig?.footerText ?? "ขอบคุณที่มาเยือน — Thank you for visiting");
+
+  // Advanced settings state
+  const [followBusinessHours, setFollowBusinessHours] = useState(initial?.followBusinessHours ?? true);
+  const [idMaskingPattern, setIdMaskingPattern] = useState(initial?.idMaskingPattern ?? "show-last-4");
+  const [adminPin, setAdminPin] = useState(initial?.adminPin ?? "10210");
+
+  const timeoutFields: { key: keyof typeof defaultTimeouts; label: string; labelEn: string }[] = [
+    { key: "pdpaConsent", label: "หน้ายินยอม PDPA", labelEn: "PDPA Consent" },
+    { key: "selectIdMethod", label: "หน้าเลือกวิธียืนยันตัวตน", labelEn: "Select ID Method" },
+    { key: "idVerification", label: "หน้าตรวจสอบเอกสาร", labelEn: "ID Verification" },
+    { key: "dataPreview", label: "หน้าตรวจสอบข้อมูล", labelEn: "Data Preview" },
+    { key: "selectPurpose", label: "หน้าเลือกประเภทเข้าพื้นที่", labelEn: "Select Purpose" },
+    { key: "faceCapture", label: "หน้าถ่ายภาพ + WiFi", labelEn: "Face Capture + WiFi" },
+    { key: "qrScan", label: "หน้าสแกน QR (มีนัด)", labelEn: "QR Scan" },
+    { key: "appointmentPreview", label: "หน้าตรวจสอบนัดหมาย", labelEn: "Appointment Preview" },
+    { key: "successRedirect", label: "หน้าสำเร็จ (redirect)", labelEn: "Success Redirect" },
+  ];
 
   const handleTypeChange = (t: ServicePointType) => {
     setType(t);
@@ -444,6 +542,380 @@ function ServicePointForm({ initial, onSave, onCancel }: { initial?: ServicePoin
       </div>
 
       {/* Status */}
+      {/* ── Timeout Config (kiosk only) ── */}
+      {type === "kiosk" && (
+        <div>
+          <button
+            type="button"
+            onClick={() => setShowTimeouts((v) => !v)}
+            className="flex items-center gap-1.5 text-sm font-semibold text-text-primary mb-2 w-full"
+          >
+            <Timer size={15} className="text-primary" />
+            ตั้งค่า Timeout แต่ละหน้า (วินาที)
+            {showTimeouts ? <ChevronUp size={14} className="ml-auto text-text-muted" /> : <ChevronDown size={14} className="ml-auto text-text-muted" />}
+          </button>
+          {showTimeouts && (
+            <div className="space-y-2 p-3 rounded-xl bg-gray-50 border border-border">
+              <p className="text-xs text-text-muted mb-2 flex items-center gap-1">
+                <Info size={13} /> กำหนดเวลา timeout สำหรับแต่ละหน้าจอ Kiosk (หน่วย: วินาที)
+              </p>
+              {timeoutFields.map((f) => (
+                <div key={f.key} className="flex items-center gap-3">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-text-primary truncate">{f.label}</p>
+                    <p className="text-[11px] text-text-muted">{f.labelEn}</p>
+                  </div>
+                  <div className="w-24">
+                    <input
+                      type="number"
+                      min={5}
+                      max={600}
+                      value={timeouts[f.key]}
+                      onChange={(e) => {
+                        const val = Math.max(5, Math.min(600, Number(e.target.value) || 5));
+                        setTimeouts((prev) => ({ ...prev, [f.key]: val }));
+                      }}
+                      className="w-full px-2.5 py-1.5 text-sm text-center rounded-lg border border-border bg-white focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none"
+                    />
+                  </div>
+                  <span className="text-xs text-text-muted w-8">วิ.</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── WiFi Config ── */}
+      <div>
+        <button
+          type="button"
+          onClick={() => setShowWifiConfig((v) => !v)}
+          className="flex items-center gap-1.5 text-sm font-semibold text-text-primary mb-2 w-full"
+        >
+          <Wifi size={15} className="text-info" />
+          ตั้งค่า WiFi สำหรับผู้เยี่ยม
+          {showWifiConfig ? <ChevronUp size={14} className="ml-auto text-text-muted" /> : <ChevronDown size={14} className="ml-auto text-text-muted" />}
+        </button>
+        {showWifiConfig && (
+          <div className="space-y-3 p-3 rounded-xl bg-blue-50/50 border border-blue-100">
+            <p className="text-xs text-text-muted mb-2 flex items-center gap-1">
+              <Info size={13} /> ตั้งค่า WiFi ที่จะแสดงบนใบ slip และหน้าจอ Kiosk
+            </p>
+            <Input
+              label="WiFi SSID"
+              value={wifiSsid}
+              onChange={(e) => setWifiSsid(e.target.value)}
+              placeholder="MOTS-Guest"
+              leftIcon={<Wifi size={16} />}
+            />
+            <Input
+              label="รูปแบบรหัสผ่าน (Password Pattern)"
+              value={wifiPassword}
+              onChange={(e) => setWifiPassword(e.target.value)}
+              placeholder="mots{year} → mots2568"
+              leftIcon={<KeyRound size={16} />}
+            />
+            <p className="text-[11px] text-text-muted px-1">ตัวแปร: {"{year}"} = ปี พ.ศ., {"{month}"} = เดือน, {"{day}"} = วัน</p>
+            <div>
+              <label className="text-sm font-medium text-text-primary mb-1.5 block">วิธีคำนวณ WiFi หมดอายุ</label>
+              <div className="flex gap-2">
+                {(["business-hours-close", "fixed-duration"] as const).map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => setWifiValidityMode(mode)}
+                    className={cn(
+                      "flex-1 py-2 rounded-lg border-2 text-xs font-medium transition-all",
+                      wifiValidityMode === mode
+                        ? "border-info bg-blue-50 text-info"
+                        : "border-border bg-white text-text-muted hover:border-info/30"
+                    )}
+                  >
+                    {mode === "business-hours-close" ? "🕐 ตามเวลาปิดทำการ" : "⏱ กำหนดชั่วโมง"}
+                  </button>
+                ))}
+              </div>
+            </div>
+            {wifiValidityMode === "fixed-duration" && (
+              <Input
+                label="ระยะเวลา WiFi (นาที)"
+                type="number"
+                value={String(wifiFixedDuration)}
+                onChange={(e) => setWifiFixedDuration(Math.max(30, Number(e.target.value) || 30))}
+                placeholder="480"
+                leftIcon={<Clock size={16} />}
+              />
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* ── PDPA Config ── */}
+      <div>
+        <button
+          type="button"
+          onClick={() => setShowPdpaConfig((v) => !v)}
+          className="flex items-center gap-1.5 text-sm font-semibold text-text-primary mb-2 w-full"
+        >
+          <Shield size={15} className="text-warning" />
+          ตั้งค่า PDPA / ความเป็นส่วนตัว
+          {showPdpaConfig ? <ChevronUp size={14} className="ml-auto text-text-muted" /> : <ChevronDown size={14} className="ml-auto text-text-muted" />}
+        </button>
+        {showPdpaConfig && (
+          <div className="space-y-3 p-3 rounded-xl bg-amber-50/50 border border-amber-100">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-text-primary">บังคับเลื่อนอ่านก่อนยินยอม</p>
+                <p className="text-[11px] text-text-muted">ผู้ใช้ต้องเลื่อนอ่านข้อความ PDPA จนสุดก่อนกดยินยอม</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPdpaRequireScroll((v) => !v)}
+                className={cn(
+                  "w-11 h-6 rounded-full transition-all relative",
+                  pdpaRequireScroll ? "bg-warning" : "bg-gray-300"
+                )}
+              >
+                <span className={cn(
+                  "absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all",
+                  pdpaRequireScroll ? "left-[22px]" : "left-0.5"
+                )} />
+              </button>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="flex-1">
+                <p className="text-sm font-medium text-text-primary">ระยะเวลาเก็บข้อมูล (วัน)</p>
+                <p className="text-[11px] text-text-muted">แสดงในข้อความ PDPA ว่าเก็บข้อมูลกี่วัน</p>
+              </div>
+              <div className="w-24">
+                <input
+                  type="number"
+                  min={1}
+                  max={3650}
+                  value={pdpaRetentionDays}
+                  onChange={(e) => setPdpaRetentionDays(Math.max(1, Math.min(3650, Number(e.target.value) || 90)))}
+                  className="w-full px-2.5 py-1.5 text-sm text-center rounded-lg border border-border bg-white focus:border-warning focus:ring-1 focus:ring-warning/20 outline-none"
+                />
+              </div>
+              <span className="text-xs text-text-muted w-8">วัน</span>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── Slip Config ── */}
+      <div>
+        <button
+          type="button"
+          onClick={() => setShowSlipConfig((v) => !v)}
+          className="flex items-center gap-1.5 text-sm font-semibold text-text-primary mb-2 w-full"
+        >
+          <Printer size={15} className="text-accent-600" />
+          ตั้งค่าใบ Slip (Thermal Print)
+          {showSlipConfig ? <ChevronUp size={14} className="ml-auto text-text-muted" /> : <ChevronDown size={14} className="ml-auto text-text-muted" />}
+        </button>
+        {showSlipConfig && (
+          <div className="space-y-3 p-3 rounded-xl bg-accent-50/50 border border-accent-100">
+            <p className="text-xs text-text-muted mb-2 flex items-center gap-1">
+              <Info size={13} /> กำหนดข้อความหัว/ท้ายที่จะพิมพ์บนใบ slip ของ Kiosk นี้
+            </p>
+            <Input
+              label="ข้อความส่วนหัว (Header)"
+              value={slipHeader}
+              onChange={(e) => setSlipHeader(e.target.value)}
+              placeholder="กระทรวงการท่องเที่ยวและกีฬา"
+            />
+            <Input
+              label="ข้อความส่วนท้าย (Footer)"
+              value={slipFooter}
+              onChange={(e) => setSlipFooter(e.target.value)}
+              placeholder="ขอบคุณที่มาเยือน"
+            />
+          </div>
+        )}
+      </div>
+
+      {/* ── Advanced Settings ── */}
+      <div>
+        <button
+          type="button"
+          onClick={() => setShowAdvanced((v) => !v)}
+          className="flex items-center gap-1.5 text-sm font-semibold text-text-primary mb-2 w-full"
+        >
+          <Settings size={15} className="text-text-muted" />
+          ตั้งค่าขั้นสูง
+          {showAdvanced ? <ChevronUp size={14} className="ml-auto text-text-muted" /> : <ChevronDown size={14} className="ml-auto text-text-muted" />}
+        </button>
+        {showAdvanced && (
+          <div className="space-y-3 p-3 rounded-xl bg-gray-50 border border-border">
+            {/* Follow Business Hours */}
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-text-primary flex items-center gap-1"><Clock size={13} /> ตามเวลาทำการ</p>
+                <p className="text-[11px] text-text-muted">Kiosk จะแสดงหน้า &ldquo;นอกเวลาทำการ&rdquo; เมื่อไม่อยู่ในช่วงเวลาเปิดทำการ</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setFollowBusinessHours((v) => !v)}
+                className={cn(
+                  "w-11 h-6 rounded-full transition-all relative",
+                  followBusinessHours ? "bg-primary" : "bg-gray-300"
+                )}
+              >
+                <span className={cn(
+                  "absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all",
+                  followBusinessHours ? "left-[22px]" : "left-0.5"
+                )} />
+              </button>
+            </div>
+
+            {/* ID Masking */}
+            <div>
+              <p className="text-sm font-medium text-text-primary flex items-center gap-1 mb-1.5"><Eye size={13} /> รูปแบบการปิดบังเลขบัตร</p>
+              <p className="text-[11px] text-text-muted mb-2">เลือกวิธีแสดงเลขบัตรประชาชน/Passport บนใบ slip</p>
+              <div className="flex gap-2">
+                {([
+                  { value: "show-last-4", label: "แสดง 4 ตัวท้าย", example: "x-xxxx-xxxxx-xx-1" },
+                  { value: "show-first-last", label: "แสดงหัว+ท้าย", example: "1-xxxx-xxxxx-xx-1" },
+                  { value: "full-mask", label: "ปิดทั้งหมด", example: "x-xxxx-xxxxx-xx-x" },
+                ] as const).map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setIdMaskingPattern(opt.value)}
+                    className={cn(
+                      "flex-1 py-2 px-2 rounded-lg border-2 text-xs font-medium transition-all text-center",
+                      idMaskingPattern === opt.value
+                        ? "border-primary bg-primary-50 text-primary"
+                        : "border-border bg-white text-text-muted hover:border-primary/30"
+                    )}
+                  >
+                    <span className="block">{opt.label}</span>
+                    <span className="block text-[10px] font-mono mt-0.5 opacity-60">{opt.example}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Admin PIN */}
+            <div className="flex items-center gap-3">
+              <div className="flex-1">
+                <p className="text-sm font-medium text-text-primary flex items-center gap-1"><KeyRound size={13} /> PIN ผู้ดูแล Kiosk</p>
+                <p className="text-[11px] text-text-muted">รหัส 5 หลักสำหรับเข้าเมนูตั้งค่าบน Kiosk</p>
+              </div>
+              <div className="w-28">
+                <input
+                  type="text"
+                  maxLength={5}
+                  value={adminPin}
+                  onChange={(e) => setAdminPin(e.target.value.replace(/\D/g, "").slice(0, 5))}
+                  className="w-full px-2.5 py-1.5 text-sm text-center font-mono tracking-widest rounded-lg border border-border bg-white focus:border-primary focus:ring-1 focus:ring-primary/20 outline-none"
+                />
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── เจ้าหน้าที่ประจำ Counter (counter only) ── */}
+      {type === "counter" && (
+        <div>
+          <button
+            type="button"
+            onClick={() => setShowStaffAssign((v) => !v)}
+            className="flex items-center gap-1.5 text-sm font-semibold text-text-primary mb-2 w-full"
+          >
+            <Users size={15} className="text-info" />
+            เจ้าหน้าที่ประจำ Counter ({assignedStaffIds.length} คน)
+            {showStaffAssign ? <ChevronUp size={14} className="ml-auto text-text-muted" /> : <ChevronDown size={14} className="ml-auto text-text-muted" />}
+          </button>
+          {showStaffAssign && (
+            <div className="space-y-3 p-3 rounded-xl bg-blue-50/50 border border-blue-100">
+              <p className="text-xs text-text-muted mb-2 flex items-center gap-1">
+                <Info size={13} /> กำหนดเจ้าหน้าที่ รปภ. ที่มีสิทธิ์ทำงานที่ Counter นี้ — ★ = เจ้าหน้าที่หลัก
+              </p>
+
+              {/* Assigned list */}
+              {assignedStaffIds.length > 0 ? (
+                <div className="space-y-2">
+                  {assignedStaffIds.map((a) => {
+                    const staff = staffMembers.find((s) => s.id === a.staffId);
+                    if (!staff) return null;
+                    return (
+                      <div key={a.staffId} className={cn(
+                        "flex items-center gap-3 px-3 py-2.5 rounded-xl border-2 bg-white",
+                        a.isPrimary ? "border-accent-500" : "border-border"
+                      )}>
+                        <div className={cn(
+                          "w-9 h-9 rounded-full flex items-center justify-center text-xs font-bold shrink-0",
+                          a.isPrimary ? "bg-accent-50 text-accent-600" : "bg-gray-100 text-text-secondary"
+                        )}>
+                          {staff.name.charAt(0)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-text-primary truncate">{staff.name}</p>
+                          <p className="text-[11px] text-text-muted">{staff.employeeId} · {staff.position}</p>
+                        </div>
+                        {a.isPrimary ? (
+                          <span className="text-[11px] font-semibold text-accent-600 flex items-center gap-0.5 shrink-0">
+                            <Star size={12} /> หลัก
+                          </span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => setPrimaryStaff(a.staffId)}
+                            className="text-[11px] text-text-muted hover:text-accent-600 shrink-0"
+                          >
+                            ตั้งเป็นหลัก
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          onClick={() => removeStaffAssignment(a.staffId)}
+                          className="w-7 h-7 rounded-full flex items-center justify-center text-text-muted hover:bg-error-light hover:text-error transition-colors shrink-0"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <p className="text-xs text-warning text-center py-3">ยังไม่มีเจ้าหน้าที่ประจำ Counter นี้</p>
+              )}
+
+              {/* Add dropdown */}
+              {unassignedStaff.length > 0 && (
+                <div>
+                  <p className="text-xs font-medium text-text-secondary mb-1.5 flex items-center gap-1"><UserPlus size={12} /> เพิ่มเจ้าหน้าที่</p>
+                  <div className="space-y-1">
+                    {unassignedStaff.map((staff) => (
+                      <button
+                        key={staff.id}
+                        type="button"
+                        onClick={() => addStaffAssignment(staff.id)}
+                        className="flex items-center gap-2.5 w-full px-3 py-2 rounded-xl border-2 border-dashed border-border text-left text-sm hover:border-info hover:bg-blue-50/30 transition-all"
+                      >
+                        <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-xs font-bold text-text-muted">
+                          {staff.name.charAt(0)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-text-primary truncate">{staff.name}</p>
+                          <p className="text-[11px] text-text-muted">{staff.employeeId} · {staff.shift === "morning" ? "กะเช้า" : staff.shift === "afternoon" ? "บ่าย" : staff.shift === "night" ? "ดึก" : ""}</p>
+                        </div>
+                        <UserPlus size={14} className="text-info shrink-0" />
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Status - original */}
       <div>
         <label className="text-sm font-semibold text-text-primary mb-2 block">สถานะ</label>
         <div className="flex gap-2">

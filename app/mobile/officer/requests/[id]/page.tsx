@@ -5,7 +5,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import {
-    ChevronLeft, User, Building2, Calendar, Clock, Car, Users,
+    ChevronLeft, User, Building2, Calendar, Clock, Users,
     Package, MessageSquare, CheckCircle2, XCircle, Send, QrCode
 } from "lucide-react";
 import Link from "next/link";
@@ -25,7 +25,6 @@ const mockRequest = {
     timeStart: "10:00",
     timeEnd: "11:00",
     companions: 1,
-    vehicle: { plate: "กข 1234 กรุงเทพฯ", type: "รถเก๋ง สีขาว" },
     equipment: [
         { name: "Laptop", qty: 1 },
         { name: "กล้องถ่ายรูป", qty: 1 },
@@ -92,19 +91,6 @@ export default function RequestDetailPage() {
                         <DetailRow label="จำนวนผู้ติดตาม" value={`${mockRequest.companions} คน`} icon={<Users size={14} />} />
                     </div>
                 </Card>
-
-                {/* Vehicle Info */}
-                {mockRequest.vehicle && (
-                    <Card className="p-4">
-                        <h3 className="text-sm font-bold text-primary mb-3 flex items-center gap-2">
-                            <Car size={16} /> ข้อมูลยานพาหนะ
-                        </h3>
-                        <div className="space-y-2">
-                            <DetailRow label="ทะเบียน" value={mockRequest.vehicle.plate} />
-                            <DetailRow label="ประเภท/สี" value={mockRequest.vehicle.type} />
-                        </div>
-                    </Card>
-                )}
 
                 {/* Equipment */}
                 {mockRequest.equipment.length > 0 && (

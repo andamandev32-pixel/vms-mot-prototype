@@ -60,7 +60,7 @@ export default function VmsLogo({
                     textLayout === "vertical" && "text-center"
                 )}>
                     <span className={cn("font-extrabold text-lg tracking-wide block leading-tight", textColor)}>
-                        VMS
+                        eVMS
                     </span>
                     <span className={cn("text-[10px] font-semibold uppercase tracking-[0.15em] block leading-tight", subColor)}>
                         Visitor Management

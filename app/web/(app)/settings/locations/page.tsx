@@ -131,7 +131,7 @@ export default function LocationsSettingsPage() {
               <FlowRulesButton onClick={() => setShowFlow(true)} />
             </h3>
             <p className="text-sm text-text-muted mt-1">
-              จัดการอาคาร ชั้น และแผนก/หน่วยงาน ที่ใช้อ้างอิงในระบบ VMS ทั้งหมด
+              จัดการอาคาร ชั้น และแผนก/หน่วยงาน ที่ใช้อ้างอิงในระบบ eVMS ทั้งหมด
             </p>
           </div>
           <Button

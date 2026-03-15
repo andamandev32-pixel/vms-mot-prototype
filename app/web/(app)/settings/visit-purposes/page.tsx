@@ -35,6 +35,7 @@ import {
   CameraOff,
   FileText,
   IdCard,
+  Calendar,
 } from "lucide-react";
 import {
   visitPurposeConfigs,
@@ -44,6 +45,7 @@ import {
   type VisitPurposeConfig,
   type DepartmentRule,
   type EntryChannelConfig,
+  type EntryMode,
 } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
@@ -314,6 +316,14 @@ function PurposeCard({
                 <><CameraOff size={14} className="text-text-muted" /> ไม่ถ่ายภาพ</>
               )}
             </span>
+            <span className="flex items-center gap-1.5">
+              <Calendar size={14} className="text-purple-600" />
+              {config.allowedEntryModes.includes("single") && config.allowedEntryModes.includes("period")
+                ? "ครั้งเดียว+ช่วงเวลา"
+                : config.allowedEntryModes.includes("period")
+                  ? "ช่วงเวลา"
+                  : "ครั้งเดียว"}
+            </span>
           </div>
 
           {/* action buttons */}
@@ -567,6 +577,7 @@ function PurposeDrawer({
   const [kioskPhoto, setKioskPhoto] = useState(false);
   const [counterDocs, setCounterDocs] = useState<string[]>(defaultChannel.allowedDocuments);
   const [counterPhoto, setCounterPhoto] = useState(false);
+  const [allowedModes, setAllowedModes] = useState<EntryMode[]>(["single"]);
 
   /* reset form when drawer opens */
   const isOpen = mode !== null;
@@ -581,6 +592,7 @@ function PurposeDrawer({
       setKioskPhoto(config.kioskConfig.requirePhoto);
       setCounterDocs(config.counterConfig.allowedDocuments);
       setCounterPhoto(config.counterConfig.requirePhoto);
+      setAllowedModes(config.allowedEntryModes);
     } else {
       setName("");
       setNameEn("");
@@ -591,11 +603,22 @@ function PurposeDrawer({
       setKioskPhoto(false);
       setCounterDocs(["1"]);
       setCounterPhoto(false);
+      setAllowedModes(["single"]);
     }
   });
 
   const toggleDoc = (list: string[], setList: (v: string[]) => void, docId: string) => {
     setList(list.includes(docId) ? list.filter((d) => d !== docId) : [...list, docId]);
+  };
+
+  const toggleEntryMode = (mode: EntryMode) => {
+    setAllowedModes(prev => {
+      if (prev.includes(mode)) {
+        if (prev.length <= 1) return prev;
+        return prev.filter(m => m !== mode);
+      }
+      return [...prev, mode];
+    });
   };
 
   const iconOptions = ["🏛️", "📋", "📄", "🔧", "💼", "🎓", "📦", "🔖", "📌", "🏢", "🤝", "📝"];
@@ -685,6 +708,39 @@ function PurposeDrawer({
           </button>
         </div>
 
+        {/* ─── Entry Mode Config ── */}
+        <div className="space-y-3">
+          <p className="text-sm font-bold text-text-primary flex items-center gap-2">
+            <Calendar size={16} className="text-purple-600" />
+            ประเภทการเข้าพื้นที่ที่อนุญาต
+          </p>
+          <p className="text-xs text-text-muted">เลือกอย่างน้อย 1 ประเภท — ผู้ใช้จะเห็นเฉพาะประเภทที่เปิดไว้เมื่อสร้างนัดหมาย</p>
+          <label className="flex items-center gap-3 p-3 bg-blue-50/50 rounded-lg cursor-pointer hover:bg-blue-50 transition-colors border border-blue-100">
+            <input
+              type="checkbox"
+              checked={allowedModes.includes("single")}
+              onChange={() => toggleEntryMode("single")}
+              className="w-4 h-4 rounded border-border text-primary focus:ring-primary/20 accent-primary-500"
+            />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-text-primary font-medium">🔹 ขออนุญาตแบบ 1 ครั้ง</p>
+              <p className="text-[11px] text-text-muted">กำหนดวันที่ เวลาเริ่ม และเวลาสิ้นสุด (เข้าได้ครั้งเดียว)</p>
+            </div>
+          </label>
+          <label className="flex items-center gap-3 p-3 bg-purple-50/50 rounded-lg cursor-pointer hover:bg-purple-50 transition-colors border border-purple-100">
+            <input
+              type="checkbox"
+              checked={allowedModes.includes("period")}
+              onChange={() => toggleEntryMode("period")}
+              className="w-4 h-4 rounded border-border text-purple-600 focus:ring-purple-500/20 accent-purple-600"
+            />
+            <div className="flex-1 min-w-0">
+              <p className="text-sm text-text-primary font-medium flex items-center gap-1.5"><Calendar size={13} /> ขออนุญาตตามช่วงเวลา</p>
+              <p className="text-[11px] text-text-muted">กำหนดวันเวลาเริ่ม — วันเวลาสิ้นสุด (เข้าได้หลายครั้งในช่วงนั้น)</p>
+            </div>
+          </label>
+        </div>
+
         {/* ─── Kiosk Channel Config ── */}
         <div className="space-y-3">
           <p className="text-sm font-bold text-text-primary flex items-center gap-2">
@@ -769,6 +825,16 @@ function PurposeDrawer({
               <p className="font-medium text-text-secondary mb-1">Counter</p>
               <p>{counterDocs.length} เอกสาร · {counterPhoto ? "ถ่ายภาพ" : "ไม่ถ่ายภาพ"}</p>
             </div>
+          </div>
+          <div className="mt-2 flex items-center gap-2 text-[11px]">
+            <Calendar size={12} className="text-purple-600" />
+            <span className="text-text-secondary">ประเภทการเข้า:</span>
+            {allowedModes.includes("single") && (
+              <span className="px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 font-medium">ครั้งเดียว</span>
+            )}
+            {allowedModes.includes("period") && (
+              <span className="px-1.5 py-0.5 rounded-full bg-purple-50 text-purple-700 font-medium">ช่วงเวลา</span>
+            )}
           </div>
         </div>
       </div>
