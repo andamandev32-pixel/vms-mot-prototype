@@ -16,6 +16,7 @@ import {
   type VisitStatus,
   type Appointment,
 } from "@/lib/mock-data";
+import { getMockToday } from "@/lib/thai-date";
 
 // ── Icons & Colors per visit type ──
 const visitTypeIcons: Record<VisitType, React.ReactNode> = {
@@ -46,9 +47,12 @@ export default function WebSearchPage() {
   const [search, setSearch] = useState("");
   const [filterType, setFilterType] = useState<VisitType | "all">("all");
   const [filterStatus, setFilterStatus] = useState<VisitStatus | "all">("all");
+  const [todayOnly, setTodayOnly] = useState(true);
+  const mockToday = getMockToday();
 
   // Filter
   const filtered = allAppts.filter((a) => {
+    if (todayOnly && a.date !== mockToday) return false;
     if (filterType !== "all" && a.type !== filterType) return false;
     if (filterStatus !== "all" && a.status !== filterStatus) return false;
     if (search.trim()) {
@@ -73,21 +77,21 @@ export default function WebSearchPage() {
 
   const goTo = (p: number) => setPage(Math.max(1, Math.min(p, totalPages)));
 
-  const hasFilters = search.trim() !== "" || filterType !== "all" || filterStatus !== "all";
-  const clearAll = () => { setSearch(""); setFilterType("all"); setFilterStatus("all"); setPage(1); };
+  const hasFilters = search.trim() !== "" || filterType !== "all" || filterStatus !== "all" || !todayOnly;
+  const clearAll = () => { setSearch(""); setFilterType("all"); setFilterStatus("all"); setTodayOnly(true); setPage(1); };
 
   const availableStatuses = Array.from(new Set(allAppts.map((a) => a.status)));
   const availableTypes = Array.from(new Set(allAppts.map((a) => a.type)));
 
   return (
     <div>
-      <Topbar title="ค้นหาผู้มาติดต่อ" />
+      <Topbar title="รายชื่อการติดต่อ" />
       <div className="p-6">
         <Card className="overflow-hidden border-0 shadow-lg rounded-2xl">
           <CardHeader className="bg-gradient-to-r from-primary-50 to-white border-b border-primary-100 px-6 py-4">
             <div className="flex justify-between items-center mb-3">
               <CardTitle className="text-base font-bold text-primary">
-                ผู้มาติดต่อวันนี้ทั้งหมด — All Visitors Today
+                รายการผู้มาติดต่อ
               </CardTitle>
               <span className="text-xs text-primary/60 font-medium bg-primary-100 px-3 py-1 rounded-full">
                 {allAppts.length} รายการ · อัปเดตอัตโนมัติ
@@ -130,6 +134,15 @@ export default function WebSearchPage() {
                   <option key={s} value={s}>{statusConfig[s].label} ({statusConfig[s].labelEn})</option>
                 ))}
               </select>
+              <label className="flex items-center gap-2 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={todayOnly}
+                  onChange={(e) => { setTodayOnly(e.target.checked); setPage(1); }}
+                  className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary/30 accent-primary-600 cursor-pointer"
+                />
+                <span className="text-sm text-text-secondary">วันนี้เท่านั้น</span>
+              </label>
               {hasFilters && (
                 <button onClick={clearAll} className="flex items-center gap-1 px-3 py-2 text-xs font-semibold text-error hover:bg-error-light rounded-xl transition-colors">
                   <X size={14} /> ล้างตัวกรอง

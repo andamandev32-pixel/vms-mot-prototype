@@ -12,7 +12,7 @@ export default function Sidebar() {
     const navItems = [
         { href: "/web/dashboard", label: "ภาพรวม", icon: <LayoutDashboard size={20} /> },
         { href: "/web/appointments", label: "การนัดหมาย", icon: <Calendar size={20} /> },
-        { href: "/web/search", label: "ค้นหา", icon: <Search size={20} /> },
+        { href: "/web/search", label: "รายชื่อการติดต่อ", icon: <Search size={20} /> },
         { href: "/web/blocklist", label: "Blocklist", icon: <Shield size={20} /> },
         { href: "/web/reports", label: "รายงาน", icon: <FileText size={20} /> },
         { href: "/web/settings", label: "ตั้งค่า", icon: <Settings size={20} />, separator: true },
