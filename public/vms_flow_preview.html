@@ -880,7 +880,7 @@ hr.div{border:none;border-top:1px dashed #c5d0e0;margin:18px 0}
         </table>
 
         <div class="note note-yellow mt8" style="max-width:100%">
-          <strong>วิธี Check-in หลัง Batch Import:</strong> แต่ละคน Scan QR ที่ Kiosk (Tab 4A) · หรือรปภ. ค้นหาชื่อที่ Counter (Tab 5B)
+          <strong>วิธี Check-in หลัง Batch Import:</strong> แต่ละคน Scan QR ที่ Kiosk (Tab 5B) · หรือรปภ. ค้นหาชื่อที่ Counter (Tab 6)
         </div>
       </div>
       <div class="card">
@@ -898,11 +898,11 @@ hr.div{border:none;border-top:1px dashed #c5d0e0;margin:18px 0}
               <div class="branch">
                 <div class="bcol">
                   <span class="lbl" style="background:#34A853;color:white;font-size:15.0px">Kiosk</span><div class="darr">↓</div>
-                  <div class="box success" style="font-size:16.0px">Scan QR<br>Tab 4A</div>
+                  <div class="box success" style="font-size:16.0px">Scan QR<br>Tab 5B</div>
                 </div>
                 <div class="bcol">
                   <span class="lbl" style="background:#4A1A8C;color:white;font-size:15.0px">Counter</span><div class="darr">↓</div>
-                  <div class="box action" style="font-size:16.0px;border-color:#4A1A8C">รปภ. ค้นหา<br>Tab 5B</div>
+                  <div class="box action" style="font-size:16.0px;border-color:#4A1A8C">รปภ. ค้นหา<br>Tab 6</div>
                 </div>
               </div>
             </div>
@@ -930,9 +930,9 @@ hr.div{border:none;border-top:1px dashed #c5d0e0;margin:18px 0}
           <li><span class="n">3</span><span>เลือกประเภทการติดต่อ + ผู้ที่จะพบ + วันเวลา + สถานที่</span></li>
           <li><span class="n">4</span><span>อนุมัติรายการ (Staff อนุมัติเองได้ หรือส่งให้ผู้รับผิดชอบอนุมัติ)</span></li>
           <li><span class="n y">✓</span><span style="color:#004d1f">ระบบส่ง QR Code + รายละเอียดให้ Visitor ทาง <strong>Line และ/หรือ Email</strong></span></li>
-          <li><span class="n y">→</span><span>Visitor นำ QR Scan ที่ Kiosk → <strong>Tab 4 ช่องทาง A</strong></span></li>
-          <li><span class="n g">→</span><span>หรือ Visitor ใช้บัตรที่ Kiosk → <strong>Tab 4 ช่องทาง B</strong></span></li>
-          <li><span class="n" style="background:#4A1A8C">→</span><span>หรือ รปภ. ค้นหานัดหมายที่ Counter → <strong>Tab 5 Appointment</strong></span></li>
+          <li><span class="n y">→</span><span>Visitor นำ QR Scan ที่ Kiosk → <strong>Tab 5 นัดหมาย A (QR)</strong></span></li>
+          <li><span class="n g">→</span><span>หรือ Visitor ใช้บัตรที่ Kiosk → <strong>Tab 5 นัดหมาย B (บัตร)</strong></span></li>
+          <li><span class="n" style="background:#4A1A8C">→</span><span>หรือ รปภ. ค้นหานัดหมายที่ Counter → <strong>Tab 6 Appointment</strong></span></li>
         </ul>
       </div>
       <div class="card">
@@ -946,15 +946,15 @@ hr.div{border:none;border-top:1px dashed #c5d0e0;margin:18px 0}
           <div style="display:flex;gap:6px;flex-wrap:wrap;width:100%">
             <div class="vf" style="align-items:center;flex:1">
               <span class="lbl" style="background:#34A853;color:white;font-size:16.0px">Kiosk (QR)</span><div class="darr">↓</div>
-              <div class="box success" style="font-size:16.0px">Tab 4A</div>
+              <div class="box success" style="font-size:16.0px">Tab 5B</div>
             </div>
             <div class="vf" style="align-items:center;flex:1">
               <span class="lbl" style="background:#4285F4;color:white;font-size:16.0px">Kiosk (บัตร)</span><div class="darr">↓</div>
-              <div class="box success" style="font-size:16.0px">Tab 4B</div>
+              <div class="box success" style="font-size:16.0px">Tab 5C</div>
             </div>
             <div class="vf" style="align-items:center;flex:1">
               <span class="lbl" style="background:#4A1A8C;color:white;font-size:16.0px">Counter รปภ.</span><div class="darr">↓</div>
-              <div class="box action" style="font-size:16.0px;border-color:#4A1A8C">Tab 5B</div>
+              <div class="box action" style="font-size:16.0px;border-color:#4A1A8C">Tab 6</div>
             </div>
           </div>
         </div>
@@ -966,110 +966,480 @@ hr.div{border:none;border-top:1px dashed #c5d0e0;margin:18px 0}
 
 <!-- ===== TAB 5: KIOSK ===== -->
 <div id="t5" class="flow-section">
-  <div class="sec-head"><span class="n">5</span>Kiosk Check-in — นัดหมายล่วงหน้า (Pre-Registration)</div>
+  <div class="sec-head"><span class="n">5</span>Kiosk Check-in — นัดหมาย & Walk-in</div>
+
+  <div class="note note-blue">
+    <strong>ℹ️ ภาพรวม:</strong> Kiosk รองรับ <strong>2 โหมด</strong> — <strong>① มีนัดหมายล่วงหน้า</strong> (ค้นหาด้วย QR Code หรือบัตร) และ <strong>② Walk-in ไม่มีนัดหมาย</strong> (ลงทะเบียนใหม่ทั้งหมด) · หน้าจอแรกให้ผู้มาติดต่อเลือกโหมด · ทุกโหมดต้องยอมรับ PDPA ก่อน
+  </div>
   <div class="note note-yellow">
-    <strong>⚠️ สำคัญ:</strong> ยืนยันตัวตนเฉพาะ <strong>ผู้ติดต่อหลัก 1 คนเท่านั้น</strong> · หากลงทะเบียนไว้แค่ชื่อ-นามสกุล ระบบตรวจสอบเฉพาะชื่อนามสกุล · ชื่อไม่ตรง → "ไม่พบข้อมูลการนัดหมาย"
+    <strong>⚠️ สำคัญ:</strong> ยืนยันตัวตนเฉพาะ <strong>ผู้ติดต่อหลัก 1 คนเท่านั้น</strong> · หากลงทะเบียนไว้แค่ชื่อ-นามสกุล ระบบตรวจสอบเฉพาะชื่อนามสกุล · ชื่อไม่ตรง → "ไม่พบข้อมูลการนัดหมาย" · ทุกหน้าจอมี Timeout อัตโนมัติ
   </div>
 
+  <!-- ===== PATH TOGGLES ===== -->
   <div class="path-toggle">
-    <button class="path-btn active" onclick="showPath('p4','p4a',this)">📱 ช่องทาง A — Scan QR Code</button>
-    <button class="path-btn" onclick="showPath('p4','p4b',this)">🪪 ช่องทาง B — บัตรประชาชน / Passport / ThaiID</button>
+    <button class="path-btn active" onclick="showPath('p5','p5a',this)">🚶 Walk-in — ไม่มีนัดหมาย</button>
+    <button class="path-btn" onclick="showPath('p5','p5b',this)">📱 นัดหมาย A — Scan QR Code</button>
+    <button class="path-btn" onclick="showPath('p5','p5c',this)">🪪 นัดหมาย B — ค้นหาจากบัตร (ไม่มี QR)</button>
   </div>
 
-  <div id="p4a">
+  <!-- ===== PATH A: WALK-IN ===== -->
+  <div id="p5a">
     <div class="grid2">
       <div class="card">
-        <h3>🖥️ ขั้นตอน — ช่องทาง A (QR Code)</h3>
+        <h3>🚶 ขั้นตอน — Walk-in (ไม่มีนัดหมาย) · 8 ขั้นตอน</h3>
         <ul class="steps">
-          <li><span class="n">1</span><span>เลือกเมนู <strong>"นัดหมายไว้แล้ว"</strong></span></li>
-          <li><span class="n">2</span><span>เลือก <strong>"Scan QR Code"</strong></span></li>
-          <li><span class="n">3</span><span>ระบบอ่าน QR → ค้นหาข้อมูลนัดหมาย</span></li>
-          <li><span class="n">4</span><span>แสดงรายละเอียดนัดหมาย → ยืนยัน</span></li>
-          <li><span class="n">5</span><span>ยืนยันตัวตน: บัตรประชาชน / Passport / ThaiID</span></li>
-          <li><span class="n g">✓</span><span>ชื่อตรง → ถ่ายภาพ → Preview → กดยืนยัน</span></li>
-          <li><span class="n">6</span><span>ระบบถาม: <em>"รับรหัส WiFi ด้วยไหม?"</em></span></li>
-          <li><span class="n y">✓</span><span style="color:#7B2FBE">Yes → สร้าง WiFi → พิมพ์ใน Visit Pass</span></li>
-          <li><span class="n" style="background:#607D8B">—</span><span style="color:#607D8B">No → พิมพ์ Visit Pass (ไม่มี WiFi)</span></li>
+          <li><span class="n">1</span><span>หน้าจอต้อนรับ → เลือก <strong>"ไม่มีนัดหมาย"</strong></span></li>
+          <li><span class="n">2</span><span>อ่านและยอมรับ <strong>PDPA / นโยบายคุ้มครองข้อมูล</strong> <em>(120 วิ)</em></span></li>
+          <li><span class="n">3</span><span>เลือกวิธียืนยันตัวตน: <strong>บัตรประชาชน / Passport / ThaiID App</strong> <em>(60 วิ)</em></span></li>
+          <li><span class="n">4</span><span>เสียบบัตร/สแกนเอกสาร → ระบบอ่านข้อมูล <em>(60 วิ)</em></span></li>
+          <li><span class="n">5</span><span>Preview ข้อมูลที่อ่านได้ → ตรวจสอบ <strong>Blocklist</strong> → ยืนยัน <em>(120 วิ)</em></span></li>
+          <li><span class="n">6</span><span>เลือก <strong>วัตถุประสงค์</strong> + <strong>กอง/สำนัก</strong> ที่ต้องการติดต่อ <em>(60 วิ)</em></span></li>
+          <li><span class="n">7</span><span><strong>ถ่ายภาพใบหน้า</strong> + ถ้าวัตถุประสงค์รองรับ WiFi → เลือกรับ/ไม่รับ <em>(60 วิ)</em></span></li>
+          <li><span class="n">8</span><span>สำเร็จ → พิมพ์ Visit Pass หรือส่งผ่าน LINE <em>(10-30 วิ auto)</em></span></li>
         </ul>
+        <div class="note note-green mt8">
+          <strong>💡 วัตถุประสงค์ที่รองรับ:</strong> ติดต่อราชการ · ประชุม/สัมมนา · ส่งเอกสาร/พัสดุ · ผู้รับเหมา/ซ่อมบำรุง · สมัครงาน/สัมภาษณ์ · รับ-ส่งสินค้า (กรองตามค่าที่ตั้งใน Settings)
+        </div>
       </div>
       <div class="vf">
         <div class="box start">Visitor มาถึง Kiosk</div><div class="darr">↓</div>
-        <div class="box action">เลือก "นัดหมายไว้แล้ว"</div><div class="darr">↓</div>
-        <div class="box action">Scan QR Code</div><div class="darr">↓</div>
+        <div class="box action">เลือก <strong>"ไม่มีนัดหมาย"</strong></div><div class="darr">↓</div>
+        <div class="box action">ยอมรับ PDPA<br><span class="sub">นโยบายคุ้มครองข้อมูลส่วนบุคคล</span></div><div class="darr">↓</div>
+        <div class="box action">เลือกวิธียืนยันตัวตน<br><span class="sub">🪪 บัตร ปชช. / 📕 Passport / 📱 ThaiID App</span></div><div class="darr">↓</div>
+        <div class="box system">ระบบอ่านข้อมูลจากเอกสาร</div><div class="darr">↓</div>
+        <div class="box decision">อ่านสำเร็จ?</div>
+        <div class="branch">
+          <div class="bcol">
+            <span class="lbl lbl-y">Yes</span><div class="darr">↓</div>
+            <div class="box action" style="font-size:15.0px">Preview ข้อมูล<br>+ ตรวจ Blocklist</div><div class="darr">↓</div>
+            <div class="box decision" style="font-size:15.0px">อยู่ใน Blocklist?</div>
+            <div class="branch">
+              <div class="bcol">
+                <span class="lbl lbl-n">No (ปกติ)</span><div class="darr">↓</div>
+                <div class="box action" style="font-size:15.0px">เลือกวัตถุประสงค์<br>+ กอง/สำนัก</div><div class="darr">↓</div>
+                <div class="box action" style="font-size:15.0px">ถ่ายภาพใบหน้า</div><div class="darr">↓</div>
+                <div class="box decision" style="font-size:15.0px">วัตถุประสงค์<br>รองรับ WiFi?</div>
+                <div class="branch">
+                  <div class="bcol">
+                    <span class="lbl lbl-y" style="font-size:14.0px">Yes</span><div class="darr">↓</div>
+                    <div class="box decision" style="font-size:14.0px">รับ WiFi?</div>
+                    <div class="branch">
+                      <div class="bcol"><span class="lbl lbl-y" style="font-size:13.0px">Yes</span><div class="darr">↓</div><div class="box output" style="font-size:14.0px">Pass+WiFi</div></div>
+                      <div class="bcol"><span class="lbl lbl-n" style="font-size:13.0px">No</span><div class="darr">↓</div><div class="box output" style="font-size:14.0px">Visit Pass</div></div>
+                    </div>
+                  </div>
+                  <div class="bcol">
+                    <span class="lbl lbl-n" style="font-size:14.0px">No</span><div class="darr">↓</div>
+                    <div class="box output" style="font-size:14.0px">Visit Pass</div>
+                  </div>
+                </div>
+                <div class="darr">↓</div>
+                <div class="box decision" style="font-size:15.0px">ผูก LINE?</div>
+                <div class="branch">
+                  <div class="bcol"><span class="lbl lbl-y" style="font-size:14.0px">Yes</span><div class="darr">↓</div><div class="box action" style="font-size:14.0px">เลือก<br>พิมพ์/ส่ง LINE</div></div>
+                  <div class="bcol"><span class="lbl lbl-n" style="font-size:14.0px">No</span><div class="darr">↓</div><div class="box action" style="font-size:14.0px">พิมพ์อัตโนมัติ</div></div>
+                </div>
+                <div class="darr">↓</div>
+                <div class="box end">Check-in สำเร็จ ✓</div>
+              </div>
+              <div class="bcol">
+                <span class="lbl lbl-n" style="color:#7a1a1a">Yes (บล็อก)</span><div class="darr">↓</div>
+                <div class="box error" style="font-size:15.0px">ปฏิเสธเข้าพื้นที่</div>
+              </div>
+            </div>
+          </div>
+          <div class="bcol">
+            <span class="lbl lbl-n">Fail</span><div class="darr">↓</div>
+            <div class="box error" style="font-size:15.0px">อ่านไม่สำเร็จ</div><div class="darr">↓</div>
+            <div class="box action" style="font-size:15.0px">ลองใหม่ / กลับหน้าแรก</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Walk-in Detail Table -->
+    <table class="swim mt12">
+      <tr>
+        <th style="width:5%">ขั้นตอน</th>
+        <th style="width:22%">หน้าจอ (Screen)</th>
+        <th style="width:15%">อุปกรณ์ที่ใช้</th>
+        <th style="width:10%">Timeout</th>
+        <th>รายละเอียด</th>
+      </tr>
+      <tr>
+        <td style="text-align:center;font-weight:700">1</td>
+        <td><strong>Welcome</strong><br>หน้าจอต้อนรับ</td>
+        <td>—</td>
+        <td>—</td>
+        <td>แสดง 2 ปุ่มใหญ่: <span class="tag tag-b">"ไม่มีนัดหมาย" (Walk-in)</span> และ <span class="tag tag-g">"มีนัดล่วงหน้า" (Appointment)</span></td>
+      </tr>
+      <tr>
+        <td style="text-align:center;font-weight:700">2</td>
+        <td><strong>PDPA Consent</strong><br>ยอมรับนโยบาย</td>
+        <td>—</td>
+        <td>120 วินาที</td>
+        <td>แสดงนโยบายคุ้มครองข้อมูลส่วนบุคคล (PDPA) แบบ scroll ✅ ยอมรับ → ไปต่อ / ❌ ไม่ยอมรับ → กลับหน้าต้อนรับ</td>
+      </tr>
+      <tr>
+        <td style="text-align:center;font-weight:700">3</td>
+        <td><strong>Select ID Method</strong><br>เลือกวิธียืนยันตัวตน</td>
+        <td>—</td>
+        <td>60 วินาที</td>
+        <td>3 ตัวเลือก: 🪪 <strong>บัตรประชาชน</strong> (Smart Card Reader) · 📕 <strong>Passport</strong> (MRZ/RFID) · 📱 <strong>ThaiID App</strong> (QR Code) — กรองตามค่าที่ตั้งใน Settings</td>
+      </tr>
+      <tr>
+        <td style="text-align:center;font-weight:700">4</td>
+        <td><strong>ID Verification</strong><br>ยืนยันตัวตน</td>
+        <td>Smart Card / Passport Reader / QR Scanner</td>
+        <td>60 วินาที</td>
+        <td>แสดง animation รอการอ่านเอกสาร · countdown timer · เตือนเมื่อเหลือ &lt;15 วินาที · มีปุ่ม Demo สำหรับจำลอง</td>
+      </tr>
+      <tr>
+        <td style="text-align:center;font-weight:700">5</td>
+        <td><strong>Data Preview</strong><br>ตรวจสอบข้อมูล</td>
+        <td>—</td>
+        <td>120 วินาที</td>
+        <td>แสดงข้อมูลจากบัตร: รูป + ชื่อ (ไทย/อังกฤษ) + เลขบัตร (mask) + ชนิดเอกสาร · <strong>ตรวจ Blocklist</strong> อัตโนมัติ</td>
+      </tr>
+      <tr>
+        <td style="text-align:center;font-weight:700">6</td>
+        <td><strong>Select Purpose</strong><br>เลือกวัตถุประสงค์</td>
+        <td>—</td>
+        <td>60 วินาที</td>
+        <td>2 ขั้นตอนย่อย: <strong>①</strong> เลือกวัตถุประสงค์ (grid 2 คอลัมน์) → <strong>②</strong> เลือกกอง/สำนัก (ถ้ามีหลายกองรองรับ จะแสดงเพิ่ม ถ้ามีกองเดียว auto-select)</td>
+      </tr>
+      <tr>
+        <td style="text-align:center;font-weight:700">7</td>
+        <td><strong>Face Capture</strong><br>ถ่ายภาพ + WiFi</td>
+        <td>USB Camera</td>
+        <td>60 วินาที</td>
+        <td>กล้อง live + กรอบแนะนำ + ถ่ายภาพ · ถ้าวัตถุประสงค์มี WiFi → แสดง toggle รับ/ไม่รับ WiFi (SSID: MOTS-Guest)</td>
+      </tr>
+      <tr>
+        <td style="text-align:center;font-weight:700">8</td>
+        <td><strong>Success</strong><br>สำเร็จ</td>
+        <td>Thermal Printer (80mm)</td>
+        <td>10-30 วิ auto</td>
+        <td>ถ้าไม่ผูก LINE → <strong>พิมพ์อัตโนมัติ</strong> (10 วิ กลับหน้าแรก) · ถ้าผูก LINE → <strong>ถามเลือก</strong>: พิมพ์ Pass / ส่งผ่าน LINE (30 วิ auto กลับ)</td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- ===== PATH B: APPOINTMENT VIA QR ===== -->
+  <div id="p5b" style="display:none">
+    <div class="grid2">
+      <div class="card">
+        <h3>📱 ขั้นตอน — นัดหมาย ช่องทาง A (Scan QR Code) · 8 ขั้นตอน</h3>
+        <ul class="steps">
+          <li><span class="n">1</span><span>หน้าจอต้อนรับ → เลือก <strong>"มีนัดล่วงหน้า"</strong></span></li>
+          <li><span class="n">2</span><span>ยอมรับ <strong>PDPA</strong> <em>(120 วิ)</em></span></li>
+          <li><span class="n">3</span><span><strong>Scan QR Code</strong> จาก LINE/App <em>(60 วิ)</em></span></li>
+          <li><span class="n">4</span><span>แสดงรายละเอียดนัดหมาย → Visitor กดยืนยัน <em>(120 วิ)</em></span></li>
+          <li><span class="n">5</span><span>ยืนยันตัวตน: เลือกวิธี + สแกนบัตร/เอกสาร <em>(60 วิ)</em></span></li>
+          <li><span class="n g">✓</span><span>ชื่อตรงกับนัดหมาย → ถ่ายภาพใบหน้า <em>(30 วิ)</em></span></li>
+          <li><span class="n">6</span><span>ระบบถาม: <em>"รับรหัส WiFi ด้วยไหม?"</em> <em>(15 วิ)</em></span></li>
+          <li><span class="n y">✓</span><span style="color:#7B2FBE">Yes → สร้าง WiFi → พิมพ์ใน Visit Pass</span></li>
+          <li><span class="n" style="background:#607D8B">—</span><span style="color:#607D8B">No → พิมพ์ Visit Pass (ไม่มี WiFi)</span></li>
+          <li><span class="n">7</span><span>สำเร็จ → พิมพ์ Visit Pass / ส่งผ่าน LINE <em>(10-30 วิ auto)</em></span></li>
+        </ul>
+        <div class="note note-blue mt8">
+          <strong>📋 QR Code มีข้อมูล:</strong> รหัสจอง · ชื่อ-สกุล · บริษัท · เจ้าหน้าที่ผู้รับ · กอง/สำนัก · ชั้น · สถานที่ · วันเวลา · วัตถุประสงค์ · WiFi ที่ขอ · สถานะ LINE
+        </div>
+      </div>
+      <div class="vf">
+        <div class="box start">Visitor มาถึง Kiosk</div><div class="darr">↓</div>
+        <div class="box action">เลือก <strong>"มีนัดล่วงหน้า"</strong></div><div class="darr">↓</div>
+        <div class="box action">ยอมรับ PDPA</div><div class="darr">↓</div>
+        <div class="box action">Scan QR Code<br><span class="sub">หรือกด "ไม่มี QR" → ไปช่องทาง B</span></div><div class="darr">↓</div>
         <div class="box decision">พบข้อมูลนัดหมาย?</div>
         <div class="branch">
           <div class="bcol">
             <span class="lbl lbl-y">Yes</span><div class="darr">↓</div>
-            <div class="box action" style="font-size:15.0px">แสดงรายละเอียด<br>Visitor ยืนยัน</div><div class="darr">↓</div>
-            <div class="box action" style="font-size:15.0px">ยืนยันตัวตน<br>บัตร/Passport/ThaiID</div><div class="darr">↓</div>
+            <div class="box action" style="font-size:15.0px">แสดงรายละเอียดนัดหมาย<br>วัตถุประสงค์ · เจ้าหน้าที่ · กอง · วัน-เวลา<br>Visitor กดยืนยัน</div><div class="darr">↓</div>
+            <div class="box action" style="font-size:15.0px">เลือกวิธียืนยันตัวตน<br>🪪 บัตร / 📕 Passport / 📱 ThaiID</div><div class="darr">↓</div>
+            <div class="box system" style="font-size:15.0px">ระบบอ่านข้อมูล + เทียบชื่อ</div><div class="darr">↓</div>
             <div class="box decision" style="font-size:15.0px">ชื่อตรงกัน?</div>
             <div class="branch">
               <div class="bcol">
                 <span class="lbl lbl-y">Yes</span><div class="darr">↓</div>
-                <div class="box action" style="font-size:16.0px">ถ่ายภาพ<br>Preview<br>ยืนยัน</div><div class="darr">↓</div>
-                <div class="box decision" style="font-size:16.0px">WiFi?</div>
+                <div class="box action" style="font-size:15.0px">ถ่ายภาพใบหน้า</div><div class="darr">↓</div>
+                <div class="box decision" style="font-size:15.0px">WiFi?</div>
                 <div class="branch">
-                  <div class="bcol"><span class="lbl lbl-y" style="font-size:15.0px">Yes</span><div class="darr">↓</div><div class="box output" style="font-size:15.0px">Pass+WiFi</div></div>
-                  <div class="bcol"><span class="lbl lbl-n" style="font-size:15.0px">No</span><div class="darr">↓</div><div class="box output" style="font-size:15.0px">Visit Pass</div></div>
+                  <div class="bcol"><span class="lbl lbl-y" style="font-size:14.0px">Yes</span><div class="darr">↓</div><div class="box output" style="font-size:14.0px">Pass+WiFi</div></div>
+                  <div class="bcol"><span class="lbl lbl-n" style="font-size:14.0px">No</span><div class="darr">↓</div><div class="box output" style="font-size:14.0px">Visit Pass</div></div>
                 </div>
-                <div class="darr">↓</div><div class="box end" style="font-size:16.0px">Check-in ✓</div>
+                <div class="darr">↓</div>
+                <div class="box decision" style="font-size:15.0px">ผูก LINE?</div>
+                <div class="branch">
+                  <div class="bcol"><span class="lbl lbl-y" style="font-size:14.0px">Yes</span><div class="darr">↓</div><div class="box action" style="font-size:14.0px">เลือก<br>พิมพ์/ส่ง LINE</div></div>
+                  <div class="bcol"><span class="lbl lbl-n" style="font-size:14.0px">No</span><div class="darr">↓</div><div class="box action" style="font-size:14.0px">พิมพ์อัตโนมัติ</div></div>
+                </div>
+                <div class="darr">↓</div>
+                <div class="box end">Check-in สำเร็จ ✓</div>
               </div>
               <div class="bcol">
                 <span class="lbl lbl-n">No</span><div class="darr">↓</div>
-                <div class="box error" style="font-size:16.0px">ไม่พบ<br>นัดหมาย</div>
+                <div class="box error" style="font-size:15.0px">ชื่อไม่ตรง<br>ไม่พบนัดหมาย</div>
               </div>
             </div>
           </div>
           <div class="bcol">
             <span class="lbl lbl-n">No</span><div class="darr">↓</div>
             <div class="box error" style="font-size:15.0px">ไม่พบข้อมูล QR</div>
-            <div class="darr">↓</div><div class="box end-red" style="font-size:15.0px">สิ้นสุด</div>
+            <div class="darr">↓</div>
+            <div class="box action" style="font-size:15.0px">ลองใหม่ / กลับหน้าแรก</div>
           </div>
         </div>
       </div>
     </div>
+
+    <!-- Appointment QR Detail Table -->
+    <table class="swim mt12">
+      <tr>
+        <th style="width:5%">ขั้นตอน</th>
+        <th style="width:22%">หน้าจอ (Screen)</th>
+        <th style="width:15%">อุปกรณ์ที่ใช้</th>
+        <th style="width:10%">Timeout</th>
+        <th>รายละเอียด</th>
+      </tr>
+      <tr>
+        <td style="text-align:center;font-weight:700">1</td>
+        <td><strong>Welcome</strong></td>
+        <td>—</td>
+        <td>—</td>
+        <td>เลือก <span class="tag tag-g">"มีนัดล่วงหน้า"</span></td>
+      </tr>
+      <tr>
+        <td style="text-align:center;font-weight:700">2</td>
+        <td><strong>PDPA Consent</strong></td>
+        <td>—</td>
+        <td>120 วินาที</td>
+        <td>ยอมรับนโยบายคุ้มครองข้อมูลส่วนบุคคล</td>
+      </tr>
+      <tr>
+        <td style="text-align:center;font-weight:700">3</td>
+        <td><strong>QR Scan</strong><br>สแกน QR Code</td>
+        <td>USB HID QR Scanner</td>
+        <td>60 วินาที</td>
+        <td>วาง QR Code ที่เครื่องสแกน · QR จาก LINE OA ที่ได้ตอนจองสำเร็จ · มีปุ่ม <strong>"ไม่มี QR → ใช้บัตรแทน"</strong> (ไปช่องทาง B)</td>
+      </tr>
+      <tr>
+        <td style="text-align:center;font-weight:700">4</td>
+        <td><strong>Appointment Preview</strong><br>รายละเอียดนัดหมาย</td>
+        <td>—</td>
+        <td>120 วินาที</td>
+        <td>แสดงข้อมูลนัดหมาย: วัตถุประสงค์ · ชื่อ · บริษัท · เจ้าหน้าที่ผู้รับ · กอง/สำนัก · สถานที่ · วัน-เวลา → <strong>กดยืนยัน Check-in</strong></td>
+      </tr>
+      <tr>
+        <td style="text-align:center;font-weight:700">5</td>
+        <td><strong>Verify ID</strong><br>ยืนยันตัวตน</td>
+        <td>Smart Card / Passport / QR</td>
+        <td>60 วินาที</td>
+        <td>เลือกวิธียืนยัน + อ่านเอกสาร · ระบบเทียบชื่อจากเอกสารกับข้อมูลนัดหมาย · ชื่อไม่ตรง → <strong>Error</strong></td>
+      </tr>
+      <tr>
+        <td style="text-align:center;font-weight:700">6</td>
+        <td><strong>Face Capture</strong><br>ถ่ายภาพ + WiFi</td>
+        <td>USB Camera</td>
+        <td>30 วินาที</td>
+        <td>ถ่ายภาพใบหน้า · ถ้าตอนจองเลือกรับ WiFi → ปุ่ม WiFi จะ pre-select ไว้ · ยืนยันรับ/ไม่รับ WiFi</td>
+      </tr>
+      <tr>
+        <td style="text-align:center;font-weight:700">7</td>
+        <td><strong>WiFi Offer</strong><br>เสนอ WiFi</td>
+        <td>—</td>
+        <td>15 วินาที</td>
+        <td>แสดง SSID (MOTS-Guest) + รหัสผ่าน + ระยะเวลาใช้งาน · Accept / Decline → ถ้า pre-select จากการจอง จะ highlight ไว้</td>
+      </tr>
+      <tr>
+        <td style="text-align:center;font-weight:700">8</td>
+        <td><strong>Success</strong><br>สำเร็จ</td>
+        <td>Thermal Printer</td>
+        <td>10-30 วิ auto</td>
+        <td>ถ้าผูก LINE → ถามพิมพ์/ส่ง LINE · ถ้าไม่ผูก LINE → พิมพ์ Visit Pass อัตโนมัติ · Visit Pass มี: เลขที่ · ชื่อ · วัตถุประสงค์ · เจ้าหน้าที่ · WiFi (ถ้ารับ) · QR สำหรับ Check-out</td>
+      </tr>
+    </table>
   </div>
 
-  <div id="p4b" style="display:none">
+  <!-- ===== PATH C: APPOINTMENT VIA ID CARD (NO QR) ===== -->
+  <div id="p5c" style="display:none">
     <div class="grid2">
       <div class="card">
-        <h3>🪪 ขั้นตอน — ช่องทาง B (บัตร/ThaiID)</h3>
+        <h3>🪪 ขั้นตอน — นัดหมาย ช่องทาง B (ค้นหาจากบัตร ไม่มี QR) · 9 ขั้นตอน</h3>
         <ul class="steps">
-          <li><span class="n">1</span><span>เลือกเมนู <strong>"นัดหมายไว้แล้ว"</strong></span></li>
-          <li><span class="n">2</span><span>เลือก <strong>"บัตรประชาชน / Passport / ThaiID"</strong></span></li>
-          <li><span class="n">3</span><span>สแกน/อ่านบัตร → ระบบค้นหานัดหมาย<strong>วันนี้</strong></span></li>
-          <li><span class="n">4</span><span>พบ → Preview รายการนัดหมาย → กดยืนยัน</span></li>
-          <li><span class="n">5</span><span>ถ่ายภาพ → Preview → กดยืนยัน</span></li>
-          <li><span class="n">6</span><span>ระบบถาม: <em>"รับรหัส WiFi ด้วยไหม?"</em></span></li>
-          <li><span class="n y">✓</span><span style="color:#7B2FBE">Yes → สร้าง WiFi → พิมพ์ใน Visit Pass</span></li>
+          <li><span class="n">1</span><span>หน้าจอต้อนรับ → เลือก <strong>"มีนัดล่วงหน้า"</strong></span></li>
+          <li><span class="n">2</span><span>ยอมรับ <strong>PDPA</strong> <em>(120 วิ)</em></span></li>
+          <li><span class="n">3</span><span>หน้า Scan QR → กดปุ่ม <strong>"ไม่มี QR Code — ใช้บัตรแทน"</strong></span></li>
+          <li><span class="n">4</span><span>เลือกวิธียืนยันตัวตน: บัตร ปชช. / Passport / ThaiID App <em>(60 วิ)</em></span></li>
+          <li><span class="n">5</span><span>เสียบบัตร/สแกนเอกสาร → ระบบอ่านข้อมูล <em>(60 วิ)</em></span></li>
+          <li><span class="n">6</span><span>ระบบค้นหานัดหมาย<strong>วันนี้</strong>จากชื่อ + เลขบัตร → แสดง Preview</span></li>
+          <li><span class="n g">✓</span><span>พบนัดหมาย → ยืนยัน → ถ่ายภาพใบหน้า <em>(30 วิ)</em></span></li>
+          <li><span class="n">7</span><span>ระบบถาม: <em>"รับรหัส WiFi ด้วยไหม?"</em> <em>(15 วิ)</em></span></li>
+          <li><span class="n">8</span><span>สำเร็จ → พิมพ์ Visit Pass / ส่งผ่าน LINE <em>(10-30 วิ auto)</em></span></li>
         </ul>
+        <div class="note note-yellow mt8">
+          <strong>⚠️ ช่องทางนี้:</strong> สำหรับกรณี Visitor ไม่มี QR Code (เช่น ไม่ได้ใช้ LINE / QR หมดอายุ / ใช้มือถือไม่ได้) ระบบจะค้นหานัดหมายจากข้อมูลบัตรที่สแกนแทน
+        </div>
       </div>
       <div class="vf">
         <div class="box start">Visitor มาถึง Kiosk</div><div class="darr">↓</div>
-        <div class="box action">เลือก "นัดหมายไว้แล้ว"</div><div class="darr">↓</div>
-        <div class="box action">ยืนยันตัวตนด้วยบัตร<br><span class="sub">บัตรประชาชน/Passport/ThaiID</span></div><div class="darr">↓</div>
-        <div class="box system">ระบบค้นหานัดหมายวันนี้</div><div class="darr">↓</div>
+        <div class="box action">เลือก <strong>"มีนัดล่วงหน้า"</strong></div><div class="darr">↓</div>
+        <div class="box action">ยอมรับ PDPA</div><div class="darr">↓</div>
+        <div class="box warn">ไม่มี QR Code<br><span class="sub">กด "ใช้บัตรแทน"</span></div><div class="darr">↓</div>
+        <div class="box action">เลือกวิธียืนยันตัวตน<br><span class="sub">🪪 บัตร ปชช. / 📕 Passport / 📱 ThaiID</span></div><div class="darr">↓</div>
+        <div class="box system">ระบบอ่านข้อมูลจากเอกสาร</div><div class="darr">↓</div>
+        <div class="box system" style="font-size:15.0px">ค้นหานัดหมายวันนี้<br>จากชื่อ + เลขบัตร</div><div class="darr">↓</div>
         <div class="box decision">พบนัดหมาย + ชื่อตรง?</div>
         <div class="branch">
           <div class="bcol">
             <span class="lbl lbl-y">Yes</span><div class="darr">↓</div>
             <div class="box action" style="font-size:15.0px">Preview นัดหมาย<br>Visitor ยืนยัน</div><div class="darr">↓</div>
-            <div class="box action" style="font-size:15.0px">ถ่ายภาพ→Preview→ยืนยัน</div><div class="darr">↓</div>
-            <div class="box decision" style="font-size:15.0px">รับ WiFi?</div>
+            <div class="box action" style="font-size:15.0px">ถ่ายภาพใบหน้า</div><div class="darr">↓</div>
+            <div class="box decision" style="font-size:15.0px">WiFi?</div>
             <div class="branch">
-              <div class="bcol"><span class="lbl lbl-y" style="font-size:15.0px">Yes</span><div class="darr">↓</div><div class="box output" style="font-size:15.0px">Pass+WiFi</div></div>
-              <div class="bcol"><span class="lbl lbl-n" style="font-size:15.0px">No</span><div class="darr">↓</div><div class="box output" style="font-size:15.0px">Visit Pass</div></div>
+              <div class="bcol"><span class="lbl lbl-y" style="font-size:14.0px">Yes</span><div class="darr">↓</div><div class="box output" style="font-size:14.0px">Pass+WiFi</div></div>
+              <div class="bcol"><span class="lbl lbl-n" style="font-size:14.0px">No</span><div class="darr">↓</div><div class="box output" style="font-size:14.0px">Visit Pass</div></div>
             </div>
-            <div class="darr">↓</div><div class="box end" style="font-size:15.0px">Check-in ✓</div>
+            <div class="darr">↓</div>
+            <div class="box decision" style="font-size:15.0px">ผูก LINE?</div>
+            <div class="branch">
+              <div class="bcol"><span class="lbl lbl-y" style="font-size:14.0px">Yes</span><div class="darr">↓</div><div class="box action" style="font-size:14.0px">เลือก<br>พิมพ์/ส่ง LINE</div></div>
+              <div class="bcol"><span class="lbl lbl-n" style="font-size:14.0px">No</span><div class="darr">↓</div><div class="box action" style="font-size:14.0px">พิมพ์อัตโนมัติ</div></div>
+            </div>
+            <div class="darr">↓</div>
+            <div class="box end">Check-in สำเร็จ ✓</div>
           </div>
           <div class="bcol">
             <span class="lbl lbl-n">No</span><div class="darr">↓</div>
-            <div class="box error" style="font-size:15.0px">ไม่พบข้อมูล<br>นัดหมาย</div>
-            <div class="darr">↓</div><div class="box end-red" style="font-size:15.0px">สิ้นสุด</div>
+            <div class="box error" style="font-size:15.0px">ไม่พบนัดหมาย<br>ชื่อไม่ตรง</div>
+            <div class="darr">↓</div>
+            <div class="box action" style="font-size:15.0px">ลองใหม่ / กลับหน้าแรก</div>
           </div>
         </div>
       </div>
     </div>
+
+    <!-- Appointment No-QR Detail Table -->
+    <table class="swim mt12">
+      <tr>
+        <th style="width:5%">ขั้นตอน</th>
+        <th style="width:22%">หน้าจอ (Screen)</th>
+        <th style="width:15%">อุปกรณ์ที่ใช้</th>
+        <th style="width:10%">Timeout</th>
+        <th>รายละเอียด</th>
+      </tr>
+      <tr>
+        <td style="text-align:center;font-weight:700">1-2</td>
+        <td><strong>Welcome + PDPA</strong></td>
+        <td>—</td>
+        <td>— / 120 วิ</td>
+        <td>เหมือนช่องทาง A (เลือก "มีนัดล่วงหน้า" → ยอมรับ PDPA)</td>
+      </tr>
+      <tr>
+        <td style="text-align:center;font-weight:700">3</td>
+        <td><strong>QR Scan</strong> → <strong>ไม่มี QR</strong></td>
+        <td>—</td>
+        <td>—</td>
+        <td>กดปุ่ม <strong>"ไม่มี QR Code — ยืนยันด้วยบัตร"</strong> → ข้ามไปหน้าเลือกวิธียืนยันตัวตน</td>
+      </tr>
+      <tr>
+        <td style="text-align:center;font-weight:700">4</td>
+        <td><strong>Select ID Method</strong></td>
+        <td>—</td>
+        <td>60 วินาที</td>
+        <td>เลือก: 🪪 บัตรประชาชน / 📕 Passport / 📱 ThaiID App</td>
+      </tr>
+      <tr>
+        <td style="text-align:center;font-weight:700">5</td>
+        <td><strong>ID Verification</strong></td>
+        <td>Smart Card / Passport / QR</td>
+        <td>60 วินาที</td>
+        <td>อ่านข้อมูลจากเอกสาร → ระบบนำชื่อ + เลขบัตรไปค้นหานัดหมาย<strong>วันนี้</strong></td>
+      </tr>
+      <tr>
+        <td style="text-align:center;font-weight:700">6</td>
+        <td><strong>Appointment Preview</strong></td>
+        <td>—</td>
+        <td>120 วินาที</td>
+        <td>พบนัดหมาย → แสดงรายละเอียด: วัตถุประสงค์ · เจ้าหน้าที่ · กอง · วัน-เวลา → ยืนยัน Check-in</td>
+      </tr>
+      <tr>
+        <td style="text-align:center;font-weight:700">7</td>
+        <td><strong>Face Capture + WiFi</strong></td>
+        <td>USB Camera</td>
+        <td>30 วิ + 15 วิ</td>
+        <td>ถ่ายภาพ → WiFi Offer (ถ้ามี) → ยืนยัน</td>
+      </tr>
+      <tr>
+        <td style="text-align:center;font-weight:700">8</td>
+        <td><strong>Success</strong></td>
+        <td>Thermal Printer</td>
+        <td>10-30 วิ auto</td>
+        <td>พิมพ์ Visit Pass / ส่งผ่าน LINE → กลับหน้าต้อนรับอัตโนมัติ</td>
+      </tr>
+    </table>
+  </div>
+
+  <!-- ===== COMPARISON TABLE ===== -->
+  <hr class="div">
+  <div class="card">
+    <h3>📊 เปรียบเทียบ 3 ช่องทาง Kiosk Check-in</h3>
+    <table class="swim">
+      <tr>
+        <th>หัวข้อ</th>
+        <th>🚶 Walk-in</th>
+        <th>📱 นัดหมาย + QR</th>
+        <th>🪪 นัดหมาย + บัตร</th>
+      </tr>
+      <tr>
+        <td><strong>จำนวนขั้นตอน</strong></td>
+        <td>8 steps</td>
+        <td>8 steps</td>
+        <td>8-9 steps</td>
+      </tr>
+      <tr>
+        <td><strong>ค้นหานัดหมาย</strong></td>
+        <td>ไม่ต้อง (ลงทะเบียนใหม่)</td>
+        <td>จาก QR Code</td>
+        <td>จากชื่อ + เลขบัตร</td>
+      </tr>
+      <tr>
+        <td><strong>เลือกวัตถุประสงค์</strong></td>
+        <td>✅ เลือกเอง + เลือกกอง</td>
+        <td>❌ กำหนดจากนัดหมาย</td>
+        <td>❌ กำหนดจากนัดหมาย</td>
+      </tr>
+      <tr>
+        <td><strong>Data Preview</strong></td>
+        <td>✅ แสดงข้อมูลจากบัตร</td>
+        <td>✅ แสดงข้อมูลนัดหมาย</td>
+        <td>✅ แสดงข้อมูลนัดหมาย</td>
+      </tr>
+      <tr>
+        <td><strong>Blocklist Check</strong></td>
+        <td>✅ ตรวจ Data Preview</td>
+        <td>⚡ ตรวจตอนยืนยันตัวตน</td>
+        <td>⚡ ตรวจตอนยืนยันตัวตน</td>
+      </tr>
+      <tr>
+        <td><strong>WiFi</strong></td>
+        <td>ขึ้นกับวัตถุประสงค์</td>
+        <td>ขึ้นกับที่จองไว้ (pre-select)</td>
+        <td>ขึ้นกับที่จองไว้ (pre-select)</td>
+      </tr>
+      <tr>
+        <td><strong>Face Capture Timeout</strong></td>
+        <td>60 วินาที</td>
+        <td>30 วินาที</td>
+        <td>30 วินาที</td>
+      </tr>
+      <tr>
+        <td><strong>อุปกรณ์ที่ใช้</strong></td>
+        <td>ID Reader + Camera + Printer</td>
+        <td>QR Scanner + ID Reader + Camera + Printer</td>
+        <td>ID Reader + Camera + Printer</td>
+      </tr>
+    </table>
   </div>
 </div>
 
@@ -2025,7 +2395,7 @@ function showTab(id,el){
   el.classList.add('active');
 }
 function showPath(group,id,el){
-  var all = ['p2a','p2b','p4a','p4b','p5a','p5b','p5c','p5d','p6a','p6b','ps0','ps1','ps2','ps3','ps4'];
+  var all = ['p2a','p2b','p5a','p5b','p5c','p6a','p6b','ps0','ps1','ps2','ps3','ps4'];
   all.filter(x=>x.startsWith(group)).forEach(x=>{
     var e=document.getElementById(x); if(e) e.style.display='none';
   });

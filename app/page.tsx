@@ -1,5 +1,4 @@
-import Link from "next/link";
-import { Smartphone, Monitor, Tablet, Shield, Users, Calendar, BarChart3 } from "lucide-react";
+import { Smartphone, Monitor, Tablet, Shield, Users, Calendar, BarChart3, GitBranch } from "lucide-react";
 
 export default function Home() {
   const apps = [
@@ -90,7 +89,7 @@ export default function Home() {
         {/* Cards Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-4xl w-full">
           {apps.map((app) => (
-            <Link href={app.href} key={app.href} className="group">
+            <a href={app.href} key={app.href} target="_blank" rel="noopener noreferrer" className="group">
               <div className="relative bg-white/[0.08] backdrop-blur-xl border border-white/[0.15] rounded-2xl p-6 transition-all duration-300 hover:bg-white/[0.14] hover:border-accent/40 hover:scale-[1.02] hover:shadow-[0_20px_60px_rgba(0,0,0,0.3)] overflow-hidden h-full">
                 {/* Hover glow */}
                 <div className="absolute inset-0 bg-gradient-to-br from-accent/0 to-accent/0 group-hover:from-accent/5 group-hover:to-transparent transition-all duration-500 rounded-2xl"></div>
@@ -127,9 +126,25 @@ export default function Home() {
                   </div>
                 </div>
               </div>
-            </Link>
+            </a>
           ))}
         </div>
+
+        {/* Flow Preview Link */}
+        <a
+          href="/vms_flow_preview.html"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-10 inline-flex items-center gap-3 bg-white/[0.08] backdrop-blur-xl border border-white/[0.15] rounded-2xl px-6 py-4 transition-all duration-300 hover:bg-white/[0.14] hover:border-accent/40 hover:scale-[1.02] group"
+        >
+          <div className="w-10 h-10 bg-accent/20 rounded-xl flex items-center justify-center text-accent group-hover:bg-accent/30 transition-colors">
+            <GitBranch className="h-5 w-5" />
+          </div>
+          <div className="text-left">
+            <p className="text-white font-semibold group-hover:text-accent transition-colors">VMS Flow Preview</p>
+            <p className="text-white/40 text-xs">ดูภาพรวม Flow ทั้งหมดของระบบ</p>
+          </div>
+        </a>
 
         {/* Footer */}
         <div className="mt-12 text-center text-white/30 text-sm">
