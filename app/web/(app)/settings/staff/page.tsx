@@ -39,14 +39,14 @@ import { cn } from "@/lib/utils";
 /* ── helpers ───────────────────────────────────── */
 
 /** Approver groups where this staff is a member */
-function staffApproverGroups(staffId: string) {
+function staffApproverGroups(staffId: number) {
   return approverGroups.filter((g) =>
     g.members.some((m) => m.staffId === staffId)
   );
 }
 
 /** Appointments where this staff is the host */
-function staffAppointments(staffId: string) {
+function staffAppointments(staffId: number) {
   return appointments.filter((a) => a.host.id === staffId);
 }
 
@@ -65,7 +65,7 @@ export default function StaffPage() {
   const schema = getSchemaByPageId("staff")!;
   const flowData = getFlowByPageId("staff")!;
   const [search, setSearch] = useState("");
-  const [filterDept, setFilterDept] = useState("all");
+  const [filterDept, setFilterDept] = useState<"all" | number>("all");
   const [filterStatus, setFilterStatus] = useState<"all" | "active" | "inactive">("all");
   const [drawerData, setDrawerData] = useState<{ mode: "add" | "edit"; staff?: Staff } | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
@@ -184,7 +184,7 @@ export default function StaffPage() {
           />
           <select
             value={filterDept}
-            onChange={(e) => setFilterDept(e.target.value)}
+            onChange={(e) => setFilterDept(e.target.value === "all" ? "all" : Number(e.target.value))}
             className="h-10 px-3 text-sm rounded-lg border border-border bg-white text-text-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
           >
             <option value="all">ทุกแผนก</option>
@@ -481,7 +481,7 @@ function StaffDrawer({
   const [nameEn, setNameEn] = useState(staff?.nameEn ?? "");
   const [employeeId, setEmployeeId] = useState(staff?.employeeId ?? "");
   const [position, setPosition] = useState(staff?.position ?? "");
-  const [departmentId, setDepartmentId] = useState(staff?.department.id ?? "");
+  const [departmentId, setDepartmentId] = useState(staff?.department.id ?? 0);
   const [email, setEmail] = useState(staff?.email ?? "");
   const [phone, setPhone] = useState(staff?.phone ?? "");
   const [role, setRole] = useState(staff?.role ?? "staff");
@@ -548,7 +548,7 @@ function StaffDrawer({
 
         <div>
           <label className="block text-sm font-medium text-text-primary mb-1">แผนก <span className="text-error">*</span></label>
-          <select value={departmentId} onChange={(e) => setDepartmentId(e.target.value)} className="w-full h-10 px-3 text-sm rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-primary/20">
+          <select value={departmentId} onChange={(e) => setDepartmentId(Number(e.target.value))} className="w-full h-10 px-3 text-sm rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-primary/20">
             <option value="">— เลือกแผนก —</option>
             {departments.map((d) => <option key={d.id} value={d.id}>{d.name} ({d.floor})</option>)}
           </select>

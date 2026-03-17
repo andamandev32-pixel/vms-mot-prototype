@@ -122,7 +122,7 @@ export default function ServicePointsSettingsPage() {
   ];
 
   /* toggle status */
-  const cycleStatus = (id: string) => {
+  const cycleStatus = (id: number) => {
     setItems((prev) =>
       prev.map((sp) => {
         if (sp.id !== id) return sp;
@@ -348,12 +348,12 @@ export default function ServicePointsSettingsPage() {
 
 /* ── Add/Edit Form ── */
 function ServicePointForm({ initial, onSave, onCancel }: { initial?: ServicePoint; onSave: () => void; onCancel: () => void }) {
-  const kioskOnlyDocIds = ["1", "2", "5"];
+  const kioskOnlyDocIds = [1, 2, 5];
 
   const [type, setType] = useState<ServicePointType>(initial?.type ?? "kiosk");
   const [status, setStatus] = useState<ServicePointStatus>(initial?.status ?? "offline");
-  const [selectedPurposes, setSelectedPurposes] = useState<string[]>(initial?.allowedPurposeIds ?? []);
-  const [selectedDocs, setSelectedDocs] = useState<string[]>(initial?.allowedDocumentIds ?? []);
+  const [selectedPurposes, setSelectedPurposes] = useState<number[]>(initial?.allowedPurposeIds ?? []);
+  const [selectedDocs, setSelectedDocs] = useState<number[]>(initial?.allowedDocumentIds ?? []);
   const [showTimeouts, setShowTimeouts] = useState(false);
   const [showWifiConfig, setShowWifiConfig] = useState(false);
   const [showPdpaConfig, setShowPdpaConfig] = useState(false);
@@ -363,17 +363,17 @@ function ServicePointForm({ initial, onSave, onCancel }: { initial?: ServicePoin
 
   // Staff assignment state (counter only)
   const initialAssignedStaff = initial ? counterStaffAssignments.filter((a) => a.servicePointId === initial.id) : [];
-  const [assignedStaffIds, setAssignedStaffIds] = useState<{ staffId: string; isPrimary: boolean }[]>(
+  const [assignedStaffIds, setAssignedStaffIds] = useState<{ staffId: number; isPrimary: boolean }[]>(
     initialAssignedStaff.map((a) => ({ staffId: a.staffId, isPrimary: a.isPrimary }))
   );
 
   const eligibleStaff = staffMembers.filter((s) => (s.role === "security" || s.role === "admin") && s.status === "active");
   const unassignedStaff = eligibleStaff.filter((s) => !assignedStaffIds.some((a) => a.staffId === s.id));
 
-  const addStaffAssignment = (staffId: string) => {
+  const addStaffAssignment = (staffId: number) => {
     setAssignedStaffIds((prev) => [...prev, { staffId, isPrimary: prev.length === 0 }]);
   };
-  const removeStaffAssignment = (staffId: string) => {
+  const removeStaffAssignment = (staffId: number) => {
     setAssignedStaffIds((prev) => {
       const next = prev.filter((a) => a.staffId !== staffId);
       if (next.length > 0 && !next.some((a) => a.isPrimary)) {
@@ -382,7 +382,7 @@ function ServicePointForm({ initial, onSave, onCancel }: { initial?: ServicePoin
       return next;
     });
   };
-  const setPrimaryStaff = (staffId: string) => {
+  const setPrimaryStaff = (staffId: number) => {
     setAssignedStaffIds((prev) =>
       prev.map((a) => ({ ...a, isPrimary: a.staffId === staffId }))
     );
@@ -439,9 +439,9 @@ function ServicePointForm({ initial, onSave, onCancel }: { initial?: ServicePoin
     }
   };
 
-  const togglePurpose = (id: string) =>
+  const togglePurpose = (id: number) =>
     setSelectedPurposes((prev) => prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]);
-  const toggleDoc = (id: string) =>
+  const toggleDoc = (id: number) =>
     setSelectedDocs((prev) => prev.includes(id) ? prev.filter((d) => d !== id) : [...prev, id]);
 
   const availableDocs = type === "kiosk"

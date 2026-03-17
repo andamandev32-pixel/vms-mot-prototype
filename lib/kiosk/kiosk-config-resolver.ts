@@ -31,10 +31,10 @@ export interface ResolvedKioskConfig {
   purposes: VisitPurposeOption[];
 
   /** purpose ID → department IDs ที่ kiosk นี้แสดง (กรองเฉพาะ showOnKiosk=true) */
-  purposeDepartmentMap: Record<string, string[]>;
+  purposeDepartmentMap: Record<number, number[]>;
 
   /** ID methods ที่ kiosk นี้รับ (กรองจาก allowedDocumentIds → map เป็น IdMethod) */
-  allowedIdMethods: { id: IdMethod; docId: string; name: string; nameEn: string; icon: string }[];
+  allowedIdMethods: { id: IdMethod; docId: number; name: string; nameEn: string; icon: string }[];
 
   /** Timeout config per screen */
   timeouts: NonNullable<ServicePoint["timeoutConfig"]>;
@@ -59,7 +59,7 @@ export interface ResolvedKioskConfig {
   };
 
   /** ข้อมูลสำหรับ requirePhoto per purpose */
-  purposeRequirePhoto: Record<string, boolean>;
+  purposeRequirePhoto: Record<number, boolean>;
 
   /** Slip config (header/footer text) */
   slip: {
@@ -68,7 +68,7 @@ export interface ResolvedKioskConfig {
   };
 
   /** Notification triggers ที่จะเกิดเมื่อ check-in สำเร็จ */
-  notificationTriggers: { id: string; name: string; channel: string }[];
+  notificationTriggers: { id: number; name: string; channel: string }[];
 
   /** Access zone ที่ได้จาก department mapping */
   accessZoneLabel: string;
@@ -79,10 +79,10 @@ export interface ResolvedKioskConfig {
 
 // ===== DOC ID → IdMethod MAPPING =====
 
-const docIdToIdMethod: Record<string, IdMethod> = {
-  "1": "thai-id-card",   // บัตรประชาชน
-  "2": "passport",       // Passport
-  "5": "thai-id-app",    // ThaiID App
+const docIdToIdMethod: Record<number, IdMethod> = {
+  1: "thai-id-card",   // บัตรประชาชน
+  2: "passport",       // Passport
+  5: "thai-id-app",    // ThaiID App
 };
 
 // ===== DEFAULT TIMEOUTS =====
@@ -198,14 +198,14 @@ export function resolveWifiValidity(config: NonNullable<ServicePoint["wifiConfig
 
 // ===== MAIN RESOLVER =====
 
-export function resolveKioskConfig(servicePointId: string): ResolvedKioskConfig | null {
+export function resolveKioskConfig(servicePointId: number): ResolvedKioskConfig | null {
   const sp = servicePoints.find((s) => s.id === servicePointId);
   if (!sp) return null;
 
   // 1. Resolve allowed purposes (filtered by SP's allowedPurposeIds + showOnKiosk + isActive)
   const purposes: VisitPurposeOption[] = [];
-  const purposeDeptMap: Record<string, string[]> = {};
-  const purposeRequirePhoto: Record<string, boolean> = {};
+  const purposeDeptMap: Record<number, number[]> = {};
+  const purposeRequirePhoto: Record<number, boolean> = {};
 
   for (const config of visitPurposeConfigs) {
     if (!config.isActive) continue;
@@ -401,7 +401,7 @@ export function getStateConfigInfo(
         rules: [
           `ต้องถ่ายรูป (ตาม purpose):`,
           ...Object.entries(config.purposeRequirePhoto).map(([pid, req]) => {
-            const p = config.purposes.find((pp) => pp.id === pid);
+            const p = config.purposes.find((pp) => pp.id === Number(pid));
             return `  ${p?.icon ?? ""} ${p?.name ?? pid}: ${req ? "✅ บังคับ" : "❌ ข้ามได้"}`;
           }),
           `WiFi SSID: ${config.wifi.ssid}`,

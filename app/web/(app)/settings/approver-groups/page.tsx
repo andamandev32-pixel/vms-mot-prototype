@@ -42,17 +42,17 @@ import { cn } from "@/lib/utils";
 
 /* ── helpers ───────────────────────────────────── */
 
-function deptName(id: string) {
-  return departments.find((d) => d.id === id)?.name ?? id;
+function deptName(id: number) {
+  return departments.find((d) => d.id === id)?.name ?? String(id);
 }
 
-function staffInfo(staffId: string) {
+function staffInfo(staffId: number) {
   return staffMembers.find((s) => s.id === staffId);
 }
 
-function purposeName(id: string) {
+function purposeName(id: number) {
   const p = visitPurposeConfigs.find((v) => v.id === id);
-  return p ? `${p.icon} ${p.name}` : id;
+  return p ? `${p.icon} ${p.name}` : String(id);
 }
 
 const channelConfig: Record<
@@ -88,10 +88,10 @@ export default function ApproverGroupsPage() {
   const schema = getSchemaByPageId("approver-groups")!;
   const flowData = getFlowByPageId("approver-groups")!;
   const [groups] = useState<ApproverGroup[]>(approverGroups);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<number | null>(null);
   const [drawerData, setDrawerData] = useState<{ mode: "add" | "edit"; group?: ApproverGroup } | null>(null);
 
-  const toggle = (id: string) =>
+  const toggle = (id: number) =>
     setExpandedId((prev) => (prev === id ? null : id));
 
   const activeGroups = groups.filter((g) => g.isActive);
@@ -656,8 +656,8 @@ function ApproverGroupDrawer({
   const [name, setName] = useState(group?.name ?? "");
   const [nameEn, setNameEn] = useState(group?.nameEn ?? "");
   const [description, setDescription] = useState(group?.description ?? "");
-  const [departmentId, setDepartmentId] = useState(group?.departmentId ?? "");
-  const [selectedPurposeIds, setSelectedPurposeIds] = useState<string[]>(group?.visitPurposeIds ?? []);
+  const [departmentId, setDepartmentId] = useState(group?.departmentId ?? 0);
+  const [selectedPurposeIds, setSelectedPurposeIds] = useState<number[]>(group?.visitPurposeIds ?? []);
   const [notifyChannels, setNotifyChannels] = useState<ApproverNotifyChannel[]>(group?.notifyChannels ?? ["line", "web-app"]);
   const [members, setMembers] = useState<ApproverMember[]>(group?.members ?? []);
   const [isActive, setIsActive] = useState(group?.isActive ?? true);
@@ -671,13 +671,13 @@ function ApproverGroupDrawer({
     }
   });
 
-  const togglePurpose = (id: string) =>
+  const togglePurpose = (id: number) =>
     setSelectedPurposeIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
 
   const toggleChannel = (ch: ApproverNotifyChannel) =>
     setNotifyChannels((prev) => prev.includes(ch) ? prev.filter((x) => x !== ch) : [...prev, ch]);
 
-  const toggleMember = (staffId: string) => {
+  const toggleMember = (staffId: number) => {
     setMembers((prev) => {
       const exists = prev.find((m) => m.staffId === staffId);
       if (exists) return prev.filter((m) => m.staffId !== staffId);
@@ -685,7 +685,7 @@ function ApproverGroupDrawer({
     });
   };
 
-  const toggleMemberPerm = (staffId: string, field: "canApprove" | "receiveNotification") => {
+  const toggleMemberPerm = (staffId: number, field: "canApprove" | "receiveNotification") => {
     setMembers((prev) =>
       prev.map((m) => m.staffId === staffId ? { ...m, [field]: !m[field] } : m)
     );
@@ -720,7 +720,7 @@ function ApproverGroupDrawer({
 
         <div>
           <label className="block text-sm font-medium text-text-primary mb-1">แผนกที่รับผิดชอบ <span className="text-error">*</span></label>
-          <select value={departmentId} onChange={(e) => setDepartmentId(e.target.value)} className="w-full h-10 px-3 text-sm rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-primary/20">
+          <select value={departmentId} onChange={(e) => setDepartmentId(Number(e.target.value))} className="w-full h-10 px-3 text-sm rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-primary/20">
             <option value="">— เลือกแผนก —</option>
             {departments.map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
           </select>

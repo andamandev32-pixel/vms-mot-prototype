@@ -57,7 +57,7 @@ const MOCK_APPOINTMENTS = [
     id: "eVMS-20260315-0042", visitorName: "นายวิชัย มั่นคง", idNumber: "3100500345678",
     host: "คุณสมศรี รักงาน", hostRole: "ผู้อำนวยการกองกิจการท่องเที่ยว",
     department: "กองกิจการท่องเที่ยว", floor: "ชั้น 4",
-    purpose: "ประชุมหารือโครงการส่งเสริมการท่องเที่ยว", purposeId: "2",
+    purpose: "ประชุมหารือโครงการส่งเสริมการท่องเที่ยว", purposeId: 2,
     time: "09:00 - 10:30", status: "confirmed" as const, companions: 0, type: "official" as const,
     company: "บริษัท ทัวร์ไทย จำกัด",
   },
@@ -65,7 +65,7 @@ const MOCK_APPOINTMENTS = [
     id: "eVMS-20260315-0043", visitorName: "นางอัญชลี แสงทอง", idNumber: "1500700901234",
     host: "คุณประเสริฐ ศรีวิไล", hostRole: "หัวหน้ากลุ่มงานบริหารทั่วไป",
     department: "กองกลาง", floor: "ชั้น 2",
-    purpose: "ยื่นเอกสารสัญญาจ้าง", purposeId: "3",
+    purpose: "ยื่นเอกสารสัญญาจ้าง", purposeId: 3,
     time: "10:00 - 11:00", status: "confirmed" as const, companions: 2, type: "meeting" as const,
     company: "สมาคมส่งเสริมการท่องเที่ยวไทย",
   },
@@ -73,7 +73,7 @@ const MOCK_APPOINTMENTS = [
     id: "eVMS-20260315-0044", visitorName: "Mr. James Wilson", idNumber: "AA7890123",
     host: "คุณนภาพร วงศ์สวัสดิ์", hostRole: "ผู้เชี่ยวชาญด้านต่างประเทศ",
     department: "กองการต่างประเทศ", floor: "ชั้น 5",
-    purpose: "Meeting - International Tourism Cooperation", purposeId: "2",
+    purpose: "Meeting - International Tourism Cooperation", purposeId: 2,
     time: "13:00 - 14:30", status: "confirmed" as const, companions: 1, type: "official" as const,
     company: "World Tourism Organization",
   },
@@ -81,7 +81,7 @@ const MOCK_APPOINTMENTS = [
     id: "eVMS-20260315-0045", visitorName: "นายธนพล สุขสำราญ", idNumber: "1102003456001",
     host: "คุณประเสริฐ ศรีวิไล", hostRole: "หัวหน้ากลุ่มงานบริหารทั่วไป",
     department: "กองกลาง", floor: "ชั้น 2",
-    purpose: "งานซ่อมบำรุงระบบปรับอากาศ", purposeId: "4",
+    purpose: "งานซ่อมบำรุงระบบปรับอากาศ", purposeId: 4,
     time: "08:00 - 17:00", status: "confirmed" as const, companions: 3, type: "contractor" as const,
     company: "บริษัท ก่อสร้างเอก จำกัด",
   },
@@ -89,7 +89,7 @@ const MOCK_APPOINTMENTS = [
     id: "eVMS-20260315-0046", visitorName: "นายสมชาย ดีใจ", idNumber: "1301200678111",
     host: "คุณสมศรี รักงาน", hostRole: "ผู้อำนวยการกองกิจการท่องเที่ยว",
     department: "กองกิจการท่องเที่ยว", floor: "ชั้น 4",
-    purpose: "ส่งเอกสารสัญญา", purposeId: "3",
+    purpose: "ส่งเอกสารสัญญา", purposeId: 3,
     time: "09:30 - 10:00", status: "confirmed" as const, companions: 0, type: "document" as const,
     company: "บริษัท เอกสารด่วน จำกัด",
   },
@@ -97,7 +97,7 @@ const MOCK_APPOINTMENTS = [
     id: "eVMS-20260315-0047", visitorName: "นางสาวพิมพ์ชนก แก้วมณี", idNumber: "1409900123999",
     host: "คุณนภาพร วงศ์สวัสดิ์", hostRole: "ผู้เชี่ยวชาญด้านต่างประเทศ",
     department: "กองการต่างประเทศ", floor: "ชั้น 5",
-    purpose: "ประชุมวางแผนโครงการ", purposeId: "2",
+    purpose: "ประชุมวางแผนโครงการ", purposeId: 2,
     time: "14:00 - 15:30", status: "confirmed" as const, companions: 0, type: "meeting" as const,
     company: "สำนักงานส่งเสริมเศรษฐกิจดิจิทัล",
   },
@@ -105,7 +105,7 @@ const MOCK_APPOINTMENTS = [
     id: "eVMS-20260315-0048", visitorName: "Mr. David Chen", idNumber: "BB1234567",
     host: "คุณสมศรี รักงาน", hostRole: "ผู้อำนวยการกองกิจการท่องเที่ยว",
     department: "กองกิจการท่องเที่ยว", floor: "ชั้น 4",
-    purpose: "Business Partnership Discussion", purposeId: "2",
+    purpose: "Business Partnership Discussion", purposeId: 2,
     time: "15:00 - 16:00", status: "confirmed" as const, companions: 2, type: "official" as const,
     company: "Asia Tourism Alliance",
   },
@@ -113,7 +113,7 @@ const MOCK_APPOINTMENTS = [
     id: "eVMS-20260315-0049", visitorName: "นายกิตติ พงษ์พิพัฒน์", idNumber: "3100500345999",
     host: "คุณประเสริฐ ศรีวิไล", hostRole: "หัวหน้ากลุ่มงานบริหารทั่วไป",
     department: "กองกลาง", floor: "ชั้น 2",
-    purpose: "ส่งพัสดุ", purposeId: "5",
+    purpose: "ส่งพัสดุ", purposeId: 5,
     time: "11:00 - 11:30", status: "confirmed" as const, companions: 0, type: "delivery" as const,
     company: "บริษัท ขนส่งไทย จำกัด",
   },
@@ -264,11 +264,11 @@ export default function CounterDashboard() {
   const [lastName, setLastName] = useState("");
   const [idNumber, setIdNumber] = useState("");
   const [contactHost, setContactHost] = useState("");
-  const [selectedDepartmentId, setSelectedDepartmentId] = useState<string | null>(null);
+  const [selectedDepartmentId, setSelectedDepartmentId] = useState<number | null>(null);
   const [floorFilter, setFloorFilter] = useState<string | null>(null);
   const [phoneNumber, setPhoneNumber] = useState("");
-  const [selectedPurposeId, setSelectedPurposeId] = useState<string | null>(null);
-  const [selectedDocTypeId, setSelectedDocTypeId] = useState<string | null>(null);
+  const [selectedPurposeId, setSelectedPurposeId] = useState<number | null>(null);
+  const [selectedDocTypeId, setSelectedDocTypeId] = useState<number | null>(null);
   const [inputMethod, setInputMethod] = useState<InputMethod>("manual-officer");
   const [cardReaderStatus, setCardReaderStatus] = useState<CardReaderStatus>("idle");
   const [appointmentSearch, setAppointmentSearch] = useState("");
@@ -327,7 +327,7 @@ export default function CounterDashboard() {
       setLastName(mockData.lastName);
       setIdNumber(mockData.idNumber);
       setInputMethod("auto-card-reader");
-      setSelectedDocTypeId("1");
+      setSelectedDocTypeId(1);
       setCardReaderStatus("success");
       setTimeout(() => setCardReaderStatus("idle"), 2000);
     }, 1500);
@@ -341,7 +341,7 @@ export default function CounterDashboard() {
       setLastName("Wilson");
       setIdNumber("AA7890123");
       setInputMethod("passport-reader");
-      setSelectedDocTypeId("2");
+      setSelectedDocTypeId(2);
       setCardReaderStatus("success");
       setTimeout(() => setCardReaderStatus("idle"), 2000);
     }, 1500);

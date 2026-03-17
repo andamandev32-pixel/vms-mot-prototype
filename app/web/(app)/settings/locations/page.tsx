@@ -72,7 +72,7 @@ export default function LocationsSettingsPage() {
   const [activeTab, setActiveTab] = useState<"buildings" | "floors" | "departments">("buildings");
   const [buildingList, setBuildingList] = useState<Building[]>(buildings);
   const [deptList, setDeptList] = useState<Department[]>(departments);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<number | null>(null);
   const [searchDept, setSearchDept] = useState("");
   const [filterFloor, setFilterFloor] = useState<string>("all");
   const [drawer, setDrawer] = useState<{
@@ -97,7 +97,7 @@ export default function LocationsSettingsPage() {
     return deptList.filter((d) => {
       if (searchDept) {
         const q = searchDept.toLowerCase();
-        if (!d.name.toLowerCase().includes(q) && !d.nameEn.toLowerCase().includes(q) && !d.id.toLowerCase().includes(q)) return false;
+        if (!d.name.toLowerCase().includes(q) && !d.nameEn.toLowerCase().includes(q) && !String(d.id).includes(q)) return false;
       }
       if (filterFloor !== "all" && d.floor !== filterFloor) return false;
       return true;
@@ -105,10 +105,10 @@ export default function LocationsSettingsPage() {
   }, [deptList, searchDept, filterFloor]);
 
   /* toggle active */
-  const toggleBuildingActive = (id: string) => {
+  const toggleBuildingActive = (id: number) => {
     setBuildingList((prev) => prev.map((b) => (b.id === id ? { ...b, isActive: !b.isActive } : b)));
   };
-  const toggleDeptActive = (id: string) => {
+  const toggleDeptActive = (id: number) => {
     setDeptList((prev) => prev.map((d) => (d.id === id ? { ...d, isActive: !d.isActive } : d)));
   };
 
@@ -747,9 +747,9 @@ function FloorForm({
   onSave: () => void;
   onCancel: () => void;
 }) {
-  const [selectedDepts, setSelectedDepts] = useState<string[]>(initial?.departmentIds ?? []);
+  const [selectedDepts, setSelectedDepts] = useState<number[]>(initial?.departmentIds ?? []);
 
-  const toggleDept = (id: string) =>
+  const toggleDept = (id: number) =>
     setSelectedDepts((prev) => (prev.includes(id) ? prev.filter((d) => d !== id) : [...prev, id]));
 
   return (

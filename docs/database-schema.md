@@ -2,6 +2,7 @@
 
 > **สำหรับ DEV**: เอกสารนี้แสดง Schema ฐานข้อมูลทั้งหมดที่ใช้ในส่วนตั้งค่า (Settings)
 > ออกแบบจาก Mock-up Data ที่ใช้ใน Prototype — พร้อมตัวอย่างข้อมูล Seed
+> **Auto-generated from `lib/database-schema.ts`** — อย่าแก้ไขไฟล์นี้โดยตรง
 
 ---
 
@@ -14,64 +15,21 @@
 | 3 | [โซนเข้าพื้นที่](#3-โซนเข้าพื้นที่) | 6 ตาราง | `/web/settings/access-zones` |
 | 4 | [กลุ่มผู้อนุมัติ](#4-กลุ่มผู้อนุมัติ) | 4 ตาราง | `/web/settings/approver-groups` |
 | 5 | [จัดการพนักงาน](#5-จัดการพนักงาน) | 1 ตาราง | `/web/settings/staff` |
-| 6 | [จุดให้บริการ Kiosk/Counter](#6-จุดให้บริการ-kioskcounter) | 4 ตาราง | `/web/settings/service-points` |
+| 6 | [จุดให้บริการ Kiosk/Counter](#6-จุดให้บริการ-KioskCounter) | 4 ตาราง | `/web/settings/service-points` |
 | 7 | [ประเภทเอกสาร](#7-ประเภทเอกสาร) | 3 ตาราง | `/web/settings/document-types` |
 | 8 | [เวลาทำการ](#8-เวลาทำการ) | 1 ตาราง | `/web/settings/business-hours` |
 | 9 | [เทมเพลตแจ้งเตือน](#9-เทมเพลตแจ้งเตือน) | 2 ตาราง | `/web/settings/notification-templates` |
-| 10 | [แบบฟอร์ม Visit Slip](#10-แบบฟอร์ม-visit-slip) | 3 ตาราง | `/web/settings/visit-slips` |
-| 12 | [ข้อมูลธุรกรรม Visit Records](#12-ข้อมูลธุรกรรม-visit-records) | 1 ตาราง | `/web/appointments` |
+| 10 | [แบบฟอร์ม Visit Slip](#10-แบบฟอร์ม-Visit-Slip) | 4 ตาราง | `/web/settings/visit-slips` |
+| 11 | [PDPA / นโยบายคุ้มครองข้อมูล](#11-PDPA--นโยบายคุ้มครองข้อมูล) | 3 ตาราง | `/web/settings/pdpa-consent` |
+| 12 | [ข้อมูลธุรกรรมการเข้าพื้นที่](#12-ข้อมูลธุรกรรมการเข้าพื้นที่) | 1 ตาราง | `/web/appointments` |
 
-**รวมทั้งหมด: 31 ตาราง**
-
----
-
-## Entity Relationship Overview
-
-```
-┌──────────────────────┐     ┌──────────────────────┐     ┌──────────────────────┐
-│     buildings         │────▶│       floors          │────▶│   access_zones       │
-│  (อาคาร)              │     │  (ชั้น)                │     │  (โซน Hikvision)      │
-└──────────────────────┘     └────────┬─────────────┘     └────────┬─────────────┘
-                                      │                            │
-                              floor_departments              access_group_zones
-                                      │                            │
-                              ┌───────▼────────────┐     ┌────────▼─────────────┐
-                              │   departments       │     │   access_groups       │
-                              │  (แผนก)              │     │  (กลุ่มสิทธิ์)        │
-                              └───┬────┬────┬───────┘     └────────┬─────────────┘
-                                  │    │    │                      │
-                    ┌─────────────┘    │    └─────────┐    dept_access_mappings
-                    │                  │              │            │
-            ┌───────▼──────┐  ┌───────▼──────┐ ┌─────▼──────────┐│
-            │    staff      │  │approver_groups│ │visit_purpose_  ││
-            │  (พนักงาน)    │  │(กลุ่มผู้อนุมัติ)│ │dept_rules      ││
-            └───────┬──────┘  └──────┬───────┘ └──────┬─────────┘│
-                    │                │                │           │
-                    │    approver_group_members        │           │
-                    │    approver_group_purposes        │           │
-                    │                │                │           │
-            ┌───────▼──────┐  ┌──────▼───────┐ ┌─────▼──────────┐
-            │service_points │  │notification_ │ │visit_purposes  │
-            │(จุดบริการ)    │  │templates     │ │(วัตถุประสงค์)   │
-            └──────┬───────┘  └──────────────┘ └──────┬─────────┘
-                    │
-            counter_staff_assignments
-            (เจ้าหน้าที่ประจำ Counter, M:N → staff)
-                                                       │
-                                               purpose_slip_mappings
-                                                       │
-                                               ┌──────▼─────────┐
-                                               │visit_slip_      │
-                                               │templates        │
-                                               │(แบบฟอร์มบัตร)   │
-                                               └────────────────┘
-```
+**รวมทั้งหมด: 37 ตาราง**
 
 ---
 
 ## 1. วัตถุประสงค์เข้าพื้นที่
 
-**เมนู:** ตั้งค่าวัตถุประสงค์การเข้าพื้นที่
+**เมนู:** วัตถุประสงค์เข้าพื้นที่
 **Path:** `/web/settings/visit-purposes`
 **คำอธิบาย:** กำหนดวัตถุประสงค์การเข้าพื้นที่ พร้อมเงื่อนไขแต่ละแผนก และช่องทางการเข้า (Kiosk/Counter)
 
@@ -79,107 +37,151 @@
 
 | คอลัมน์ | ประเภท | Null | คำอธิบาย | Default |
 |---------|--------|------|----------|---------|
-| **id** 🔑 | VARCHAR(20) | ✗ | รหัสวัตถุประสงค์ (PK) | |
-| name | VARCHAR(100) | ✗ | ชื่อวัตถุประสงค์ (ภาษาไทย) | |
-| name_en | VARCHAR(100) | ✗ | ชื่อวัตถุประสงค์ (ภาษาอังกฤษ) | |
-| icon | VARCHAR(10) | ✓ | ไอคอน Emoji แสดงหน้าเมนู | |
+| **id** 🔑 | SERIAL | ✗ | รหัสวัตถุประสงค์ (PK) |
+| name | VARCHAR(100) | ✗ | ชื่อวัตถุประสงค์ (ภาษาไทย) |
+| name_en | VARCHAR(100) | ✗ | ชื่อวัตถุประสงค์ (ภาษาอังกฤษ) |
+| icon | VARCHAR(10) | ✓ | ไอคอน Emoji แสดงหน้าเมนู |
 | is_active | BOOLEAN | ✗ | สถานะเปิด/ปิดใช้งาน | true |
-| sort_order | INT | ✗ | ลำดับการแสดงผล (1=แรกสุด) | |
+| allowed_entry_modes | VARCHAR(50) | ✗ | ประเภทการเข้าพื้นที่ที่อนุญาต (comma-separated: single,period) | 'single' |
+| sort_order | INT | ✗ | ลำดับการแสดงผล (1=แรกสุด) |
 | created_at | TIMESTAMP | ✗ | วันที่สร้าง | CURRENT_TIMESTAMP |
 | updated_at | TIMESTAMP | ✗ | วันที่แก้ไขล่าสุด | CURRENT_TIMESTAMP |
 
 <details>
 <summary>📦 Seed Data (8 rows)</summary>
 
-| id | name | name_en | icon | is_active | sort_order |
-|----|------|---------|------|-----------|------------|
-| vpc-1 | ติดต่อราชการ | Official Business | 🏛️ | ✅ | 1 |
-| vpc-2 | ประชุม / สัมมนา | Meeting / Seminar | 📋 | ✅ | 2 |
-| vpc-3 | ส่งเอกสาร / พัสดุ | Document / Parcel Delivery | 📄 | ✅ | 3 |
-| vpc-4 | ผู้รับเหมา / ซ่อมบำรุง | Contractor / Maintenance | 🔧 | ✅ | 4 |
-| vpc-5 | สมัครงาน / สัมภาษณ์ | Job Application / Interview | 💼 | ✅ | 5 |
-| vpc-6 | เยี่ยมชม / ศึกษาดูงาน | Study Visit / Tour | 🎓 | ✅ | 6 |
-| vpc-7 | รับ-ส่งสินค้า | Delivery / Pickup | 📦 | ✅ | 7 |
-| vpc-8 | อื่นๆ | Other | 🔖 | ❌ | 8 |
+| id | name | name_en | icon | is_active | allowed_entry_modes | sort_order |
+|----|----|----|----|----|----|----|
+| 1 | ติดต่อราชการ | Official Business | 🏛️ | ✅ | single,period | 1 |
+| 2 | ประชุม / สัมมนา | Meeting / Seminar | 📋 | ✅ | single,period | 2 |
+| 3 | ส่งเอกสาร / พัสดุ | Document / Parcel Delivery | 📄 | ✅ | single | 3 |
+| 4 | ผู้รับเหมา / ซ่อมบำรุง | Contractor / Maintenance | 🔧 | ✅ | single,period | 4 |
+| 5 | สมัครงาน / สัมภาษณ์ | Job Application / Interview | 💼 | ✅ | single | 5 |
+| 6 | เยี่ยมชม / ศึกษาดูงาน | Study Visit / Tour | 🎓 | ✅ | single,period | 6 |
+| 7 | รับ-ส่งสินค้า | Delivery / Pickup | 📦 | ✅ | single | 7 |
+| 8 | อื่นๆ | Other | 🔖 | ❌ | single | 8 |
 
 </details>
 
-### 1.2 `visit_purpose_department_rules` — เงื่อนไขการเข้าพื้นที่ แยกตามแผนก
+### 1.2 `visit_purpose_department_rules` — เงื่อนไขการเข้าพื้นที่ แยกตามแผนก (ของแต่ละวัตถุประสงค์)
 
 | คอลัมน์ | ประเภท | Null | คำอธิบาย | Default |
 |---------|--------|------|----------|---------|
-| **id** 🔑 | SERIAL | ✗ | รหัส Auto-increment (PK) | |
-| visit_purpose_id 🔗 | VARCHAR(20) | ✗ | FK → visit_purposes.id | |
-| department_id 🔗 | VARCHAR(20) | ✗ | FK → departments.id — แผนกที่ใช้กฎนี้ | |
+| **id** 🔑 | SERIAL | ✗ | รหัส Auto-increment (PK) |
+| visit_purpose_id 🔗 | INT | ✗ | FK → visit_purposes.id |
+| department_id 🔗 | INT | ✗ | FK → departments.id — แผนกที่ใช้กฎนี้ |
 | require_person_name | BOOLEAN | ✗ | ต้องระบุชื่อบุคคลที่ต้องการพบ | false |
 | require_approval | BOOLEAN | ✗ | ต้องมีการอนุมัติก่อนเข้าพื้นที่ | false |
-| approver_group_id 🔗 | VARCHAR(20) | ✓ | FK → approver_groups.id — กลุ่มผู้อนุมัติ | |
+| approver_group_id 🔗 | INT | ✓ | FK → approver_groups.id — กลุ่มผู้อนุมัติ (ใช้เมื่อ require_approval=true) |
 | offer_wifi | BOOLEAN | ✗ | เสนอ WiFi Credentials ให้ผู้เข้าเยี่ยม | false |
 | show_on_line | BOOLEAN | ✗ | แสดงตัวเลือกนี้บน LINE OA + Web App | true |
 | show_on_kiosk | BOOLEAN | ✗ | แสดงตัวเลือกนี้บน Kiosk | true |
 | is_active | BOOLEAN | ✗ | สถานะเปิด/ปิดใช้งาน | true |
 
 <details>
-<summary>📦 Seed Data (25 rows) — ตัวอย่างบางส่วน</summary>
+<summary>📦 Seed Data (25 rows — แสดง 10 แรก)</summary>
 
-| id | visit_purpose_id | department_id | require_person_name | require_approval | approver_group_id | offer_wifi | show_on_line | show_on_kiosk |
-|----|-----------------|---------------|---------------------|-----------------|-------------------|-----------|-------------|---------------|
-| 1 | vpc-1 | dept-1 | ✅ | ✅ | apg-1 | ✅ | ✅ | ✅ |
-| 2 | vpc-1 | dept-2 | ✅ | ✅ | apg-3 | ✅ | ✅ | ✅ |
-| 5 | vpc-1 | dept-5 | ✅ | ❌ | — | ✅ | ✅ | ✅ |
-| 8 | vpc-2 | dept-1 | ✅ | ✅ | apg-1 | ✅ | ✅ | ✅ |
-| 15 | vpc-4 | dept-2 | ❌ | ✅ | apg-4 | ❌ | ❌ | ✅ |
+| id | visit_purpose_id | department_id | require_person_name | require_approval | approver_group_id | offer_wifi | show_on_line | show_on_kiosk | is_active |
+|----|----|----|----|----|----|----|----|----|----|
+| 1 | 1 | 1 | ✅ | ✅ | 1 | ✅ | ✅ | ✅ | ✅ |
+| 2 | 1 | 2 | ✅ | ✅ | 3 | ✅ | ✅ | ✅ | ✅ |
+| 3 | 1 | 3 | ✅ | ✅ | 5 | ✅ | ✅ | ✅ | ✅ |
+| 4 | 1 | 4 | ✅ | ✅ | 6 | ❌ | ✅ | ❌ | ✅ |
+| 5 | 1 | 5 | ✅ | ❌ | — | ✅ | ✅ | ✅ | ✅ |
+| 6 | 1 | 8 | ❌ | ❌ | — | ❌ | ✅ | ✅ | ✅ |
+| 7 | 1 | 9 | ✅ | ✅ | 10 | ✅ | ✅ | ❌ | ✅ |
+| 8 | 2 | 1 | ✅ | ✅ | 1 | ✅ | ✅ | ✅ | ✅ |
+| 9 | 2 | 3 | ✅ | ✅ | 5 | ✅ | ✅ | ❌ | ✅ |
+| 10 | 2 | 4 | ✅ | ❌ | — | ✅ | ✅ | ✅ | ✅ |
 
+*(... อีก 15 rows)*
 </details>
 
-### 1.3 `visit_purpose_channel_configs` — ตั้งค่าช่องทางเข้า (Kiosk/Counter)
+### 1.3 `visit_purpose_channel_configs` — ตั้งค่าช่องทางเข้า (Kiosk / Counter) ของแต่ละวัตถุประสงค์ — เอกสารที่รับ และการถ่ายรูป
 
 | คอลัมน์ | ประเภท | Null | คำอธิบาย | Default |
 |---------|--------|------|----------|---------|
-| **id** 🔑 | SERIAL | ✗ | รหัส Auto-increment (PK) | |
-| visit_purpose_id 🔗 | VARCHAR(20) | ✗ | FK → visit_purposes.id | |
-| channel | ENUM('kiosk','counter') | ✗ | ช่องทาง: kiosk / counter | |
+| **id** 🔑 | SERIAL | ✗ | รหัส Auto-increment (PK) |
+| visit_purpose_id 🔗 | INT | ✗ | FK → visit_purposes.id |
+| channel | ENUM('kiosk','counter') | ✗ | ช่องทาง: kiosk = ตู้อัตโนมัติ / counter = เคาน์เตอร์ รปภ. |
 | require_photo | BOOLEAN | ✗ | ต้องถ่ายภาพใบหน้า | false |
 
-### 1.4 `visit_purpose_channel_documents` — เอกสารที่อนุญาตใช้ ณ แต่ละช่องทาง
+<details>
+<summary>📦 Seed Data (16 rows — แสดง 10 แรก)</summary>
+
+| id | visit_purpose_id | channel | require_photo |
+|----|----|----|----|
+| 1 | 1 | kiosk | ✅ |
+| 2 | 1 | counter | ✅ |
+| 3 | 2 | kiosk | ✅ |
+| 4 | 2 | counter | ❌ |
+| 5 | 3 | kiosk | ✅ |
+| 6 | 3 | counter | ❌ |
+| 7 | 4 | kiosk | ✅ |
+| 8 | 4 | counter | ✅ |
+| 9 | 5 | kiosk | ✅ |
+| 10 | 5 | counter | ✅ |
+
+*(... อีก 6 rows)*
+</details>
+
+### 1.4 `visit_purpose_channel_documents` — เอกสารที่อนุญาตใช้ ณ แต่ละช่องทาง(Kiosk/Counter) ของแต่ละวัตถุประสงค์ (many-to-many)
 
 | คอลัมน์ | ประเภท | Null | คำอธิบาย |
 |---------|--------|------|----------|
-| channel_config_id 🔗 | INT | ✗ | FK → visit_purpose_channel_configs.id |
-| identity_document_type_id 🔗 | VARCHAR(30) | ✗ | FK → identity_document_types.id |
+| **channel_config_id** 🔑 | INT | ✗ | FK → visit_purpose_channel_configs.id |
+| **identity_document_type_id** 🔑 | INT | ✗ | FK → identity_document_types.id — ประเภทเอกสารที่รับ |
+
+<details>
+<summary>📦 Seed Data (9 rows)</summary>
+
+| channel_config_id | identity_document_type_id |
+|----|----|
+| 1 | 1 |
+| 1 | 2 |
+| 1 | 4 |
+| 1 | 5 |
+| 2 | 1 |
+| 2 | 2 |
+| 2 | 3 |
+| 2 | 4 |
+| 2 | 5 |
+
+</details>
 
 **ความสัมพันธ์:**
-- `visit_purposes` 1 ──→ N `visit_purpose_department_rules`
-- `visit_purposes` 1 ──→ N `visit_purpose_channel_configs`
-- `visit_purpose_channel_configs` 1 ──→ N `visit_purpose_channel_documents`
-- `visit_purpose_department_rules` N ──→ 1 `departments`
-- `visit_purpose_department_rules` N ──→ 1 `approver_groups`
+- visit_purposes 1 ──→ N visit_purpose_department_rules (แต่ละวัตถุประสงค์มีเงื่อนไขหลายแผนก)
+- visit_purposes 1 ──→ N visit_purpose_channel_configs (แต่ละวัตถุประสงค์มีตั้งค่า Kiosk + Counter)
+- visit_purpose_channel_configs 1 ──→ N visit_purpose_channel_documents (แต่ละช่องทางรับเอกสารหลายประเภท)
+- visit_purpose_department_rules N ──→ 1 departments (เงื่อนไขผูกกับแผนก)
+- visit_purpose_department_rules N ──→ 1 approver_groups (กฎที่ต้องอนุมัติ อ้างอิงกลุ่มผู้อนุมัติ)
 
 ---
-
 ## 2. สถานที่และแผนก
 
-**เมนู:** ตั้งค่าสถานที่และแผนก
+**เมนู:** สถานที่และแผนก
 **Path:** `/web/settings/locations`
 **คำอธิบาย:** จัดการอาคาร ชั้น และแผนก — รวมถึงการจับคู่แผนกกับชั้นที่ตั้ง
 
-### 2.1 `buildings` — ตารางอาคาร
+### 2.1 `buildings` — ตารางอาคาร (ในโปรเจกต์นี้มีอาคารเดียว)
 
 | คอลัมน์ | ประเภท | Null | คำอธิบาย | Default |
 |---------|--------|------|----------|---------|
-| **id** 🔑 | VARCHAR(20) | ✗ | รหัสอาคาร (PK) | |
-| name | VARCHAR(100) | ✗ | ชื่ออาคาร (ภาษาไทย) | |
-| name_en | VARCHAR(100) | ✗ | ชื่ออาคาร (ภาษาอังกฤษ) | |
-| total_floors | INT | ✗ | จำนวนชั้นทั้งหมด | |
-| description | TEXT | ✓ | รายละเอียดเพิ่มเติม | |
+| **id** 🔑 | SERIAL | ✗ | รหัสอาคาร (PK) |
+| name | VARCHAR(100) | ✗ | ชื่ออาคาร (ภาษาไทย) |
+| name_en | VARCHAR(100) | ✗ | ชื่ออาคาร (ภาษาอังกฤษ) |
+| total_floors | INT | ✗ | จำนวนชั้นทั้งหมด |
+| description | TEXT | ✓ | รายละเอียดเพิ่มเติม |
 | is_active | BOOLEAN | ✗ | สถานะเปิด/ปิดใช้งาน | true |
+| created_at | TIMESTAMP | ✗ | วันที่สร้าง | CURRENT_TIMESTAMP |
+| updated_at | TIMESTAMP | ✗ | วันที่แก้ไขล่าสุด | CURRENT_TIMESTAMP |
 
 <details>
-<summary>📦 Seed Data (1 row)</summary>
+<summary>📦 Seed Data (1 rows)</summary>
 
-| id | name | name_en | total_floors |
-|----|------|---------|-------------|
-| bld-C | ศูนย์ราชการ อาคาร C | Government Center Building C | 9 |
+| id | name | name_en | total_floors | description | is_active |
+|----|----|----|----|----|----|
+| 1 | ศูนย์ราชการ อาคาร C | Government Center Building C | 9 | กระทรวงการท่องเที่ยวและกีฬา — ทุกหน่วยงานในตึกเดียว | ✅ |
 
 </details>
 
@@ -187,26 +189,26 @@
 
 | คอลัมน์ | ประเภท | Null | คำอธิบาย |
 |---------|--------|------|----------|
-| **id** 🔑 | VARCHAR(20) | ✗ | รหัสชั้น (PK) |
-| building_id 🔗 | VARCHAR(20) | ✗ | FK → buildings.id |
+| **id** 🔑 | SERIAL | ✗ | รหัสชั้น (PK) |
+| building_id 🔗 | INT | ✗ | FK → buildings.id — อาคารที่ชั้นนี้อยู่ |
 | floor_number | INT | ✗ | หมายเลขชั้น (1, 2, 3, ...) |
-| name | VARCHAR(150) | ✗ | ชื่อชั้น (ไทย) |
+| name | VARCHAR(150) | ✗ | ชื่อชั้น (ไทย) เช่น 'ชั้น 1 — ล็อบบี้' |
 | name_en | VARCHAR(150) | ✗ | ชื่อชั้น (อังกฤษ) |
 
 <details>
 <summary>📦 Seed Data (9 rows)</summary>
 
-| id | floor_number | name |
-|----|-------------|------|
-| fl-C1 | 1 | ชั้น 1 — ล็อบบี้ / ประชาสัมพันธ์ / รปภ. |
-| fl-C2 | 2 | ชั้น 2 — กองกลาง |
-| fl-C3 | 3 | ชั้น 3 — สำนักงานปลัด |
-| fl-C4 | 4 | ชั้น 4 — กองกิจการท่องเที่ยว / นโยบายและแผน |
-| fl-C5 | 5 | ชั้น 5 — กองการต่างประเทศ |
-| fl-C6 | 6 | ชั้น 6 — กรมการท่องเที่ยว / ททท. |
-| fl-C7 | 7 | ชั้น 7 — กรมพลศึกษา / มกช. |
-| fl-C8 | 8 | ชั้น 8 — กกท. / ตร.ท่องเที่ยว / อพท. |
-| fl-C9 | 9 | ชั้น 9 — สำนักงานรัฐมนตรี / ห้องประชุมอเนกประสงค์ |
+| id | building_id | floor_number | name | name_en |
+|----|----|----|----|----|
+| 1 | 1 | 1 | ชั้น 1 — ล็อบบี้ / ประชาสัมพันธ์ / รปภ. | 1F — Lobby / Reception / Security |
+| 2 | 1 | 2 | ชั้น 2 — กองกลาง | 2F — General Admin |
+| 3 | 1 | 3 | ชั้น 3 — สำนักงานปลัด | 3F — OPS |
+| 4 | 1 | 4 | ชั้น 4 — กองกิจการท่องเที่ยว / นโยบายและแผน | 4F — Tourism Affairs & Policy |
+| 5 | 1 | 5 | ชั้น 5 — กองการต่างประเทศ | 5F — International Affairs |
+| 6 | 1 | 6 | ชั้น 6 — กรมการท่องเที่ยว / ททท. | 6F — Dept. of Tourism / TAT |
+| 7 | 1 | 7 | ชั้น 7 — กรมพลศึกษา / มกช. | 7F — Dept. of PE / NSU |
+| 8 | 1 | 8 | ชั้น 8 — กกท. / ตร.ท่องเที่ยว / อพท. | 8F — SAT / Tourist Police / DASTA |
+| 9 | 1 | 9 | ชั้น 9 — สำนักงานรัฐมนตรี / ห้องประชุมอเนกประสงค์ | 9F — Minister's Office / Conference |
 
 </details>
 
@@ -214,478 +216,1069 @@
 
 | คอลัมน์ | ประเภท | Null | คำอธิบาย | Default |
 |---------|--------|------|----------|---------|
-| **id** 🔑 | VARCHAR(20) | ✗ | รหัสแผนก (PK) | |
-| name | VARCHAR(200) | ✗ | ชื่อแผนก (ภาษาไทย) | |
-| name_en | VARCHAR(200) | ✗ | ชื่อแผนก (ภาษาอังกฤษ) | |
+| **id** 🔑 | SERIAL | ✗ | รหัสแผนก (PK) |
+| name | VARCHAR(200) | ✗ | ชื่อแผนก (ภาษาไทย) |
+| name_en | VARCHAR(200) | ✗ | ชื่อแผนก (ภาษาอังกฤษ) |
 | is_active | BOOLEAN | ✗ | สถานะเปิด/ปิดใช้งาน | true |
+| created_at | TIMESTAMP | ✗ | วันที่สร้าง | CURRENT_TIMESTAMP |
+| updated_at | TIMESTAMP | ✗ | วันที่แก้ไขล่าสุด | CURRENT_TIMESTAMP |
 
 <details>
-<summary>📦 Seed Data (13 rows)</summary>
+<summary>📦 Seed Data (13 rows — แสดง 10 แรก)</summary>
 
-| id | name | name_en |
-|----|------|---------|
-| dept-1 | สำนักงานปลัดกระทรวง | Office of the Permanent Secretary |
-| dept-2 | กองกลาง | General Administration Division |
-| dept-3 | กองการต่างประเทศ | International Affairs Division |
-| dept-4 | กองกิจการท่องเที่ยว | Tourism Affairs Division |
-| dept-5 | กรมการท่องเที่ยว | Department of Tourism |
-| dept-6 | กรมพลศึกษา | Department of Physical Education |
-| dept-7 | การกีฬาแห่งประเทศไทย | Sports Authority of Thailand |
-| dept-8 | สำนักนโยบายและแผน | Policy and Planning Division |
-| dept-9 | สำนักงานรัฐมนตรี | Minister's Office |
-| dept-10 | การท่องเที่ยวแห่งประเทศไทย | Tourism Authority of Thailand |
-| dept-11 | มหาวิทยาลัยการกีฬาแห่งชาติ | National Sports University |
-| dept-12 | กองบัญชาการตำรวจท่องเที่ยว | Tourist Police Bureau |
-| dept-13 | อพท. | DASTA |
+| id | name | name_en | is_active |
+|----|----|----|----|
+| 1 | สำนักงานปลัดกระทรวง | Office of the Permanent Secretary | ✅ |
+| 2 | กองกลาง | General Administration Division | ✅ |
+| 3 | กองการต่างประเทศ | International Affairs Division | ✅ |
+| 4 | กองกิจการท่องเที่ยว | Tourism Affairs Division | ✅ |
+| 5 | กรมการท่องเที่ยว | Department of Tourism | ✅ |
+| 6 | กรมพลศึกษา | Department of Physical Education | ✅ |
+| 7 | การกีฬาแห่งประเทศไทย | Sports Authority of Thailand | ✅ |
+| 8 | สำนักนโยบายและแผน | Policy and Planning Division | ✅ |
+| 9 | สำนักงานรัฐมนตรี | Minister's Office | ✅ |
+| 10 | การท่องเที่ยวแห่งประเทศไทย | Tourism Authority of Thailand | ✅ |
 
+*(... อีก 3 rows)*
 </details>
 
-### 2.4 `floor_departments` — ตารางเชื่อม ชั้น ↔ แผนก (Many-to-Many)
+### 2.4 `floor_departments` — ตารางเชื่อม ชั้น ↔ แผนก (Many-to-Many) — แผนกใดอยู่ชั้นไหน
 
 | คอลัมน์ | ประเภท | Null | คำอธิบาย |
 |---------|--------|------|----------|
-| floor_id 🔗 | VARCHAR(20) | ✗ | FK → floors.id |
-| department_id 🔗 | VARCHAR(20) | ✗ | FK → departments.id |
+| **floor_id** 🔑 | INT | ✗ | FK → floors.id |
+| **department_id** 🔑 | INT | ✗ | FK → departments.id |
+
+<details>
+<summary>📦 Seed Data (13 rows — แสดง 10 แรก)</summary>
+
+| floor_id | department_id |
+|----|----|
+| 2 | 2 |
+| 3 | 1 |
+| 4 | 4 |
+| 4 | 8 |
+| 5 | 3 |
+| 6 | 5 |
+| 6 | 10 |
+| 7 | 6 |
+| 7 | 11 |
+| 8 | 7 |
+
+*(... อีก 3 rows)*
+</details>
 
 **ความสัมพันธ์:**
-- `buildings` 1 ──→ N `floors`
-- `floors` N ←──→ N `departments` ผ่าน `floor_departments`
+- buildings 1 ──→ N floors (อาคาร 1 หลัง มีหลายชั้น)
+- floors N ←──→ N departments ผ่าน floor_departments (ชั้นมีหลายแผนก, แผนกอาจอยู่หลายชั้น)
 
 ---
-
 ## 3. โซนเข้าพื้นที่
 
-**เมนู:** จัดการโซนเข้าพื้นที่ / Access Groups
+**เมนู:** โซนเข้าพื้นที่
 **Path:** `/web/settings/access-zones`
-**คำอธิบาย:** จัดการโซนเข้าพื้นที่ (ประตู Hikvision), กลุ่มสิทธิ์ (Access Groups), และการจับคู่แผนก
+**คำอธิบาย:** จัดการโซนเข้าพื้นที่ (ประตู Hikvision), กลุ่มสิทธิ์การเข้าพื้นที่ (Access Groups), และการจับคู่แผนก ↔ กลุ่มสิทธิ์
 
-### 3.1 `access_zones` — ตารางโซน/พื้นที่ควบคุมด้วย Hikvision
+### 3.1 `access_zones` — ตารางโซน/พื้นที่ที่ควบคุมด้วย Hikvision (ประตู/เครื่องอ่านบัตร)
 
-| คอลัมน์ | ประเภท | Null | คำอธิบาย |
-|---------|--------|------|----------|
-| **id** 🔑 | VARCHAR(30) | ✗ | รหัสโซน (PK) |
+| คอลัมน์ | ประเภท | Null | คำอธิบาย | Default |
+|---------|--------|------|----------|---------|
+| **id** 🔑 | SERIAL | ✗ | รหัสโซน (PK) |
 | name | VARCHAR(100) | ✗ | ชื่อโซน (ภาษาไทย) |
 | name_en | VARCHAR(100) | ✗ | ชื่อโซน (ภาษาอังกฤษ) |
-| floor_id 🔗 | VARCHAR(20) | ✗ | FK → floors.id |
-| building_id 🔗 | VARCHAR(20) | ✗ | FK → buildings.id |
-| type | ENUM | ✗ | ประเภทโซน: office / meeting-room / lobby / parking / common / restricted / service |
-| hikvision_door_id 🔒 | VARCHAR(50) | ✗ | รหัสประตู Hikvision (UNIQUE) |
+| floor_id 🔗 | INT | ✗ | FK → floors.id — ชั้นที่โซนนี้อยู่ |
+| building_id 🔗 | INT | ✗ | FK → buildings.id — อาคาร |
+| type | ENUM('office','meeting-room','lobby','parking','common','restricted','service') | ✗ | ประเภทโซน: office=สำนักงาน, meeting-room=ห้องประชุม, lobby=ล็อบบี้, parking=ที่จอดรถ, common=ส่วนกลาง, restricted=ควบคุม, service=ซ่อมบำรุง |
+| hikvision_door_id 🔒 | VARCHAR(50) | ✗ | รหัสประตู Hikvision สำหรับ Integration |
 | description | TEXT | ✓ | รายละเอียดเพิ่มเติม |
-| is_active | BOOLEAN | ✗ | สถานะเปิด/ปิดใช้งาน |
+| is_active | BOOLEAN | ✗ | สถานะเปิด/ปิดใช้งาน | true |
+| created_at | TIMESTAMP | ✗ | วันที่สร้าง | CURRENT_TIMESTAMP |
+| updated_at | TIMESTAMP | ✗ | วันที่แก้ไขล่าสุด | CURRENT_TIMESTAMP |
 
 <details>
-<summary>📦 Seed Data (20 rows)</summary>
+<summary>📦 Seed Data (20 rows — แสดง 10 แรก)</summary>
 
-| id | name | type | hikvision_door_id |
-|----|------|------|-------------------|
-| az-lobby | ล็อบบี้ ชั้น 1 | lobby | HIK-DOOR-C1-01 |
-| az-parking | ลานจอดรถ | parking | HIK-DOOR-C1-PK |
-| az-service | พื้นที่ซ่อมบำรุง | service | HIK-DOOR-C1-SVC |
-| az-f2-office | สำนักงาน กองกลาง | office | HIK-DOOR-C2-01 |
-| az-f2-meeting | ห้องประชุม ชั้น 2 | meeting-room | HIK-DOOR-C2-MR |
-| az-f9-vip | สำนักงานรัฐมนตรี (VIP) | restricted | HIK-DOOR-C9-01 |
-| ... | ... | ... | ... |
+| id | name | name_en | floor_id | building_id | type | hikvision_door_id | is_active |
+|----|----|----|----|----|----|----|----|
+| 1 | ล็อบบี้ ชั้น 1 | Lobby 1F | 1 | 1 | lobby | HIK-DOOR-C1-01 | ✅ |
+| 2 | ลานจอดรถ | Parking | 1 | 1 | parking | HIK-DOOR-C1-PK | ✅ |
+| 3 | พื้นที่ซ่อมบำรุง | Maintenance Area | 1 | 1 | service | HIK-DOOR-C1-SVC | ✅ |
+| 4 | สำนักงาน กองกลาง | General Admin Office | 2 | 1 | office | HIK-DOOR-C2-01 | ✅ |
+| 5 | ห้องประชุม ชั้น 2 | Meeting Room 2F | 2 | 1 | meeting-room | HIK-DOOR-C2-MR | ✅ |
+| 6 | สำนักงานปลัด | OPS Office | 3 | 1 | office | HIK-DOOR-C3-01 | ✅ |
+| 7 | ห้องประชุม ชั้น 3 | Meeting Room 3F | 3 | 1 | meeting-room | HIK-DOOR-C3-MR | ✅ |
+| 8 | สำนักงาน กองกิจการ / นโยบาย | Tourism & Policy Office | 4 | 1 | office | HIK-DOOR-C4-01 | ✅ |
+| 9 | ห้องประชุม ชั้น 4 | Meeting Room 4F | 4 | 1 | meeting-room | HIK-DOOR-C4-MR | ✅ |
+| 10 | สำนักงาน กองต่างประเทศ | International Office | 5 | 1 | office | HIK-DOOR-C5-01 | ✅ |
 
+*(... อีก 10 rows)*
 </details>
 
-### 3.2 `access_groups` — กลุ่มสิทธิ์การเข้าพื้นที่
+### 3.2 `access_groups` — กลุ่มสิทธิ์การเข้าพื้นที่ — ใช้สำหรับออก QR Code และส่งสิทธิ์ผ่าน Hikvision
 
-| คอลัมน์ | ประเภท | Null | คำอธิบาย |
-|---------|--------|------|----------|
-| **id** 🔑 | VARCHAR(20) | ✗ | รหัสกลุ่ม (PK) |
-| name / name_en | VARCHAR(100) | ✗ | ชื่อกลุ่ม |
+| คอลัมน์ | ประเภท | Null | คำอธิบาย | Default |
+|---------|--------|------|----------|---------|
+| **id** 🔑 | SERIAL | ✗ | รหัสกลุ่ม (PK) |
+| name | VARCHAR(100) | ✗ | ชื่อกลุ่ม (ภาษาไทย) |
+| name_en | VARCHAR(100) | ✗ | ชื่อกลุ่ม (ภาษาอังกฤษ) |
 | description | TEXT | ✗ | คำอธิบายขอบเขตการเข้าถึง |
-| hikvision_group_id 🔒 | VARCHAR(50) | ✗ | รหัสกลุ่มบน Hikvision (UNIQUE) |
-| qr_code_prefix | VARCHAR(20) | ✗ | Prefix QR Code เช่น eVMS-GEN |
-| validity_minutes | INT | ✗ | อายุ QR Code (นาที) |
-| schedule_days_of_week | JSON | ✗ | วันที่อนุญาต [0=อา..6=ส] |
-| schedule_start_time / end_time | TIME | ✗ | เวลาเริ่ม-สิ้นสุด |
-| color | VARCHAR(10) | ✗ | สี Hex สำหรับ Badge |
-| is_active | BOOLEAN | ✗ | สถานะ |
+| hikvision_group_id 🔒 | VARCHAR(50) | ✗ | รหัสกลุ่มบน Hikvision สำหรับ Integration |
+| qr_code_prefix | VARCHAR(20) | ✗ | Prefix ของ QR Code เช่น eVMS-GEN, eVMS-OFA |
+| validity_minutes | INT | ✗ | อายุ QR Code (นาที) เช่น 60, 120, 480 |
+| schedule_days_of_week | JSON | ✗ | วันที่อนุญาต [0=อา, 1=จ, ... 6=ส] เช่น [1,2,3,4,5] |
+| schedule_start_time | TIME | ✗ | เวลาเริ่ม (HH:mm) |
+| schedule_end_time | TIME | ✗ | เวลาสิ้นสุด (HH:mm) |
+| color | VARCHAR(10) | ✗ | สี Hex สำหรับแสดง Badge เช่น #6A0DAD |
+| is_active | BOOLEAN | ✗ | สถานะเปิด/ปิดใช้งาน | true |
+| created_at | TIMESTAMP | ✗ | วันที่สร้าง | CURRENT_TIMESTAMP |
+| updated_at | TIMESTAMP | ✗ | วันที่แก้ไขล่าสุด | CURRENT_TIMESTAMP |
 
 <details>
 <summary>📦 Seed Data (9 rows)</summary>
 
-| id | name | qr_code_prefix | validity_minutes | color |
-|----|------|----------------|-----------------|-------|
-| ag-1 | ผู้เยี่ยมชมทั่วไป | eVMS-GEN | 60 | #6B7280 |
-| ag-2 | ติดต่อราชการ ชั้น 2-5 | eVMS-OFA | 120 | #6A0DAD |
-| ag-3 | ติดต่อราชการ ชั้น 6 | eVMS-OFB | 120 | #2563EB |
-| ag-4 | ติดต่อราชการ ชั้น 7-8 | eVMS-OFC | 120 | #059669 |
-| ag-5 | ห้องประชุมรวม | eVMS-MTG | 180 | #0891B2 |
-| ag-6 | VIP — สำนักงานรัฐมนตรี | eVMS-VIP | 60 | #DC2626 |
-| ag-7 | ผู้รับเหมา / ซ่อมบำรุง | eVMS-CTR | 240 | #92400E |
-| ag-8 | ที่จอดรถ | eVMS-PKG | 480 | #4B5563 |
-| ag-9 | รับ-ส่งสินค้า | eVMS-DLV | 30 | #7C3AED |
+| id | name | name_en | description | hikvision_group_id | qr_code_prefix | validity_minutes | schedule_days_of_week | schedule_start_time | schedule_end_time | color | is_active |
+|----|----|----|----|----|----|----|----|----|----|----|----|
+| 1 | ผู้เยี่ยมชมทั่วไป | General Visitor | เข้าได้เฉพาะล็อบบี้และพื้นที่ส่วนกลาง ชั้น 1 | HIK-GRP-GENERAL | eVMS-GEN | 60 | [1,2,3,4,5] | 08:00 | 17:00 | #6B7280 | ✅ |
+| 2 | ติดต่อราชการ ชั้น 2-5 | Official — Floor 2-5 | เข้าล็อบบี้ + สำนักงานชั้น 2-5 | HIK-GRP-FL2-5 | eVMS-OFA | 120 | [1,2,3,4,5] | 08:00 | 17:00 | #6A0DAD | ✅ |
+| 3 | ติดต่อราชการ ชั้น 6 | Official — Floor 6 | เข้าล็อบบี้ + ชั้น 6 | HIK-GRP-FL6 | eVMS-OFB | 120 | [1,2,3,4,5] | 08:00 | 17:00 | #2563EB | ✅ |
+| 4 | ติดต่อราชการ ชั้น 7-8 | Official — Floor 7-8 | เข้าล็อบบี้ + ชั้น 7-8 | HIK-GRP-FL7-8 | eVMS-OFC | 120 | [1,2,3,4,5] | 08:00 | 17:00 | #059669 | ✅ |
+| 5 | ห้องประชุมรวม | All Meeting Rooms | เข้าได้เฉพาะห้องประชุมทุกชั้น (ไม่รวมห้องประชุมรัฐมนตรี) | HIK-GRP-MEETING | eVMS-MTG | 180 | [1,2,3,4,5] | 07:30 | 18:00 | #0891B2 | ✅ |
+| 6 | VIP — สำนักงานรัฐมนตรี | VIP — Minister's Office | เข้าชั้น 9 (ต้องได้รับอนุมัติพิเศษ) | HIK-GRP-VIP | eVMS-VIP | 60 | [1,2,3,4,5] | 09:00 | 16:00 | #DC2626 | ✅ |
+| 7 | ผู้รับเหมา / ซ่อมบำรุง | Contractor / Maintenance | เข้าพื้นที่ซ่อมบำรุง + ที่จอดรถ | HIK-GRP-MAINT | eVMS-CTR | 240 | [1,2,3,4,5,6] | 07:00 | 18:00 | #92400E | ✅ |
+| 8 | ที่จอดรถ | Parking Only | เข้าได้เฉพาะลานจอดรถ | HIK-GRP-PARK | eVMS-PKG | 480 | [1,2,3,4,5] | 06:00 | 20:00 | #4B5563 | ✅ |
+| 9 | รับ-ส่งสินค้า | Delivery / Pickup | เข้าล็อบบี้ + ที่จอดรถ (จำกัดเวลา 30 นาที) | HIK-GRP-DELIVERY | eVMS-DLV | 30 | [1,2,3,4,5,6] | 06:00 | 18:00 | #7C3AED | ✅ |
 
 </details>
 
-### 3.3 `access_group_zones` — กลุ่มสิทธิ์ ↔ โซน (M:N)
-
-### 3.4 `access_group_visit_types` — กลุ่มสิทธิ์ ↔ ประเภทการเยี่ยม (M:N)
-
-### 3.5 `department_access_mappings` — แผนก → กลุ่มสิทธิ์เริ่มต้น
+### 3.3 `access_group_zones` — ตารางเชื่อม กลุ่มสิทธิ์ ↔ โซน (Many-to-Many) — กลุ่มนี้เข้าโซนไหนได้บ้าง
 
 | คอลัมน์ | ประเภท | Null | คำอธิบาย |
 |---------|--------|------|----------|
-| **department_id** 🔑🔗 | VARCHAR(20) | ✗ | FK → departments.id (PK) |
-| default_access_group_id 🔗 | VARCHAR(20) | ✗ | FK → access_groups.id — กลุ่มสิทธิ์หลัก |
+| **access_group_id** 🔑 | INT | ✗ | FK → access_groups.id |
+| **access_zone_id** 🔑 | INT | ✗ | FK → access_zones.id |
 
-### 3.6 `department_additional_access_groups` — กลุ่มสิทธิ์เสริม (M:N)
+<details>
+<summary>📦 Seed Data (22 rows — แสดง 10 แรก)</summary>
+
+| access_group_id | access_zone_id |
+|----|----|
+| 1 | 1 |
+| 1 | 20 |
+| 2 | 1 |
+| 2 | 4 |
+| 2 | 5 |
+| 2 | 6 |
+| 2 | 7 |
+| 2 | 8 |
+| 2 | 9 |
+| 2 | 10 |
+
+*(... อีก 12 rows)*
+</details>
+
+### 3.4 `access_group_visit_types` — ตารางเชื่อม กลุ่มสิทธิ์ ↔ ประเภทการเยี่ยม (Many-to-Many)
+
+| คอลัมน์ | ประเภท | Null | คำอธิบาย |
+|---------|--------|------|----------|
+| **access_group_id** 🔑 | INT | ✗ | FK → access_groups.id |
+| **visit_type** 🔑 | ENUM('official','meeting','document','contractor','delivery','other') | ✗ | ประเภทการเยี่ยมที่กลุ่มนี้รองรับ |
+
+<details>
+<summary>📦 Seed Data (11 rows — แสดง 10 แรก)</summary>
+
+| access_group_id | visit_type |
+|----|----|
+| 1 | document |
+| 1 | delivery |
+| 1 | other |
+| 2 | official |
+| 2 | meeting |
+| 2 | document |
+| 5 | meeting |
+| 6 | official |
+| 6 | meeting |
+| 7 | contractor |
+
+*(... อีก 1 rows)*
+</details>
+
+### 3.5 `department_access_mappings` — จับคู่แผนก ↔ กลุ่มสิทธิ์เริ่มต้น — ใช้กำหนดว่าผู้เยี่ยมแผนกนี้ได้รับสิทธิ์กลุ่มอะไร
+
+| คอลัมน์ | ประเภท | Null | คำอธิบาย |
+|---------|--------|------|----------|
+| **department_id** 🔑 | INT | ✗ | FK → departments.id (PK) |
+| default_access_group_id 🔗 | INT | ✗ | FK → access_groups.id — กลุ่มสิทธิ์หลัก |
+
+<details>
+<summary>📦 Seed Data (13 rows — แสดง 10 แรก)</summary>
+
+| department_id | default_access_group_id |
+|----|----|
+| 1 | 2 |
+| 2 | 2 |
+| 3 | 2 |
+| 4 | 2 |
+| 5 | 3 |
+| 6 | 4 |
+| 7 | 4 |
+| 8 | 2 |
+| 9 | 6 |
+| 10 | 3 |
+
+*(... อีก 3 rows)*
+</details>
+
+### 3.6 `department_additional_access_groups` — กลุ่มสิทธิ์เสริม (นอกเหนือจาก default) ของแต่ละแผนก
+
+| คอลัมน์ | ประเภท | Null | คำอธิบาย |
+|---------|--------|------|----------|
+| **department_id** 🔑 | INT | ✗ | FK → departments.id |
+| **access_group_id** 🔑 | INT | ✗ | FK → access_groups.id |
+
+<details>
+<summary>📦 Seed Data (12 rows — แสดง 10 แรก)</summary>
+
+| department_id | access_group_id |
+|----|----|
+| 1 | 5 |
+| 2 | 5 |
+| 3 | 5 |
+| 4 | 5 |
+| 5 | 5 |
+| 6 | 5 |
+| 7 | 5 |
+| 8 | 5 |
+| 9 | 2 |
+| 10 | 5 |
+
+*(... อีก 2 rows)*
+</details>
 
 **ความสัมพันธ์:**
-- `access_zones` N ──→ 1 `floors` / `buildings`
-- `access_groups` N ←──→ N `access_zones` ผ่าน `access_group_zones`
-- `departments` 1 ──→ 1 `department_access_mappings` (default)
-- `departments` 1 ──→ N `department_additional_access_groups` (เสริม)
+- access_zones N ──→ 1 floors (โซนอยู่บนชั้นใดชั้นหนึ่ง)
+- access_zones N ──→ 1 buildings (โซนอยู่ในอาคารใดอาคารหนึ่ง)
+- access_groups N ←──→ N access_zones ผ่าน access_group_zones
+- access_groups N ←──→ N visit_types ผ่าน access_group_visit_types
+- departments 1 ──→ 1 department_access_mappings (กลุ่มสิทธิ์เริ่มต้น)
+- departments 1 ──→ N department_additional_access_groups (กลุ่มสิทธิ์เสริม)
 
 ---
-
 ## 4. กลุ่มผู้อนุมัติ
 
 **เมนู:** กลุ่มผู้อนุมัติ
 **Path:** `/web/settings/approver-groups`
+**คำอธิบาย:** จัดกลุ่มผู้อนุมัติ — กำหนดสมาชิก สิทธิ์การอนุมัติ/ปฏิเสธ ช่องทางแจ้งเตือน และวัตถุประสงค์ที่ดูแล
 
 ### 4.1 `approver_groups` — ตารางกลุ่มผู้อนุมัติหลัก
 
-| คอลัมน์ | ประเภท | Null | คำอธิบาย |
-|---------|--------|------|----------|
-| **id** 🔑 | VARCHAR(20) | ✗ | รหัสกลุ่ม (PK) |
-| name / name_en | VARCHAR(150) | ✗ | ชื่อกลุ่ม |
+| คอลัมน์ | ประเภท | Null | คำอธิบาย | Default |
+|---------|--------|------|----------|---------|
+| **id** 🔑 | SERIAL | ✗ | รหัสกลุ่ม (PK) |
+| name | VARCHAR(150) | ✗ | ชื่อกลุ่ม (ภาษาไทย) |
+| name_en | VARCHAR(150) | ✗ | ชื่อกลุ่ม (ภาษาอังกฤษ) |
 | description | TEXT | ✗ | คำอธิบายรายละเอียดกลุ่ม |
-| department_id 🔗 | VARCHAR(20) | ✗ | FK → departments.id — แผนกที่กลุ่มนี้รับผิดชอบ |
-| is_active | BOOLEAN | ✗ | สถานะ |
+| department_id 🔗 | INT | ✗ | FK → departments.id — แผนกที่กลุ่มนี้รับผิดชอบ |
+| is_active | BOOLEAN | ✗ | สถานะเปิด/ปิดใช้งาน | true |
+| created_at | TIMESTAMP | ✗ | วันที่สร้าง | CURRENT_TIMESTAMP |
+| updated_at | TIMESTAMP | ✗ | วันที่แก้ไขล่าสุด | CURRENT_TIMESTAMP |
 
 <details>
 <summary>📦 Seed Data (10 rows)</summary>
 
-| id | name | department_id |
-|----|------|--------------|
-| apg-1 | ผู้อนุมัติ สำนักงานปลัด (ราชการ+ประชุม) | dept-1 |
-| apg-2 | ผู้อนุมัติ สำนักงานปลัด (อื่นๆ) | dept-1 |
-| apg-3 | ผู้อนุมัติ กองกลาง (ราชการ+อื่นๆ) | dept-2 |
-| apg-4 | ผู้อนุมัติ กองกลาง (ผู้รับเหมา) | dept-2 |
-| apg-5 | ผู้อนุมัติ กองการต่างประเทศ | dept-3 |
-| apg-6 | ผู้อนุมัติ กองกิจการท่องเที่ยว (ราชการ+เอกสาร) | dept-4 |
-| apg-7 | ผู้อนุมัติ กองกิจการท่องเที่ยว (เยี่ยมชม) | dept-4 |
-| apg-8 | ผู้อนุมัติ กรมการท่องเที่ยว (เยี่ยมชม) | dept-5 |
-| apg-9 | ผู้อนุมัติ กรมพลศึกษา (ผู้รับเหมา) | dept-6 |
-| apg-10 | ผู้อนุมัติ สำนักงานรัฐมนตรี (VIP) | dept-9 |
+| id | name | name_en | description | department_id | is_active |
+|----|----|----|----|----|----|
+| 1 | ผู้อนุมัติ สำนักงานปลัด (ราชการ+ประชุม) | OPS Approvers (Official+Meeting) | กลุ่มผู้อนุมัติสำหรับ ติดต่อราชการ / ประชุม ที่ สำนักงานปลัดกระทรวง | 1 | ✅ |
+| 2 | ผู้อนุมัติ สำนักงานปลัด (อื่นๆ) | OPS Approvers (Other) | กลุ่มผู้อนุมัติสำหรับ วัตถุประสงค์อื่นๆ ที่ สำนักงานปลัดกระทรวง | 1 | ✅ |
+| 3 | ผู้อนุมัติ กองกลาง (ราชการ+อื่นๆ) | General Admin Approvers (Official+Other) | กลุ่มผู้อนุมัติสำหรับ ติดต่อราชการ / อื่นๆ ที่ กองกลาง | 2 | ✅ |
+| 4 | ผู้อนุมัติ กองกลาง (ผู้รับเหมา) | General Admin Approvers (Contractor) | กลุ่มผู้อนุมัติสำหรับ ผู้รับเหมา/ซ่อมบำรุง ที่ กองกลาง | 2 | ✅ |
+| 5 | ผู้อนุมัติ กองการต่างประเทศ | International Approvers | กลุ่มผู้อนุมัติสำหรับ ติดต่อราชการ / ประชุม ที่ กองการต่างประเทศ | 3 | ✅ |
+| 6 | ผู้อนุมัติ กองกิจการท่องเที่ยว (ราชการ+เอกสาร) | Tourism Affairs Approvers (Official+Docs) | กลุ่มผู้อนุมัติสำหรับ ติดต่อราชการ / ส่งเอกสาร ที่ กองกิจการท่องเที่ยว | 4 | ✅ |
+| 7 | ผู้อนุมัติ กองกิจการท่องเที่ยว (เยี่ยมชม) | Tourism Affairs Approvers (Tour) | กลุ่มผู้อนุมัติสำหรับ เยี่ยมชม/ศึกษาดูงาน ที่ กองกิจการท่องเที่ยว | 4 | ✅ |
+| 8 | ผู้อนุมัติ กรมการท่องเที่ยว (เยี่ยมชม) | Dept. of Tourism Approvers (Tour) | กลุ่มผู้อนุมัติสำหรับ เยี่ยมชม/ศึกษาดูงาน ที่ กรมการท่องเที่ยว | 5 | ✅ |
+| 9 | ผู้อนุมัติ กรมพลศึกษา (ผู้รับเหมา) | Dept. of PE Approvers (Contractor) | กลุ่มผู้อนุมัติสำหรับ ผู้รับเหมา/ซ่อมบำรุง ที่ กรมพลศึกษา | 6 | ✅ |
+| 10 | ผู้อนุมัติ สำนักงานรัฐมนตรี (VIP) | Minister Office Approvers (VIP) | กลุ่มผู้อนุมัติ VIP สำหรับ ติดต่อราชการ / ประชุม ที่ สำนักงานรัฐมนตรี | 9 | ✅ |
 
 </details>
 
-### 4.2 `approver_group_members` — สมาชิกในกลุ่มผู้อนุมัติ
+### 4.2 `approver_group_members` — สมาชิกในกลุ่มผู้อนุมัติ — ระบุสิทธิ์การอนุมัติ/ปฏิเสธ และการรับแจ้งเตือน
+
+| คอลัมน์ | ประเภท | Null | คำอธิบาย | Default |
+|---------|--------|------|----------|---------|
+| **id** 🔑 | SERIAL | ✗ | รหัส Auto-increment (PK) |
+| approver_group_id 🔗 | INT | ✗ | FK → approver_groups.id |
+| staff_id 🔗 | INT | ✗ | FK → staff.id — พนักงานที่เป็นสมาชิก |
+| can_approve | BOOLEAN | ✗ | สามารถกดอนุมัติ/ปฏิเสธได้หรือไม่ | false |
+| receive_notification | BOOLEAN | ✗ | ได้รับแจ้งเตือนเมื่อมีรายการใหม่ | true |
+
+<details>
+<summary>📦 Seed Data (19 rows — แสดง 10 แรก)</summary>
+
+| id | approver_group_id | staff_id | can_approve | receive_notification |
+|----|----|----|----|----|
+| 1 | 1 | 5 | ✅ | ✅ |
+| 2 | 1 | 1 | ✅ | ✅ |
+| 3 | 1 | 4 | ❌ | ✅ |
+| 4 | 2 | 5 | ✅ | ✅ |
+| 5 | 2 | 4 | ✅ | ✅ |
+| 6 | 3 | 2 | ✅ | ✅ |
+| 7 | 3 | 6 | ❌ | ✅ |
+| 8 | 4 | 2 | ✅ | ✅ |
+| 9 | 5 | 3 | ✅ | ✅ |
+| 10 | 6 | 1 | ✅ | ✅ |
+
+*(... อีก 9 rows)*
+</details>
+
+### 4.3 `approver_group_purposes` — วัตถุประสงค์ที่แต่ละกลุ่มรับผิดชอบอนุมัติ (Many-to-Many)
 
 | คอลัมน์ | ประเภท | Null | คำอธิบาย |
 |---------|--------|------|----------|
-| **id** 🔑 | SERIAL | ✗ | PK |
-| approver_group_id 🔗 | VARCHAR(20) | ✗ | FK → approver_groups.id |
-| staff_id 🔗 | VARCHAR(20) | ✗ | FK → staff.id |
-| can_approve | BOOLEAN | ✗ | สามารถกดอนุมัติ/ปฏิเสธได้ |
-| receive_notification | BOOLEAN | ✗ | ได้รับแจ้งเตือนเมื่อมีรายการใหม่ |
+| **approver_group_id** 🔑 | INT | ✗ | FK → approver_groups.id |
+| **visit_purpose_id** 🔑 | INT | ✗ | FK → visit_purposes.id |
 
-### 4.3 `approver_group_purposes` — กลุ่ม ↔ วัตถุประสงค์ (M:N)
+<details>
+<summary>📦 Seed Data (15 rows — แสดง 10 แรก)</summary>
 
-### 4.4 `approver_group_notify_channels` — ช่องทางแจ้งเตือน
+| approver_group_id | visit_purpose_id |
+|----|----|
+| 1 | 1 |
+| 1 | 2 |
+| 2 | 8 |
+| 3 | 1 |
+| 3 | 8 |
+| 4 | 4 |
+| 5 | 1 |
+| 5 | 2 |
+| 6 | 1 |
+| 6 | 3 |
+
+*(... อีก 5 rows)*
+</details>
+
+### 4.4 `approver_group_notify_channels` — ช่องทางแจ้งเตือนของกลุ่มผู้อนุมัติ (สามารถเลือกหลายช่องทาง)
 
 | คอลัมน์ | ประเภท | Null | คำอธิบาย |
 |---------|--------|------|----------|
-| approver_group_id 🔗 | VARCHAR(20) | ✗ | FK → approver_groups.id |
-| channel | ENUM('line','email','web-app') | ✗ | ช่องทางแจ้งเตือน |
+| **approver_group_id** 🔑 | INT | ✗ | FK → approver_groups.id |
+| **channel** 🔑 | ENUM('line','email','web-app') | ✗ | ช่องทาง: line / email / web-app |
+
+<details>
+<summary>📦 Seed Data (22 rows — แสดง 10 แรก)</summary>
+
+| approver_group_id | channel |
+|----|----|
+| 1 | line |
+| 1 | email |
+| 1 | web-app |
+| 2 | line |
+| 2 | web-app |
+| 3 | line |
+| 3 | email |
+| 4 | line |
+| 4 | email |
+| 5 | line |
+
+*(... อีก 12 rows)*
+</details>
+
+**ความสัมพันธ์:**
+- approver_groups N ──→ 1 departments (กลุ่มผูกกับแผนกที่รับผิดชอบ)
+- approver_groups N ←──→ N staff ผ่าน approver_group_members (กลุ่มมีสมาชิกหลายคน)
+- approver_groups N ←──→ N visit_purposes ผ่าน approver_group_purposes
+- approver_groups 1 ──→ N approver_group_notify_channels (ช่องทางแจ้งเตือน)
+- approver_groups ←── visit_purpose_department_rules.approver_group_id (ถูกอ้างอิงจากเงื่อนไขแผนก)
 
 ---
-
 ## 5. จัดการพนักงาน
 
 **เมนู:** จัดการพนักงาน
 **Path:** `/web/settings/staff`
+**คำอธิบาย:** จัดการข้อมูลพนักงาน — ชื่อ ตำแหน่ง แผนก บทบาท สิทธิ์ และกะการทำงาน
 
-### 5.1 `staff` — ตารางพนักงาน / เจ้าหน้าที่
+### 5.1 `staff` — ตารางพนักงาน / เจ้าหน้าที่ (รวม admin, staff, security)
 
 | คอลัมน์ | ประเภท | Null | คำอธิบาย | Default |
 |---------|--------|------|----------|---------|
-| **id** 🔑 | VARCHAR(20) | ✗ | รหัสพนักงานในระบบ (PK) | |
-| employee_id 🔒 | VARCHAR(20) | ✗ | รหัสพนักงาน (UNIQUE) | |
-| name / name_en | VARCHAR(100) | ✗ | ชื่อ-นามสกุล | |
-| position | VARCHAR(150) | ✗ | ตำแหน่ง | |
-| department_id 🔗 | VARCHAR(20) | ✗ | FK → departments.id | |
-| email | VARCHAR(100) | ✗ | อีเมลราชการ | |
-| phone | VARCHAR(20) | ✗ | เบอร์โทรศัพท์ | |
-| line_user_id | VARCHAR(50) | ✓ | LINE User ID | |
-| avatar_url | VARCHAR(255) | ✓ | URL รูปโปรไฟล์ | |
-| role | ENUM | ✗ | บทบาท: admin / supervisor / officer / staff / security | |
-| status | ENUM | ✗ | สถานะ: active / inactive / locked | 'active' |
-| shift | ENUM | ✓ | กะ: morning / afternoon / night (เฉพาะ security) | |
+| **id** 🔑 | SERIAL | ✗ | รหัสพนักงานในระบบ (PK) |
+| employee_id 🔒 | VARCHAR(20) | ✗ | รหัสพนักงาน (EMP-001, SEC-001) |
+| name | VARCHAR(100) | ✗ | ชื่อ-นามสกุล (ภาษาไทย) |
+| name_en | VARCHAR(100) | ✗ | ชื่อ-นามสกุล (ภาษาอังกฤษ) |
+| position | VARCHAR(150) | ✗ | ตำแหน่ง เช่น ผู้อำนวยการกอง / เจ้าหน้าที่ รปภ. |
+| department_id 🔗 | INT | ✗ | FK → departments.id — แผนกที่สังกัด |
+| email | VARCHAR(100) | ✗ | อีเมลราชการ |
+| phone | VARCHAR(20) | ✗ | เบอร์โทรศัพท์ |
+| line_user_id | VARCHAR(50) | ✓ | LINE User ID (สำหรับแจ้งเตือนผ่าน LINE) |
+| avatar_url | VARCHAR(255) | ✓ | URL รูปภาพโปรไฟล์ |
+| role | ENUM('admin','supervisor','officer','staff','security','visitor') | ✗ | บทบาท: admin=ผู้ดูแลระบบ, staff=เจ้าหน้าที่, security=รปภ. |
+| status | ENUM('active','inactive','locked') | ✗ | สถานะ: active=ใช้งาน, inactive=ปิดใช้งาน, locked=ล็อก | active |
+| shift | ENUM('morning','afternoon','night') | ✓ | กะการทำงาน (เฉพาะ security) |
+| created_at | TIMESTAMP | ✗ | วันที่สร้าง | CURRENT_TIMESTAMP |
+| updated_at | TIMESTAMP | ✗ | วันที่แก้ไขล่าสุด | CURRENT_TIMESTAMP |
 
 <details>
 <summary>📦 Seed Data (10 rows)</summary>
 
-| id | employee_id | name | role | status | shift |
-|----|------------|------|------|--------|-------|
-| staff-1 | EMP-001 | คุณสมศรี รักงาน | staff | active | — |
-| staff-2 | EMP-002 | คุณประเสริฐ ศรีวิโล | staff | active | — |
-| staff-3 | EMP-003 | คุณกมลพร วงศ์สวัสดิ์ | staff | active | — |
-| staff-4 | EMP-004 | คุณวิภาดา ชัยมงคล | staff | active | — |
-| staff-5 | EMP-005 | คุณอนันต์ มั่นคง | admin | active | — |
-| staff-6 | SEC-001 | คุณสมชาย ปลอดภัย | security | active | morning |
-| staff-7 | EMP-006 | คุณธนพล จิตรดี | staff | active | — |
-| staff-8 | EMP-007 | คุณปิยะนุช สุขใจ | staff | active | — |
-| staff-9 | EMP-008 | คุณนภดล เรืองศักดิ์ | staff | inactive | — |
-| staff-10 | SEC-002 | คุณชัยวัฒน์ กล้าหาญ | security | inactive | night |
+| id | employee_id | name | name_en | position | department_id | email | phone | role | status | shift |
+|----|----|----|----|----|----|----|----|----|----|----|
+| 1 | EMP-001 | คุณสมศรี รักงาน | Somsri Rakngarn | ผู้อำนวยการกองกิจการท่องเที่ยว | 4 | somsri.r@mots.go.th | 02-283-1500 | staff | active | — |
+| 2 | EMP-002 | คุณประเสริฐ ศรีวิโล | Prasert Srivilo | หัวหน้ากลุ่มงานบริหารทั่วไป | 2 | prasert.s@mots.go.th | 02-283-1501 | staff | active | — |
+| 3 | EMP-003 | คุณกมลพร วงศ์สวัสดิ์ | Kamonporn Wongsawad | ผู้เชี่ยวชาญด้านต่างประเทศ | 3 | kamonporn.w@mots.go.th | 02-283-1502 | staff | active | — |
+| 4 | EMP-004 | คุณวิภาดา ชัยมงคล | Wipada Chaimongkol | นักวิเคราะห์นโยบายและแผน | 8 | wipada.c@mots.go.th | 02-283-1503 | staff | active | — |
+| 5 | EMP-005 | คุณอนันต์ มั่นคง | Anan Mankong | ผู้ดูแลระบบ | 1 | anan.m@mots.go.th | 02-283-1504 | admin | active | — |
+| 6 | SEC-001 | คุณสมชาย ปลอดภัย | Somchai Plodpai | เจ้าหน้าที่รักษาความปลอดภัย | 2 | somchai.p@mots.go.th | 02-283-1510 | security | active | morning |
+| 7 | EMP-006 | คุณธนพล จิตรดี | Thanapon Jitdee | นักวิชาการท่องเที่ยว | 5 | thanapon.j@mots.go.th | 02-283-1505 | staff | active | — |
+| 8 | EMP-007 | คุณปิยะนุช สุขใจ | Piyanuch Sukjai | เจ้าหน้าที่บริหารงานทั่วไป | 6 | piyanuch.s@mots.go.th | 02-283-1506 | staff | active | — |
+| 9 | EMP-008 | คุณนภดล เรืองศักดิ์ | Noppadon Ruangsak | นักจัดการงานทั่วไป | 1 | noppadon.r@mots.go.th | 02-283-1507 | staff | inactive | — |
+| 10 | SEC-002 | คุณชัยวัฒน์ กล้าหาญ | Chaiwat Klahan | เจ้าหน้าที่รักษาความปลอดภัย | 2 | chaiwat.k@mots.go.th | 02-283-1511 | security | inactive | night |
 
 </details>
 
----
+**ความสัมพันธ์:**
+- staff N ──→ 1 departments (พนักงานสังกัดแผนก)
+- staff N ←──→ N approver_groups ผ่าน approver_group_members (พนักงานเป็นสมาชิกกลุ่มผู้อนุมัติ)
+- staff 1 ←── N service_points.assigned_staff_id (ประจำจุดบริการ — optional)
 
+---
 ## 6. จุดให้บริการ Kiosk/Counter
 
-**เมนู:** จัดการจุดให้บริการ
+**เมนู:** จุดให้บริการ Kiosk/Counter
 **Path:** `/web/settings/service-points`
+**คำอธิบาย:** จัดการจุดบริการ (ตู้ Kiosk / เคาน์เตอร์ รปภ.) — ข้อมูลอุปกรณ์ ตำแหน่งที่ตั้ง สถานะ และวัตถุประสงค์/เอกสารที่รับ
 
-### 6.1 `service_points` — ตารางจุดให้บริการ
-
-| คอลัมน์ | ประเภท | Null | คำอธิบาย |
-|---------|--------|------|----------|
-| **id** 🔑 | VARCHAR(20) | ✗ | รหัสจุดบริการ (PK) |
-| name / name_en | VARCHAR(100) | ✗ | ชื่อจุดบริการ |
-| type | ENUM('kiosk','counter') | ✗ | ประเภท |
-| status | ENUM('online','offline','maintenance') | ✗ | สถานะปัจจุบัน |
-| location / location_en | VARCHAR(150) | ✗ | ตำแหน่งที่ตั้ง |
-| building / floor | VARCHAR | ✗ | อาคาร / ชั้น |
-| ip_address | VARCHAR(15) | ✗ | IP Address |
-| mac_address | VARCHAR(17) | ✗ | MAC Address |
-| serial_number 🔒 | VARCHAR(30) | ✗ | Serial Number (UNIQUE) |
-| today_transactions | INT | ✗ | ธุรกรรมวันนี้ |
-| last_online | TIMESTAMP | ✓ | ออนไลน์ล่าสุด |
-| assigned_staff_id 🔗 | VARCHAR(20) | ✓ | FK → staff.id (เฉพาะ counter) |
-| notes | TEXT | ✓ | หมายเหตุ |
-| is_active | BOOLEAN | ✗ | สถานะ |
-| wifi_ssid | VARCHAR(50) | ✓ | WiFi SSID สำหรับผู้เยี่ยม เช่น "MOTS-Guest" |
-| wifi_password_pattern | VARCHAR(50) | ✓ | รูปแบบรหัสผ่าน WiFi เช่น "mots{year}" |
-| wifi_validity_mode | ENUM('business-hours-close','fixed-duration') | ✓ | วิธีคำนวณหมดอายุ WiFi |
-| wifi_fixed_duration_min | INT | ✓ | ระยะเวลา WiFi (นาที) ถ้าใช้ fixed-duration |
-| pdpa_require_scroll | BOOLEAN | ✓ | บังคับเลื่อนอ่าน PDPA ก่อนยินยอม (default: true) |
-| pdpa_retention_days | INT | ✓ | จำนวนวันเก็บข้อมูลที่แสดงในข้อความ PDPA (default: 90) |
-| slip_header_text | VARCHAR(200) | ✓ | ข้อความหัวใบ slip |
-| slip_footer_text | VARCHAR(200) | ✓ | ข้อความท้ายใบ slip |
-| follow_business_hours | BOOLEAN | ✓ | ใช้เวลาทำการหรือเปิดตลอด (default: true) |
-| id_masking_pattern | VARCHAR(30) | ✓ | รูปแบบปิดบังเลขบัตร: show-last-4, show-first-last, full-mask |
-| admin_pin | VARCHAR(5) | ✓ | PIN 5 หลักสำหรับเข้าเมนูตั้งค่าบน Kiosk (default: "10210") |
-
-### 6.2 `service_point_purposes` — จุดบริการ ↔ วัตถุประสงค์ (M:N)
-
-### 6.3 `service_point_documents` — จุดบริการ ↔ เอกสาร (M:N)
-
-### 6.4 `counter_staff_assignments` — เจ้าหน้าที่ประจำ Counter (M:N)
+### 6.1 `service_points` — ตารางจุดให้บริการ (Kiosk / Counter)
 
 | คอลัมน์ | ประเภท | Null | คำอธิบาย | Default |
-|---------|--------|------|----------|--------|
-| **id** 🔑 | INT AUTO_INCREMENT | ✗ | รหัส assignment (PK) เลข run อัตโนมัติ | |
-| service_point_id 🔗 | INT | ✗ | FK → service_points.id (เฉพาะ counter) | |
-| staff_id 🔗 | INT | ✗ | FK → staff.id (role=security/officer) | |
-| is_primary | BOOLEAN | ✗ | เจ้าหน้าที่หลักประจำ counter นี้ | false |
-| assigned_at | TIMESTAMP | ✗ | วันที่มอบหมาย | CURRENT_TIMESTAMP |
-
-**Business Rules:**
-- พนักงาน 1 คนสามารถ assign ได้หลาย counter
-- Counter 1 จุดมีเจ้าหน้าที่ได้หลายคน
-- เจ้าหน้าที่ต้อง `status = active` และ `role = security` หรือ `officer`
-- แต่ละ counter ควรมี `is_primary = true` อย่างน้อย 1 คน
-- ใช้ตอน Counter Login → กรองเฉพาะ counter ที่พนักงานมีสิทธิ์
+|---------|--------|------|----------|---------|
+| **id** 🔑 | SERIAL | ✗ | รหัสจุดบริการ (PK) |
+| name | VARCHAR(100) | ✗ | ชื่อจุดบริการ (ภาษาไทย) |
+| name_en | VARCHAR(100) | ✗ | ชื่อจุดบริการ (ภาษาอังกฤษ) |
+| type | ENUM('kiosk','counter') | ✗ | ประเภท: kiosk=ตู้อัตโนมัติ / counter=เคาน์เตอร์ รปภ. |
+| status | ENUM('online','offline','maintenance') | ✗ | สถานะปัจจุบัน: online=ออนไลน์, offline=ออฟไลน์, maintenance=ซ่อมบำรุง | online |
+| location | VARCHAR(150) | ✗ | ตำแหน่งที่ตั้ง (ภาษาไทย) |
+| location_en | VARCHAR(150) | ✗ | ตำแหน่งที่ตั้ง (ภาษาอังกฤษ) |
+| building | VARCHAR(100) | ✗ | อาคาร |
+| floor | VARCHAR(20) | ✗ | ชั้น |
+| ip_address | VARCHAR(15) | ✗ | IP Address ของอุปกรณ์ |
+| mac_address | VARCHAR(17) | ✗ | MAC Address ของอุปกรณ์ |
+| serial_number 🔒 | VARCHAR(30) | ✗ | หมายเลขซีเรียล |
+| today_transactions | INT | ✗ | จำนวนธุรกรรมวันนี้ (reset ทุกวัน) | 0 |
+| last_online | TIMESTAMP | ✓ | เวลาที่ออนไลน์ล่าสุด |
+| assigned_staff_id 🔗 | INT | ✓ | FK → staff.id — เจ้าหน้าที่ประจำจุด (เฉพาะ counter) |
+| notes | TEXT | ✓ | หมายเหตุ |
+| is_active | BOOLEAN | ✗ | สถานะเปิด/ปิดใช้งาน | true |
+| wifi_ssid | VARCHAR(50) | ✓ | WiFi SSID สำหรับผู้เยี่ยม เช่น MOTS-Guest |
+| wifi_password_pattern | VARCHAR(50) | ✓ | รูปแบบรหัสผ่าน WiFi เช่น mots{year} |
+| wifi_validity_mode | ENUM('business-hours-close','fixed-duration') | ✓ | วิธีคำนวณหมดอายุ WiFi |
+| wifi_fixed_duration_min | INT | ✓ | ระยะเวลา WiFi (นาที) ถ้าใช้ fixed-duration |
+| pdpa_require_scroll | BOOLEAN | ✓ | บังคับเลื่อนอ่าน PDPA ก่อนยินยอม | true |
+| pdpa_retention_days | INT | ✓ | จำนวนวันเก็บข้อมูลที่แสดงในข้อความ PDPA | 90 |
+| slip_header_text | VARCHAR(200) | ✓ | ข้อความหัวใบ slip |
+| slip_footer_text | VARCHAR(200) | ✓ | ข้อความท้ายใบ slip |
+| follow_business_hours | BOOLEAN | ✓ | ใช้เวลาทำการหรือเปิดตลอด | true |
+| id_masking_pattern | VARCHAR(30) | ✓ | รูปแบบปิดบังเลขบัตร: show-last-4, show-first-last, full-mask |
+| admin_pin | VARCHAR(5) | ✓ | PIN 5 หลักสำหรับเข้าเมนูตั้งค่าบน Kiosk | 10210 |
+| created_at | TIMESTAMP | ✗ | วันที่สร้าง | CURRENT_TIMESTAMP |
+| updated_at | TIMESTAMP | ✗ | วันที่แก้ไขล่าสุด | CURRENT_TIMESTAMP |
 
 <details>
 <summary>📦 Seed Data (4 rows)</summary>
 
-| id | name | type | status | serial_number |
-|----|------|------|--------|---------------|
-| sp-1 | ตู้ Kiosk ล็อบบี้หลัก | kiosk | online | KIOSK-2024-001 |
-| sp-2 | ตู้ Kiosk ล็อบบี้ฝั่งตะวันออก | kiosk | offline | KIOSK-2024-002 |
-| sp-3 | จุดบริการ Counter 1 | counter | online | CTR-2024-001 |
-| sp-4 | จุดบริการ Counter 2 | counter | online | CTR-2024-002 |
+| id | name | name_en | type | status | location | location_en | building | floor | ip_address | mac_address | serial_number | today_transactions | last_online | assigned_staff_id | is_active |
+|----|----|----|----|----|----|----|----|----|----|----|----|----|----|----|----|
+| 1 | ตู้ Kiosk ล็อบบี้หลัก | Main Lobby Kiosk | kiosk | online | ล็อบบี้ ชั้น 1 ประตูหลัก | Main Lobby, Gate 1 | ศูนย์ราชการ อาคาร C | ชั้น 1 | 192.168.1.101 | AA:BB:CC:DD:01:01 | KIOSK-2024-001 | 42 | 2569-03-08T14:30:00 | — | ✅ |
+| 2 | ตู้ Kiosk ล็อบบี้ฝั่งตะวันออก | East Lobby Kiosk | kiosk | offline | ล็อบบี้ ชั้น 1 ประตูฝั่งตะวันออก | East Lobby, Side Gate | ศูนย์ราชการ อาคาร C | ชั้น 1 | 192.168.1.102 | AA:BB:CC:DD:01:02 | KIOSK-2024-002 | 28 | 2569-03-08T14:28:00 | — | ✅ |
+| 3 | จุดบริการ Counter 1 | Service Counter 1 | counter | online | เคาน์เตอร์ รปภ. ประตูหลัก | Security Counter, Main Gate | ศูนย์ราชการ อาคาร C | ชั้น 1 | 192.168.1.201 | AA:BB:CC:DD:02:01 | CTR-2024-001 | 67 | 2569-03-08T14:30:00 | 6 | ✅ |
+| 4 | จุดบริการ Counter 2 | Service Counter 2 | counter | online | เคาน์เตอร์ รปภ. ประตูหลัก | Security Counter, Main Gate | ศูนย์ราชการ อาคาร C | ชั้น 1 | 192.168.1.202 | AA:BB:CC:DD:02:02 | CTR-2024-002 | 53 | 2569-03-08T14:29:00 | 7 | ✅ |
 
 </details>
 
----
-
-## 7. ประเภทเอกสาร
-
-**เมนู:** ตั้งค่าประเภทเอกสาร
-**Path:** `/web/settings/document-types`
-
-### 7.1 `identity_document_types` — เอกสารระบุตัวตนที่ Kiosk/Counter รับ
+### 6.2 `service_point_purposes` — วัตถุประสงค์ที่จุดบริการนี้รองรับ (Many-to-Many)
 
 | คอลัมน์ | ประเภท | Null | คำอธิบาย |
 |---------|--------|------|----------|
-| **id** 🔑 | VARCHAR(30) | ✗ | รหัสเอกสาร (PK) |
-| name / name_en | VARCHAR(100) | ✗ | ชื่อเอกสาร |
-| icon | VARCHAR(10) | ✓ | ไอคอน Emoji |
-| is_active | BOOLEAN | ✗ | สถานะ |
-| sort_order | INT | ✗ | ลำดับ |
+| **service_point_id** 🔑 | INT | ✗ | FK → service_points.id |
+| **visit_purpose_id** 🔑 | INT | ✗ | FK → visit_purposes.id |
+
+<details>
+<summary>📦 Seed Data (16 rows — แสดง 10 แรก)</summary>
+
+| service_point_id | visit_purpose_id |
+|----|----|
+| 1 | 1 |
+| 1 | 2 |
+| 1 | 5 |
+| 2 | 1 |
+| 2 | 3 |
+| 2 | 4 |
+| 3 | 1 |
+| 3 | 2 |
+| 3 | 3 |
+| 3 | 4 |
+
+*(... อีก 6 rows)*
+</details>
+
+### 6.3 `service_point_documents` — ประเภทเอกสารที่จุดบริการนี้รับ (Many-to-Many)
+
+| คอลัมน์ | ประเภท | Null | คำอธิบาย |
+|---------|--------|------|----------|
+| **service_point_id** 🔑 | INT | ✗ | FK → service_points.id |
+| **identity_document_type_id** 🔑 | INT | ✗ | FK → identity_document_types.id |
+
+<details>
+<summary>📦 Seed Data (17 rows — แสดง 10 แรก)</summary>
+
+| service_point_id | identity_document_type_id |
+|----|----|
+| 1 | 1 |
+| 1 | 2 |
+| 1 | 4 |
+| 1 | 5 |
+| 2 | 1 |
+| 2 | 3 |
+| 2 | 5 |
+| 3 | 1 |
+| 3 | 2 |
+| 3 | 3 |
+
+*(... อีก 7 rows)*
+</details>
+
+### 6.4 `counter_staff_assignments` — เจ้าหน้าที่ที่ได้รับมอบหมายประจำ Counter (Many-to-Many)
+
+| คอลัมน์ | ประเภท | Null | คำอธิบาย | Default |
+|---------|--------|------|----------|---------|
+| **id** 🔑 | INT AUTO_INCREMENT | ✗ | รหัส assignment (PK) — เลข run อัตโนมัติ |
+| service_point_id 🔗 | INT | ✗ | FK → service_points.id (เฉพาะ type=counter) |
+| staff_id 🔗 | INT | ✗ | FK → staff.id (role=security/officer) |
+| is_primary | BOOLEAN | ✗ | เจ้าหน้าที่หลักประจำ counter นี้ | false |
+| assigned_at | TIMESTAMP | ✗ | วันที่มอบหมาย | CURRENT_TIMESTAMP |
 
 <details>
 <summary>📦 Seed Data (5 rows)</summary>
 
-| id | name | icon |
-|----|------|------|
-| doc-national-id | บัตรประจำตัวประชาชน | 🪪 |
-| doc-passport | หนังสือเดินทาง (Passport) | 📕 |
-| doc-driver-license | ใบขับขี่ | 🚗 |
-| doc-gov-card | บัตรข้าราชการ / บัตรพนักงานรัฐ | 🏛️ |
-| doc-thai-id-app | AppThaiID | 📱 |
+| id | service_point_id | staff_id | is_primary | assigned_at |
+|----|----|----|----|----|
+| 1 | 3 | 6 | ✅ | 2569-01-15T09:00:00 |
+| 2 | 3 | 11 | ❌ | 2569-02-01T09:00:00 |
+| 3 | 4 | 12 | ✅ | 2569-01-15T09:00:00 |
+| 4 | 4 | 6 | ❌ | 2569-02-10T09:00:00 |
+| 5 | 4 | 11 | ❌ | 2569-03-01T09:00:00 |
 
 </details>
 
-### 7.2 `document_types` — เอกสารเพิ่มเติมที่ผู้เยี่ยมอาจต้องแนบ
+**ความสัมพันธ์:**
+- service_points N ←──→ N staff ผ่าน counter_staff_assignments (เจ้าหน้าที่ประจำ counter)
+- service_points N ←──→ N visit_purposes ผ่าน service_point_purposes
+- service_points N ←──→ N identity_document_types ผ่าน service_point_documents
+
+---
+## 7. ประเภทเอกสาร
+
+**เมนู:** ประเภทเอกสาร
+**Path:** `/web/settings/document-types`
+**คำอธิบาย:** กำหนดประเภทเอกสารที่ใช้ยืนยันตัวตน — บัตรประชาชน, Passport, ใบขับขี่, บัตรข้าราชการ ฯลฯ
+
+### 7.1 `identity_document_types` — ตารางประเภทเอกสารระบุตัวตนที่ Kiosk/Counter รับได้ (ใช้ตอนสแกน/ลงทะเบียน)
+
+| คอลัมน์ | ประเภท | Null | คำอธิบาย | Default |
+|---------|--------|------|----------|---------|
+| **id** 🔑 | SERIAL | ✗ | รหัสเอกสาร (PK) เช่น doc-national-id |
+| name | VARCHAR(100) | ✗ | ชื่อเอกสาร (ภาษาไทย) |
+| name_en | VARCHAR(100) | ✗ | ชื่อเอกสาร (ภาษาอังกฤษ) |
+| icon | VARCHAR(10) | ✓ | ไอคอน Emoji |
+| is_active | BOOLEAN | ✗ | สถานะเปิด/ปิดใช้งาน | true |
+| sort_order | INT | ✗ | ลำดับการแสดงผล |
+
+<details>
+<summary>📦 Seed Data (5 rows)</summary>
+
+| id | name | name_en | icon | is_active | sort_order |
+|----|----|----|----|----|----|
+| 1 | บัตรประจำตัวประชาชน | National ID Card | 🪪 | ✅ | 1 |
+| 2 | หนังสือเดินทาง (Passport) | Passport | 📕 | ✅ | 2 |
+| 3 | ใบขับขี่ | Driver's License | 🚗 | ✅ | 3 |
+| 4 | บัตรข้าราชการ / บัตรพนักงานรัฐ | Government Officer Card | 🏛️ | ✅ | 4 |
+| 5 | AppThaiID | AppThaiID | 📱 | ✅ | 5 |
+
+</details>
+
+### 7.2 `document_types` — ตารางประเภทเอกสารเพิ่มเติมที่ผู้เยี่ยมอาจต้องแนบ (เอกสารมอบอำนาจ, ทะเบียนรถ ฯลฯ)
+
+| คอลัมน์ | ประเภท | Null | คำอธิบาย | Default |
+|---------|--------|------|----------|---------|
+| **id** 🔑 | SERIAL | ✗ | รหัสเอกสาร (PK) |
+| name | VARCHAR(100) | ✗ | ชื่อเอกสาร (ภาษาไทย) |
+| name_en | VARCHAR(100) | ✗ | ชื่อเอกสาร (ภาษาอังกฤษ) |
+| category | ENUM('identification','authorization','vehicle','other') | ✗ | หมวดหมู่: identification=ยืนยันตัวตน, authorization=มอบอำนาจ, vehicle=ยานพาหนะ, other=อื่นๆ |
+| is_required | BOOLEAN | ✗ | จำเป็นต้องแนบหรือไม่ | false |
+| require_photo | BOOLEAN | ✗ | ต้องถ่ายรูปเอกสาร | false |
+| description | TEXT | ✓ | คำอธิบายวิธีใช้ |
+| is_active | BOOLEAN | ✗ | สถานะเปิด/ปิดใช้งาน | true |
+| sort_order | INT | ✗ | ลำดับการแสดงผล |
+| created_at | TIMESTAMP | ✗ | วันที่สร้าง | CURRENT_TIMESTAMP |
+| updated_at | TIMESTAMP | ✗ | วันที่แก้ไขล่าสุด | CURRENT_TIMESTAMP |
+
+<details>
+<summary>📦 Seed Data (4 rows)</summary>
+
+| id | name | name_en | category | is_required | require_photo | description | is_active | sort_order |
+|----|----|----|----|----|----|----|----|----|
+| 1 | บัตรประจำตัวประชาชน | Thai National ID Card | identification | ✅ | ✅ | บัตรประชาชนตัวจริง สำหรับบุคคลสัญชาติไทย | ✅ | 1 |
+| 2 | หนังสือเดินทาง (Passport) | Passport | identification | ✅ | ✅ | สำหรับบุคคลต่างชาติ | ✅ | 2 |
+| 3 | ใบขับขี่ | Driver's License | identification | ❌ | ✅ | ใช้แทนบัตรประชาชนได้เฉพาะกรณี walk-in | ✅ | 3 |
+| 4 | บัตรข้าราชการ / บัตรพนักงานรัฐ | Government Officer ID | identification | ❌ | ✅ | บัตรประจำตัวข้าราชการ | ✅ | 4 |
+
+</details>
+
+### 7.3 `document_type_visit_types` — ประเภทเอกสารใช้ได้กับประเภทการเยี่ยมใด (Many-to-Many)
 
 | คอลัมน์ | ประเภท | Null | คำอธิบาย |
 |---------|--------|------|----------|
-| **id** 🔑 | VARCHAR(20) | ✗ | PK |
-| name / name_en | VARCHAR(100) | ✗ | ชื่อเอกสาร |
-| category | ENUM | ✗ | หมวดหมู่: identification / authorization / vehicle / other |
-| is_required | BOOLEAN | ✗ | จำเป็นต้องแนบ |
-| require_photo | BOOLEAN | ✗ | ต้องถ่ายรูป |
-| description | TEXT | ✓ | คำอธิบาย |
+| **document_type_id** 🔑 | INT | ✗ | FK → document_types.id |
+| **visit_type** 🔑 | ENUM('official','meeting','document','contractor','delivery','other') | ✗ | ประเภทการเยี่ยม |
 
-### 7.3 `document_type_visit_types` — เอกสาร ↔ ประเภทการเยี่ยม (M:N)
+<details>
+<summary>📦 Seed Data (20 rows — แสดง 10 แรก)</summary>
+
+| document_type_id | visit_type |
+|----|----|
+| 1 | official |
+| 1 | meeting |
+| 1 | document |
+| 1 | contractor |
+| 1 | delivery |
+| 1 | other |
+| 2 | official |
+| 2 | meeting |
+| 2 | document |
+| 2 | contractor |
+
+*(... อีก 10 rows)*
+</details>
+
+**ความสัมพันธ์:**
+- identity_document_types ←── visit_purpose_channel_documents (ใช้ตอนตั้งค่าช่องทางเข้าของวัตถุประสงค์)
+- identity_document_types ←── service_point_documents (ใช้ตอนกำหนดเอกสารที่จุดบริการรับ)
+- document_types N ←──→ N visit_types ผ่าน document_type_visit_types
 
 ---
-
 ## 8. เวลาทำการ
 
 **เมนู:** เวลาทำการ
 **Path:** `/web/settings/business-hours`
+**คำอธิบาย:** กำหนดเวลาเปิด/ปิดทำการ — วันทำการปกติ, วันหยุดราชการ, และวันพิเศษ พร้อมกำหนดว่าเปิดรับ Walk-in / Kiosk หรือไม่
 
-### 8.1 `business_hours_rules` — กฎเวลาทำการ
+### 8.1 `business_hours_rules` — กฎเวลาทำการ — กำหนดเวลาเปิด/ปิด และช่องทางที่อนุญาต
 
-| คอลัมน์ | ประเภท | Null | คำอธิบาย |
-|---------|--------|------|----------|
-| **id** 🔑 | VARCHAR(20) | ✗ | PK |
-| name / name_en | VARCHAR(100) | ✗ | ชื่อกฎ |
-| type | ENUM('regular','special','holiday') | ✗ | ประเภท |
-| days_of_week | JSON | ✓ | วันในสัปดาห์ (เฉพาะ regular) |
-| specific_date | DATE | ✓ | วันที่เฉพาะ (เฉพาะ special/holiday) |
-| open_time / close_time | TIME | ✗ | เวลาเปิด-ปิด (00:00 = ปิดทั้งวัน) |
-| allow_walkin | BOOLEAN | ✗ | เปิดรับ Walk-in |
-| allow_kiosk | BOOLEAN | ✗ | เปิดให้ Kiosk ลงทะเบียน |
-| notes | TEXT | ✓ | หมายเหตุ |
-| is_active | BOOLEAN | ✗ | สถานะ |
+| คอลัมน์ | ประเภท | Null | คำอธิบาย | Default |
+|---------|--------|------|----------|---------|
+| **id** 🔑 | SERIAL | ✗ | รหัสกฎ (PK) |
+| name | VARCHAR(100) | ✗ | ชื่อกฎ (ภาษาไทย) |
+| name_en | VARCHAR(100) | ✗ | ชื่อกฎ (ภาษาอังกฤษ) |
+| type | ENUM('regular','special','holiday') | ✗ | ประเภท: regular=ปกติ(ทุกสัปดาห์), special=วันพิเศษ, holiday=วันหยุด |
+| days_of_week | JSON | ✓ | วันในสัปดาห์ [0=อา..6=ส] (เฉพาะ type=regular) |
+| specific_date | DATE | ✓ | วันที่เฉพาะ YYYY-MM-DD (เฉพาะ type=special/holiday) |
+| open_time | TIME | ✗ | เวลาเปิดทำการ (HH:mm) — 00:00 = ปิดทั้งวัน |
+| close_time | TIME | ✗ | เวลาปิดทำการ (HH:mm) — 00:00 = ปิดทั้งวัน |
+| allow_walkin | BOOLEAN | ✗ | เปิดรับ Walk-in ผู้เยี่ยมชม | true |
+| allow_kiosk | BOOLEAN | ✗ | เปิดให้ Kiosk ลงทะเบียนได้ | true |
+| notes | TEXT | ✓ | หมายเหตุเพิ่มเติม |
+| is_active | BOOLEAN | ✗ | สถานะเปิด/ปิดใช้งาน | true |
+| created_at | TIMESTAMP | ✗ | วันที่สร้าง | CURRENT_TIMESTAMP |
+| updated_at | TIMESTAMP | ✗ | วันที่แก้ไขล่าสุด | CURRENT_TIMESTAMP |
 
 <details>
 <summary>📦 Seed Data (6 rows)</summary>
 
-| id | name | type | open_time | close_time | allow_walkin | allow_kiosk |
-|----|------|------|-----------|------------|-------------|-------------|
-| bh-1 | วันทำการปกติ (จ-ศ) | regular | 08:30 | 16:30 | ✅ | ✅ |
-| bh-2 | วันเสาร์ (เปิดครึ่งวัน) | regular | 09:00 | 12:00 | ✅ | ✅ |
-| bh-3 | วันอาทิตย์ (ปิด) | regular | 00:00 | 00:00 | ❌ | ❌ |
-| bh-4 | วันจักรี | holiday | 00:00 | 00:00 | ❌ | ❌ |
-| bh-5 | สงกรานต์ | holiday | 00:00 | 00:00 | ❌ | ❌ |
-| bh-6 | งานสัมมนาพิเศษ | special | 07:00 | 20:00 | ✅ | ✅ |
+| id | name | name_en | type | days_of_week | specific_date | open_time | close_time | allow_walkin | allow_kiosk | is_active |
+|----|----|----|----|----|----|----|----|----|----|----|
+| 1 | วันทำการปกติ (จ-ศ) | Regular Weekdays (Mon-Fri) | regular | [1,2,3,4,5] | — | 08:30 | 16:30 | ✅ | ✅ | ✅ |
+| 2 | วันเสาร์ (เปิดครึ่งวัน) | Saturday (Half Day) | regular | [6] | — | 09:00 | 12:00 | ✅ | ✅ | ✅ |
+| 3 | วันอาทิตย์ (ปิด) | Sunday (Closed) | regular | [0] | — | 00:00 | 00:00 | ❌ | ❌ | ✅ |
+| 4 | วันจักรี | Chakri Memorial Day | holiday | — | 2569-04-06 | 00:00 | 00:00 | ❌ | ❌ | ✅ |
+| 5 | สงกรานต์ | Songkran Festival | holiday | — | 2569-04-13 | 00:00 | 00:00 | ❌ | ❌ | ✅ |
+| 6 | งานสัมมนาพิเศษ | Special Seminar Event | special | — | 2569-03-20 | 07:00 | 20:00 | ✅ | ✅ | ✅ |
 
 </details>
 
----
+**ความสัมพันธ์:**
+- business_hours_rules — ใช้ตรวจสอบเวลาเปิด/ปิดก่อนอนุญาต Walk-in / Kiosk registration
+- holiday rules override regular rules เมื่อตรงวันที่เดียวกัน
 
+---
 ## 9. เทมเพลตแจ้งเตือน
 
-**เมนู:** ตั้งค่าเทมเพลตการแจ้งเตือน
+**เมนู:** เทมเพลตแจ้งเตือน
 **Path:** `/web/settings/notification-templates`
+**คำอธิบาย:** จัดการเทมเพลตข้อความแจ้งเตือน — LINE, Email, SMS พร้อมตัวแปรที่รองรับ ({{variable}})
 
-### 9.1 `notification_templates` — เทมเพลตแจ้งเตือน
+### 9.1 `notification_templates` — ตารางเทมเพลตแจ้งเตือน — กำหนดข้อความสำหรับแต่ละ event + ช่องทาง
 
-| คอลัมน์ | ประเภท | Null | คำอธิบาย |
-|---------|--------|------|----------|
-| **id** 🔑 | VARCHAR(20) | ✗ | PK |
-| name / name_en | VARCHAR(100) | ✗ | ชื่อเทมเพลต |
-| trigger_event | ENUM | ✗ | เหตุการณ์ที่ทำให้ส่ง |
-| channel | ENUM('line','email','sms') | ✗ | ช่องทาง |
+| คอลัมน์ | ประเภท | Null | คำอธิบาย | Default |
+|---------|--------|------|----------|---------|
+| **id** 🔑 | SERIAL | ✗ | รหัสเทมเพลต (PK) |
+| name | VARCHAR(100) | ✗ | ชื่อเทมเพลต (ภาษาไทย) |
+| name_en | VARCHAR(100) | ✗ | ชื่อเทมเพลต (ภาษาอังกฤษ) |
+| trigger_event | ENUM('booking-confirmed','booking-approved','booking-rejected','reminder-1day','reminder-1hour','checkin-welcome','checkout-thankyou','overstay-alert','wifi-credentials') | ✗ | เหตุการณ์ที่ทำให้ส่ง: booking-confirmed=ยืนยันจอง, booking-approved=อนุมัติ, reminder-1day=เตือน1วัน ฯลฯ |
+| channel | ENUM('line','email','sms') | ✗ | ช่องทางส่ง: line / email / sms |
 | subject | VARCHAR(200) | ✓ | หัวข้อ (เฉพาะ email) |
-| body_th / body_en | TEXT | ✗ | เนื้อหา (ใช้ {{variable}}) |
-| is_active | BOOLEAN | ✗ | สถานะ |
-
-### 9.2 `notification_template_variables` — ตัวแปรของเทมเพลต
-
-| คอลัมน์ | ประเภท | Null | คำอธิบาย |
-|---------|--------|------|----------|
-| template_id 🔗 | VARCHAR(20) | ✗ | FK → notification_templates.id |
-| variable_name | VARCHAR(50) | ✗ | ชื่อตัวแปร เช่น visitorName, bookingCode |
+| body_th | TEXT | ✗ | เนื้อหาภาษาไทย — ใช้ {{variable}} สำหรับตัวแปร |
+| body_en | TEXT | ✗ | เนื้อหาภาษาอังกฤษ |
+| is_active | BOOLEAN | ✗ | สถานะเปิด/ปิดใช้งาน | true |
+| created_at | TIMESTAMP | ✗ | วันที่สร้าง | CURRENT_TIMESTAMP |
+| updated_at | TIMESTAMP | ✗ | วันที่แก้ไขล่าสุด | CURRENT_TIMESTAMP |
 
 <details>
-<summary>📦 Seed Data (8 templates)</summary>
+<summary>📦 Seed Data (8 rows)</summary>
 
-| id | name | trigger | channel |
-|----|------|---------|---------|
-| nt-1 | แจ้งยืนยันจอง (LINE) | booking-confirmed | line |
-| nt-2 | แจ้งอนุมัติ (LINE) | booking-approved | line |
-| nt-3 | แจ้งไม่อนุมัติ (LINE) | booking-rejected | line |
-| nt-4 | เตือนล่วงหน้า 1 วัน (LINE) | reminder-1day | line |
-| nt-5 | ต้อนรับ Check-in (LINE) | checkin-welcome | line |
-| nt-6 | แจ้งยืนยัน (Email) | booking-confirmed | email |
-| nt-7 | แจ้งเตือนเกินเวลา (LINE) | overstay-alert | line |
-| nt-8 | ข้อมูล WiFi (LINE) | wifi-credentials | line |
+| id | name | name_en | trigger_event | channel | subject | body_th | body_en | is_active |
+|----|----|----|----|----|----|----|----|----|
+| 1 | แจ้งยืนยันจอง (LINE) | Booking Confirmed (LINE) | booking-confirmed | line | — | สวัสดีค่ะ คุณ{{visitorName}} 🎉
+การจองเลขที่ {{bookingCode}} ได้รับการยืนยันแล้ว
+📅 วันที่: {{date}}
+⏰ เวลา: {{time}}
+📍 {{location}} | Hello {{visitorName}} 🎉
+Booking {{bookingCode}} confirmed. | ✅ |
+| 2 | แจ้งอนุมัติ (LINE) | Approved (LINE) | booking-approved | line | — | ✅ คำขอเข้าพื้นที่ {{bookingCode}} ได้รับการอนุมัติแล้ว
+ผู้อนุมัติ: {{approverName}} | ✅ Visit request {{bookingCode}} approved by {{approverName}} | ✅ |
+| 3 | แจ้งไม่อนุมัติ (LINE) | Rejected (LINE) | booking-rejected | line | — | ❌ คำขอเข้าพื้นที่ {{bookingCode}} ไม่ได้รับการอนุมัติ
+เหตุผล: {{reason}} | ❌ Visit request {{bookingCode}} rejected. Reason: {{reason}} | ✅ |
+| 4 | เตือนล่วงหน้า 1 วัน (LINE) | 1-Day Reminder (LINE) | reminder-1day | line | — | 📢 เตือน: พรุ่งนี้คุณมีนัดหมาย {{bookingCode}}
+📅 {{date}} เวลา {{time}}
+📍 {{location}} | 📢 Reminder: Tomorrow you have appointment {{bookingCode}} | ✅ |
+| 5 | ต้อนรับ Check-in (LINE) | Welcome Check-in (LINE) | checkin-welcome | line | — | 🏢 ยินดีต้อนรับคุณ {{visitorName}}
+เข้าพื้นที่สำเร็จเมื่อ {{checkinTime}}
+📍 {{zone}} | 🏢 Welcome {{visitorName}} — Checked in at {{checkinTime}} | ✅ |
+| 6 | แจ้งยืนยัน (Email) | Booking Confirmed (Email) | booking-confirmed | email | ยืนยันการจองเข้าพื้นที่ — {{bookingCode}} | เรียน คุณ{{visitorName}}
 
-**ตัวแปรที่รองรับ:** `visitorName`, `bookingCode`, `date`, `time`, `location`, `approverName`, `reason`, `contactNumber`, `checkinTime`, `zone`, `checkoutTime`, `hostName`, `wifiSSID`, `wifiUsername`, `wifiPassword`, `expiry`
+การจองเลขที่ {{bookingCode}} ได้รับการยืนยัน
+วันที่: {{date}} เวลา: {{time}} สถานที่: {{location}}
+ผู้ติดต่อ: {{hostName}} | Dear {{visitorName}},
+Your visit {{bookingCode}} has been confirmed. | ✅ |
+| 7 | แจ้งเตือนเกินเวลา (LINE) | Overstay Alert (LINE) | overstay-alert | line | — | ⚠️ คุณ {{visitorName}} อยู่เกินเวลา
+เวลาที่ควรออก: {{checkoutTime}} | ⚠️ {{visitorName}} has exceeded allowed time. | ✅ |
+| 8 | ข้อมูล WiFi (LINE) | WiFi Credentials (LINE) | wifi-credentials | line | — | 📶 WiFi: {{wifiSSID}}
+User: {{wifiUsername}}
+Pass: {{wifiPassword}}
+ใช้ได้ถึง: {{expiry}} | 📶 WiFi: {{wifiSSID}} User: {{wifiUsername}} Pass: {{wifiPassword}} | ✅ |
 
 </details>
 
----
+### 9.2 `notification_template_variables` — ตัวแปรที่แต่ละเทมเพลตรองรับ (ใช้แทนค่าด้วย {{variable_name}})
 
+| คอลัมน์ | ประเภท | Null | คำอธิบาย |
+|---------|--------|------|----------|
+| **template_id** 🔑 | INT | ✗ | FK → notification_templates.id |
+| **variable_name** 🔑 | VARCHAR(50) | ✗ | ชื่อตัวแปร เช่น visitorName, bookingCode, date |
+
+<details>
+<summary>📦 Seed Data (24 rows — แสดง 10 แรก)</summary>
+
+| template_id | variable_name |
+|----|----|
+| 1 | visitorName |
+| 1 | bookingCode |
+| 1 | date |
+| 1 | time |
+| 1 | location |
+| 2 | bookingCode |
+| 2 | approverName |
+| 3 | bookingCode |
+| 3 | reason |
+| 3 | contactNumber |
+
+*(... อีก 14 rows)*
+</details>
+
+**ความสัมพันธ์:**
+- notification_templates 1 ──→ N notification_template_variables (แต่ละเทมเพลตมีตัวแปรหลายตัว)
+- notification_templates ←── ระบบ Event (ถูกเรียกใช้เมื่อเกิด event เช่น booking, checkin)
+- notification_templates ←── approver_group_notify_channels (กลุ่มผู้อนุมัติอ้างอิงช่องทาง)
+
+---
 ## 10. แบบฟอร์ม Visit Slip
 
-**เมนู:** ตั้งค่าแบบฟอร์มบัตรผู้เยี่ยม
+**เมนู:** แบบฟอร์ม Visit Slip
 **Path:** `/web/settings/visit-slips`
+**คำอธิบาย:** จัดการ Visit Slip (Thermal 80mm) — กำหนด Section ที่แสดง, ฟิลด์, ป้ายกำกับ, WiFi, QR Code, และ Live Preview
 
-### 10.1 `visit_slip_templates` — แบบฟอร์มบัตรผู้เยี่ยม
+### 10.1 `visit_slip_templates` — ตาราง Template สลิปผู้เยี่ยม — กำหนดขนาดกระดาษ, header/footer, สถานะ, และ metadata
 
-| คอลัมน์ | ประเภท | Null | คำอธิบาย |
-|---------|--------|------|----------|
-| **id** 🔑 | VARCHAR(20) | ✗ | PK |
-| name / name_en | VARCHAR(100) | ✗ | ชื่อแบบฟอร์ม |
-| description | TEXT | ✗ | คำอธิบายการใช้งาน |
-| size | ENUM | ✗ | ขนาด: a4 / a5 / thermal-80mm / thermal-58mm / badge-card |
-| orientation | ENUM | ✗ | แนวพิมพ์: portrait / landscape |
-| show_logo / show_qr_code / show_photo / show_barcode | BOOLEAN | ✗ | องค์ประกอบที่แสดง |
-| header_text / footer_text | VARCHAR(200) | ✗ | ข้อความหัว/ท้าย |
-| is_default | BOOLEAN | ✗ | เป็นแบบฟอร์มเริ่มต้น |
-| is_active | BOOLEAN | ✗ | สถานะ |
-| preview_color | VARCHAR(10) | ✗ | สี Preview |
-
-### 10.2 `visit_slip_fields` — ฟิลด์ข้อมูลบนบัตรผู้เยี่ยม
-
-| คอลัมน์ | ประเภท | Null | คำอธิบาย |
-|---------|--------|------|----------|
-| **id** 🔑 | SERIAL | ✗ | PK |
-| template_id 🔗 | VARCHAR(20) | ✗ | FK → visit_slip_templates.id |
-| field_key | VARCHAR(30) | ✗ | Key เช่น visitorName, hostName |
-| label / label_en | VARCHAR(80) | ✗ | ป้ายกำกับ |
-| is_enabled | BOOLEAN | ✗ | เปิดแสดงในแบบฟอร์มนี้หรือไม่ |
-| sort_order | INT | ✗ | ลำดับแสดงผล |
-
-### 10.3 `purpose_slip_mappings` — วัตถุประสงค์ → แบบฟอร์ม
-
-| คอลัมน์ | ประเภท | Null | คำอธิบาย |
-|---------|--------|------|----------|
-| **visit_purpose_id** 🔑🔗 | VARCHAR(20) | ✗ | FK → visit_purposes.id (PK) |
-| slip_template_id 🔗 | VARCHAR(20) | ✓ | FK → visit_slip_templates.id (null = ใช้ default) |
+| คอลัมน์ | ประเภท | Null | คำอธิบาย | Default |
+|---------|--------|------|----------|---------|
+| **id** 🔑 | SERIAL | ✗ | รหัส Template (PK) |
+| name | VARCHAR(100) | ✗ | ชื่อ Template (ภาษาไทย) |
+| name_en | VARCHAR(100) | ✗ | ชื่อ Template (ภาษาอังกฤษ) |
+| description | TEXT | ✓ | คำอธิบายการใช้งาน |
+| paper_size | ENUM('thermal-80mm','thermal-58mm') | ✗ | ขนาดกระดาษ Thermal | thermal-80mm |
+| paper_width_px | INT | ✗ | ความกว้าง (pixels) สำหรับ render | 302 |
+| org_name | VARCHAR(200) | ✗ | ชื่อหน่วยงานบน Header (TH) | กระทรวงการท่องเที่ยวและกีฬา |
+| org_name_en | VARCHAR(200) | ✗ | ชื่อหน่วยงานบน Header (EN) | Ministry of Tourism and Sports |
+| slip_title | VARCHAR(100) | ✗ | หัวข้อสลิป เช่น VISITOR PASS | VISITOR PASS |
+| footer_text_th | VARCHAR(200) | ✗ | ข้อความท้ายสลิป (TH) | กรุณาส่งคืนบัตรเมื่อออกจากอาคาร |
+| footer_text_en | VARCHAR(200) | ✗ | ข้อความท้ายสลิป (EN) | Please return this pass when leaving |
+| show_org_logo | BOOLEAN | ✗ | แสดงโลโก้หน่วยงานบน Header | true |
+| is_default | BOOLEAN | ✗ | เป็น Template เริ่มต้น (ใช้เมื่อไม่ระบุ) | false |
+| is_active | BOOLEAN | ✗ | สถานะเปิด/ปิดใช้งาน | true |
+| created_at | TIMESTAMP | ✗ | วันที่สร้าง | CURRENT_TIMESTAMP |
+| updated_at | TIMESTAMP | ✗ | วันที่แก้ไขล่าสุด | CURRENT_TIMESTAMP |
 
 <details>
-<summary>📦 Seed Data — Mapping</summary>
+<summary>📦 Seed Data (1 rows)</summary>
 
-| วัตถุประสงค์ | แบบฟอร์ม |
-|-------------|---------|
-| ติดต่อราชการ | ⭐ Default (แบบมาตรฐาน A5) |
-| ประชุม / สัมมนา | Badge Card |
-| ส่งเอกสาร / พัสดุ | Thermal 80mm |
-| ผู้รับเหมา | Contractor Pass (A5) |
-| สมัครงาน | ⭐ Default |
-| เยี่ยมชม / ศึกษาดูงาน | VIP Pass (A5) |
-| รับ-ส่งสินค้า | Thermal 80mm |
-| อื่นๆ | ⭐ Default |
+| id | name | name_en | description | paper_size | paper_width_px | org_name | org_name_en | slip_title | footer_text_th | footer_text_en | show_org_logo | is_default | is_active |
+|----|----|----|----|----|----|----|----|----|----|----|----|----|----|
+| 1 | Thermal 80mm มาตรฐาน | Standard Thermal 80mm | สลิป Thermal 80mm สำหรับ Kiosk / Counter | thermal-80mm | 302 | กระทรวงการท่องเที่ยวและกีฬา | Ministry of Tourism and Sports | VISITOR PASS | กรุณาส่งคืนบัตรเมื่อออกจากอาคาร | Please return this pass when leaving | ✅ | ✅ | ✅ |
 
 </details>
 
----
+### 10.2 `visit_slip_sections` — ส่วน (Section) ของสลิป — จัดกลุ่มฟิลด์เป็น Section เปิด/ปิดได้ ลำดับเรียงได้
 
+| คอลัมน์ | ประเภท | Null | คำอธิบาย | Default |
+|---------|--------|------|----------|---------|
+| **id** 🔑 | SERIAL | ✗ | รหัส Section (PK) |
+| template_id 🔗 | INT | ✗ | FK → visit_slip_templates.id |
+| section_key | VARCHAR(30) | ✗ | Key เช่น header, visitor, host, wifi, qrCode |
+| name | VARCHAR(80) | ✗ | ชื่อ Section (TH) |
+| name_en | VARCHAR(80) | ✗ | ชื่อ Section (EN) |
+| is_enabled | BOOLEAN | ✗ | เปิดแสดง Section นี้ | true |
+| sort_order | INT | ✗ | ลำดับการแสดงผล |
+
+<details>
+<summary>📦 Seed Data (9 rows)</summary>
+
+| id | template_id | section_key | name | name_en | is_enabled | sort_order |
+|----|----|----|----|----|----|----|
+| 1 | 1 | header | ส่วนหัว (Header) | Header Section | ✅ | 1 |
+| 2 | 1 | slipNumber | เลขที่ Slip | Slip Number | ✅ | 2 |
+| 3 | 1 | visitor | ข้อมูลผู้เยี่ยม | Visitor Info | ✅ | 3 |
+| 4 | 1 | host | ข้อมูลผู้รับ | Host Info | ✅ | 4 |
+| 5 | 1 | time | วันที่-เวลา | Date & Time | ✅ | 5 |
+| 6 | 1 | extras | ข้อมูลเพิ่มเติม | Additional Info | ❌ | 6 |
+| 7 | 1 | wifi | WiFi สำหรับผู้เยี่ยม | Guest WiFi | ✅ | 7 |
+| 8 | 1 | qrCode | QR Code (Check-out) | Checkout QR Code | ✅ | 8 |
+| 9 | 1 | footer | ส่วนท้าย (Footer) | Footer Section | ✅ | 9 |
+
+</details>
+
+### 10.3 `visit_slip_fields` — ฟิลด์ข้อมูลแต่ละรายการใน Section — เปิด/ปิด, แก้ไข Label, เรียงลำดับได้
+
+| คอลัมน์ | ประเภท | Null | คำอธิบาย | Default |
+|---------|--------|------|----------|---------|
+| **id** 🔑 | SERIAL | ✗ | รหัส Auto-increment (PK) |
+| section_id 🔗 | INT | ✗ | FK → visit_slip_sections.id |
+| field_key | VARCHAR(30) | ✗ | Key ของฟิลด์ เช่น visitorName, wifiSsid |
+| label | VARCHAR(100) | ✗ | ป้ายกำกับ (TH) — แก้ไขได้ถ้า is_editable=true |
+| label_en | VARCHAR(100) | ✗ | ป้ายกำกับ (EN) |
+| is_enabled | BOOLEAN | ✗ | เปิดแสดง Field นี้หรือไม่ | true |
+| is_editable | BOOLEAN | ✗ | อนุญาตให้แก้ไข Label ได้หรือไม่ | false |
+| sort_order | INT | ✗ | ลำดับภายใน Section |
+
+<details>
+<summary>📦 Seed Data (26 rows — แสดง 10 แรก)</summary>
+
+| id | section_id | field_key | label | label_en | is_enabled | is_editable | sort_order |
+|----|----|----|----|----|----|----|----|
+| 1 | 1 | orgLogo | โลโก้หน่วยงาน | Organization Logo | ✅ | ❌ | 1 |
+| 2 | 1 | orgName | กระทรวงการท่องเที่ยวและกีฬา | Ministry of Tourism and Sports | ✅ | ✅ | 2 |
+| 3 | 1 | orgNameEn | Ministry of Tourism and Sports | Org Name (EN) | ✅ | ✅ | 3 |
+| 4 | 1 | slipTitle | VISITOR PASS | Slip Title | ✅ | ✅ | 4 |
+| 5 | 2 | slipNumberLabel | เลขที่ / Slip No. | Label | ✅ | ✅ | 1 |
+| 6 | 2 | slipNumber | eVMS-25680315-0042 | Number | ✅ | ❌ | 2 |
+| 7 | 3 | visitorName | ชื่อ / Name | Visitor Name | ✅ | ✅ | 1 |
+| 8 | 3 | visitorNameEn | ชื่อ (EN) | Name (EN) | ✅ | ✅ | 2 |
+| 9 | 3 | idNumber | เลขบัตร / ID | ID Number | ✅ | ✅ | 3 |
+| 10 | 3 | visitPurpose | วัตถุประสงค์ / Purpose | Visit Purpose | ✅ | ✅ | 4 |
+
+*(... อีก 16 rows)*
+</details>
+
+### 10.4 `purpose_slip_mappings` — จับคู่ วัตถุประสงค์ ↔ Template Visit Slip — กำหนดว่าวัตถุประสงค์ใดใช้ Template ไหน
+
+| คอลัมน์ | ประเภท | Null | คำอธิบาย |
+|---------|--------|------|----------|
+| **visit_purpose_id** 🔑 | INT | ✗ | FK → visit_purposes.id (PK) |
+| slip_template_id 🔗 | INT | ✓ | FK → visit_slip_templates.id — null = ใช้ Template default |
+
+<details>
+<summary>📦 Seed Data (4 rows)</summary>
+
+| visit_purpose_id | slip_template_id |
+|----|----|
+| 1 | — |
+| 2 | — |
+| 3 | 1 |
+| 4 | 1 |
+
+</details>
+
+**ความสัมพันธ์:**
+- visit_slip_templates 1 ──→ N visit_slip_sections (แต่ละ Template มีหลาย Section)
+- visit_slip_sections 1 ──→ N visit_slip_fields (แต่ละ Section มีหลาย Field)
+- visit_slip_templates 1 ←──→ N visit_purposes ผ่าน purpose_slip_mappings
+- purpose_slip_mappings.slip_template_id = null → ใช้ Template ที่ is_default=true
+
+---
+## 11. PDPA / นโยบายคุ้มครองข้อมูล
+
+**เมนู:** PDPA / นโยบายคุ้มครองข้อมูล
+**Path:** `/web/settings/pdpa-consent`
+**คำอธิบาย:** จัดการข้อความนโยบายคุ้มครองข้อมูลส่วนบุคคล (PDPA) 2 ภาษา — แสดงบน Kiosk, ตั้งค่า retention, ประวัติเวอร์ชัน, และ log การยินยอม
+
+### 11.1 `pdpa_consent_configs` — ตารางการตั้งค่า PDPA หลัก — ข้อความนโยบาย 2 ภาษา, ระยะเวลาเก็บข้อมูล, เงื่อนไข UI
+
+| คอลัมน์ | ประเภท | Null | คำอธิบาย | Default |
+|---------|--------|------|----------|---------|
+| **id** 🔑 | INT AUTO_INCREMENT | ✗ | รหัสการตั้งค่า (PK) |
+| text_th | TEXT | ✗ | เนื้อหานโยบาย PDPA (ภาษาไทย) |
+| text_en | TEXT | ✗ | เนื้อหานโยบาย PDPA (ภาษาอังกฤษ) |
+| retention_days | INT | ✗ | ระยะเวลาจัดเก็บข้อมูล (วัน) | 90 |
+| require_scroll | BOOLEAN | ✗ | ต้องเลื่อนอ่านจบก่อนยอมรับ | true |
+| is_active | BOOLEAN | ✗ | สถานะเปิด/ปิดใช้งาน | true |
+| version | INT | ✗ | เลขเวอร์ชัน (เพิ่มทุกครั้งที่แก้ไขข้อความ) | 1 |
+| updated_by 🔗 | INT | ✓ | FK → staff.id ผู้แก้ไขล่าสุด |
+| created_at | TIMESTAMP | ✗ | วันที่สร้าง | CURRENT_TIMESTAMP |
+| updated_at | TIMESTAMP | ✗ | วันที่แก้ไขล่าสุด | CURRENT_TIMESTAMP |
+
+<details>
+<summary>📦 Seed Data (1 rows)</summary>
+
+| id | text_th | text_en | retention_days | require_scroll | is_active | version | updated_by |
+|----|----|----|----|----|----|----|----|
+| 1 | พระราชบัญญัติคุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562 (PDPA)
+
+กระทรวงการท่องเที่ยวและกีฬา ("หน่วยงาน") จะเก็บรวบรวม ใช้ และเปิดเผยข้อมูลส่วนบุคคลของท่าน... | Personal Data Protection Act B.E. 2562 (PDPA)
+
+The Ministry of Tourism and Sports ("the Organization") will collect, use, and disclose your personal data... | 90 | ✅ | ✅ | 1 | — |
+
+</details>
+
+### 11.2 `pdpa_consent_versions` — ประวัติเวอร์ชัน PDPA — เก็บทุกครั้งที่มีการแก้ไขข้อความ สำหรับ audit trail
+
+| คอลัมน์ | ประเภท | Null | คำอธิบาย | Default |
+|---------|--------|------|----------|---------|
+| **id** 🔑 | INT AUTO_INCREMENT | ✗ | รหัสเวอร์ชัน (PK) |
+| config_id 🔗 | INT | ✗ | FK → pdpa_consent_configs.id |
+| version | INT | ✗ | เลขเวอร์ชัน |
+| text_th | TEXT | ✗ | เนื้อหา TH ณ เวอร์ชันนั้น |
+| text_en | TEXT | ✗ | เนื้อหา EN ณ เวอร์ชันนั้น |
+| retention_days | INT | ✗ | ระยะเวลาเก็บข้อมูล ณ เวอร์ชันนั้น |
+| changed_by 🔗 | INT | ✓ | FK → staff.id ผู้แก้ไข |
+| change_note | VARCHAR(255) | ✓ | หมายเหตุการเปลี่ยนแปลง |
+| created_at | TIMESTAMP | ✗ | วันที่บันทึกเวอร์ชัน | CURRENT_TIMESTAMP |
+
+<details>
+<summary>📦 Seed Data (1 rows)</summary>
+
+| id | config_id | version | text_th | text_en | retention_days | changed_by | change_note |
+|----|----|----|----|----|----|----|----|
+| 1 | 1 | 1 | พระราชบัญญัติคุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562 (PDPA)... | Personal Data Protection Act B.E. 2562 (PDPA)... | 90 | — | เวอร์ชันเริ่มต้น |
+
+</details>
+
+### 11.3 `pdpa_consent_logs` — บันทึกการยินยอม PDPA ของผู้เยี่ยม — เก็บทุกครั้งที่ผู้เยี่ยมกดยอมรับบน Kiosk/LINE
+
+| คอลัมน์ | ประเภท | Null | คำอธิบาย | Default |
+|---------|--------|------|----------|---------|
+| **id** 🔑 | INT AUTO_INCREMENT | ✗ | รหัส Log (PK) |
+| visitor_id 🔗 | INT | ✗ | FK → visitors.id ผู้เยี่ยมที่ยินยอม |
+| config_version | INT | ✗ | เลขเวอร์ชัน PDPA ที่ยินยอม |
+| consent_channel | ENUM('kiosk','line','counter','web') | ✗ | ช่องทางที่ยินยอม |
+| ip_address | VARCHAR(45) | ✓ | IP ของอุปกรณ์ที่ใช้ |
+| device_id | VARCHAR(100) | ✓ | รหัส Kiosk/อุปกรณ์ |
+| consented_at | TIMESTAMP | ✗ | วันเวลาที่ยินยอม | CURRENT_TIMESTAMP |
+| expires_at | TIMESTAMP | ✗ | วันหมดอายุ (consented_at + retention_days) |
+
+<details>
+<summary>📦 Seed Data (3 rows)</summary>
+
+| id | visitor_id | config_version | consent_channel | ip_address | device_id | consented_at | expires_at |
+|----|----|----|----|----|----|----|----|
+| 1 | 1 | 1 | kiosk | 192.168.1.100 | KIOSK-01 | 2026-03-15 09:30:00 | 2026-06-13 09:30:00 |
+| 2 | 2 | 1 | line | — | — | 2026-03-15 10:15:00 | 2026-06-13 10:15:00 |
+| 3 | 3 | 1 | counter | 192.168.1.50 | COUNTER-01 | 2026-03-14 14:00:00 | 2026-06-12 14:00:00 |
+
+</details>
+
+**ความสัมพันธ์:**
+- pdpa_consent_configs 1 ──→ N pdpa_consent_versions (ทุกครั้งที่แก้ไข → สร้าง version ใหม่)
+- pdpa_consent_logs.config_version ──→ pdpa_consent_versions.version (อ้างอิงเวอร์ชันที่ยินยอม)
+- pdpa_consent_logs.visitor_id ──→ visitors.id (ผู้เยี่ยมที่ยินยอม)
+- pdpa_consent_configs.updated_by ──→ staff.id (ผู้แก้ไขล่าสุด)
+
+---
+## 12. ข้อมูลธุรกรรมการเข้าพื้นที่
+
+**เมนู:** ข้อมูลธุรกรรมการเข้าพื้นที่
+**Path:** `/web/appointments`
+**คำอธิบาย:** ตารางเก็บข้อมูลการนัดหมายและเข้าพื้นที่ — สร้างจาก LINE / Web / Kiosk / Counter
+
+### 12.1 `visit_records` — ตารางบันทึกการนัดหมาย/เข้าพื้นที่ — ทุกช่องทาง
+
+| คอลัมน์ | ประเภท | Null | คำอธิบาย | Default |
+|---------|--------|------|----------|---------|
+| **id** 🔑 | SERIAL | ✗ | รหัส Auto-increment (PK) |
+| booking_code 🔒 | VARCHAR(30) | ✗ | รหัสนัดหมาย eVMS-YYYYMMDD-XXXX |
+| visitor_id 🔗 | INT | ✗ | FK → visitors.id |
+| host_staff_id 🔗 | INT | ✓ | FK → staff.id ผู้ที่ต้องการพบ |
+| visit_purpose_id 🔗 | INT | ✗ | FK → visit_purposes.id |
+| department_id 🔗 | INT | ✗ | FK → departments.id |
+| entry_mode | ENUM('single','period') | ✗ | ครั้งเดียว / ช่วงเวลา | single |
+| date_start | DATE | ✗ | วันเริ่มต้น |
+| date_end | DATE | ✓ | วันสิ้นสุด (เฉพาะ period mode) |
+| time_start | TIME | ✗ | เวลาเริ่ม |
+| time_end | TIME | ✗ | เวลาสิ้นสุด |
+| status | ENUM('pending','approved','rejected','checked-in','checked-out','cancelled','expired','no-show') | ✗ | สถานะรายการ | pending |
+| created_channel | ENUM('line','web','kiosk','counter') | ✗ | ช่องทางที่สร้างรายการ |
+| checkin_channel | ENUM('kiosk','counter') | ✓ | ช่องทางที่ Check-in จริง |
+| wifi_requested | BOOLEAN | ✗ | ผู้จองขอรับ WiFi ไว้ตอนนัดหมายล่วงหน้า (LINE/Web) | false |
+| wifi_accepted | BOOLEAN | ✓ | ผู้เยี่ยมยืนยันรับ WiFi ตอน Check-in (Kiosk/Counter) |
+| wifi_ssid | VARCHAR(50) | ✓ | SSID ที่แจก (ถ้ารับ WiFi) |
+| wifi_password | VARCHAR(50) | ✓ | รหัส WiFi ที่แจก |
+| wifi_valid_until | TIMESTAMP | ✓ | WiFi ใช้ได้ถึงเมื่อไร |
+| line_linked | BOOLEAN | ✗ | ผู้เยี่ยมผูก LINE OA ไว้ — ใช้ตัดสินถามพิมพ์ slip | false |
+| slip_printed | BOOLEAN | ✓ | พิมพ์ slip หรือไม่ (null = ไม่ได้ถาม, true = พิมพ์, false = ไม่พิมพ์/ส่ง LINE) |
+| slip_number | VARCHAR(30) | ✓ | เลขที่ slip eVMS-25680315-0042 |
+| companions_count | INT | ✗ | จำนวนผู้ติดตาม | 0 |
+| vehicle_plate | VARCHAR(20) | ✓ | เลขทะเบียนรถ (ถ้ามี) |
+| face_photo_path | VARCHAR(255) | ✓ | ที่เก็บภาพถ่ายใบหน้า |
+| id_method | ENUM('thai-id-card','passport','thai-id-app') | ✓ | วิธียืนยันตัวตนที่ใช้ตอน Check-in |
+| service_point_id 🔗 | INT | ✓ | FK → service_points.id จุดบริการที่ Check-in |
+| checkin_at | TIMESTAMP | ✓ | วันเวลาที่ Check-in จริง |
+| checkout_at | TIMESTAMP | ✓ | วันเวลาที่ Check-out |
+| checkout_by 🔗 | INT | ✓ | FK → staff.id ผู้ทำ Check-out |
+| approved_by 🔗 | INT | ✓ | FK → staff.id ผู้อนุมัติ |
+| approved_at | TIMESTAMP | ✓ | วันเวลาที่อนุมัติ |
+| rejected_reason | TEXT | ✓ | เหตุผลที่ไม่อนุมัติ |
+| notes | TEXT | ✓ | หมายเหตุเพิ่มเติม |
+| created_at | TIMESTAMP | ✗ | วันเวลาที่สร้าง | CURRENT_TIMESTAMP |
+| updated_at | TIMESTAMP | ✗ | วันเวลาที่แก้ไขล่าสุด | CURRENT_TIMESTAMP |
+
+<details>
+<summary>📦 Seed Data (3 rows)</summary>
+
+| id | booking_code | visitor_id | host_staff_id | visit_purpose_id | department_id | entry_mode | date_start | time_start | time_end | status | created_channel | wifi_requested | line_linked | slip_printed | companions_count | created_at |
+|----|----|----|----|----|----|----|----|----|----|----|----|----|----|----|----|----|
+| 1 | eVMS-20260315-0042 | 1 | 2 | 2 | 3 | single | 2026-03-15 | 10:00 | 11:30 | approved | line | ✅ | ✅ | — | 0 | 2026-03-14 15:30:00 |
+| 2 | eVMS-20260315-0043 | 2 | 3 | 1 | 1 | single | 2026-03-15 | 14:00 | 15:00 | checked-in | web | ❌ | ❌ | ✅ | 1 | 2026-03-13 09:00:00 |
+| 3 | eVMS-20260315-0044 | 3 | 5 | 5 | 2 | single | 2026-03-15 | 09:00 | 10:30 | checked-in | line | ✅ | ✅ | ❌ | 0 | 2026-03-12 11:00:00 |
+
+</details>
+
+**ความสัมพันธ์:**
+- visit_records.visitor_id ──→ visitors.id (ผู้เยี่ยม)
+- visit_records.host_staff_id ──→ staff.id (ผู้ที่ต้องการพบ)
+- visit_records.visit_purpose_id ──→ visit_purposes.id (วัตถุประสงค์)
+- visit_records.department_id ──→ departments.id (แผนก)
+- visit_records.service_point_id ──→ service_points.id (จุดบริการที่ Check-in)
+- visit_records.approved_by ──→ staff.id (ผู้อนุมัติ)
+- visit_records.checkout_by ──→ staff.id (ผู้ทำ Check-out)
+- wifi_requested = true → Kiosk จะ pre-select WiFi ให้อัตโนมัติ
+- line_linked = true + slip_printed = false → ส่งผ่าน LINE แทนพิมพ์ (ลดกระดาษ)
+- line_linked = true → หน้า SUCCESS ถามว่าต้องการพิมพ์ slip หรือไม่
+
+---
 ## Legend
 
 | สัญลักษณ์ | ความหมาย |
@@ -702,67 +1295,3 @@
 > **หมายเหตุ:** Schema นี้ออกแบบจาก Mock-up ของ Prototype สำหรับใช้สื่อสารกับทีม DEV
 > สามารถดูรายละเอียด schema เต็มพร้อม seed data ได้ที่ `lib/database-schema.ts`
 > หรือกดปุ่ม 🗄️ DB Schema ที่ header ของแต่ละหน้าตั้งค่าใน Web App
-
----
-
-## 12. ข้อมูลธุรกรรม Visit Records
-
-**เมนู:** รายการนัดหมาย / เข้าพื้นที่
-**Path:** `/web/appointments`
-
-### 12.1 `visit_records` — ตารางบันทึกการนัดหมาย/เข้าพื้นที่
-
-| คอลัมน์ | ประเภท | Null | คำอธิบาย | Default |
-|---------|--------|------|----------|---------|
-| **id** 🔑 | SERIAL | ✗ | รหัส Auto-increment (PK) | |
-| booking_code 🔒 | VARCHAR(30) | ✗ | รหัสนัดหมาย eVMS-YYYYMMDD-XXXX | |
-| visitor_id 🔗 | INT | ✗ | FK → visitors.id | |
-| host_staff_id 🔗 | INT | ✓ | FK → staff.id ผู้ที่ต้องการพบ | |
-| visit_purpose_id 🔗 | INT | ✗ | FK → visit_purposes.id | |
-| department_id 🔗 | INT | ✗ | FK → departments.id | |
-| entry_mode | ENUM('single','period') | ✗ | ครั้งเดียว / ช่วงเวลา | single |
-| date_start | DATE | ✗ | วันเริ่มต้น | |
-| date_end | DATE | ✓ | วันสิ้นสุด (เฉพาะ period mode) | |
-| time_start | TIME | ✗ | เวลาเริ่ม | |
-| time_end | TIME | ✗ | เวลาสิ้นสุด | |
-| status | ENUM(...) | ✗ | สถานะรายการ | pending |
-| created_channel | ENUM('line','web','kiosk','counter') | ✗ | ช่องทางที่สร้างรายการ | |
-| checkin_channel | ENUM('kiosk','counter') | ✓ | ช่องทางที่ Check-in จริง | |
-| **wifi_requested** | BOOLEAN | ✗ | **ผู้จองขอรับ WiFi ไว้ตอนนัดหมายล่วงหน้า** | false |
-| wifi_accepted | BOOLEAN | ✓ | ผู้เยี่ยมยืนยันรับ WiFi ตอน Check-in | |
-| wifi_ssid | VARCHAR(50) | ✓ | SSID ที่แจก (ถ้ารับ WiFi) | |
-| wifi_password | VARCHAR(50) | ✓ | รหัส WiFi ที่แจก | |
-| wifi_valid_until | TIMESTAMP | ✓ | WiFi ใช้ได้ถึงเมื่อไร | |
-| **line_linked** | BOOLEAN | ✗ | **ผู้เยี่ยมผูก LINE OA ไว้** | false |
-| **slip_printed** | BOOLEAN | ✓ | **พิมพ์ slip หรือไม่** (null=ไม่ถาม, true=พิมพ์, false=ส่ง LINE) | |
-| slip_number | VARCHAR(30) | ✓ | เลขที่ slip | |
-| companions_count | INT | ✗ | จำนวนผู้ติดตาม | 0 |
-| vehicle_plate | VARCHAR(20) | ✓ | เลขทะเบียนรถ | |
-| face_photo_path | VARCHAR(255) | ✓ | ที่เก็บภาพถ่ายใบหน้า | |
-| id_method | ENUM(...) | ✓ | วิธียืนยันตัวตนที่ใช้ตอน Check-in | |
-| service_point_id 🔗 | INT | ✓ | FK → service_points.id จุดบริการ | |
-| checkin_at | TIMESTAMP | ✓ | วันเวลา Check-in จริง | |
-| checkout_at | TIMESTAMP | ✓ | วันเวลา Check-out | |
-
-**Business Rules — WiFi Pre-selection:**
-- `wifi_requested = true` → ผู้จองขอ WiFi ไว้ตอนนัดหมายผ่าน LINE/Web
-- **Kiosk** จะ pre-select "รับ WiFi" ให้อัตโนมัติ แต่ผู้เยี่ยมสามารถเปลี่ยนได้
-- `wifi_accepted` = ค่าสุดท้ายที่ผู้เยี่ยมยืนยันตอน Check-in
-
-**Business Rules — LINE Print/Skip:**
-- `line_linked = true` → ผู้เยี่ยมผูกบัญชี LINE OA ไว้แล้ว
-- Kiosk จะ **ถามว่าต้องการพิมพ์ slip หรือไม่** เพราะจะส่งข้อมูลผ่าน LINE อยู่แล้ว
-- ช่วยลดการใช้กระดาษ — ถ้าไม่จำเป็นต้องพิมพ์สามารถรับผ่าน LINE ได้
-- `slip_printed = false` + `line_linked = true` → ส่ง Visitor Pass ผ่าน LINE แทน
-- `slip_printed = null` → ผู้เยี่ยมไม่มี LINE (ไม่ถาม → พิมพ์อัตโนมัติ)
-
-<details>
-<summary>📦 Seed Data (3 rows)</summary>
-
-| id | booking_code | wifi_requested | line_linked | slip_printed | status |
-|----|-------------|----------------|-------------|-------------|--------|
-| 1 | eVMS-20260315-0042 | ✅ | ✅ | — (ยังไม่ check-in) | approved |
-| 2 | eVMS-20260315-0043 | ❌ | ❌ | ✅ (พิมพ์แล้ว) | checked-in |
-| 3 | eVMS-20260315-0044 | ✅ | ✅ | ❌ (รับผ่าน LINE) | checked-in |
-
-</details>

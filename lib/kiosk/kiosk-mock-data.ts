@@ -78,25 +78,25 @@ export const mockAppointment: AppointmentData = {
 
 /** Mock visit purposes for kiosk (filtered from visitPurposeConfigs where showOnKiosk = true) */
 export const mockKioskPurposes: VisitPurposeOption[] = [
-  { id: "1", name: "ติดต่อราชการ", nameEn: "Official Business", icon: "🏛️", description: "ยื่นเอกสาร, ติดต่อเจ้าหน้าที่", descriptionEn: "Submit documents, contact officers", wifiEnabled: true },
-  { id: "2", name: "ประชุม / สัมมนา", nameEn: "Meeting / Seminar", icon: "📋", description: "เข้าร่วมประชุมตามนัดหมาย", descriptionEn: "Attend scheduled meetings", wifiEnabled: true },
-  { id: "3", name: "ส่งเอกสาร / พัสดุ", nameEn: "Document / Parcel Delivery", icon: "📄", description: "Messenger, ไปรษณีย์", descriptionEn: "Messenger, postal services", wifiEnabled: false },
-  { id: "4", name: "ผู้รับเหมา / ซ่อมบำรุง", nameEn: "Contractor / Maintenance", icon: "🔧", description: "ซ่อมบำรุง, ติดตั้งอุปกรณ์", descriptionEn: "Maintenance, equipment installation", wifiEnabled: false },
-  { id: "5", name: "สมัครงาน / สัมภาษณ์", nameEn: "Job Application / Interview", icon: "💼", description: "สมัครงาน, สัมภาษณ์", descriptionEn: "Job application, interview", wifiEnabled: true },
-  { id: "7", name: "รับ-ส่งสินค้า", nameEn: "Delivery / Pickup", icon: "📦", description: "รับ-ส่งสินค้า", descriptionEn: "Delivery and pickup", wifiEnabled: false },
+  { id: 1, name: "ติดต่อราชการ", nameEn: "Official Business", icon: "🏛️", description: "ยื่นเอกสาร, ติดต่อเจ้าหน้าที่", descriptionEn: "Submit documents, contact officers", wifiEnabled: true },
+  { id: 2, name: "ประชุม / สัมมนา", nameEn: "Meeting / Seminar", icon: "📋", description: "เข้าร่วมประชุมตามนัดหมาย", descriptionEn: "Attend scheduled meetings", wifiEnabled: true },
+  { id: 3, name: "ส่งเอกสาร / พัสดุ", nameEn: "Document / Parcel Delivery", icon: "📄", description: "Messenger, ไปรษณีย์", descriptionEn: "Messenger, postal services", wifiEnabled: false },
+  { id: 4, name: "ผู้รับเหมา / ซ่อมบำรุง", nameEn: "Contractor / Maintenance", icon: "🔧", description: "ซ่อมบำรุง, ติดตั้งอุปกรณ์", descriptionEn: "Maintenance, equipment installation", wifiEnabled: false },
+  { id: 5, name: "สมัครงาน / สัมภาษณ์", nameEn: "Job Application / Interview", icon: "💼", description: "สมัครงาน, สัมภาษณ์", descriptionEn: "Job application, interview", wifiEnabled: true },
+  { id: 7, name: "รับ-ส่งสินค้า", nameEn: "Delivery / Pickup", icon: "📦", description: "รับ-ส่งสินค้า", descriptionEn: "Delivery and pickup", wifiEnabled: false },
 ];
 
 /**
  * Mapping: purpose ID → department IDs that accept this purpose.
  * If a purpose maps to only 1 department, auto-select it in the kiosk flow.
  */
-export const purposeDepartmentMap: Record<string, string[]> = {
-  "1": ["1", "2", "3", "4", "5", "8", "9"],           // ติดต่อราชการ → หลายหน่วยงาน
-  "2": ["1", "3", "4", "5", "6", "7", "8", "9", "10"],// ประชุม / สัมมนา → หลายหน่วยงาน
-  "3": ["2"],                                           // ส่งเอกสาร / พัสดุ → กองกลางเท่านั้น
-  "4": ["2"],                                           // ผู้รับเหมา / ซ่อมบำรุง → กองกลางเท่านั้น
-  "5": ["1", "2", "3", "4", "5", "6", "7", "8"],       // สมัครงาน / สัมภาษณ์ → หลายหน่วยงาน
-  "7": ["2"],                                           // รับ-ส่งสินค้า → กองกลางเท่านั้น
+export const purposeDepartmentMap: Record<number, number[]> = {
+  1: [1, 2, 3, 4, 5, 8, 9],           // ติดต่อราชการ → หลายหน่วยงาน
+  2: [1, 3, 4, 5, 6, 7, 8, 9, 10],// ประชุม / สัมมนา → หลายหน่วยงาน
+  3: [2],                                           // ส่งเอกสาร / พัสดุ → กองกลางเท่านั้น
+  4: [2],                                           // ผู้รับเหมา / ซ่อมบำรุง → กองกลางเท่านั้น
+  5: [1, 2, 3, 4, 5, 6, 7, 8],       // สมัครงาน / สัมภาษณ์ → หลายหน่วยงาน
+  7: [2],                                           // รับ-ส่งสินค้า → กองกลางเท่านั้น
 };
 
 /** Generate mock slip data */

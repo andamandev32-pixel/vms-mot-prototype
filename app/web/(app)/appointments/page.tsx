@@ -216,8 +216,8 @@ export default function AppointmentsPage() {
 // ===== Appointment Row =====
 function AppointmentRow({ apt, onView }: { apt: Appointment; onView: () => void }) {
   const purposeConfig = visitPurposeConfigs.find(p => {
-    const typeMap: Record<string, string> = {
-      official: "1", meeting: "2", document: "3", contractor: "4", delivery: "7", other: "8"
+    const typeMap: Record<string, number> = {
+      official: 1, meeting: 2, document: 3, contractor: 4, delivery: 7, other: 8
     };
     return p.id === typeMap[apt.type];
   });
@@ -425,8 +425,8 @@ function CreateAppointmentDrawer({ open, onClose }: { open: boolean; onClose: ()
   const [lastName, setLastName] = useState("");
   const [company, setCompany] = useState("");
   const [phone, setPhone] = useState("");
-  const [selectedPurposeId, setSelectedPurposeId] = useState("");
-  const [selectedDeptId, setSelectedDeptId] = useState("");
+  const [selectedPurposeId, setSelectedPurposeId] = useState<number | null>(null);
+  const [selectedDeptId, setSelectedDeptId] = useState<number | null>(null);
   const [hostSearch, setHostSearch] = useState("");
   const [selectedHost, setSelectedHost] = useState<typeof staffMembers[0] | null>(null);
   const [entryMode, setEntryMode] = useState<EntryMode>("single");
@@ -589,9 +589,9 @@ function CreateAppointmentDrawer({ open, onClose }: { open: boolean; onClose: ()
     : [];
 
   // Handle purpose change — auto-select entry mode
-  const handlePurposeChange = (purposeId: string) => {
+  const handlePurposeChange = (purposeId: number | null) => {
     setSelectedPurposeId(purposeId);
-    setSelectedDeptId("");
+    setSelectedDeptId(null);
     const purpose = visitPurposeConfigs.find(p => p.id === purposeId);
     const modes = purpose?.allowedEntryModes ?? ["single"];
     if (modes.length === 1) {
@@ -673,8 +673,8 @@ function CreateAppointmentDrawer({ open, onClose }: { open: boolean; onClose: ()
                 <label className="block text-xs font-medium uppercase text-text-secondary mb-1">วัตถุประสงค์การมา</label>
                 <div className="relative">
                   <select
-                    value={selectedPurposeId}
-                    onChange={(e) => handlePurposeChange(e.target.value)}
+                    value={selectedPurposeId ?? ""}
+                    onChange={(e) => handlePurposeChange(e.target.value ? Number(e.target.value) : null)}
                     className="flex h-10 w-full rounded-md border border-border bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-primary appearance-none pr-8"
                   >
                     <option value="">-- เลือกวัตถุประสงค์ --</option>
@@ -689,8 +689,8 @@ function CreateAppointmentDrawer({ open, onClose }: { open: boolean; onClose: ()
                 <label className="block text-xs font-medium uppercase text-text-secondary mb-1">หน่วยงาน / สถานที่</label>
                 <div className="relative">
                   <select
-                    value={selectedDeptId}
-                    onChange={(e) => setSelectedDeptId(e.target.value)}
+                    value={selectedDeptId ?? ""}
+                    onChange={(e) => setSelectedDeptId(e.target.value ? Number(e.target.value) : null)}
                     disabled={!selectedPurposeId}
                     className="flex h-10 w-full rounded-md border border-border bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-primary appearance-none pr-8 disabled:opacity-50"
                   >

@@ -188,7 +188,7 @@ export default function KioskDemoPage() {
 
   // === Kiosk Config State ===
   const kioskList = useMemo(() => getKioskServicePoints(), []);
-  const [selectedKioskId, setSelectedKioskId] = useState<string>(kioskList[0]?.id ?? "1");
+  const [selectedKioskId, setSelectedKioskId] = useState<number>(kioskList[0]?.id ?? 1);
   const [showPinModal, setShowPinModal] = useState(false);
   const [showConfigPanel, setShowConfigPanel] = useState(false);
 
@@ -439,7 +439,7 @@ export default function KioskDemoPage() {
             </p>
             <select
               value={selectedKioskId}
-              onChange={(e) => { setSelectedKioskId(e.target.value); reset(); }}
+              onChange={(e) => { setSelectedKioskId(Number(e.target.value)); reset(); }}
               className="w-full px-2 py-1.5 text-[11px] rounded-lg border border-amber-200 bg-white text-[#1B2B5E] font-medium focus:border-amber-400 focus:outline-none"
             >
               {kioskList.map((sp) => (

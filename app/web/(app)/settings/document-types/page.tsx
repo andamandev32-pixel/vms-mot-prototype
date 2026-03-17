@@ -40,7 +40,7 @@ export default function DocumentTypesSettingsPage() {
   const totalActive = items.filter((d) => d.isActive).length;
 
   /* toggle active */
-  const toggleActive = (id: string) => {
+  const toggleActive = (id: number) => {
     setItems((prev) => prev.map((d) => (d.id === id ? { ...d, isActive: !d.isActive } : d)));
   };
 

@@ -61,7 +61,7 @@ export interface AppointmentData {
 
 /** Visit purpose selection */
 export interface VisitPurposeOption {
-  id: string;
+  id: number;
   name: string;
   nameEn: string;
   icon: string;

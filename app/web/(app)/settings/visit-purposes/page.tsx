@@ -82,21 +82,21 @@ export default function VisitPurposeSettingsPage() {
   const schema = getSchemaByPageId("visit-purposes")!;
   const flowData = getFlowByPageId("visit-purposes")!;
   const [configs, setConfigs] = useState<VisitPurposeConfig[]>(visitPurposeConfigs);
-  const [expandedRow, setExpandedRow] = useState<string | null>(null);
+  const [expandedRow, setExpandedRow] = useState<number | null>(null);
 
   /* drawer state */
   const [drawerMode, setDrawerMode] = useState<"add" | "edit" | null>(null);
   const [editingConfig, setEditingConfig] = useState<VisitPurposeConfig | null>(null);
-  const [deptDrawer, setDeptDrawer] = useState<{ configId: string; rule?: DepartmentRule } | null>(null);
+  const [deptDrawer, setDeptDrawer] = useState<{ configId: number; rule?: DepartmentRule } | null>(null);
 
   const openAdd = () => { setEditingConfig(null); setDrawerMode("add"); };
   const openEdit = (config: VisitPurposeConfig) => { setEditingConfig(config); setDrawerMode("edit"); };
   const closeDrawer = () => { setDrawerMode(null); setEditingConfig(null); };
-  const openAddDept = (configId: string) => setDeptDrawer({ configId });
-  const openEditDept = (configId: string, rule: DepartmentRule) => setDeptDrawer({ configId, rule });
+  const openAddDept = (configId: number) => setDeptDrawer({ configId });
+  const openEditDept = (configId: number, rule: DepartmentRule) => setDeptDrawer({ configId, rule });
   const closeDeptDrawer = () => setDeptDrawer(null);
 
-  const toggle = (id: string) =>
+  const toggle = (id: number) =>
     setExpandedRow((prev) => (prev === id ? null : id));
 
   /* stats */
@@ -566,16 +566,16 @@ function PurposeDrawer({
   config: VisitPurposeConfig | null;
   onClose: () => void;
 }) {
-  const defaultChannel: EntryChannelConfig = { allowedDocuments: ["1"], requirePhoto: false };
+  const defaultChannel: EntryChannelConfig = { allowedDocuments: [1], requirePhoto: false };
 
   const [name, setName] = useState("");
   const [nameEn, setNameEn] = useState("");
   const [icon, setIcon] = useState("📌");
   const [isActive, setIsActive] = useState(true);
   const [order, setOrder] = useState(1);
-  const [kioskDocs, setKioskDocs] = useState<string[]>(defaultChannel.allowedDocuments);
+  const [kioskDocs, setKioskDocs] = useState<number[]>(defaultChannel.allowedDocuments);
   const [kioskPhoto, setKioskPhoto] = useState(false);
-  const [counterDocs, setCounterDocs] = useState<string[]>(defaultChannel.allowedDocuments);
+  const [counterDocs, setCounterDocs] = useState<number[]>(defaultChannel.allowedDocuments);
   const [counterPhoto, setCounterPhoto] = useState(false);
   const [allowedModes, setAllowedModes] = useState<EntryMode[]>(["single"]);
 
@@ -599,15 +599,15 @@ function PurposeDrawer({
       setIcon("📌");
       setIsActive(true);
       setOrder(visitPurposeConfigs.length + 1);
-      setKioskDocs(["1"]);
+      setKioskDocs([1]);
       setKioskPhoto(false);
-      setCounterDocs(["1"]);
+      setCounterDocs([1]);
       setCounterPhoto(false);
       setAllowedModes(["single"]);
     }
   });
 
-  const toggleDoc = (list: string[], setList: (v: string[]) => void, docId: string) => {
+  const toggleDoc = (list: number[], setList: (v: number[]) => void, docId: number) => {
     setList(list.includes(docId) ? list.filter((d) => d !== docId) : [...list, docId]);
   };
 
@@ -858,16 +858,16 @@ function DeptRuleDrawer({
   data,
   onClose,
 }: {
-  data: { configId: string; rule?: DepartmentRule } | null;
+  data: { configId: number; rule?: DepartmentRule } | null;
   onClose: () => void;
 }) {
   const isEditing = !!data?.rule;
   const rule = data?.rule;
 
-  const [deptId, setDeptId] = useState(rule?.departmentId ?? "");
+  const [deptId, setDeptId] = useState(rule?.departmentId ?? 0);
   const [requirePersonName, setRequirePersonName] = useState(rule?.requirePersonName ?? false);
   const [requireApproval, setRequireApproval] = useState(rule?.requireApproval ?? false);
-  const [approverGroupId, setApproverGroupId] = useState(rule?.approverGroupId ?? "");
+  const [approverGroupId, setApproverGroupId] = useState(rule?.approverGroupId ?? 0);
   const [offerWifi, setOfferWifi] = useState(rule?.offerWifi ?? false);
   const [showOnLine, setShowOnLine] = useState(rule?.showOnLine ?? true);
   const [showOnKiosk, setShowOnKiosk] = useState(rule?.showOnKiosk ?? true);
@@ -879,16 +879,16 @@ function DeptRuleDrawer({
       setDeptId(rule.departmentId);
       setRequirePersonName(rule.requirePersonName);
       setRequireApproval(rule.requireApproval);
-      setApproverGroupId(rule.approverGroupId ?? "");
+      setApproverGroupId(rule.approverGroupId ?? 0);
       setOfferWifi(rule.offerWifi);
       setShowOnLine(rule.showOnLine);
       setShowOnKiosk(rule.showOnKiosk);
       setIsActive(rule.isActive);
     } else {
-      setDeptId("");
+      setDeptId(0);
       setRequirePersonName(false);
       setRequireApproval(false);
-      setApproverGroupId("");
+      setApproverGroupId(0);
       setOfferWifi(false);
       setShowOnLine(true);
       setShowOnKiosk(true);
@@ -911,7 +911,7 @@ function DeptRuleDrawer({
           <label className="block text-sm font-medium text-text-primary mb-1">แผนก <span className="text-error">*</span></label>
           <select
             value={deptId}
-            onChange={(e) => setDeptId(e.target.value)}
+            onChange={(e) => setDeptId(Number(e.target.value))}
             disabled={isEditing}
             className="w-full h-10 px-3 text-sm rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-50"
           >
@@ -954,7 +954,7 @@ function DeptRuleDrawer({
               <label className="block text-xs font-medium text-text-secondary mb-1">กลุ่มผู้อนุมัติ</label>
               <select
                 value={approverGroupId}
-                onChange={(e) => setApproverGroupId(e.target.value)}
+                onChange={(e) => setApproverGroupId(Number(e.target.value))}
                 className="w-full h-9 px-3 text-sm rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
               >
                 <option value="">— เลือกกลุ่มผู้อนุมัติ —</option>

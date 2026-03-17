@@ -14,7 +14,7 @@ interface SelectPurposeScreenProps {
   /** Purposes resolved from kiosk config (overrides default mockKioskPurposes) */
   purposes?: VisitPurposeOption[];
   /** Purpose→dept mapping resolved from kiosk config */
-  purposeDeptMap?: Record<string, string[]>;
+  purposeDeptMap?: Record<number, number[]>;
 }
 
 const activeDepartments = departments.filter((d) => d.isActive);
@@ -22,14 +22,14 @@ const activeDepartments = departments.filter((d) => d.isActive);
 export default function SelectPurposeScreen({ locale, onSelect, onBack, purposes, purposeDeptMap }: SelectPurposeScreenProps) {
   const [step, setStep] = useState<"purpose" | "department">("purpose");
   const [selectedPurpose, setSelectedPurpose] = useState<VisitPurposeOption | null>(null);
-  const [selectedDept, setSelectedDept] = useState<string | null>(null);
+  const [selectedDept, setSelectedDept] = useState<number | null>(null);
   const [floorFilter, setFloorFilter] = useState<string | null>(null);
 
   const resolvedPurposes = purposes ?? mockKioskPurposes;
   const resolvedDeptMap = purposeDeptMap ?? defaultPurposeDeptMap;
 
   // Get departments available for the selected purpose
-  const getDepartmentsForPurpose = useCallback((purposeId: string) => {
+  const getDepartmentsForPurpose = useCallback((purposeId: number) => {
     const deptIds = resolvedDeptMap[purposeId];
     if (!deptIds) return activeDepartments; // fallback: show all
     return activeDepartments.filter((d) => deptIds.includes(d.id));
@@ -47,7 +47,7 @@ export default function SelectPurposeScreen({ locale, onSelect, onBack, purposes
     }
   };
 
-  const handleSelectDept = (deptId: string) => {
+  const handleSelectDept = (deptId: number) => {
     setSelectedDept(deptId);
     if (selectedPurpose) {
       setTimeout(() => onSelect(selectedPurpose), 200);

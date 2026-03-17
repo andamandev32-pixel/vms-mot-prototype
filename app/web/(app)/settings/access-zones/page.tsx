@@ -80,8 +80,8 @@ export default function AccessZonesSettingsPage() {
   const schema = getSchemaByPageId("access-zones")!;
   const flowData = getFlowByPageId("access-zones")!;
   const [activeTab, setActiveTab] = useState<"groups" | "zones" | "mapping">("groups");
-  const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
-  const [expandedBuilding, setExpandedBuilding] = useState<string | null>(null);
+  const [expandedGroup, setExpandedGroup] = useState<number | null>(null);
+  const [expandedBuilding, setExpandedBuilding] = useState<number | null>(null);
 
   /* ── Stateful data ────────────────────────────── */
   const [accessGroups, setAccessGroups] = useState<AccessGroup[]>(initialAccessGroups);
@@ -98,10 +98,10 @@ export default function AccessZonesSettingsPage() {
   const [mappingDrawer, setMappingDrawer] = useState<{ mapping?: DepartmentAccessMapping } | null>(null);
 
   /* ── Delete confirm ─────────────────────────── */
-  const [deleteTarget, setDeleteTarget] = useState<{ type: "group" | "zone"; id: string; name: string } | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<{ type: "group" | "zone"; id: number; name: string } | null>(null);
 
-  const toggleGroup = (id: string) => setExpandedGroup((p) => (p === id ? null : id));
-  const toggleBuilding = (id: string) => setExpandedBuilding((p) => (p === id ? null : id));
+  const toggleGroup = (id: number) => setExpandedGroup((p) => (p === id ? null : id));
+  const toggleBuilding = (id: number) => setExpandedBuilding((p) => (p === id ? null : id));
 
   /* ── CRUD handlers ──────────────────────────── */
   const handleSaveGroup = useCallback((group: AccessGroup, isEdit: boolean) => {
@@ -810,7 +810,7 @@ function AccessGroupDrawer({
   const [hikvisionGroupId, setHikvisionGroupId] = useState(group?.hikvisionGroupId ?? "");
   const [qrCodePrefix, setQrCodePrefix] = useState(group?.qrCodePrefix ?? "eVMS-");
   const [validityMinutes, setValidityMinutes] = useState(group?.validityMinutes ?? 60);
-  const [selectedZoneIds, setSelectedZoneIds] = useState<string[]>(group?.zoneIds ?? []);
+  const [selectedZoneIds, setSelectedZoneIds] = useState<number[]>(group?.zoneIds ?? []);
   const [scheduleDays, setScheduleDays] = useState<number[]>(group?.schedule.daysOfWeek ?? [1, 2, 3, 4, 5]);
   const [startTime, setStartTime] = useState(group?.schedule.startTime ?? "08:00");
   const [endTime, setEndTime] = useState(group?.schedule.endTime ?? "17:00");
@@ -830,7 +830,7 @@ function AccessGroupDrawer({
   const toggleDay = (d: number) =>
     setScheduleDays((prev) => prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d].sort());
 
-  const toggleZone = (zid: string) =>
+  const toggleZone = (zid: number) =>
     setSelectedZoneIds((prev) => prev.includes(zid) ? prev.filter((x) => x !== zid) : [...prev, zid]);
 
   return (
@@ -958,7 +958,7 @@ function AccessGroupDrawer({
           variant="primary"
           onClick={() => {
             const savedGroup: AccessGroup = {
-              id: group?.id ?? `ag-${Date.now()}`,
+              id: group?.id ?? Date.now(),
               name,
               nameEn,
               description,
@@ -1005,8 +1005,8 @@ function ZoneDrawer({
 
   const [name, setName] = useState(zone?.name ?? "");
   const [nameEn, setNameEn] = useState(zone?.nameEn ?? "");
-  const [floorId, setFloorId] = useState(zone?.floorId ?? "");
-  const [buildingId, setBuildingId] = useState(zone?.buildingId ?? allBuildings[0]?.id ?? "");
+  const [floorId, setFloorId] = useState(zone?.floorId ?? 0);
+  const [buildingId, setBuildingId] = useState(zone?.buildingId ?? allBuildings[0]?.id ?? 0);
   const [type, setType] = useState<AccessZoneType>(zone?.type ?? "office");
   const [hikvisionDoorId, setHikvisionDoorId] = useState(zone?.hikvisionDoorId ?? "");
   const [isActive, setIsActive] = useState(zone?.isActive ?? true);
@@ -1042,14 +1042,14 @@ function ZoneDrawer({
 
         <div>
           <label className="block text-sm font-medium text-text-primary mb-1">อาคาร</label>
-          <select value={buildingId} onChange={(e) => { setBuildingId(e.target.value); setFloorId(""); }} className="w-full h-10 px-3 text-sm rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-primary/20">
+          <select value={buildingId} onChange={(e) => { setBuildingId(Number(e.target.value)); setFloorId(0); }} className="w-full h-10 px-3 text-sm rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-primary/20">
             {allBuildings.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
           </select>
         </div>
 
         <div>
           <label className="block text-sm font-medium text-text-primary mb-1">ชั้น <span className="text-error">*</span></label>
-          <select value={floorId} onChange={(e) => setFloorId(e.target.value)} className="w-full h-10 px-3 text-sm rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-primary/20">
+          <select value={floorId} onChange={(e) => setFloorId(Number(e.target.value))} className="w-full h-10 px-3 text-sm rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-primary/20">
             <option value="">— เลือกชั้น —</option>
             {bldFloors.map((f) => <option key={f.id} value={f.id}>{f.name}</option>)}
           </select>
@@ -1099,7 +1099,7 @@ function ZoneDrawer({
           variant="primary"
           onClick={() => {
             const savedZone: AccessZone = {
-              id: zone?.id ?? `zone-${Date.now()}`,
+              id: zone?.id ?? Date.now(),
               name,
               nameEn,
               floorId,
@@ -1136,8 +1136,8 @@ function MappingDrawer({
   const mapping = data?.mapping;
   const dept = departments.find((d) => d.id === mapping?.departmentId);
 
-  const [defaultGroupId, setDefaultGroupId] = useState(mapping?.defaultAccessGroupId ?? "");
-  const [additionalIds, setAdditionalIds] = useState<string[]>(mapping?.additionalGroupIds ?? []);
+  const [defaultGroupId, setDefaultGroupId] = useState(mapping?.defaultAccessGroupId ?? 0);
+  const [additionalIds, setAdditionalIds] = useState<number[]>(mapping?.additionalGroupIds ?? []);
 
   useState(() => {
     if (mapping) {
@@ -1146,7 +1146,7 @@ function MappingDrawer({
     }
   });
 
-  const toggleAdditional = (gid: string) =>
+  const toggleAdditional = (gid: number) =>
     setAdditionalIds((prev) => prev.includes(gid) ? prev.filter((x) => x !== gid) : [...prev, gid]);
 
   return (
@@ -1166,7 +1166,7 @@ function MappingDrawer({
 
         <div>
           <label className="block text-sm font-medium text-text-primary mb-1">Access Group หลัก <span className="text-error">*</span></label>
-          <select value={defaultGroupId} onChange={(e) => setDefaultGroupId(e.target.value)} className="w-full h-10 px-3 text-sm rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-primary/20">
+          <select value={defaultGroupId} onChange={(e) => setDefaultGroupId(Number(e.target.value))} className="w-full h-10 px-3 text-sm rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-primary/20">
             <option value="">— เลือก Access Group หลัก —</option>
             {allGroups.map((g) => (
               <option key={g.id} value={g.id}>{g.name} ({g.nameEn})</option>
@@ -1225,6 +1225,7 @@ function MappingDrawer({
           onClick={() => {
             if (mapping) {
               onSave({
+                id: mapping.id,
                 departmentId: mapping.departmentId,
                 defaultAccessGroupId: defaultGroupId,
                 additionalGroupIds: additionalIds,

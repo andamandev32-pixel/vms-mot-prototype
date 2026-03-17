@@ -63,7 +63,7 @@ export default function NotificationTemplatesSettingsPage() {
   const flowData = getFlowByPageId("notification-templates")!;
   const [items, setItems] = useState<NotificationTemplate[]>(notificationTemplates);
   const [filterChannel, setFilterChannel] = useState<"all" | NotificationChannel>("all");
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<number | null>(null);
   const [drawer, setDrawer] = useState<{ mode: "add" | "edit"; item?: NotificationTemplate } | null>(null);
 
   const filtered = filterChannel === "all" ? items : items.filter((t) => t.channel === filterChannel);
@@ -80,7 +80,7 @@ export default function NotificationTemplatesSettingsPage() {
     { label: "ใช้งานอยู่", value: activeCount, icon: <Bell size={20} />, color: "text-accent-600", bg: "bg-accent-50" },
   ];
 
-  const toggleActive = (id: string) => {
+  const toggleActive = (id: number) => {
     setItems((prev) => prev.map((t) => (t.id === id ? { ...t, isActive: !t.isActive } : t)));
   };
 

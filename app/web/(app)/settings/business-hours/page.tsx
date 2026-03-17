@@ -72,7 +72,7 @@ export default function BusinessHoursSettingsPage() {
     { label: "กฎทั้งหมด", value: items.length, icon: <Calendar size={20} />, color: "text-accent-600", bg: "bg-accent-50" },
   ];
 
-  const toggleActive = (id: string) => {
+  const toggleActive = (id: number) => {
     setItems((prev) => prev.map((r) => (r.id === id ? { ...r, isActive: !r.isActive } : r)));
   };
 
