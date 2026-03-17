@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ChevronDown, ChevronRight, Code, ArrowRight, Zap, Monitor, CreditCard, Keyboard, FileText, Scan, Fingerprint, Camera, Printer, Users, Shield } from "lucide-react";
 import { cn } from "@/lib/utils";
+import CounterApiSection from "@/components/counter/CounterApiSection";
 
 // ── Counter State Types ──
 export type CounterState =
@@ -291,7 +292,7 @@ interface CounterStatePanelProps {
 }
 
 export default function CounterStatePanel({ currentState, checkinMode, stateData }: CounterStatePanelProps) {
-  const [openSections, setOpenSections] = useState<Set<string>>(new Set(["state", "transitions", "devices", "conditions"]));
+  const [openSections, setOpenSections] = useState<Set<string>>(new Set(["state", "transitions", "devices", "conditions", "api"]));
 
   const info = COUNTER_STATE_MAP[currentState];
   const stateIndex = COUNTER_STATE_ORDER.indexOf(currentState);
@@ -419,6 +420,11 @@ export default function CounterStatePanel({ currentState, checkinMode, stateData
           ) : (
             <p className="text-gray-600 italic">No conditions</p>
           )}
+        </Section>
+
+        {/* 🔌 API Endpoint */}
+        <Section title="🔌 API Endpoint" id="api" open={openSections.has("api")} onToggle={toggle}>
+          <CounterApiSection stateType={currentState} />
         </Section>
 
         {/* Flutter / BLoC Hint */}

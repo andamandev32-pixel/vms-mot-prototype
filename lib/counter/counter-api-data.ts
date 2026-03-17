@@ -1,0 +1,573 @@
+/**
+ * Counter API Specification Data — mapped to each CounterState
+ *
+ * Flutter dev: ใช้ข้อมูลนี้เป็น reference สำหรับ API integration
+ * แต่ละ state จะมี API endpoint, request/response schema, tables ที่ใช้
+ */
+
+import type { CounterState } from "@/components/counter/CounterStatePanel";
+
+// ===== TYPES =====
+
+export interface CounterApiEndpoint {
+  method: "GET" | "POST";
+  path: string;
+  summary: string;
+  summaryEn: string;
+  contentType?: string;
+  tables: string[];
+  request?: Record<string, unknown>;
+  response: Record<string, unknown>;
+  errorResponse?: Record<string, unknown>;
+  notes?: string[];
+  notesEn?: string[];
+}
+
+export interface CounterApiSpec {
+  stateType: CounterState;
+  hasApi: boolean;
+  noApiReason?: string;
+  noApiReasonEn?: string;
+  endpoints: CounterApiEndpoint[];
+}
+
+// ===== DATA =====
+
+const apiSpecs: CounterApiSpec[] = [
+  // ─── COUNTER_SELECTION ───
+  {
+    stateType: "COUNTER_SELECTION",
+    hasApi: true,
+    endpoints: [
+      {
+        method: "GET",
+        path: "/counter/service-points",
+        summary: "โหลดรายการจุดบริการ Counter ที่ว่าง",
+        summaryEn: "Load available counter service points",
+        tables: ["service_points", "business_hours_rules", "service_point_purposes", "service_point_documents"],
+        response: {
+          servicePoints: [
+            {
+              id: 3,
+              name: "เคาน์เตอร์ รปภ. ประตู 1",
+              nameEn: "Security Counter Gate 1",
+              type: "counter",
+              status: "online",
+              location: "ชั้น 1 ประตูทางเข้าหลัก",
+              currentOfficer: null,
+              allowedPurposeIds: [1, 2, 3, 4, 5, 6, 7],
+              allowedDocumentIds: [1, 2, 5],
+            },
+          ],
+        },
+        notes: ["กรอง type=counter, status=online", "แสดงเจ้าหน้าที่ที่ประจำจุดอยู่"],
+        notesEn: ["Filter type=counter, status=online", "Show currently assigned officer"],
+      },
+      {
+        method: "POST",
+        path: "/counter/session",
+        summary: "เจ้าหน้าที่เข้าประจำจุด Counter",
+        summaryEn: "Officer starts counter session",
+        tables: ["service_points", "staff"],
+        request: {
+          servicePointId: 3,
+          officerPin: "1234",
+          staffId: 8,
+        },
+        response: {
+          sessionId: "CTR-20260315-003",
+          servicePoint: { id: 3, name: "เคาน์เตอร์ รปภ. ประตู 1" },
+          officer: { id: 8, name: "สิบตำรวจโท วีรชัย แสนดี", role: "security_guard" },
+          config: {
+            allowedPurposeIds: [1, 2, 3, 4, 5, 6, 7],
+            allowedDocumentIds: [1, 2, 5],
+            supportedInputMethods: ["card-reader", "passport-reader", "manual", "qr-scan", "thai-id-app"],
+          },
+          token: "<officer_session_token>",
+        },
+        notes: ["PIN ยืนยันตัวตนเจ้าหน้าที่", "สร้าง session token สำหรับ API ต่อไป"],
+        notesEn: ["PIN authenticates officer", "Creates session token for subsequent API calls"],
+      },
+    ],
+  },
+
+  // ─── IDLE ───
+  {
+    stateType: "IDLE",
+    hasApi: true,
+    endpoints: [
+      {
+        method: "GET",
+        path: "/counter/dashboard",
+        summary: "โหลดสรุปสถิติประจำวัน + คิว",
+        summaryEn: "Load daily summary stats + queue",
+        tables: ["visit_records", "visitors", "service_points"],
+        response: {
+          stats: {
+            todayTotal: 45,
+            walkin: 28,
+            appointment: 17,
+            checkedOut: 30,
+            currentlyInside: 15,
+            pendingQueue: 3,
+          },
+          recentVisitors: [
+            { visitId: 41, visitorName: "นายประเสริฐ มั่นคง", purpose: "ติดต่อราชการ", checkinAt: "2026-03-15T08:45:00+07:00" },
+          ],
+          upcomingAppointments: [
+            { bookingCode: "eVMS-20260315-0042", visitorName: "นายสมชาย ใจดี", timeSlot: "10:00-11:30", status: "approved" },
+          ],
+        },
+        notes: ["Refresh ทุกครั้งที่กลับ IDLE", "Polling ทุก 30 วินาที"],
+        notesEn: ["Refresh on every IDLE return", "Poll every 30 seconds"],
+      },
+    ],
+  },
+
+  // ─── WALKIN_IDENTITY ───
+  {
+    stateType: "WALKIN_IDENTITY",
+    hasApi: true,
+    endpoints: [
+      {
+        method: "POST",
+        path: "/counter/identity/card-read",
+        summary: "อ่านบัตร + เช็ค blocklist + upsert visitor",
+        summaryEn: "Read card + check blocklist + upsert visitor",
+        tables: ["visitors", "blocklist", "visit_records"],
+        request: {
+          inputMethod: "card-reader",
+          documentType: "thai-id-card",
+          idNumber: "1234567890123",
+          fullNameTh: "นายสมชาย ใจดี",
+          fullNameEn: "MR. SOMCHAI JAIDEE",
+          dateOfBirth: "1985-06-15",
+          photo: "<base64>",
+          servicePointId: 3,
+        },
+        response: {
+          status: "ok",
+          visitorId: 15,
+          isNewVisitor: false,
+          isBlocked: false,
+          existingAppointments: [],
+          previousVisitCount: 3,
+          verifiedData: { fullNameTh: "นายสมชาย ใจดี", fullNameEn: "MR. SOMCHAI JAIDEE", idNumber: "1-2345-67890-12-3" },
+        },
+        errorResponse: {
+          status: "blocked",
+          isBlocked: true,
+          blockReason: "ประพฤติไม่เหมาะสม",
+          message: "บุคคลนี้ถูกระงับการเข้าพื้นที่",
+        },
+        notes: ["รองรับ card-reader, passport-reader, qr-scan, thai-id-app", "Upsert visitor ถ้าเป็นคนใหม่", "ถ้ามีนัดหมาย → แนะนำ appointment flow"],
+        notesEn: ["Supports card-reader, passport-reader, qr-scan, thai-id-app", "Upsert visitor if new", "If has appointment → suggest appointment flow"],
+      },
+      {
+        method: "POST",
+        path: "/counter/identity/manual",
+        summary: "กรอกข้อมูลด้วยมือ (manual entry)",
+        summaryEn: "Manual identity input by officer",
+        tables: ["visitors", "blocklist"],
+        request: {
+          inputMethod: "manual",
+          documentType: "thai-id-card",
+          idNumber: "1234567890123",
+          titleTh: "นาย",
+          firstNameTh: "สมชาย",
+          lastNameTh: "ใจดี",
+          phone: "081-234-5678",
+          servicePointId: 3,
+          officerNote: "บัตรหมดอายุ — ใช้ใบขับขี่ยืนยัน",
+        },
+        response: {
+          status: "ok",
+          visitorId: 16,
+          isNewVisitor: true,
+          isBlocked: false,
+          verifiedData: { fullNameTh: "นายสมชาย ใจดี", idNumber: "1-2345-67890-12-3" },
+        },
+        notes: ["ใช้เมื่อเครื่องอ่านบัตรเสีย หรือเอกสารอื่น", "officerNote บันทึกเหตุผลที่ใช้ manual"],
+        notesEn: ["Use when card reader broken or alternative documents", "officerNote records reason for manual entry"],
+      },
+    ],
+  },
+
+  // ─── WALKIN_PURPOSE ───
+  {
+    stateType: "WALKIN_PURPOSE",
+    hasApi: true,
+    endpoints: [
+      {
+        method: "GET",
+        path: "/counter/purposes",
+        summary: "ดึงวัตถุประสงค์ที่ Counter รองรับ",
+        summaryEn: "Get visit purposes for this counter",
+        tables: ["visit_purposes", "visit_purpose_department_rules", "service_point_purposes"],
+        response: {
+          purposes: [
+            { id: 1, name: "ติดต่อราชการ", nameEn: "Official Business", icon: "🏛️", allowedDepartmentIds: [1, 2, 3, 4, 5, 8, 9] },
+            { id: 2, name: "ประชุม / สัมมนา", nameEn: "Meeting / Seminar", icon: "📋", allowedDepartmentIds: [1, 3, 4, 9] },
+            { id: 3, name: "ส่งเอกสาร / พัสดุ", nameEn: "Document Delivery", icon: "📄", allowedDepartmentIds: [1, 2, 4] },
+          ],
+        },
+        notes: ["กรองตาม allowedPurposeIds ของ ServicePoint", "Cache ได้ — refresh ตอน login"],
+        notesEn: ["Filter by ServicePoint allowedPurposeIds", "Cacheable — refresh on login"],
+      },
+    ],
+  },
+
+  // ─── WALKIN_DEPARTMENT ───
+  {
+    stateType: "WALKIN_DEPARTMENT",
+    hasApi: true,
+    endpoints: [
+      {
+        method: "GET",
+        path: "/counter/departments",
+        summary: "ดึงหน่วยงานตาม purpose ที่เลือก",
+        summaryEn: "Get departments filtered by selected purpose",
+        tables: ["departments", "floors", "floor_departments", "visit_purpose_department_rules"],
+        response: {
+          departments: [
+            { id: 1, name: "สำนักงานปลัดกระทรวง", nameEn: "Office of the Permanent Secretary", floor: "ชั้น 3", requireApproval: true, offerWifi: true },
+            { id: 2, name: "กองกลาง", nameEn: "General Administration Division", floor: "ชั้น 2", requireApproval: true, offerWifi: true },
+          ],
+          floors: [
+            { floor: "ชั้น 2", count: 1 },
+            { floor: "ชั้น 3", count: 1 },
+          ],
+        },
+        notes: ["กรองตาม purposeDepartmentMap[purposeId]", "Auto-select ถ้ามี 1 หน่วยงาน", "รองรับ filter ตามชั้น"],
+        notesEn: ["Filter by purposeDepartmentMap[purposeId]", "Auto-select if only 1 department", "Supports floor tab filtering"],
+      },
+    ],
+  },
+
+  // ─── WALKIN_CONTACT ───
+  {
+    stateType: "WALKIN_CONTACT",
+    hasApi: false,
+    noApiReason: "กรอกข้อมูลในฟอร์ม — เก็บไว้ใน state (ชื่อผู้ที่มาพบ, เบอร์โทร เป็น optional)",
+    noApiReasonEn: "Form input stored in local state — host contact name & phone are optional fields",
+    endpoints: [],
+  },
+
+  // ─── WALKIN_PHOTO ───
+  {
+    stateType: "WALKIN_PHOTO",
+    hasApi: true,
+    endpoints: [
+      {
+        method: "POST",
+        path: "/counter/visitor-photo",
+        summary: "อัปโหลดภาพถ่ายผู้เยี่ยม (Webcam)",
+        summaryEn: "Upload visitor photo from webcam",
+        contentType: "multipart/form-data",
+        tables: ["visit_records"],
+        request: {
+          photo: "<binary_jpeg>",
+          visitorId: 15,
+          servicePointId: 3,
+          capturedBy: "officer",
+        },
+        response: {
+          photoPath: "/photos/2026/03/15/visitor-15-counter.jpg",
+          faceDetected: true,
+          quality: "good",
+        },
+        notes: ["Compress JPEG 80% ก่อนอัปโหลด", "Skip ได้ถ้าไม่มีกล้อง"],
+        notesEn: ["Compress JPEG to 80% before upload", "Can skip if no webcam available"],
+      },
+    ],
+  },
+
+  // ─── WALKIN_REVIEW ───
+  {
+    stateType: "WALKIN_REVIEW",
+    hasApi: true,
+    endpoints: [
+      {
+        method: "POST",
+        path: "/counter/walkin/checkin",
+        summary: "สร้าง visit_record สำหรับ walk-in (API หลัก)",
+        summaryEn: "Create visit record for walk-in (main API)",
+        tables: ["visit_records", "access_groups", "access_group_zones", "department_access_mappings", "visit_slip_templates", "visit_slip_sections", "visit_slip_fields", "purpose_slip_mappings", "visitors"],
+        request: {
+          type: "walkin",
+          visitorId: 15,
+          servicePointId: 3,
+          visitPurposeId: 1,
+          departmentId: 1,
+          hostContactName: "คุณสมหวัง สุขสมบูรณ์",
+          hostPhone: "02-123-4567 ต่อ 1234",
+          idMethod: "card-reader",
+          documentType: "thai-id-card",
+          facePhotoPath: "/photos/.../face.jpg",
+          officerId: 8,
+        },
+        response: {
+          visitRecord: { id: 42, bookingCode: "eVMS-20260315-0099", status: "checked-in", checkinBy: "officer" },
+          accessControl: {
+            accessGroupName: "ติดต่อราชการ ชั้น 2-5",
+            qrCodeData: "eVMS-OFA-20260315-0099-A2B3C4",
+            allowedZones: ["ล็อบบี้ ชั้น 1", "สำนักงานปลัด ชั้น 3"],
+            hikvisionSynced: true,
+          },
+          badge: { badgeNumber: "V-20260315-0099", askPrint: true },
+          notification: { hostNotified: true, channel: "line" },
+        },
+        errorResponse: {
+          error: "DUPLICATE_ACTIVE_VISIT",
+          message: "ผู้เยี่ยมนี้ยังเช็คอินอยู่ — กรุณาเช็คเอาท์ก่อน",
+        },
+        notes: ["API หลัก — รวม transaction ทั้งหมด", "Hikvision sync ทำ async ฝั่ง backend", "แจ้ง host ผ่าน LINE/Email อัตโนมัติ"],
+        notesEn: ["Main API — combines all transactions", "Hikvision sync is async on backend", "Auto-notify host via LINE/Email"],
+      },
+    ],
+  },
+
+  // ─── APPOINTMENT_SEARCH ───
+  {
+    stateType: "APPOINTMENT_SEARCH",
+    hasApi: true,
+    endpoints: [
+      {
+        method: "GET",
+        path: "/counter/appointments/today",
+        summary: "ค้นหานัดหมายวันนี้",
+        summaryEn: "Search today's appointments",
+        tables: ["visit_records", "visitors", "staff", "departments", "visit_purposes"],
+        response: {
+          appointments: [
+            {
+              id: 42,
+              bookingCode: "eVMS-20260315-0042",
+              visitor: { name: "นายสมชาย ใจดี", idNumber: "1-2345-XXXXX-XX-3" },
+              host: { name: "นางสาวพิมพา เกษมศรี", department: "กองการต่างประเทศ", floor: "ชั้น 5" },
+              purpose: "ประชุม / สัมมนา",
+              timeSlot: "10:00-11:30",
+              status: "approved",
+            },
+          ],
+          total: 1,
+        },
+        notes: ["ค้นจาก keyword: ชื่อ, เลขบัตร, booking code, ชื่อ host", "กรอง status=approved,confirmed"],
+        notesEn: ["Search by keyword: name, ID, booking code, host name", "Filter status=approved,confirmed"],
+      },
+    ],
+  },
+
+  // ─── APPOINTMENT_IDENTITY ───
+  {
+    stateType: "APPOINTMENT_IDENTITY",
+    hasApi: true,
+    endpoints: [
+      {
+        method: "POST",
+        path: "/counter/appointments/{id}/verify",
+        summary: "ยืนยันตัวตนกับนัดหมาย",
+        summaryEn: "Verify identity against appointment",
+        tables: ["visitors", "visit_records", "blocklist"],
+        request: {
+          documentType: "thai-id-card",
+          idNumber: "1234567890123",
+          inputMethod: "card-reader",
+          fullNameTh: "นายสมชาย ใจดี",
+          servicePointId: 3,
+        },
+        response: {
+          status: "matched",
+          visitorId: 15,
+          isBlocked: false,
+          matchResult: { nameMatch: true, idMatch: true, confidence: 1.0 },
+          verifiedData: { fullNameTh: "นายสมชาย ใจดี", fullNameEn: "SOMCHAI JAIDEE", photo: "<url>" },
+        },
+        errorResponse: {
+          status: "mismatch",
+          matchResult: { nameMatch: false, idMatch: false, confidence: 0.0 },
+          message: "ข้อมูลบัตรไม่ตรงกับผู้จองนัดหมาย",
+        },
+        notes: ["เลขบัตรต้องตรงกับนัดหมาย", "เช็ค blocklist ก่อน match", "นัดหมายต้อง status = confirmed/approved"],
+        notesEn: ["ID number must match appointment", "Check blocklist before matching", "Appointment must be confirmed/approved"],
+      },
+    ],
+  },
+
+  // ─── APPOINTMENT_REVIEW ───
+  {
+    stateType: "APPOINTMENT_REVIEW",
+    hasApi: true,
+    endpoints: [
+      {
+        method: "POST",
+        path: "/counter/appointments/{id}/checkin",
+        summary: "เช็คอินจากนัดหมาย",
+        summaryEn: "Check-in from appointment",
+        tables: ["visit_records", "access_groups", "access_group_zones", "department_access_mappings", "visit_slip_templates", "purpose_slip_mappings"],
+        request: {
+          visitorId: 15,
+          servicePointId: 3,
+          idMethod: "card-reader",
+          documentType: "thai-id-card",
+          facePhotoPath: "/photos/.../face.jpg",
+          officerId: 8,
+        },
+        response: {
+          visitRecord: { id: 42, bookingCode: "eVMS-20260315-0042", status: "checked-in", checkinBy: "officer" },
+          accessControl: {
+            accessGroupName: "ประชุม ชั้น 5",
+            qrCodeData: "eVMS-OFA-20260315-0042-X5Y6Z7",
+            allowedZones: ["ล็อบบี้ ชั้น 1", "กองการต่างประเทศ ชั้น 5"],
+            hikvisionSynced: true,
+          },
+          badge: { badgeNumber: "V-20260315-0042", askPrint: true },
+          notification: { hostNotified: true, channel: "line", notifiedTo: "นางสาวพิมพา เกษมศรี" },
+        },
+        notes: ["Update appointment status → checked-in", "แจ้ง host อัตโนมัติ"],
+        notesEn: ["Update appointment status → checked-in", "Auto-notify host"],
+      },
+    ],
+  },
+
+  // ─── CHECKOUT_SCAN ───
+  {
+    stateType: "CHECKOUT_SCAN",
+    hasApi: true,
+    endpoints: [
+      {
+        method: "GET",
+        path: "/counter/visits/active/{badgeCode}",
+        summary: "ค้นหาผู้เยี่ยมจาก badge/QR",
+        summaryEn: "Look up active visitor by badge/QR code",
+        tables: ["visit_records", "visitors", "departments", "visit_purposes"],
+        response: {
+          found: true,
+          visit: {
+            id: 42,
+            bookingCode: "eVMS-20260315-0099",
+            badgeNumber: "V-20260315-0099",
+            visitor: { name: "นายสมชาย ใจดี", idNumber: "1-2345-XXXXX-XX-3", photo: "<url>" },
+            purpose: "ติดต่อราชการ",
+            department: "สำนักงานปลัด",
+            floor: "ชั้น 3",
+            checkinAt: "2026-03-15T09:05:00+07:00",
+            duration: "2 ชั่วโมง 30 นาที",
+            status: "checked-in",
+          },
+        },
+        errorResponse: {
+          found: false,
+          reason: "not-found",
+          message: "ไม่พบข้อมูลผู้เยี่ยมจากรหัสนี้",
+        },
+        notes: ["สแกน Barcode/QR จากบัตรผู้เยี่ยม", "แสดง duration ตั้งแต่เช็คอิน"],
+        notesEn: ["Scan barcode/QR from visitor badge", "Show duration since check-in"],
+      },
+    ],
+  },
+
+  // ─── CHECKOUT_CONFIRM ───
+  {
+    stateType: "CHECKOUT_CONFIRM",
+    hasApi: true,
+    endpoints: [
+      {
+        method: "POST",
+        path: "/counter/visits/{id}/checkout",
+        summary: "ยืนยัน checkout",
+        summaryEn: "Confirm visitor checkout",
+        tables: ["visit_records", "access_groups"],
+        request: {
+          officerId: 8,
+          returnedBadge: true,
+          returnedItems: ["บัตรผู้เยี่ยม"],
+          officerNote: null,
+        },
+        response: {
+          success: true,
+          visit: {
+            id: 42,
+            status: "checked-out",
+            checkoutAt: "2026-03-15T11:35:00+07:00",
+            checkoutBy: "officer",
+            totalDuration: "2 ชั่วโมง 30 นาที",
+          },
+          accessRevoked: true,
+        },
+        notes: ["ลบ access จาก Hikvision async", "บันทึกการคืนบัตร/อุปกรณ์"],
+        notesEn: ["Revoke Hikvision access async", "Record badge/item returns"],
+      },
+    ],
+  },
+
+  // ─── PRINT_SLIP ───
+  {
+    stateType: "PRINT_SLIP",
+    hasApi: true,
+    endpoints: [
+      {
+        method: "POST",
+        path: "/counter/badge/print",
+        summary: "พิมพ์บัตรผู้เยี่ยม + ดึง slip layout",
+        summaryEn: "Print visitor badge + get slip layout",
+        tables: ["visit_slip_templates", "visit_slip_sections", "visit_slip_fields", "purpose_slip_mappings", "visit_records"],
+        request: {
+          visitRecordId: 42,
+          servicePointId: 3,
+          printType: "badge",
+          copies: 1,
+        },
+        response: {
+          printJob: { id: "PRT-20260315-042", status: "sent" },
+          badgeData: {
+            header: "กระทรวงการท่องเที่ยวและกีฬา",
+            visitorName: "นายสมชาย ใจดี",
+            badgeNumber: "V-20260315-0099",
+            purpose: "ติดต่อราชการ",
+            department: "สำนักงานปลัด ชั้น 3",
+            qrCode: "eVMS-OFA-20260315-0099-A2B3C4",
+            footer: "กรุณาคืนบัตรผู้เยี่ยมก่อนออก",
+          },
+        },
+        notes: ["เครื่องพิมพ์ต้อง connected", "ใช้ slipConfig จาก ServicePoint", "Thermal printer: esc_pos_printer / sunmi_printer"],
+        notesEn: ["Printer must be connected", "Use slipConfig from ServicePoint", "Thermal: esc_pos_printer / sunmi_printer"],
+      },
+    ],
+  },
+
+  // ─── SUCCESS ───
+  {
+    stateType: "SUCCESS",
+    hasApi: true,
+    endpoints: [
+      {
+        method: "GET",
+        path: "/counter/visits/{id}/summary",
+        summary: "ดึงสรุปข้อมูล check-in สำเร็จ",
+        summaryEn: "Get check-in success summary",
+        tables: ["visit_records", "visitors", "departments", "visit_purposes"],
+        response: {
+          visit: { id: 42, bookingCode: "eVMS-20260315-0099", badgeNumber: "V-20260315-0099", status: "checked-in", type: "walkin" },
+          visitor: { name: "นายสมชาย ใจดี", nameEn: "SOMCHAI JAIDEE" },
+          destination: { purpose: "ติดต่อราชการ", department: "สำนักงานปลัด", floor: "ชั้น 3" },
+          accessControl: { qrCodeData: "eVMS-OFA-20260315-0099-A2B3C4", validUntil: "17:00 น." },
+          canReprint: true,
+        },
+        notes: ["แสดง overlay สำเร็จ + ข้อมูลบัตร", "REPRINT → กลับ PRINT_SLIP", "CLOSE → กลับ IDLE"],
+        notesEn: ["Show success overlay + badge info", "REPRINT → back to PRINT_SLIP", "CLOSE → back to IDLE"],
+      },
+    ],
+  },
+];
+
+// ===== LOOKUP =====
+
+const specMap = new Map<CounterState, CounterApiSpec>();
+for (const spec of apiSpecs) {
+  specMap.set(spec.stateType, spec);
+}
+
+export function getCounterApiSpec(state: CounterState): CounterApiSpec | undefined {
+  return specMap.get(state);
+}
