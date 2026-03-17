@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import type { KioskState, StepInfo, KioskLocale } from "@/lib/kiosk/kiosk-types";
 import { getActiveDevice, deviceInfoList } from "@/lib/kiosk/kiosk-device-map";
 import { getAudioCue } from "@/lib/kiosk/kiosk-audio-config";
+import ApiSection from "@/components/kiosk/ApiSection";
 
 interface StatePanelProps {
   state: KioskState;
@@ -143,6 +144,11 @@ export default function StatePanel({ state, stepInfo, locale, currentStepIndex, 
           ) : (
             <p className="text-gray-600 italic">No conditions</p>
           )}
+        </Section>
+
+        {/* API Endpoint */}
+        <Section title="🔌 API Endpoint" id="api" open={openSections.has("api")} onToggle={toggle}>
+          <ApiSection stateType={state.type} locale={locale} />
         </Section>
 
         {/* Flutter Hint */}
