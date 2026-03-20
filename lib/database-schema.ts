@@ -1151,12 +1151,17 @@ const pdpaConsentSchema: PageSchema = {
         { name: "text_th", type: "TEXT", nullable: false, comment: "เนื้อหา TH ณ เวอร์ชันนั้น" },
         { name: "text_en", type: "TEXT", nullable: false, comment: "เนื้อหา EN ณ เวอร์ชันนั้น" },
         { name: "retention_days", type: "INT", nullable: false, comment: "ระยะเวลาเก็บข้อมูล ณ เวอร์ชันนั้น" },
+        { name: "require_scroll", type: "BOOLEAN", nullable: false, comment: "ต้องเลื่อนอ่านจบก่อนยอมรับ", defaultValue: "true" },
+        { name: "is_active", type: "BOOLEAN", nullable: false, comment: "เวอร์ชันที่ใช้งานอยู่ (active ได้ 1 เวอร์ชัน)", defaultValue: "false" },
+        { name: "effective_date", type: "DATE", nullable: false, comment: "วันที่มีผลบังคับใช้" },
         { name: "changed_by", type: "INT", nullable: true, comment: "FK → staff.id ผู้แก้ไข", isForeignKey: true, references: "staff.id" },
         { name: "change_note", type: "VARCHAR(255)", nullable: true, comment: "หมายเหตุการเปลี่ยนแปลง" },
         { name: "created_at", type: "TIMESTAMP", nullable: false, comment: "วันที่บันทึกเวอร์ชัน", defaultValue: "CURRENT_TIMESTAMP" },
       ],
       seedData: [
-        { id: 1, config_id: 1, version: 1, text_th: "พระราชบัญญัติคุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562 (PDPA)...", text_en: "Personal Data Protection Act B.E. 2562 (PDPA)...", retention_days: 90, changed_by: null, change_note: "เวอร์ชันเริ่มต้น" },
+        { id: 1, config_id: 1, version: 1, text_th: "(ข้อความ PDPA v1)...", text_en: "(PDPA text v1)...", retention_days: 90, require_scroll: true, is_active: false, effective_date: "2025-01-01", changed_by: null, change_note: "เวอร์ชันเริ่มต้น" },
+        { id: 2, config_id: 1, version: 2, text_th: "(ข้อความ PDPA v2 + สิทธิเจ้าของข้อมูล)...", text_en: "(PDPA text v2 + data subject rights)...", retention_days: 90, require_scroll: true, is_active: false, effective_date: "2025-06-01", changed_by: 1, change_note: "เพิ่มสิทธิเจ้าของข้อมูล + ทะเบียนรถ" },
+        { id: 3, config_id: 1, version: 3, text_th: "(ข้อความ PDPA v3 + การเปิดเผยข้อมูล)...", text_en: "(PDPA text v3 + data disclosure)...", retention_days: 120, require_scroll: true, is_active: true, effective_date: "2026-01-15", changed_by: 1, change_note: "เพิ่มหมวดการเปิดเผยข้อมูล + retention 120 วัน" },
       ],
     },
     {

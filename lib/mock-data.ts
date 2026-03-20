@@ -2186,3 +2186,303 @@ export const approverGroups: ApproverGroup[] = [
     isActive: true,
   },
 ];
+
+// ===== PDPA CONSENT VERSION MANAGEMENT =====
+
+export interface PdpaVersion {
+  id: number;
+  configId: number;
+  version: number;
+  textTh: string;
+  textEn: string;
+  retentionDays: number;
+  requireScroll: boolean;
+  isActive: boolean;
+  effectiveDate: string;
+  changedBy: number | null;
+  changedByName: string | null;
+  changeNote: string;
+  createdAt: string;
+}
+
+export interface PdpaConsentLog {
+  id: number;
+  visitorId: number;
+  visitorName: string;
+  visitorIdCard: string;
+  configVersion: number;
+  consentChannel: "kiosk" | "line" | "counter" | "web";
+  ipAddress: string | null;
+  deviceId: string | null;
+  consentedAt: string;
+  expiresAt: string;
+}
+
+const pdpaTextThV1 = `พระราชบัญญัติคุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562 (PDPA)
+
+กระทรวงการท่องเที่ยวและกีฬา ("หน่วยงาน") จะเก็บรวบรวม ใช้ และเปิดเผยข้อมูลส่วนบุคคลของท่านเพื่อวัตถุประสงค์ดังต่อไปนี้:
+
+1. การยืนยันตัวตนและลงทะเบียนผู้มาติดต่อ
+2. การรักษาความปลอดภัยของสถานที่
+3. การบันทึกประวัติการเข้า-ออกอาคาร
+4. การติดต่อสื่อสารกรณีฉุกเฉิน
+
+ข้อมูลที่เก็บรวบรวม:
+• ชื่อ-นามสกุล
+• เลขบัตรประจำตัวประชาชน/หนังสือเดินทาง
+• ภาพถ่ายใบหน้า
+• ข้อมูลการติดต่อ
+
+ระยะเวลาการจัดเก็บ:
+ข้อมูลจะถูกจัดเก็บไว้เป็นระยะเวลา 90 วัน นับจากวันที่เข้าเยี่ยมชม หลังจากนั้นจะถูกลบออกจากระบบโดยอัตโนมัติ`;
+
+const pdpaTextEnV1 = `Personal Data Protection Act B.E. 2562 (PDPA)
+
+The Ministry of Tourism and Sports ("the Organization") will collect, use, and disclose your personal data for the following purposes:
+
+1. Identity verification and visitor registration
+2. Premises security maintenance
+3. Building entry/exit records
+4. Emergency communication
+
+Data Collected:
+• Full name
+• National ID / Passport number
+• Facial photograph
+• Contact information
+
+Retention Period:
+Data will be retained for 90 days from the date of visit, after which it will be automatically deleted from the system.`;
+
+const pdpaTextThV2 = `พระราชบัญญัติคุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562 (PDPA)
+
+กระทรวงการท่องเที่ยวและกีฬา ("หน่วยงาน") จะเก็บรวบรวม ใช้ และเปิดเผยข้อมูลส่วนบุคคลของท่านเพื่อวัตถุประสงค์ดังต่อไปนี้:
+
+1. การยืนยันตัวตนและลงทะเบียนผู้มาติดต่อ
+2. การรักษาความปลอดภัยของสถานที่
+3. การบันทึกประวัติการเข้า-ออกอาคาร
+4. การติดต่อสื่อสารกรณีฉุกเฉิน
+5. การจัดทำสถิติและปรับปรุงบริการ
+
+ข้อมูลที่เก็บรวบรวม:
+• ชื่อ-นามสกุล
+• เลขบัตรประจำตัวประชาชน/หนังสือเดินทาง
+• ภาพถ่ายใบหน้า
+• ข้อมูลการติดต่อ
+• ทะเบียนรถยนต์ (ถ้ามี)
+
+สิทธิของเจ้าของข้อมูล:
+ท่านมีสิทธิในการเข้าถึง แก้ไข ลบ หรือขอสำเนาข้อมูลส่วนบุคคลของท่าน รวมถึงสิทธิในการเพิกถอนความยินยอม โดยสามารถติดต่อเจ้าหน้าที่คุ้มครองข้อมูลส่วนบุคคลได้ที่เคาน์เตอร์ประชาสัมพันธ์
+
+ระยะเวลาการจัดเก็บ:
+ข้อมูลจะถูกจัดเก็บไว้เป็นระยะเวลา 90 วัน นับจากวันที่เข้าเยี่ยมชม หลังจากนั้นจะถูกลบออกจากระบบโดยอัตโนมัติ`;
+
+const pdpaTextEnV2 = `Personal Data Protection Act B.E. 2562 (PDPA)
+
+The Ministry of Tourism and Sports ("the Organization") will collect, use, and disclose your personal data for the following purposes:
+
+1. Identity verification and visitor registration
+2. Premises security maintenance
+3. Building entry/exit records
+4. Emergency communication
+5. Statistical analysis and service improvement
+
+Data Collected:
+• Full name
+• National ID / Passport number
+• Facial photograph
+• Contact information
+• Vehicle registration (if applicable)
+
+Data Subject Rights:
+You have the right to access, correct, delete, or request copies of your personal data, including the right to withdraw consent. Please contact the Data Protection Officer at the reception counter.
+
+Retention Period:
+Data will be retained for 90 days from the date of visit, after which it will be automatically deleted from the system.`;
+
+const pdpaTextThV3 = `พระราชบัญญัติคุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562 (PDPA)
+
+กระทรวงการท่องเที่ยวและกีฬา ("หน่วยงาน") จะเก็บรวบรวม ใช้ และเปิดเผยข้อมูลส่วนบุคคลของท่านเพื่อวัตถุประสงค์ดังต่อไปนี้:
+
+1. การยืนยันตัวตนและลงทะเบียนผู้มาติดต่อ
+2. การรักษาความปลอดภัยของสถานที่
+3. การบันทึกประวัติการเข้า-ออกอาคาร
+4. การติดต่อสื่อสารกรณีฉุกเฉิน
+5. การจัดทำสถิติและปรับปรุงบริการ
+
+ข้อมูลที่เก็บรวบรวม:
+• ชื่อ-นามสกุล
+• เลขบัตรประจำตัวประชาชน/หนังสือเดินทาง
+• ภาพถ่ายใบหน้า
+• ข้อมูลการติดต่อ
+• ทะเบียนรถยนต์ (ถ้ามี)
+
+สิทธิของเจ้าของข้อมูล:
+ท่านมีสิทธิในการเข้าถึง แก้ไข ลบ หรือขอสำเนาข้อมูลส่วนบุคคลของท่าน รวมถึงสิทธิในการเพิกถอนความยินยอม โดยสามารถติดต่อเจ้าหน้าที่คุ้มครองข้อมูลส่วนบุคคลได้ที่เคาน์เตอร์ประชาสัมพันธ์
+
+การเปิดเผยข้อมูล:
+หน่วยงานอาจเปิดเผยข้อมูลแก่หน่วยงานภาครัฐที่เกี่ยวข้องตามที่กฎหมายกำหนด
+
+ระยะเวลาการจัดเก็บ:
+ข้อมูลจะถูกจัดเก็บไว้เป็นระยะเวลา 120 วัน นับจากวันที่เข้าเยี่ยมชม หลังจากนั้นจะถูกลบออกจากระบบโดยอัตโนมัติ`;
+
+const pdpaTextEnV3 = `Personal Data Protection Act B.E. 2562 (PDPA)
+
+The Ministry of Tourism and Sports ("the Organization") will collect, use, and disclose your personal data for the following purposes:
+
+1. Identity verification and visitor registration
+2. Premises security maintenance
+3. Building entry/exit records
+4. Emergency communication
+5. Statistical analysis and service improvement
+
+Data Collected:
+• Full name
+• National ID / Passport number
+• Facial photograph
+• Contact information
+• Vehicle registration (if applicable)
+
+Data Subject Rights:
+You have the right to access, correct, delete, or request copies of your personal data, including the right to withdraw consent. Please contact the Data Protection Officer at the reception counter.
+
+Data Disclosure:
+The Organization may disclose data to relevant government agencies as required by law.
+
+Retention Period:
+Data will be retained for 120 days from the date of visit, after which it will be automatically deleted from the system.`;
+
+export const pdpaVersions: PdpaVersion[] = [
+  {
+    id: 1,
+    configId: 1,
+    version: 1,
+    textTh: pdpaTextThV1,
+    textEn: pdpaTextEnV1,
+    retentionDays: 90,
+    requireScroll: true,
+    isActive: false,
+    effectiveDate: "2025-01-01",
+    changedBy: null,
+    changedByName: null,
+    changeNote: "เวอร์ชันเริ่มต้น — ข้อความ PDPA พื้นฐาน",
+    createdAt: "2025-01-01 00:00:00",
+  },
+  {
+    id: 2,
+    configId: 1,
+    version: 2,
+    textTh: pdpaTextThV2,
+    textEn: pdpaTextEnV2,
+    retentionDays: 90,
+    requireScroll: true,
+    isActive: false,
+    effectiveDate: "2025-06-01",
+    changedBy: 1,
+    changedByName: "สมชาย วิชาญ",
+    changeNote: "เพิ่มข้อมูลทะเบียนรถ + สิทธิของเจ้าของข้อมูล + วัตถุประสงค์สถิติ",
+    createdAt: "2025-05-28 14:30:00",
+  },
+  {
+    id: 3,
+    configId: 1,
+    version: 3,
+    textTh: pdpaTextThV3,
+    textEn: pdpaTextEnV3,
+    retentionDays: 120,
+    requireScroll: true,
+    isActive: true,
+    effectiveDate: "2026-01-15",
+    changedBy: 1,
+    changedByName: "สมชาย วิชาญ",
+    changeNote: "เพิ่มหมวดการเปิดเผยข้อมูล + เปลี่ยน retention เป็น 120 วัน",
+    createdAt: "2026-01-10 09:15:00",
+  },
+];
+
+export const pdpaConsentLogs: PdpaConsentLog[] = [
+  {
+    id: 1,
+    visitorId: 1,
+    visitorName: "นายวิทยา สมศรี",
+    visitorIdCard: "1-1001-XXXXX-XX-1",
+    configVersion: 3,
+    consentChannel: "kiosk",
+    ipAddress: "192.168.1.100",
+    deviceId: "KIOSK-01",
+    consentedAt: "2026-03-15 09:30:00",
+    expiresAt: "2026-07-13 09:30:00",
+  },
+  {
+    id: 2,
+    visitorId: 2,
+    visitorName: "Ms. Sarah Johnson",
+    visitorIdCard: "AA-123XXXX",
+    configVersion: 3,
+    consentChannel: "line",
+    ipAddress: null,
+    deviceId: null,
+    consentedAt: "2026-03-15 10:15:00",
+    expiresAt: "2026-07-13 10:15:00",
+  },
+  {
+    id: 3,
+    visitorId: 3,
+    visitorName: "นางสาวปิยะดา รักไทย",
+    visitorIdCard: "1-3301-XXXXX-XX-5",
+    configVersion: 3,
+    consentChannel: "counter",
+    ipAddress: "192.168.1.50",
+    deviceId: "COUNTER-01",
+    consentedAt: "2026-03-14 14:00:00",
+    expiresAt: "2026-07-12 14:00:00",
+  },
+  {
+    id: 4,
+    visitorId: 4,
+    visitorName: "นายประเสริฐ ดีงาม",
+    visitorIdCard: "1-1002-XXXXX-XX-3",
+    configVersion: 2,
+    consentChannel: "kiosk",
+    ipAddress: "192.168.1.100",
+    deviceId: "KIOSK-01",
+    consentedAt: "2025-12-20 08:45:00",
+    expiresAt: "2026-03-20 08:45:00",
+  },
+  {
+    id: 5,
+    visitorId: 5,
+    visitorName: "Mr. Kenji Tanaka",
+    visitorIdCard: "TK-98765XXXX",
+    configVersion: 2,
+    consentChannel: "line",
+    ipAddress: null,
+    deviceId: null,
+    consentedAt: "2025-11-05 13:20:00",
+    expiresAt: "2026-02-03 13:20:00",
+  },
+  {
+    id: 6,
+    visitorId: 6,
+    visitorName: "นายสมหมาย จริงใจ",
+    visitorIdCard: "1-1003-XXXXX-XX-7",
+    configVersion: 3,
+    consentChannel: "kiosk",
+    ipAddress: "192.168.1.101",
+    deviceId: "KIOSK-02",
+    consentedAt: "2026-03-16 11:00:00",
+    expiresAt: "2026-07-14 11:00:00",
+  },
+  {
+    id: 7,
+    visitorId: 7,
+    visitorName: "นางวิภา แก่นแก้ว",
+    visitorIdCard: "1-5001-XXXXX-XX-9",
+    configVersion: 1,
+    consentChannel: "counter",
+    ipAddress: "192.168.1.50",
+    deviceId: "COUNTER-01",
+    consentedAt: "2025-06-10 15:30:00",
+    expiresAt: "2025-09-08 15:30:00",
+  },
+];
