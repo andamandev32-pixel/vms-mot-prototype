@@ -1,5 +1,6 @@
 "use client";
 
+import { Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { HardwareDevice } from "@/lib/kiosk/kiosk-types";
 import { getDeviceInfo } from "@/lib/kiosk/kiosk-device-map";
@@ -11,6 +12,7 @@ interface KioskFrameProps {
   className?: string;
   machineName?: string;
   version?: string;
+  onSettingsClick?: () => void;
 }
 
 /*
@@ -32,6 +34,7 @@ export default function KioskFrame({
   machineName = "KIOSK-01",
   version = "v1.0.0",
   className,
+  onSettingsClick,
 }: KioskFrameProps) {
   return (
     <div className={cn("flex justify-center items-center", className)}>
@@ -72,7 +75,18 @@ export default function KioskFrame({
               {/* Bottom status bar */}
               <div className="absolute bottom-0 left-0 right-0 h-4 bg-[#2E3192]/90 flex items-center justify-between px-2 z-20">
                 <span className="text-[7px] text-white/70 font-medium">{machineName}</span>
-                <span className="text-[7px] text-white/50">{version}</span>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[7px] text-white/50">{version}</span>
+                  {onSettingsClick && (
+                    <button
+                      onClick={onSettingsClick}
+                      className="flex items-center justify-center text-white/30 hover:text-white/80 transition-colors"
+                      title="Settings"
+                    >
+                      <Settings size={8} />
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* On-screen device overlay */}

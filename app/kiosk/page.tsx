@@ -28,6 +28,7 @@ import SelectPurposeScreen from "@/components/kiosk/screens/SelectPurposeScreen"
 import FaceCaptureScreen from "@/components/kiosk/screens/FaceCaptureScreen";
 import WifiOfferScreen from "@/components/kiosk/screens/WifiOfferScreen";
 import SuccessScreen from "@/components/kiosk/screens/SuccessScreen";
+import KioskSettingsScreen from "@/components/kiosk/screens/KioskSettingsScreen";
 import QrScanScreen from "@/components/kiosk/screens/QrScanScreen";
 import AppointmentPreviewScreen from "@/components/kiosk/screens/AppointmentPreviewScreen";
 import ErrorScreen from "@/components/kiosk/screens/ErrorScreen";
@@ -191,6 +192,12 @@ export default function KioskDemoPage() {
   const [selectedKioskId, setSelectedKioskId] = useState<number>(kioskList[0]?.id ?? 1);
   const [showPinModal, setShowPinModal] = useState(false);
   const [showConfigPanel, setShowConfigPanel] = useState(false);
+
+  // === In-screen settings (inside kiosk display) ===
+  const [showScreenPinModal, setShowScreenPinModal] = useState(false);
+  const [showScreenSettings, setShowScreenSettings] = useState(false);
+  const [screenPin, setScreenPin] = useState("");
+  const [screenPinError, setScreenPinError] = useState(false);
 
   // Resolve kiosk config from web app settings
   const kioskConfig = useMemo(() => resolveKioskConfig(selectedKioskId), [selectedKioskId]);
@@ -612,8 +619,71 @@ export default function KioskDemoPage() {
         <KioskFrame
           activeDevice={activeDevice}
           machineName={kioskConfig?.servicePoint.serialNumber ?? "KIOSK-01"}
+          onSettingsClick={() => setShowScreenPinModal(true)}
         >
-          {renderScreen()}
+          {/* PIN Modal — inside kiosk screen */}
+          {showScreenPinModal && (
+            <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/50" style={{ paddingBottom: "30%" }}>
+              <div className="bg-white rounded-lg shadow-2xl w-[42%] max-w-[120px] p-1.5 space-y-1">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-0.5">
+                    <Lock size={6} className="text-[#1B2B5E]" />
+                    <h3 className="text-[5px] font-bold text-[#1B2B5E]">{locale === "th" ? "ป้อน PIN ผู้ดูแล" : "Admin PIN"}</h3>
+                  </div>
+                  <button onClick={() => { setScreenPin(""); setShowScreenPinModal(false); }} className="text-gray-400 hover:text-gray-600">
+                    <X size={7} />
+                  </button>
+                </div>
+                {/* PIN dots */}
+                <div className="flex justify-center gap-1.5">
+                  {[0,1,2,3,4].map((i) => (
+                    <div key={i} className={cn("w-[6px] h-[6px] rounded-full border transition-all", screenPinError ? "border-red-500 bg-red-500" : i < screenPin.length ? "border-[#1B2B5E] bg-[#1B2B5E]" : "border-gray-300")} />
+                  ))}
+                </div>
+                {screenPinError && <p className="text-center text-[5px] text-red-500 font-medium">PIN ไม่ถูกต้อง</p>}
+                {/* Numpad */}
+                <div className="grid grid-cols-3 gap-0.5">
+                  {["1","2","3","4","5","6","7","8","9","","0","⌫"].map((k) => (
+                    <button
+                      key={k}
+                      onClick={() => {
+                        if (k === "⌫") { setScreenPin((p) => p.slice(0,-1)); setScreenPinError(false); }
+                        else if (k !== "" && screenPin.length < 5) {
+                          const next = screenPin + k;
+                          setScreenPin(next);
+                          setScreenPinError(false);
+                          if (next.length === 5) {
+                            if (next === (kioskConfig?.servicePoint.adminPin ?? "10210")) {
+                              setScreenPin(""); setShowScreenPinModal(false); setShowScreenSettings(true);
+                            } else {
+                              setScreenPinError(true);
+                              setTimeout(() => { setScreenPin(""); setScreenPinError(false); }, 800);
+                            }
+                          }
+                        }
+                      }}
+                      disabled={k === ""}
+                      className={cn("h-4 rounded text-[6px] font-bold transition-all", k === "" ? "invisible" : k === "⌫" ? "bg-gray-100 text-gray-500 hover:bg-gray-200" : "bg-gray-50 text-[#1B2B5E] hover:bg-[#1B2B5E]/10 active:scale-95")}
+                    >{k}</button>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Settings overlay — replaces screen when open */}
+          {showScreenSettings && kioskConfig ? (
+            <KioskSettingsScreen
+              locale={locale}
+              config={kioskConfig}
+              kioskList={kioskList}
+              selectedKioskId={selectedKioskId}
+              onChangeKiosk={(id) => { setSelectedKioskId(id); reset(); }}
+              onClose={() => setShowScreenSettings(false)}
+            />
+          ) : (
+            renderScreen()
+          )}
         </KioskFrame>
       </div>
 
