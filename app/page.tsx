@@ -8,7 +8,8 @@ export default function Home() {
       description: "จองนัดหมาย, ดู QR Code, ตรวจสอบสถานะ, อนุมัติคำขอ",
       href: "/mobile",
       icon: <Smartphone className="h-8 w-8" />,
-      badge: "13 หน้าจอ",
+      status: "กำลังออกแบบ" as string | undefined,
+      badge: undefined as string | undefined,
       screens: ["ลงทะเบียน LINE", "Dashboard", "จองนัดหมาย 4 ขั้นตอน", "QR Code", "ประวัติ", "โปรไฟล์", "Officer: อนุมัติ/ต้อนรับ"],
     },
     {
@@ -17,7 +18,8 @@ export default function Home() {
       description: "Dashboard, รายงาน, จัดการ Blocklist, Walk-in, ตั้งค่าระบบ",
       href: "/web",
       icon: <Monitor className="h-8 w-8" />,
-      badge: "10 หน้าจอ",
+      status: undefined as string | undefined,
+      badge: undefined as string | undefined,
       screens: ["Dashboard + KPI", "ตารางนัดหมาย", "Walk-in", "รายงาน", "Blocklist", "ค้นหาผู้ติดต่อ", "ตั้งค่า"],
     },
     {
@@ -26,7 +28,8 @@ export default function Home() {
       description: "สแกน QR / บัตรประชาชน, ลงทะเบียน Walk-in, พิมพ์บัตรผู้ติดต่อ",
       href: "/kiosk",
       icon: <Tablet className="h-8 w-8" />,
-      badge: "12 หน้าจอ",
+      status: undefined as string | undefined,
+      badge: undefined as string | undefined,
       screens: ["หน้าจอต้อนรับ", "เลือกภาษา", "สแกน QR", "สแกนบัตร", "Walk-in 4 ขั้นตอน", "ถ่ายรูป", "ใบ Slip"],
     },
     {
@@ -35,7 +38,8 @@ export default function Home() {
       description: "Check-in / Check-out, ตรวจสอบบัตร, บันทึกยานพาหนะ, ออกบัตรผู้ติดต่อ",
       href: "/counter",
       icon: <Shield className="h-8 w-8" />,
-      badge: "8 หน้าจอ",
+      status: undefined as string | undefined,
+      badge: undefined as string | undefined,
       screens: ["PIN Login", "Dashboard", "Walk-in + นัดหมาย", "ตรวจสอบบัตร", "Check-out", "ใบ Visitor Badge"],
     },
   ];
@@ -99,9 +103,16 @@ export default function Home() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <h3 className="text-xl font-bold text-white group-hover:text-accent transition-colors">{app.title}</h3>
-                        <span className="text-[10px] bg-accent/20 text-accent-100 rounded-full px-2 py-0.5 font-medium">
-                          {app.badge}
-                        </span>
+                        {app.status && (
+                          <span className="text-[10px] bg-amber-500/20 text-amber-300 rounded-full px-2 py-0.5 font-medium animate-pulse">
+                            {app.status}
+                          </span>
+                        )}
+                        {app.badge && (
+                          <span className="text-[10px] bg-accent/20 text-accent-100 rounded-full px-2 py-0.5 font-medium">
+                            {app.badge}
+                          </span>
+                        )}
                       </div>
                       <p className="text-white/50 text-sm font-medium">{app.subtitle}</p>
                     </div>
@@ -125,6 +136,54 @@ export default function Home() {
               </div>
             </a>
           ))}
+        </div>
+
+        {/* Kiosk Hardware */}
+        <div className="mt-14 max-w-5xl w-full">
+          <div className="text-center mb-6">
+            <h2 className="text-xl font-bold text-white mb-1">Kiosk Hardware</h2>
+            <p className="text-white/40 text-sm">ตู้บริการตนเอง — Self-Service Kiosk</p>
+          </div>
+          <div className="bg-white/[0.06] backdrop-blur-xl border border-white/[0.12] rounded-2xl p-6 overflow-hidden">
+            <div className="grid grid-cols-3 gap-6 items-center">
+              {/* Blueprint */}
+              <div className="flex flex-col items-center gap-3">
+                <div className="bg-white rounded-xl p-3 shadow-lg">
+                  <img src="/images/kiosk-blueprint.png" alt="Kiosk Blueprint" className="w-full h-auto max-h-[320px] object-contain" />
+                </div>
+                <span className="text-white/40 text-xs">แบบแปลน (Blueprint)</span>
+              </div>
+              {/* 3D Side */}
+              <div className="flex flex-col items-center gap-3">
+                <div className="rounded-xl overflow-hidden shadow-lg">
+                  <img src="/images/kiosk-3d-side.jpg" alt="Kiosk 3D Side View" className="w-full h-auto max-h-[320px] object-contain" />
+                </div>
+                <span className="text-white/40 text-xs">มุมมอง 3D (ด้านข้าง)</span>
+              </div>
+              {/* 3D Front */}
+              <div className="flex flex-col items-center gap-3">
+                <div className="rounded-xl overflow-hidden shadow-lg">
+                  <img src="/images/kiosk-3d-front.jpg" alt="Kiosk 3D Front View" className="w-full h-auto max-h-[320px] object-contain" />
+                </div>
+                <span className="text-white/40 text-xs">มุมมอง 3D (ด้านหน้า)</span>
+              </div>
+            </div>
+            {/* Specs */}
+            <div className="mt-5 flex flex-wrap justify-center gap-3">
+              {[
+                "800 x 600 x 1600 mm",
+                "หน้าจอสัมผัส 32\"",
+                "กล้องบันทึกภาพ",
+                "เครื่องอ่านบัตรประชาชน",
+                "QR Scanner",
+                "เครื่องพิมพ์ VisitPass",
+              ].map((spec) => (
+                <span key={spec} className="text-[11px] text-white/50 bg-white/[0.06] border border-white/[0.08] rounded-full px-3 py-1">
+                  {spec}
+                </span>
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* Footer */}
