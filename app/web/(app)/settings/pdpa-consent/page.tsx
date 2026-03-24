@@ -9,7 +9,7 @@ import { getFlowByPageId } from "@/lib/flowchart-data";
 import { Card, CardContent } from "@/components/ui/Card";
 import { cn } from "@/lib/utils";
 import {
-  Shield, Save, Eye, Globe, RotateCcw, List, FileEdit, ScrollText,
+  Shield, Save, Eye, Globe, RotateCcw, List, FileEdit, ScrollText, Plus, Tablet,
   CheckCircle2, XCircle, ChevronDown, Search, Clock, Monitor, Smartphone, User,
 } from "lucide-react";
 import {
@@ -17,24 +17,41 @@ import {
   pdpaConsentLogs,
   type PdpaVersion,
   type PdpaConsentLog,
+  type PdpaDisplayChannel,
 } from "@/lib/mock-data";
 
 type TabId = "versions" | "editor" | "logs";
 
 // ── Tab 1: Version List ───────────────────────────────────────────────
+const displayChannelLabels: Record<PdpaDisplayChannel, { label: string; icon: typeof Monitor }> = {
+  kiosk: { label: "Kiosk", icon: Tablet },
+  line: { label: "LINE OA", icon: Smartphone },
+};
+
 function VersionListTab({
   versions,
   onActivate,
   onEdit,
+  onView,
+  onCreateNew,
 }: {
   versions: PdpaVersion[];
   onActivate: (id: number) => void;
   onEdit: (v: PdpaVersion) => void;
+  onView: (v: PdpaVersion) => void;
+  onCreateNew: () => void;
 }) {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-text-muted">ทั้งหมด {versions.length} เวอร์ชัน</p>
+        <button
+          onClick={onCreateNew}
+          className="flex items-center gap-2 px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700 transition-colors text-sm font-bold"
+        >
+          <Plus size={16} />
+          สร้างรายการใหม่
+        </button>
       </div>
 
       <div className="overflow-x-auto rounded-xl border border-border">
@@ -43,6 +60,7 @@ function VersionListTab({
             <tr className="bg-surface text-left text-text-muted">
               <th className="px-4 py-3 font-medium">เวอร์ชัน</th>
               <th className="px-4 py-3 font-medium">สถานะ</th>
+              <th className="px-4 py-3 font-medium">แสดงที่</th>
               <th className="px-4 py-3 font-medium">วันมีผล</th>
               <th className="px-4 py-3 font-medium">Retention</th>
               <th className="px-4 py-3 font-medium">ต้องเลื่อนอ่าน</th>
@@ -67,6 +85,20 @@ function VersionListTab({
                     </span>
                   )}
                 </td>
+                <td className="px-4 py-3">
+                  <div className="flex flex-wrap gap-1">
+                    {v.displayChannels.map((ch) => {
+                      const cfg = displayChannelLabels[ch];
+                      const Icon = cfg.icon;
+                      return (
+                        <span key={ch} className="inline-flex items-center gap-1 rounded-full bg-primary-50 px-2 py-0.5 text-[10px] font-medium text-primary-700">
+                          <Icon size={10} />
+                          {cfg.label}
+                        </span>
+                      );
+                    })}
+                  </div>
+                </td>
                 <td className="px-4 py-3 text-text-secondary whitespace-nowrap">{v.effectiveDate}</td>
                 <td className="px-4 py-3 text-text-secondary whitespace-nowrap">{v.retentionDays} วัน</td>
                 <td className="px-4 py-3 text-center">
@@ -82,10 +114,16 @@ function VersionListTab({
                 <td className="px-4 py-3 text-center">
                   <div className="flex items-center justify-center gap-2">
                     <button
-                      onClick={() => onEdit(v)}
+                      onClick={() => onView(v)}
                       className="text-xs px-3 py-1.5 rounded-lg border border-border text-text-secondary hover:bg-surface transition-colors"
                     >
-                      ดู/แก้ไข
+                      ดู
+                    </button>
+                    <button
+                      onClick={() => onEdit(v)}
+                      className="text-xs px-3 py-1.5 rounded-lg border border-primary-200 text-primary-600 hover:bg-primary-50 transition-colors font-medium"
+                    >
+                      แก้ไข
                     </button>
                     {!v.isActive && (
                       <button
@@ -109,22 +147,28 @@ function VersionListTab({
 // ── Tab 2: Editor ─────────────────────────────────────────────────────
 function EditorTab({
   editingVersion,
+  isNewItem,
   onSaveNewVersion,
 }: {
   editingVersion: PdpaVersion | null;
+  isNewItem?: boolean;
   onSaveNewVersion: (data: {
     textTh: string;
     textEn: string;
     retentionDays: number;
     requireScroll: boolean;
     changeNote: string;
+    displayChannels: PdpaDisplayChannel[];
   }) => void;
 }) {
   const [activeLang, setActiveLang] = useState<"th" | "en">("th");
-  const [textTh, setTextTh] = useState(editingVersion?.textTh ?? "");
-  const [textEn, setTextEn] = useState(editingVersion?.textEn ?? "");
-  const [retentionDays, setRetentionDays] = useState(String(editingVersion?.retentionDays ?? 90));
-  const [requireScroll, setRequireScroll] = useState(editingVersion?.requireScroll ?? true);
+  const [textTh, setTextTh] = useState(isNewItem ? "" : (editingVersion?.textTh ?? ""));
+  const [textEn, setTextEn] = useState(isNewItem ? "" : (editingVersion?.textEn ?? ""));
+  const [retentionDays, setRetentionDays] = useState(String(isNewItem ? 90 : (editingVersion?.retentionDays ?? 90)));
+  const [requireScroll, setRequireScroll] = useState(isNewItem ? true : (editingVersion?.requireScroll ?? true));
+  const [displayChannels, setDisplayChannels] = useState<PdpaDisplayChannel[]>(
+    isNewItem ? ["kiosk", "line"] : (editingVersion?.displayChannels ?? ["kiosk", "line"])
+  );
   const [changeNote, setChangeNote] = useState("");
   const [preview, setPreview] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -132,13 +176,20 @@ function EditorTab({
   const currentText = activeLang === "th" ? textTh : textEn;
   const setCurrentText = activeLang === "th" ? setTextTh : setTextEn;
 
+  const toggleChannel = (ch: PdpaDisplayChannel) => {
+    setDisplayChannels((prev) =>
+      prev.includes(ch) ? prev.filter((c) => c !== ch) : [...prev, ch]
+    );
+  };
+
   const handleSave = () => {
     onSaveNewVersion({
       textTh,
       textEn,
       retentionDays: Number(retentionDays) || 90,
       requireScroll,
-      changeNote: changeNote || "แก้ไขข้อความ PDPA",
+      changeNote: changeNote || (isNewItem ? "สร้างรายการ PDPA ใหม่" : "แก้ไขข้อความ PDPA"),
+      displayChannels,
     });
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
@@ -149,9 +200,11 @@ function EditorTab({
       {/* Header actions */}
       <div className="flex items-center justify-between">
         <div className="text-sm text-text-muted">
-          {editingVersion
-            ? `กำลังแก้ไขจาก v${editingVersion.version} — บันทึกจะสร้างเวอร์ชันใหม่`
-            : "สร้างเวอร์ชันใหม่ (บนพื้นฐานเวอร์ชันปัจจุบัน)"}
+          {isNewItem
+            ? "สร้างรายการ PDPA ใหม่ — กรอกข้อมูลแล้วบันทึก"
+            : editingVersion
+              ? `กำลังแก้ไขจาก v${editingVersion.version} — บันทึกจะสร้างเวอร์ชันใหม่`
+              : "สร้างเวอร์ชันใหม่ (บนพื้นฐานเวอร์ชันปัจจุบัน)"}
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -172,7 +225,7 @@ function EditorTab({
             )}
           >
             <Save size={16} />
-            {saved ? "บันทึกแล้ว ✓" : "บันทึกเวอร์ชันใหม่"}
+            {saved ? "บันทึกแล้ว ✓" : isNewItem ? "สร้างรายการใหม่" : "บันทึกเวอร์ชันใหม่"}
           </button>
         </div>
       </div>
@@ -218,6 +271,38 @@ function EditorTab({
           <Card>
             <CardContent className="p-5 space-y-4">
               <h3 className="text-sm font-bold text-text-primary">ตั้งค่าเพิ่มเติม</h3>
+
+              {/* Display Channels */}
+              <div>
+                <p className="text-sm font-medium text-text-primary mb-1">แสดงที่ช่องทาง</p>
+                <p className="text-xs text-text-muted mb-2">เลือกช่องทางที่จะแสดง consent นี้ (เลือกได้มากกว่า 1)</p>
+                <div className="flex gap-3">
+                  {(["kiosk", "line"] as PdpaDisplayChannel[]).map((ch) => {
+                    const cfg = displayChannelLabels[ch];
+                    const Icon = cfg.icon;
+                    const isSelected = displayChannels.includes(ch);
+                    return (
+                      <button
+                        key={ch}
+                        onClick={() => toggleChannel(ch)}
+                        className={cn(
+                          "flex items-center gap-2 px-4 py-2.5 rounded-lg border-2 text-sm font-medium transition-all",
+                          isSelected
+                            ? "border-primary-500 bg-primary-50 text-primary-700"
+                            : "border-border bg-white text-text-muted hover:border-gray-300"
+                        )}
+                      >
+                        <Icon size={16} />
+                        {cfg.label}
+                        {isSelected && <CheckCircle2 size={14} className="text-primary-500" />}
+                      </button>
+                    );
+                  })}
+                </div>
+                {displayChannels.length === 0 && (
+                  <p className="text-xs text-error mt-1">กรุณาเลือกอย่างน้อย 1 ช่องทาง</p>
+                )}
+              </div>
 
               <div className="flex items-center justify-between">
                 <div>
@@ -449,6 +534,8 @@ export default function PdpaConsentSettingsPage() {
   const [activeTab, setActiveTab] = useState<TabId>("versions");
   const [versions, setVersions] = useState<PdpaVersion[]>(initialVersions);
   const [editingVersion, setEditingVersion] = useState<PdpaVersion | null>(null);
+  const [isNewItem, setIsNewItem] = useState(false);
+  const [viewingVersion, setViewingVersion] = useState<PdpaVersion | null>(null);
 
   // Activate a version (deactivate all others)
   const handleActivate = (id: number) => {
@@ -460,6 +547,19 @@ export default function PdpaConsentSettingsPage() {
   // Open editor with a specific version
   const handleEdit = (v: PdpaVersion) => {
     setEditingVersion(v);
+    setIsNewItem(false);
+    setActiveTab("editor");
+  };
+
+  // Open view modal
+  const handleView = (v: PdpaVersion) => {
+    setViewingVersion(v);
+  };
+
+  // Create new item (blank editor)
+  const handleCreateNew = () => {
+    setEditingVersion(null);
+    setIsNewItem(true);
     setActiveTab("editor");
   };
 
@@ -470,6 +570,7 @@ export default function PdpaConsentSettingsPage() {
     retentionDays: number;
     requireScroll: boolean;
     changeNote: string;
+    displayChannels: PdpaDisplayChannel[];
   }) => {
     const maxVersion = Math.max(...versions.map((v) => v.version));
     const newVersion: PdpaVersion = {
@@ -486,9 +587,11 @@ export default function PdpaConsentSettingsPage() {
       changedByName: "สมชาย วิชาญ",
       changeNote: data.changeNote,
       createdAt: new Date().toISOString().replace("T", " ").slice(0, 19),
+      displayChannels: data.displayChannels,
     };
     setVersions((prev) => [...prev, newVersion]);
     setEditingVersion(newVersion);
+    setIsNewItem(false);
   };
 
   const activeVersion = versions.find((v) => v.isActive);
@@ -565,17 +668,78 @@ export default function PdpaConsentSettingsPage() {
             versions={versions}
             onActivate={handleActivate}
             onEdit={handleEdit}
+            onView={handleView}
+            onCreateNew={handleCreateNew}
           />
         )}
         {activeTab === "editor" && (
           <EditorTab
-            key={editingVersion?.id ?? "new"}
-            editingVersion={editingVersion ?? activeVersion ?? null}
+            key={isNewItem ? "create-new" : (editingVersion?.id ?? "new")}
+            editingVersion={isNewItem ? null : (editingVersion ?? activeVersion ?? null)}
+            isNewItem={isNewItem}
             onSaveNewVersion={handleSaveNewVersion}
           />
         )}
         {activeTab === "logs" && <ConsentLogsTab logs={pdpaConsentLogs} />}
       </div>
+
+      {/* View Modal */}
+      {viewingVersion && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setViewingVersion(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[85vh] overflow-hidden" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-surface">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-lg bg-primary-100 flex items-center justify-center">
+                  <Eye size={18} className="text-primary-600" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-text-primary">PDPA v{viewingVersion.version}</h3>
+                  <div className="flex items-center gap-2 text-xs text-text-muted">
+                    <span>{viewingVersion.effectiveDate}</span>
+                    <span>·</span>
+                    <span>{viewingVersion.retentionDays} วัน</span>
+                    <span>·</span>
+                    <div className="flex gap-1">
+                      {viewingVersion.displayChannels.map((ch) => {
+                        const cfg = displayChannelLabels[ch];
+                        return (
+                          <span key={ch} className="inline-flex items-center gap-0.5 rounded-full bg-primary-50 px-1.5 py-0.5 text-[10px] font-medium text-primary-700">
+                            {cfg.label}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <button onClick={() => setViewingVersion(null)} className="text-text-muted hover:text-text-primary transition-colors">
+                <XCircle size={22} />
+              </button>
+            </div>
+            <div className="p-6 overflow-y-auto max-h-[calc(85vh-80px)]">
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <h4 className="text-xs font-bold text-text-muted uppercase tracking-wider mb-2">ภาษาไทย</h4>
+                  <div className="p-4 rounded-xl border border-border bg-surface/50 text-sm text-text-secondary leading-relaxed whitespace-pre-wrap max-h-[400px] overflow-y-auto">
+                    {viewingVersion.textTh}
+                  </div>
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-text-muted uppercase tracking-wider mb-2">English</h4>
+                  <div className="p-4 rounded-xl border border-border bg-surface/50 text-sm text-text-secondary leading-relaxed whitespace-pre-wrap max-h-[400px] overflow-y-auto">
+                    {viewingVersion.textEn}
+                  </div>
+                </div>
+              </div>
+              <div className="mt-4 flex items-center gap-4 text-xs text-text-muted">
+                <span>แก้ไขโดย: {viewingVersion.changedByName ?? "ระบบ"}</span>
+                <span>·</span>
+                <span>หมายเหตุ: {viewingVersion.changeNote}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

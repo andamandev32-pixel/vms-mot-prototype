@@ -1367,23 +1367,52 @@ const pdpaConsentFlow: PageFlowData = {
   menuName: "PDPA / นโยบายคุ้มครองข้อมูล",
   menuNameEn: "PDPA Consent Settings",
   path: "/web/settings/pdpa-consent",
-  summary: "จัดการข้อความ PDPA 2 ภาษา — แก้ไขนโยบาย, ตั้งค่า retention, และบันทึก consent ของผู้เยี่ยมบน Kiosk",
+  summary: "จัดการข้อความ PDPA 2 ภาษา — สร้างใหม่/แก้ไขนโยบาย, เลือกช่องทางแสดง (Kiosk/LINE OA), ตั้งค่า retention, และบันทึก consent ของผู้เยี่ยม",
   flowcharts: [
+    {
+      id: "pdpa-create-new",
+      title: "การสร้างรายการ PDPA ใหม่",
+      titleEn: "Create New PDPA Item Flow",
+      description: "ขั้นตอนเมื่อ Admin สร้างรายการ PDPA ใหม่ตั้งแต่ต้น",
+      steps: [
+        { id: "n1", label: "กดปุ่ม \"สร้างรายการใหม่\"\n(หน้ารายการเวอร์ชัน)", type: "start" },
+        { id: "n2", label: "เปิด Editor เปล่า\n(ไม่มีข้อมูลเดิม)", type: "process" },
+        { id: "n3", label: "เลือกภาษา\n(TH / EN Tab)", type: "process" },
+        { id: "n4", label: "กรอกเนื้อหานโยบาย\n(ทั้ง TH และ EN)", type: "process" },
+        { id: "n5", label: "เลือกช่องทางแสดง\n(Kiosk / LINE OA)", type: "process" },
+        { id: "n6", label: "ตั้งค่า Retention Days\n+ Require Scroll", type: "process" },
+        { id: "n7", label: "ใส่หมายเหตุ\nการเปลี่ยนแปลง", type: "process" },
+        { id: "n8", label: "กดบันทึก\n\"สร้างรายการใหม่\"", type: "process" },
+        { id: "n9", label: "สร้าง Version ใหม่\n(pdpa_consent_versions)\n+ display_channels", type: "subprocess" },
+        { id: "n10", label: "กลับหน้ารายการ\n(สถานะ: ไม่ได้ใช้งาน)", type: "end" },
+      ],
+      connections: [
+        { from: "n1", to: "n2" },
+        { from: "n2", to: "n3" },
+        { from: "n3", to: "n4" },
+        { from: "n4", to: "n5" },
+        { from: "n5", to: "n6" },
+        { from: "n6", to: "n7" },
+        { from: "n7", to: "n8" },
+        { from: "n8", to: "n9" },
+        { from: "n9", to: "n10" },
+      ],
+    },
     {
       id: "pdpa-config-edit",
       title: "การแก้ไขนโยบาย PDPA",
       titleEn: "PDPA Config Edit Flow",
-      description: "ขั้นตอนเมื่อ Admin แก้ไขข้อความ PDPA บนหน้าตั้งค่า",
+      description: "ขั้นตอนเมื่อ Admin แก้ไขข้อความ PDPA จากเวอร์ชันที่มีอยู่",
       steps: [
         { id: "c1", label: "เปิดหน้า PDPA Settings", type: "start" },
-        { id: "c2", label: "เลือกภาษา\n(TH / EN Tab)", type: "process" },
-        { id: "c3", label: "แก้ไขเนื้อหานโยบาย\n(Textarea)", type: "process" },
-        { id: "c4", label: "ตั้งค่า Retention Days\n(จำนวนวันเก็บข้อมูล)", type: "process" },
-        { id: "c5", label: "ตั้งค่า Require Scroll\n(ต้องเลื่อนอ่านก่อน)", type: "process" },
+        { id: "c2", label: "เลือกเวอร์ชัน\nกดปุ่ม \"แก้ไข\"", type: "process" },
+        { id: "c3", label: "แก้ไขเนื้อหานโยบาย\n(TH / EN Tab)", type: "process" },
+        { id: "c4", label: "เลือกช่องทางแสดง\n(Kiosk / LINE OA)", type: "process" },
+        { id: "c5", label: "ตั้งค่า Retention Days\n+ Require Scroll", type: "process" },
         { id: "c6", label: "ดู Preview บน Kiosk?", type: "decision" },
         { id: "c7", label: "แสดง Preview\n(จำลอง Kiosk UI)", type: "io" },
-        { id: "c8", label: "กดบันทึก", type: "process" },
-        { id: "c9", label: "สร้าง Version ใหม่\n(pdpa_consent_versions)", type: "subprocess" },
+        { id: "c8", label: "กดบันทึก\n\"บันทึกเวอร์ชันใหม่\"", type: "process" },
+        { id: "c9", label: "สร้าง Version ใหม่\n(pdpa_consent_versions)\n+ display_channels", type: "subprocess" },
         { id: "c10", label: "อัปเดต Config\n(version++)", type: "end" },
       ],
       connections: [
@@ -1401,25 +1430,29 @@ const pdpaConsentFlow: PageFlowData = {
     },
     {
       id: "pdpa-kiosk-consent",
-      title: "การแสดง PDPA บน Kiosk (Runtime)",
-      titleEn: "PDPA Consent Capture on Kiosk",
-      description: "Flow เมื่อผู้เยี่ยมเห็น PDPA บน Kiosk และยอมรับ",
+      title: "การแสดง PDPA บน Kiosk/LINE OA (Runtime)",
+      titleEn: "PDPA Consent Capture on Kiosk/LINE OA",
+      description: "Flow เมื่อผู้เยี่ยมเห็น PDPA บน Kiosk หรือ LINE OA และยอมรับ — ระบบตรวจ display_channels ก่อนแสดง",
       steps: [
-        { id: "k1", label: "ผู้เยี่ยมถึงขั้นตอน PDPA\n(Kiosk Flow)", type: "start" },
+        { id: "k1", label: "ผู้เยี่ยมถึงขั้นตอน PDPA\n(Kiosk / LINE OA)", type: "start" },
         { id: "k2", label: "ดึง Config ล่าสุด\n(pdpa_consent_configs)", type: "process" },
+        { id: "k2b", label: "ตรวจ display_channels\nมีช่องทางนี้หรือไม่?", type: "decision" },
+        { id: "k2c", label: "ข้ามขั้นตอน PDPA\n(ไม่แสดง)", type: "end" },
         { id: "k3", label: "แสดงข้อความนโยบาย\n(ตามภาษาที่เลือก)", type: "io" },
         { id: "k4", label: "Require Scroll?", type: "decision" },
         { id: "k5", label: "รอเลื่อนอ่านจนจบ\n(Checkbox ถูกล็อก)", type: "process" },
         { id: "k6", label: "Checkbox เปิดให้กด", type: "process" },
         { id: "k7", label: "ผู้เยี่ยมกด✓ ยอมรับ", type: "process" },
         { id: "k8", label: "กดปุ่ม\n\"ยอมรับและดำเนินการต่อ\"", type: "process" },
-        { id: "k9", label: "บันทึก Consent Log\n(pdpa_consent_logs)", type: "subprocess" },
+        { id: "k9", label: "บันทึก Consent Log\n(pdpa_consent_logs)\n+ consent_channel", type: "subprocess" },
         { id: "k10", label: "คำนวณ expires_at\n(+retention_days)", type: "process" },
         { id: "k11", label: "ดำเนินการต่อ\n(ขั้นตอนถัดไป)", type: "end" },
       ],
       connections: [
         { from: "k1", to: "k2" },
-        { from: "k2", to: "k3" },
+        { from: "k2", to: "k2b" },
+        { from: "k2b", to: "k2c", label: "ไม่มี (ช่องทางนี้ไม่อยู่ใน display_channels)" },
+        { from: "k2b", to: "k3", label: "มี (ช่องทางอยู่ใน display_channels)" },
         { from: "k3", to: "k4" },
         { from: "k4", to: "k5", label: "ใช่ (require_scroll=true)" },
         { from: "k4", to: "k6", label: "ไม่ (require_scroll=false)" },
@@ -1453,17 +1486,41 @@ const pdpaConsentFlow: PageFlowData = {
       fieldEn: "Require Scroll Before Accept",
       rules: ["Boolean toggle", "เปิด = ผู้เยี่ยมต้องเลื่อนอ่านข้อความจนจบ ก่อน checkbox จะเปิดให้กด", "ค่าเริ่มต้น = เปิด (true)"],
     },
+    {
+      field: "ช่องทางแสดง (Display Channels)",
+      fieldEn: "Display Channels",
+      rules: [
+        "ต้องเลือกอย่างน้อย 1 ช่องทาง",
+        "ค่าที่เลือกได้: kiosk, line",
+        "ค่าเริ่มต้น: [\"kiosk\", \"line\"] (แสดงทุกช่องทาง)",
+        "Kiosk และ LINE OA อาจแสดง consent ต่างเวอร์ชันกันได้",
+        "เก็บเป็น JSON Array ใน DB",
+      ],
+    },
   ],
   businessConditions: [
     {
       title: "Version Control",
       titleEn: "PDPA Version History",
-      description: "ทุกครั้งที่แก้ไขข้อความ PDPA จะสร้าง Version ใหม่อัตโนมัติ",
+      description: "ทุกครั้งที่สร้างใหม่หรือแก้ไขข้อความ PDPA จะสร้าง Version ใหม่อัตโนมัติ",
       conditions: [
         "เวอร์ชันปัจจุบัน → pdpa_consent_configs.version",
         "ประวัติทุกเวอร์ชัน → pdpa_consent_versions (audit trail)",
         "Consent Log อ้างอิงเวอร์ชันที่ผู้เยี่ยมยินยอม ณ ขณะนั้น",
         "หากข้อความเปลี่ยน → ผู้เยี่ยมใหม่จะเห็นเวอร์ชันล่าสุดเสมอ",
+        "สามารถสร้างรายการ PDPA ใหม่ตั้งแต่ต้น หรือแก้ไขจากเวอร์ชันเดิม",
+      ],
+    },
+    {
+      title: "Display Channels (ช่องทางแสดง)",
+      titleEn: "Channel-specific PDPA Display",
+      description: "แต่ละเวอร์ชัน PDPA สามารถกำหนดให้แสดงเฉพาะ Kiosk หรือ LINE OA หรือทั้งคู่",
+      conditions: [
+        "display_channels เก็บเป็น JSON Array เช่น [\"kiosk\"], [\"line\"], [\"kiosk\",\"line\"]",
+        "Runtime: Kiosk/LINE OA ตรวจ display_channels ก่อนแสดง consent",
+        "ถ้าช่องทางไม่อยู่ใน display_channels → ข้ามขั้นตอน PDPA (ไม่แสดง)",
+        "ใช้กรณี: consent Kiosk กับ LINE OA ต้องแสดงข้อความต่างกัน",
+        "Admin เลือกช่องทางได้ตอนสร้างใหม่หรือแก้ไข",
       ],
     },
     {
@@ -1478,10 +1535,11 @@ const pdpaConsentFlow: PageFlowData = {
       ],
     },
     {
-      title: "Kiosk Display",
-      titleEn: "Kiosk PDPA Display Behavior",
-      description: "พฤติกรรมการแสดง PDPA บนหน้าจอ Kiosk",
+      title: "Kiosk / LINE OA Display",
+      titleEn: "Kiosk & LINE OA PDPA Display Behavior",
+      description: "พฤติกรรมการแสดง PDPA บนหน้าจอ Kiosk และ LINE OA",
       conditions: [
+        "ตรวจ display_channels ว่าช่องทางปัจจุบันอยู่ในรายการหรือไม่",
         "แสดงข้อความตามภาษาที่ผู้เยี่ยมเลือก (TH/EN)",
         "ถ้า require_scroll=true → Checkbox จะ disabled จนกว่าจะเลื่อนอ่านจนจบ",
         "ปุ่ม 'ยอมรับและดำเนินการต่อ' → disabled จนกว่า Checkbox จะถูกเลือก",
@@ -1495,7 +1553,619 @@ const pdpaConsentFlow: PageFlowData = {
       conditions: [
         "คืนข้อความ TH/EN เป็นค่า default ของระบบ",
         "คืน retention_days เป็น 90 วัน",
+        "คืน display_channels เป็น [\"kiosk\", \"line\"]",
         "ไม่สร้าง version ใหม่จนกว่าจะกดบันทึก",
+      ],
+    },
+  ],
+};
+
+// ════════════════════════════════════════════════════
+// 12. การนัดหมาย (Appointments)
+// ════════════════════════════════════════════════════
+
+const appointmentsFlow: PageFlowData = {
+  pageId: "appointments",
+  menuName: "การนัดหมาย",
+  menuNameEn: "Appointments",
+  path: "/web/appointments",
+  summary:
+    "จัดการนัดหมายผู้มาติดต่อ — สร้างนัดหมาย, อนุมัติ/ปฏิเสธ, ติดตามสถานะ, จัดการ WiFi และผู้ติดตาม",
+  flowcharts: [
+    {
+      id: "appointment-create",
+      title: "สร้างนัดหมายใหม่ (Admin)",
+      titleEn: "Create New Appointment (Admin)",
+      description: "ขั้นตอนการสร้างนัดหมายใหม่โดย Admin",
+      steps: [
+        { id: "ac1", label: "เปิดหน้านัดหมาย", type: "start" },
+        { id: "ac2", label: "กดสร้างใหม่", type: "process" },
+        { id: "ac3", label: "เลือกผู้มาติดต่อ", type: "process" },
+        { id: "ac4", label: "ตรวจ Blocklist?", type: "decision" },
+        { id: "ac5", label: "แจ้งเตือนและหยุด\n(ผู้มาติดต่ออยู่ใน Blocklist)", type: "end" },
+        {
+          id: "ac6",
+          label: "กรอกข้อมูล\n(วัน/เวลา/สถานที่/ประเภท)",
+          type: "process",
+        },
+        { id: "ac7", label: "เลือก Entry Mode\n(single/period)", type: "process" },
+        { id: "ac8", label: "เพิ่มผู้ติดตาม?", type: "decision" },
+        { id: "ac8b", label: "เพิ่มผู้ติดตาม (0-10 คน)", type: "process" },
+        { id: "ac9", label: "เสนอ WiFi?", type: "decision" },
+        { id: "ac9b", label: "ตั้งค่า WiFi credentials", type: "process" },
+        { id: "ac10", label: "บันทึก", type: "process" },
+        { id: "ac11", label: "ส่ง Notification\nให้ผู้อนุมัติ", type: "io" },
+        { id: "ac12", label: "สำเร็จ", type: "end" },
+      ],
+      connections: [
+        { from: "ac1", to: "ac2" },
+        { from: "ac2", to: "ac3" },
+        { from: "ac3", to: "ac4" },
+        { from: "ac4", to: "ac5", label: "อยู่ใน Blocklist", condition: "blocked" },
+        { from: "ac4", to: "ac6", label: "ไม่อยู่ใน Blocklist", condition: "clear" },
+        { from: "ac6", to: "ac7" },
+        { from: "ac7", to: "ac8" },
+        { from: "ac8", to: "ac8b", label: "ใช่", condition: "yes" },
+        { from: "ac8", to: "ac9", label: "ไม่", condition: "no" },
+        { from: "ac8b", to: "ac9" },
+        { from: "ac9", to: "ac9b", label: "ใช่", condition: "yes" },
+        { from: "ac9", to: "ac10", label: "ไม่", condition: "no" },
+        { from: "ac9b", to: "ac10" },
+        { from: "ac10", to: "ac11" },
+        { from: "ac11", to: "ac12" },
+      ],
+    },
+    {
+      id: "appointment-approve",
+      title: "อนุมัติ/ปฏิเสธนัดหมาย",
+      titleEn: "Approve / Reject Appointment",
+      description: "ขั้นตอนการอนุมัติหรือปฏิเสธนัดหมาย",
+      steps: [
+        { id: "aa1", label: "เจ้าหน้าที่เปิดรายการ pending", type: "start" },
+        { id: "aa2", label: "ดูรายละเอียด", type: "process" },
+        { id: "aa3", label: "ตัดสินใจ?", type: "decision" },
+        {
+          id: "aa4",
+          label: "อัปเดต status=approved\nส่ง notification ให้ผู้จอง",
+          type: "process",
+        },
+        {
+          id: "aa5",
+          label: "ใส่เหตุผล\nอัปเดต status=rejected\nส่ง notification",
+          type: "process",
+        },
+        { id: "aa6", label: "สำเร็จ", type: "end" },
+      ],
+      connections: [
+        { from: "aa1", to: "aa2" },
+        { from: "aa2", to: "aa3" },
+        { from: "aa3", to: "aa4", label: "อนุมัติ", condition: "approve" },
+        { from: "aa3", to: "aa5", label: "ปฏิเสธ", condition: "reject" },
+        { from: "aa4", to: "aa6" },
+        { from: "aa5", to: "aa6" },
+      ],
+    },
+    {
+      id: "appointment-checkin-checkout",
+      title: "Check-in / Check-out",
+      titleEn: "Visitor Check-in / Check-out",
+      description: "ขั้นตอนการ Check-in และ Check-out ผู้มาติดต่อ",
+      steps: [
+        { id: "aco1", label: "ผู้มาถึง", type: "start" },
+        { id: "aco2", label: "ตรวจสอบ QR/บัตร", type: "process" },
+        { id: "aco3", label: "ตรวจ Blocklist?", type: "decision" },
+        { id: "aco3b", label: "ปฏิเสธเข้าพื้นที่", type: "end" },
+        {
+          id: "aco4",
+          label: "อัปเดต status=checked-in\nบันทึก checkin_at",
+          type: "process",
+        },
+        { id: "aco5", label: "ถึงเวลาออก", type: "process" },
+        { id: "aco6", label: "กด Check-out", type: "process" },
+        {
+          id: "aco7",
+          label: "อัปเดต status=checked-out\nบันทึก checkout_at",
+          type: "process",
+        },
+        { id: "aco8", label: "สำเร็จ", type: "end" },
+      ],
+      connections: [
+        { from: "aco1", to: "aco2" },
+        { from: "aco2", to: "aco3" },
+        { from: "aco3", to: "aco3b", label: "อยู่ใน Blocklist", condition: "blocked" },
+        { from: "aco3", to: "aco4", label: "ผ่าน", condition: "clear" },
+        { from: "aco4", to: "aco5" },
+        { from: "aco5", to: "aco6" },
+        { from: "aco6", to: "aco7" },
+        { from: "aco7", to: "aco8" },
+      ],
+    },
+  ],
+  validationRules: [
+    {
+      field: "วันที่นัดหมาย",
+      fieldEn: "Appointment Date",
+      rules: ["ต้องเป็นวันปัจจุบันหรืออนาคต", "ห้ามเป็นวันที่ผ่านมาแล้ว"],
+    },
+    {
+      field: "เวลาเริ่มต้น",
+      fieldEn: "Start Time",
+      rules: ["ต้องอยู่ในเวลาทำการ", "ต้องก่อนเวลาสิ้นสุด"],
+    },
+    {
+      field: "ผู้มาติดต่อ",
+      fieldEn: "Visitor",
+      rules: ["ห้ามว่าง (Required)", "ต้องไม่อยู่ใน Blocklist"],
+    },
+    {
+      field: "ผู้ติดตาม",
+      fieldEn: "Companions",
+      rules: ["0-10 คน", "ไม่บังคับ"],
+    },
+    {
+      field: "Entry Mode (period)",
+      fieldEn: "Entry Mode Period",
+      rules: ["date_end ต้อง > date", "ใช้เมื่อ entry_mode=period"],
+    },
+  ],
+  businessConditions: [
+    {
+      title: "Blocklist Check (ตรวจด้วยชื่อ+นามสกุล)",
+      titleEn: "Name-based Blocklist Verification",
+      description: "ตรวจสอบ Blocklist ด้วยชื่อ+นามสกุล (ไม่ใช้เลขบัตร) ก่อนสร้างนัดหมายและก่อน check-in ทุกช่องทาง",
+      conditions: [
+        "ตรวจด้วย first_name + last_name (partial match, case-insensitive) — ไม่ใช้เลขบัตรเพราะระบบไม่ได้เก็บ ID",
+        "Kiosk: ตรวจเมื่อสแกน QR/walk-in → ปฏิเสธถ้าพบ",
+        "Counter: ตรวจเมื่อเจ้าหน้าที่ค้นหาผู้มาติดต่อ → แจ้งเตือน",
+        "LINE OA: ตรวจเมื่อจองนัดหมาย → ปฏิเสธการจอง",
+        "Web (เจ้าหน้าที่): ตรวจเมื่อสร้างนัดหมายให้ → แสดง alert",
+        "ผู้ติดตาม (companion) ก็ถูกตรวจทุกคน",
+        "ตรวจทั้ง permanent และ temporary (ดู expiry_date ด้วย)",
+      ],
+    },
+    {
+      title: "Auto Check-out",
+      titleEn: "Automatic Check-out",
+      description: "ระบบ auto checkout เมื่อเกินเวลา",
+      conditions: [
+        "เมื่อเกินเวลานัดหมาย → ระบบ auto checkout",
+        "อัปเดต status=checked-out อัตโนมัติ",
+      ],
+    },
+    {
+      title: "WiFi",
+      titleEn: "WiFi Credential Provisioning",
+      description: "สร้าง WiFi credentials เมื่ออนุมัตินัดหมายที่เสนอ WiFi",
+      conditions: [
+        "สร้าง credentials เมื่อ status=approved + offer_wifi=true",
+        "ส่ง credentials ให้ผู้มาติดต่อผ่าน notification",
+      ],
+    },
+    {
+      title: "Notification",
+      titleEn: "Status Change Notification",
+      description: "ส่ง notification ทุกครั้งที่เปลี่ยนสถานะ",
+      conditions: [
+        "สร้างนัดหมาย → แจ้งผู้อนุมัติ",
+        "อนุมัติ/ปฏิเสธ → แจ้งผู้จอง",
+        "Check-in / Check-out → บันทึก log",
+      ],
+    },
+  ],
+};
+
+// ════════════════════════════════════════════════════
+// 13. ค้นหาผู้ติดต่อ (Visitor Search)
+// ════════════════════════════════════════════════════
+
+const searchFlow: PageFlowData = {
+  pageId: "search",
+  menuName: "ค้นหาผู้ติดต่อ",
+  menuNameEn: "Visitor Search",
+  path: "/web/search",
+  summary:
+    "ค้นหาผู้มาติดต่อ — ค้นหาตามชื่อ/บริษัท/รหัส, กรองตามประเภทและสถานะ, ดูรายละเอียด",
+  flowcharts: [
+    {
+      id: "search-filter",
+      title: "ค้นหาและกรองข้อมูล",
+      titleEn: "Search & Filter Visitors",
+      description: "ขั้นตอนการค้นหาและกรองข้อมูลผู้มาติดต่อ",
+      steps: [
+        { id: "sf1", label: "เปิดหน้าค้นหา", type: "start" },
+        { id: "sf2", label: "แสดงรายการวันนี้\n(default)", type: "process" },
+        { id: "sf3", label: "ค้นหา\n(ชื่อ/บริษัท/รหัส)", type: "process" },
+        {
+          id: "sf4",
+          label: "เลือกตัวกรอง\n(ประเภท/สถานะ/ช่วงวัน)",
+          type: "process",
+        },
+        { id: "sf5", label: "แสดงผลลัพธ์", type: "process" },
+        { id: "sf6", label: "เปลี่ยนจำนวนแสดง/หน้า", type: "process" },
+        { id: "sf7", label: "ล้างตัวกรอง", type: "process" },
+        { id: "sf8", label: "สำเร็จ", type: "end" },
+      ],
+      connections: [
+        { from: "sf1", to: "sf2" },
+        { from: "sf2", to: "sf3" },
+        { from: "sf3", to: "sf4" },
+        { from: "sf4", to: "sf5" },
+        { from: "sf5", to: "sf6" },
+        { from: "sf6", to: "sf8" },
+        { from: "sf5", to: "sf7", label: "ล้างตัวกรอง" },
+        { from: "sf7", to: "sf2" },
+      ],
+    },
+    {
+      id: "search-view-detail",
+      title: "ดูรายละเอียดผู้มาติดต่อ",
+      titleEn: "View Visitor Detail",
+      description: "ขั้นตอนการดูรายละเอียดผู้มาติดต่อ",
+      steps: [
+        { id: "sd1", label: "คลิกรายการ", type: "start" },
+        { id: "sd2", label: "เปิดรายละเอียด", type: "process" },
+        {
+          id: "sd3",
+          label: "แสดงข้อมูลนัดหมาย\n+ ผู้มาติดต่อ\n+ สถานะ + ประวัติ",
+          type: "io",
+        },
+        { id: "sd4", label: "สำเร็จ", type: "end" },
+      ],
+      connections: [
+        { from: "sd1", to: "sd2" },
+        { from: "sd2", to: "sd3" },
+        { from: "sd3", to: "sd4" },
+      ],
+    },
+  ],
+  validationRules: [
+    {
+      field: "คำค้นหา",
+      fieldEn: "Search Keyword",
+      rules: ["minimum 1 ตัวอักษร", "ค้นหาแบบ partial match"],
+    },
+    {
+      field: "Pagination",
+      fieldEn: "Pagination",
+      rules: ["5/10/20/50 per page", "ค่าเริ่มต้น 10 per page"],
+    },
+    {
+      field: "วันที่",
+      fieldEn: "Date Filter",
+      rules: ["กรอง \"วันนี้เท่านั้น\" default เปิด", "สามารถปิดเพื่อดูทุกวันได้"],
+    },
+  ],
+  businessConditions: [
+    {
+      title: "Default View",
+      titleEn: "Default View Filter",
+      description: "แสดงเฉพาะวันนี้เป็นค่าเริ่มต้น",
+      conditions: [
+        "เปิดหน้าค้นหาครั้งแรก → แสดงเฉพาะรายการวันนี้",
+        "ผู้ใช้สามารถปิดตัวกรองวันที่เพื่อดูทุกวันได้",
+      ],
+    },
+    {
+      title: "Search Scope",
+      titleEn: "Cross-field Search",
+      description: "ค้นหาข้ามฟิลด์",
+      conditions: [
+        "ค้นหาจากชื่อผู้มาติดต่อ",
+        "ค้นหาจากชื่อบริษัท",
+        "ค้นหาจากรหัสนัดหมาย",
+        "ค้นหาจากชื่อผู้พบ (เจ้าหน้าที่)",
+      ],
+    },
+    {
+      title: "Real-time",
+      titleEn: "Real-time Status Update",
+      description: "อัปเดตสถานะอัตโนมัติ",
+      conditions: [
+        "สถานะนัดหมายอัปเดตแบบ real-time",
+        "ไม่ต้อง refresh หน้าเพื่อดูสถานะล่าสุด",
+      ],
+    },
+  ],
+};
+
+// ════════════════════════════════════════════════════
+// 14. Blocklist Management
+// ════════════════════════════════════════════════════
+
+const blocklistFlow: PageFlowData = {
+  pageId: "blocklist",
+  menuName: "Blocklist",
+  menuNameEn: "Blocklist Management",
+  path: "/web/blocklist",
+  summary:
+    "จัดการรายชื่อผู้ถูกบล็อก — ตรวจสอบด้วย ชื่อ+นามสกุล (ไม่ใช้เลขบัตร เพราะระบบไม่ได้เก็บ ID) ตรวจอัตโนมัติทุกช่องทาง: Kiosk, Counter, LINE OA นัดหมาย, เจ้าหน้าที่สร้างให้",
+  flowcharts: [
+    {
+      id: "blocklist-add",
+      title: "เพิ่มรายชื่อ Blocklist",
+      titleEn: "Add to Blocklist",
+      description: "ขั้นตอนการเพิ่มรายชื่อผู้ถูกบล็อก — บันทึกชื่อ+นามสกุล (ไม่ใช้เลขบัตร)",
+      steps: [
+        { id: "ba1", label: "กดเพิ่มรายชื่อ", type: "start" },
+        { id: "ba2", label: "กรอกชื่อ + นามสกุล\n(+ บริษัท ถ้ามี)", type: "process" },
+        { id: "ba3", label: "เลือกประเภท\n(ถาวร/ชั่วคราว)", type: "decision" },
+        { id: "ba4", label: "กำหนดวันหมดอายุ", type: "process" },
+        { id: "ba5", label: "ใส่เหตุผล", type: "process" },
+        { id: "ba6", label: "บันทึก\n(first_name + last_name)", type: "process" },
+        { id: "ba7", label: "ทุกช่องทาง ตรวจชื่อนี้\nอัตโนมัติ (Kiosk/Counter/\nLINE OA/เจ้าหน้าที่สร้าง)", type: "io" },
+        { id: "ba8", label: "สำเร็จ", type: "end" },
+      ],
+      connections: [
+        { from: "ba1", to: "ba2" },
+        { from: "ba2", to: "ba3" },
+        { from: "ba3", to: "ba4", label: "ชั่วคราว", condition: "temporary" },
+        { from: "ba3", to: "ba5", label: "ถาวร", condition: "permanent" },
+        { from: "ba4", to: "ba5" },
+        { from: "ba5", to: "ba6" },
+        { from: "ba6", to: "ba7" },
+        { from: "ba7", to: "ba8" },
+      ],
+    },
+    {
+      id: "blocklist-check",
+      title: "ตรวจสอบ Blocklist ด้วยชื่อ+นามสกุล (Runtime — ทุกช่องทาง)",
+      titleEn: "Blocklist Name-based Check (All Channels)",
+      description: "ตรวจ Blocklist ทุกครั้งที่มีการระบุชื่อ-นามสกุล — ใช้ทุกช่องทาง: Kiosk สแกน QR/walk-in, Counter เจ้าหน้าที่ตรวจ, LINE OA จองนัดหมาย, Web เจ้าหน้าที่สร้างให้ — ตรวจด้วย first_name + last_name (partial match, case-insensitive) ไม่ใช้เลขบัตร",
+      steps: [
+        { id: "bc1", label: "ระบุชื่อ-นามสกุลผู้มาติดต่อ\n(ทุกช่องทาง)", type: "start" },
+        { id: "bc1b", label: "ช่องทางที่ตรวจ:\n① Kiosk (สแกน QR/walk-in)\n② Counter (เจ้าหน้าที่ตรวจ)\n③ LINE OA (จองนัดหมาย)\n④ Web (เจ้าหน้าที่สร้างให้)", type: "io" },
+        { id: "bc2", label: "ค้นหา blocklist\nWHERE first_name LIKE %ชื่อ%\nAND last_name LIKE %นามสกุล%\nAND is_active=true", type: "process" },
+        { id: "bc3", label: "พบรายชื่อตรง?", type: "decision" },
+        { id: "bc4", label: "อนุญาตดำเนินการต่อ", type: "end" },
+        { id: "bc5", label: "ตรวจ type?", type: "decision" },
+        { id: "bc6", label: "ปฏิเสธ + แจ้งเจ้าหน้าที่\n+ บันทึก blocklist_check_logs", type: "end" },
+        { id: "bc7", label: "ตรวจ expiry_date > now?", type: "decision" },
+        { id: "bc8", label: "อัปเดต is_active=false\n+ อนุญาตดำเนินการ", type: "process" },
+        { id: "bc9", label: "ปฏิเสธ + แจ้งเจ้าหน้าที่\n+ บันทึก log", type: "end" },
+        { id: "bc10", label: "สำเร็จ", type: "end" },
+      ],
+      connections: [
+        { from: "bc1", to: "bc1b" },
+        { from: "bc1b", to: "bc2" },
+        { from: "bc2", to: "bc3" },
+        { from: "bc3", to: "bc4", label: "ไม่พบ (ชื่อ-นามสกุลไม่ตรง)" },
+        { from: "bc3", to: "bc5", label: "พบ (ชื่อ-นามสกุลตรง)" },
+        { from: "bc5", to: "bc6", label: "permanent" },
+        { from: "bc5", to: "bc7", label: "temporary" },
+        { from: "bc7", to: "bc8", label: "หมดอายุแล้ว" },
+        { from: "bc7", to: "bc9", label: "ยังไม่หมดอายุ" },
+        { from: "bc8", to: "bc10" },
+      ],
+    },
+    {
+      id: "blocklist-manage",
+      title: "แก้ไข/ลบรายชื่อ",
+      titleEn: "Edit / Remove Blocklist Entry",
+      description: "ขั้นตอนการแก้ไขหรือลบรายชื่อจาก Blocklist",
+      steps: [
+        { id: "bm1", label: "ค้นหา/กรองรายชื่อ", type: "start" },
+        { id: "bm2", label: "เลือกรายการ", type: "process" },
+        { id: "bm3", label: "เลือกการกระทำ?", type: "decision" },
+        { id: "bm4", label: "แก้ไข\n(เปลี่ยนชื่อ/ประเภท/เหตุผล/วันหมดอายุ)", type: "process" },
+        { id: "bm5", label: "ยืนยันลบ", type: "process" },
+        { id: "bm6", label: "บันทึก", type: "process" },
+        { id: "bm7", label: "สำเร็จ", type: "end" },
+      ],
+      connections: [
+        { from: "bm1", to: "bm2" },
+        { from: "bm2", to: "bm3" },
+        { from: "bm3", to: "bm4", label: "แก้ไข", condition: "edit" },
+        { from: "bm3", to: "bm5", label: "ลบ", condition: "delete" },
+        { from: "bm4", to: "bm6" },
+        { from: "bm5", to: "bm6" },
+        { from: "bm6", to: "bm7" },
+      ],
+    },
+  ],
+  validationRules: [
+    {
+      field: "ชื่อ-นามสกุล",
+      fieldEn: "First Name + Last Name",
+      rules: ["ห้ามว่างทั้งคู่ (ชื่อ + นามสกุล Required)", "ใช้ตรวจสอบ Blocklist ทุกช่องทาง (partial match, case-insensitive)", "ไม่ใช้เลขบัตรเพราะระบบไม่ได้เก็บ ID ไว้"],
+    },
+    {
+      field: "เหตุผล",
+      fieldEn: "Reason",
+      rules: ["ห้ามว่าง (Required)", "อย่างน้อย 10 ตัวอักษร"],
+    },
+    {
+      field: "วันหมดอายุ (temporary)",
+      fieldEn: "Expiry Date (Temporary)",
+      rules: ["ต้องเป็นอนาคต", "บังคับเมื่อ type=temporary"],
+    },
+    {
+      field: "ผู้มาติดต่อ",
+      fieldEn: "Visitor",
+      rules: ["ตรวจซ้ำก่อนเพิ่ม (ห้ามชื่อ+นามสกุลซ้ำ)", "visitor_id เป็น nullable — สามารถบล็อกคนที่ยังไม่เคยเข้าระบบได้"],
+    },
+  ],
+  businessConditions: [
+    {
+      title: "การตรวจสอบด้วยชื่อ-นามสกุล (Name-based Matching)",
+      titleEn: "Name-based Blocklist Matching",
+      description: "ระบบตรวจ Blocklist ด้วย ชื่อ+นามสกุล เท่านั้น — ไม่ใช้เลขบัตรเพราะระบบไม่ได้เก็บ ID ไว้",
+      conditions: [
+        "ตรวจด้วย first_name + last_name แบบ partial match, case-insensitive",
+        "ไม่ตรวจด้วยเลขบัตรประชาชน/passport เพราะระบบไม่ได้เก็บ ID ไว้",
+        "กรณีชื่อซ้ำ → ใช้ company ช่วยยืนยันตัวตน + แจ้งเจ้าหน้าที่ตัดสิน",
+        "Query: WHERE LOWER(first_name) LIKE LOWER(%input%) AND LOWER(last_name) LIKE LOWER(%input%) AND is_active=true",
+      ],
+    },
+    {
+      title: "ตรวจทุกช่องทาง (All Channel Check)",
+      titleEn: "All Channel Blocklist Verification",
+      description: "ตรวจ blocklist ทุกครั้งที่มีการระบุชื่อ-นามสกุล ไม่ว่าจะเข้าจากช่องทางไหน",
+      conditions: [
+        "① Kiosk: ตรวจเมื่อสแกน QR / walk-in กรอกชื่อ → พบ = แสดงหน้าจอปฏิเสธ",
+        "② Counter: ตรวจเมื่อเจ้าหน้าที่ค้นหา/ตรวจสอบผู้มาติดต่อ → พบ = แจ้งเตือนบนหน้าจอ",
+        "③ LINE OA: ตรวจเมื่อผู้ใช้จองนัดหมาย → พบ = ปฏิเสธการจอง + แจ้งเหตุผล",
+        "④ Web (เจ้าหน้าที่): ตรวจเมื่อสร้างนัดหมายให้ → พบ = แสดง alert + ไม่ให้บันทึก",
+        "ผู้ติดตาม (companion) ก็ถูกตรวจด้วย — ทุกคนต้องผ่าน blocklist check",
+      ],
+    },
+    {
+      title: "Auto-expiry",
+      titleEn: "Automatic Expiry Check",
+      description: "ระบบตรวจสอบ expiry_date รายวัน",
+      conditions: [
+        "Batch job ตรวจ expiry_date ทุกวัน",
+        "อัปเดต is_active=false เมื่อ expiry_date < NOW()",
+        "รายการที่หมดอายุจะไม่บล็อกผู้มาติดต่ออีกต่อไป",
+        "Runtime: ถ้าตรวจแล้วเจอ temporary ที่ expiry_date < now → auto อัปเดต is_active=false แล้วอนุญาต",
+      ],
+    },
+    {
+      title: "Notification & Audit Log",
+      titleEn: "Block Attempt Notification & Audit",
+      description: "แจ้งเตือนและบันทึกทุกครั้งที่ตรวจพบรายชื่อ blocklist",
+      conditions: [
+        "ส่ง notification ให้เจ้าหน้าที่ Counter/Admin ทันทีที่ตรวจพบ",
+        "บันทึก blocklist_check_logs ทุกครั้ง: ชื่อที่ตรง, ช่องทาง, การกระทำ",
+        "ใช้สำหรับ audit trail และรายงานความปลอดภัย",
+      ],
+    },
+    {
+      title: "Audit",
+      titleEn: "Audit Trail",
+      description: "บันทึกทุกการเปลี่ยนแปลง",
+      conditions: [
+        "บันทึกการเพิ่มรายชื่อ (เพิ่มโดยใคร, เมื่อไหร่)",
+        "บันทึกการแก้ไข (เปลี่ยนอะไร, โดยใคร)",
+        "บันทึกการลบ (ลบโดยใคร, เมื่อไหร่)",
+      ],
+    },
+  ],
+};
+
+// ════════════════════════════════════════════════════
+// 15. รายงาน (Reports)
+// ════════════════════════════════════════════════════
+
+const reportsFlow: PageFlowData = {
+  pageId: "reports",
+  menuName: "รายงาน",
+  menuNameEn: "Reports",
+  path: "/web/reports",
+  summary:
+    "รายงานสถิติผู้มาติดต่อ — สรุปรายวัน/สัปดาห์/เดือน, กราฟแนวโน้ม, วิเคราะห์ตามประเภท/แผนก, ส่งออก Excel/PDF",
+  flowcharts: [
+    {
+      id: "report-view",
+      title: "ดูรายงานสถิติ",
+      titleEn: "View Report Dashboard",
+      description: "ขั้นตอนการดูรายงานสถิติผู้มาติดต่อ",
+      steps: [
+        { id: "rv1", label: "เปิดหน้ารายงาน", type: "start" },
+        {
+          id: "rv2",
+          label: "เลือกช่วงเวลา\n(วันนี้/สัปดาห์/เดือน/กำหนดเอง)",
+          type: "process",
+        },
+        {
+          id: "rv3",
+          label: "แสดง Dashboard\n(KPI cards + กราฟ)",
+          type: "io",
+        },
+        { id: "rv4", label: "กรองตามแผนก/ประเภท", type: "process" },
+        { id: "rv5", label: "Refresh ข้อมูล", type: "process" },
+        { id: "rv6", label: "สำเร็จ", type: "end" },
+      ],
+      connections: [
+        { from: "rv1", to: "rv2" },
+        { from: "rv2", to: "rv3" },
+        { from: "rv3", to: "rv4" },
+        { from: "rv4", to: "rv5" },
+        { from: "rv5", to: "rv6" },
+      ],
+    },
+    {
+      id: "report-export",
+      title: "ส่งออกรายงาน",
+      titleEn: "Export Report",
+      description: "ขั้นตอนการส่งออกรายงานเป็น Excel หรือ PDF",
+      steps: [
+        { id: "re1", label: "เลือกช่วงเวลา", type: "start" },
+        { id: "re2", label: "เลือกรูปแบบ\n(Excel/PDF)", type: "process" },
+        { id: "re3", label: "เลือกข้อมูลที่ต้องการ", type: "process" },
+        { id: "re4", label: "กดส่งออก", type: "process" },
+        { id: "re5", label: "ระบบ generate ไฟล์", type: "subprocess" },
+        { id: "re6", label: "Download", type: "io" },
+        { id: "re7", label: "สำเร็จ", type: "end" },
+      ],
+      connections: [
+        { from: "re1", to: "re2" },
+        { from: "re2", to: "re3" },
+        { from: "re3", to: "re4" },
+        { from: "re4", to: "re5" },
+        { from: "re5", to: "re6" },
+        { from: "re6", to: "re7" },
+      ],
+    },
+  ],
+  validationRules: [
+    {
+      field: "ช่วงเวลา",
+      fieldEn: "Date Range",
+      rules: ["วันเริ่มต้น ≤ วันสิ้นสุด", "ไม่เกิน 1 ปี"],
+    },
+    {
+      field: "Export",
+      fieldEn: "Export Format",
+      rules: ["รองรับ Excel (.xlsx) และ PDF", "เลือกได้ครั้งละ 1 รูปแบบ"],
+    },
+  ],
+  businessConditions: [
+    {
+      title: "Real-time Dashboard",
+      titleEn: "Real-time KPI Dashboard",
+      description: "KPI อัปเดตทุก 5 นาที",
+      conditions: [
+        "KPI cards อัปเดตอัตโนมัติทุก 5 นาที",
+        "กราฟอัปเดตตาม interval ที่กำหนด",
+        "สามารถกด Refresh เพื่ออัปเดตทันทีได้",
+      ],
+    },
+    {
+      title: "Data Aggregation",
+      titleEn: "Data Aggregation Sources",
+      description: "สรุปข้อมูลจากหลายตาราง",
+      conditions: [
+        "รวมข้อมูลจาก appointments",
+        "รวมข้อมูลจาก visitors",
+        "รวมข้อมูลจาก pdpa_consent_logs",
+      ],
+    },
+    {
+      title: "Department Breakdown",
+      titleEn: "Department Statistics Breakdown",
+      description: "แยกสถิติตามแผนก",
+      conditions: [
+        "แสดงจำนวนผู้มาติดต่อแยกตามแผนก",
+        "เปรียบเทียบระหว่างแผนกได้",
+      ],
+    },
+    {
+      title: "Visit Type Analysis",
+      titleEn: "Visit Type Proportion Analysis",
+      description: "วิเคราะห์สัดส่วนประเภทการติดต่อ",
+      conditions: [
+        "แสดงสัดส่วนประเภทการติดต่อเป็น Pie/Donut chart",
+        "กรองตามช่วงเวลาได้",
+      ],
+    },
+    {
+      title: "Trend",
+      titleEn: "Trend Comparison",
+      description: "แสดงแนวโน้มเทียบช่วงเวลาก่อนหน้า",
+      conditions: [
+        "เปรียบเทียบกับช่วงเวลาก่อนหน้า (เช่น สัปดาห์นี้ vs สัปดาห์ที่แล้ว)",
+        "แสดง % เพิ่ม/ลดบน KPI cards",
+        "แสดง trend line บนกราฟ",
       ],
     },
   ],
@@ -1517,6 +2187,10 @@ export const allFlowData: PageFlowData[] = [
   approverGroupsFlow,
   accessZonesFlow,
   pdpaConsentFlow,
+  appointmentsFlow,
+  searchFlow,
+  blocklistFlow,
+  reportsFlow,
 ];
 
 export function getFlowByPageId(pageId: string): PageFlowData | undefined {

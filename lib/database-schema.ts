@@ -1120,17 +1120,18 @@ const pdpaConsentSchema: PageSchema = {
   menuName: "PDPA / นโยบายคุ้มครองข้อมูล",
   menuNameEn: "PDPA Consent Settings",
   path: "/web/settings/pdpa-consent",
-  description: "จัดการข้อความนโยบายคุ้มครองข้อมูลส่วนบุคคล (PDPA) 2 ภาษา — แสดงบน Kiosk, ตั้งค่า retention, ประวัติเวอร์ชัน, และ log การยินยอม",
+  description: "จัดการข้อความนโยบายคุ้มครองข้อมูลส่วนบุคคล (PDPA) 2 ภาษา — แสดงบน Kiosk/LINE OA, ตั้งค่า retention, เลือกช่องทางแสดง, ประวัติเวอร์ชัน, และ log การยินยอม",
   tables: [
     {
       name: "pdpa_consent_configs",
-      comment: "ตารางการตั้งค่า PDPA หลัก — ข้อความนโยบาย 2 ภาษา, ระยะเวลาเก็บข้อมูล, เงื่อนไข UI",
+      comment: "ตารางการตั้งค่า PDPA หลัก — ข้อความนโยบาย 2 ภาษา, ระยะเวลาเก็บข้อมูล, เงื่อนไข UI, ช่องทางแสดง",
       columns: [
         { name: "id", type: "INT AUTO_INCREMENT", nullable: false, comment: "รหัสการตั้งค่า (PK)", isPrimaryKey: true },
         { name: "text_th", type: "TEXT", nullable: false, comment: "เนื้อหานโยบาย PDPA (ภาษาไทย)" },
         { name: "text_en", type: "TEXT", nullable: false, comment: "เนื้อหานโยบาย PDPA (ภาษาอังกฤษ)" },
         { name: "retention_days", type: "INT", nullable: false, comment: "ระยะเวลาจัดเก็บข้อมูล (วัน)", defaultValue: "90" },
         { name: "require_scroll", type: "BOOLEAN", nullable: false, comment: "ต้องเลื่อนอ่านจบก่อนยอมรับ", defaultValue: "true" },
+        { name: "display_channels", type: "JSON", nullable: false, comment: "ช่องทางที่แสดง consent เช่น [\"kiosk\",\"line\"] — บางเวอร์ชันอาจแสดงเฉพาะ Kiosk หรือ LINE OA", defaultValue: "[\"kiosk\",\"line\"]" },
         { name: "is_active", type: "BOOLEAN", nullable: false, comment: "สถานะเปิด/ปิดใช้งาน", defaultValue: "true" },
         { name: "version", type: "INT", nullable: false, comment: "เลขเวอร์ชัน (เพิ่มทุกครั้งที่แก้ไขข้อความ)", defaultValue: "1" },
         { name: "updated_by", type: "INT", nullable: true, comment: "FK → staff.id ผู้แก้ไขล่าสุด", isForeignKey: true, references: "staff.id" },
@@ -1138,12 +1139,12 @@ const pdpaConsentSchema: PageSchema = {
         { name: "updated_at", type: "TIMESTAMP", nullable: false, comment: "วันที่แก้ไขล่าสุด", defaultValue: "CURRENT_TIMESTAMP" },
       ],
       seedData: [
-        { id: 1, text_th: "พระราชบัญญัติคุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562 (PDPA)\n\nกระทรวงการท่องเที่ยวและกีฬา (\"หน่วยงาน\") จะเก็บรวบรวม ใช้ และเปิดเผยข้อมูลส่วนบุคคลของท่าน...", text_en: "Personal Data Protection Act B.E. 2562 (PDPA)\n\nThe Ministry of Tourism and Sports (\"the Organization\") will collect, use, and disclose your personal data...", retention_days: 90, require_scroll: true, is_active: true, version: 1, updated_by: null },
+        { id: 1, text_th: "พระราชบัญญัติคุ้มครองข้อมูลส่วนบุคคล พ.ศ. 2562 (PDPA)\n\nกระทรวงการท่องเที่ยวและกีฬา (\"หน่วยงาน\") จะเก็บรวบรวม ใช้ และเปิดเผยข้อมูลส่วนบุคคลของท่าน...", text_en: "Personal Data Protection Act B.E. 2562 (PDPA)\n\nThe Ministry of Tourism and Sports (\"the Organization\") will collect, use, and disclose your personal data...", retention_days: 90, require_scroll: true, display_channels: '["kiosk","line"]', is_active: true, version: 1, updated_by: null },
       ],
     },
     {
       name: "pdpa_consent_versions",
-      comment: "ประวัติเวอร์ชัน PDPA — เก็บทุกครั้งที่มีการแก้ไขข้อความ สำหรับ audit trail",
+      comment: "ประวัติเวอร์ชัน PDPA — เก็บทุกครั้งที่มีการแก้ไขข้อความหรือสร้างใหม่ สำหรับ audit trail",
       columns: [
         { name: "id", type: "INT AUTO_INCREMENT", nullable: false, comment: "รหัสเวอร์ชัน (PK)", isPrimaryKey: true },
         { name: "config_id", type: "INT", nullable: false, comment: "FK → pdpa_consent_configs.id", isForeignKey: true, references: "pdpa_consent_configs.id" },
@@ -1152,6 +1153,7 @@ const pdpaConsentSchema: PageSchema = {
         { name: "text_en", type: "TEXT", nullable: false, comment: "เนื้อหา EN ณ เวอร์ชันนั้น" },
         { name: "retention_days", type: "INT", nullable: false, comment: "ระยะเวลาเก็บข้อมูล ณ เวอร์ชันนั้น" },
         { name: "require_scroll", type: "BOOLEAN", nullable: false, comment: "ต้องเลื่อนอ่านจบก่อนยอมรับ", defaultValue: "true" },
+        { name: "display_channels", type: "JSON", nullable: false, comment: "ช่องทางที่แสดง consent ณ เวอร์ชันนั้น เช่น [\"kiosk\"] หรือ [\"kiosk\",\"line\"]", defaultValue: "[\"kiosk\",\"line\"]" },
         { name: "is_active", type: "BOOLEAN", nullable: false, comment: "เวอร์ชันที่ใช้งานอยู่ (active ได้ 1 เวอร์ชัน)", defaultValue: "false" },
         { name: "effective_date", type: "DATE", nullable: false, comment: "วันที่มีผลบังคับใช้" },
         { name: "changed_by", type: "INT", nullable: true, comment: "FK → staff.id ผู้แก้ไข", isForeignKey: true, references: "staff.id" },
@@ -1159,14 +1161,14 @@ const pdpaConsentSchema: PageSchema = {
         { name: "created_at", type: "TIMESTAMP", nullable: false, comment: "วันที่บันทึกเวอร์ชัน", defaultValue: "CURRENT_TIMESTAMP" },
       ],
       seedData: [
-        { id: 1, config_id: 1, version: 1, text_th: "(ข้อความ PDPA v1)...", text_en: "(PDPA text v1)...", retention_days: 90, require_scroll: true, is_active: false, effective_date: "2025-01-01", changed_by: null, change_note: "เวอร์ชันเริ่มต้น" },
-        { id: 2, config_id: 1, version: 2, text_th: "(ข้อความ PDPA v2 + สิทธิเจ้าของข้อมูล)...", text_en: "(PDPA text v2 + data subject rights)...", retention_days: 90, require_scroll: true, is_active: false, effective_date: "2025-06-01", changed_by: 1, change_note: "เพิ่มสิทธิเจ้าของข้อมูล + ทะเบียนรถ" },
-        { id: 3, config_id: 1, version: 3, text_th: "(ข้อความ PDPA v3 + การเปิดเผยข้อมูล)...", text_en: "(PDPA text v3 + data disclosure)...", retention_days: 120, require_scroll: true, is_active: true, effective_date: "2026-01-15", changed_by: 1, change_note: "เพิ่มหมวดการเปิดเผยข้อมูล + retention 120 วัน" },
+        { id: 1, config_id: 1, version: 1, text_th: "(ข้อความ PDPA v1)...", text_en: "(PDPA text v1)...", retention_days: 90, require_scroll: true, display_channels: '["kiosk","line"]', is_active: false, effective_date: "2025-01-01", changed_by: null, change_note: "เวอร์ชันเริ่มต้น" },
+        { id: 2, config_id: 1, version: 2, text_th: "(ข้อความ PDPA v2 + สิทธิเจ้าของข้อมูล)...", text_en: "(PDPA text v2 + data subject rights)...", retention_days: 90, require_scroll: true, display_channels: '["kiosk","line"]', is_active: false, effective_date: "2025-06-01", changed_by: 1, change_note: "เพิ่มสิทธิเจ้าของข้อมูล + ทะเบียนรถ" },
+        { id: 3, config_id: 1, version: 3, text_th: "(ข้อความ PDPA v3 + การเปิดเผยข้อมูล)...", text_en: "(PDPA text v3 + data disclosure)...", retention_days: 120, require_scroll: true, display_channels: '["kiosk"]', is_active: true, effective_date: "2026-01-15", changed_by: 1, change_note: "เพิ่มหมวดการเปิดเผยข้อมูล + retention 120 วัน" },
       ],
     },
     {
       name: "pdpa_consent_logs",
-      comment: "บันทึกการยินยอม PDPA ของผู้เยี่ยม — เก็บทุกครั้งที่ผู้เยี่ยมกดยอมรับบน Kiosk/LINE",
+      comment: "บันทึกการยินยอม PDPA ของผู้เยี่ยม — เก็บทุกครั้งที่ผู้เยี่ยมกดยอมรับบน Kiosk/LINE OA",
       columns: [
         { name: "id", type: "INT AUTO_INCREMENT", nullable: false, comment: "รหัส Log (PK)", isPrimaryKey: true },
         { name: "visitor_id", type: "INT", nullable: false, comment: "FK → visitors.id ผู้เยี่ยมที่ยินยอม", isForeignKey: true, references: "visitors.id" },
@@ -1185,10 +1187,11 @@ const pdpaConsentSchema: PageSchema = {
     },
   ],
   relationships: [
-    "pdpa_consent_configs 1 ──→ N pdpa_consent_versions (ทุกครั้งที่แก้ไข → สร้าง version ใหม่)",
+    "pdpa_consent_configs 1 ──→ N pdpa_consent_versions (ทุกครั้งที่แก้ไขหรือสร้างใหม่ → สร้าง version ใหม่)",
     "pdpa_consent_logs.config_version ──→ pdpa_consent_versions.version (อ้างอิงเวอร์ชันที่ยินยอม)",
     "pdpa_consent_logs.visitor_id ──→ visitors.id (ผู้เยี่ยมที่ยินยอม)",
     "pdpa_consent_configs.updated_by ──→ staff.id (ผู้แก้ไขล่าสุด)",
+    "Kiosk/LINE OA ──→ ตรวจ display_channels ก่อนแสดง consent (แสดงเฉพาะช่องทางที่กำหนด)",
   ],
 };
 
@@ -1266,6 +1269,275 @@ const visitRecordsSchema: PageSchema = {
 };
 
 // ════════════════════════════════════════════════════
+// 13. การนัดหมาย (Appointments)
+// ════════════════════════════════════════════════════
+
+const appointmentsSchema: PageSchema = {
+  pageId: "appointments",
+  menuName: "การนัดหมาย",
+  menuNameEn: "Appointments",
+  path: "/web/appointments",
+  description: "จัดการนัดหมายผู้มาติดต่อ — สร้าง/อนุมัติ/ปฏิเสธ, ค้นหา, ติดตามสถานะ, จัดการผู้ติดตาม, WiFi",
+  tables: [
+    {
+      name: "appointments",
+      comment: "หลัก — ข้อมูลนัดหมาย",
+      columns: [
+        { name: "id", type: "SERIAL", nullable: false, comment: "รหัส Auto-increment (PK)", isPrimaryKey: true },
+        { name: "code", type: "VARCHAR(30)", nullable: false, comment: "รหัสนัดหมาย", isUnique: true },
+        { name: "visitor_id", type: "INT", nullable: false, comment: "FK → visitors.id ผู้มาติดต่อ", isForeignKey: true, references: "visitors.id" },
+        { name: "host_id", type: "INT", nullable: false, comment: "FK → staff.id ผู้ที่ต้องการพบ", isForeignKey: true, references: "staff.id" },
+        { name: "type", type: "ENUM('general','delivery','interview','maintenance','vip','contractor')", nullable: false, comment: "ประเภทการนัดหมาย (VisitType)" },
+        { name: "status", type: "ENUM('pending','approved','rejected','checked-in','checked-out','cancelled','expired','no-show')", nullable: false, comment: "สถานะนัดหมาย (VisitStatus)", defaultValue: "pending" },
+        { name: "entry_mode", type: "ENUM('single','period')", nullable: false, comment: "ครั้งเดียว / ช่วงเวลา", defaultValue: "single" },
+        { name: "date", type: "DATE", nullable: false, comment: "วันที่นัดหมาย" },
+        { name: "date_end", type: "DATE", nullable: true, comment: "วันสิ้นสุด (เฉพาะ period mode)" },
+        { name: "time_start", type: "TIME", nullable: false, comment: "เวลาเริ่ม" },
+        { name: "time_end", type: "TIME", nullable: false, comment: "เวลาสิ้นสุด" },
+        { name: "purpose", type: "VARCHAR(255)", nullable: false, comment: "วัตถุประสงค์การนัดหมาย" },
+        { name: "companions", type: "INT", nullable: false, comment: "จำนวนผู้ติดตาม", defaultValue: "0" },
+        { name: "companion_names", type: "JSON", nullable: true, comment: "รายชื่อผู้ติดตาม" },
+        { name: "created_by", type: "ENUM('visitor','staff')", nullable: false, comment: "สร้างโดยผู้มาติดต่อหรือเจ้าหน้าที่" },
+        { name: "offer_wifi", type: "BOOLEAN", nullable: false, comment: "เสนอ WiFi ให้ผู้มาติดต่อ", defaultValue: "false" },
+        { name: "wifi_requested", type: "BOOLEAN", nullable: false, comment: "ผู้มาติดต่อขอรับ WiFi", defaultValue: "false" },
+        { name: "slip_printed", type: "BOOLEAN", nullable: true, comment: "พิมพ์ slip หรือไม่" },
+        { name: "area", type: "VARCHAR(100)", nullable: true, comment: "พื้นที่" },
+        { name: "building", type: "VARCHAR(100)", nullable: true, comment: "อาคาร" },
+        { name: "floor", type: "VARCHAR(20)", nullable: true, comment: "ชั้น" },
+        { name: "room", type: "VARCHAR(50)", nullable: true, comment: "ห้อง" },
+        { name: "notes", type: "TEXT", nullable: true, comment: "หมายเหตุเพิ่มเติม" },
+        { name: "created_at", type: "TIMESTAMP", nullable: false, comment: "วันเวลาที่สร้าง", defaultValue: "CURRENT_TIMESTAMP" },
+        { name: "approved_at", type: "TIMESTAMP", nullable: true, comment: "วันเวลาที่อนุมัติ" },
+        { name: "approved_by", type: "INT", nullable: true, comment: "FK → staff.id ผู้อนุมัติ", isForeignKey: true, references: "staff.id" },
+        { name: "rejected_at", type: "TIMESTAMP", nullable: true, comment: "วันเวลาที่ปฏิเสธ" },
+        { name: "rejected_reason", type: "TEXT", nullable: true, comment: "เหตุผลที่ปฏิเสธ" },
+        { name: "checkin_at", type: "TIMESTAMP", nullable: true, comment: "วันเวลาที่ Check-in" },
+        { name: "checkout_at", type: "TIMESTAMP", nullable: true, comment: "วันเวลาที่ Check-out" },
+        { name: "checkout_by", type: "INT", nullable: true, comment: "FK → staff.id ผู้ทำ Check-out", isForeignKey: true, references: "staff.id" },
+        { name: "wifi_username", type: "VARCHAR(50)", nullable: true, comment: "ชื่อผู้ใช้ WiFi ที่แจก" },
+        { name: "wifi_password", type: "VARCHAR(50)", nullable: true, comment: "รหัส WiFi ที่แจก" },
+      ],
+      seedData: [
+        { id: 1, code: "APT-20260320-0001", visitor_id: 1, host_id: 2, type: "general", status: "approved", entry_mode: "single", date: "2026-03-20", time_start: "10:00", time_end: "11:30", purpose: "ประชุมโครงการ", companions: 0, companion_names: null, created_by: "visitor", offer_wifi: true, wifi_requested: true, slip_printed: null, area: "สำนักงานใหญ่", building: "อาคาร A", floor: "3", room: "301", created_at: "2026-03-19 14:00:00" },
+        { id: 2, code: "APT-20260320-0002", visitor_id: 2, host_id: 3, type: "delivery", status: "checked-in", entry_mode: "single", date: "2026-03-20", time_start: "14:00", time_end: "15:00", purpose: "ส่งเอกสาร", companions: 1, companion_names: '["สมศักดิ์ มั่นคง"]', created_by: "staff", offer_wifi: false, wifi_requested: false, slip_printed: true, area: "สำนักงานใหญ่", building: "อาคาร B", floor: "1", room: "102", checkin_at: "2026-03-20 13:55:00", created_at: "2026-03-18 09:00:00" },
+        { id: 3, code: "APT-20260321-0001", visitor_id: 3, host_id: 5, type: "interview", status: "pending", entry_mode: "single", date: "2026-03-21", time_start: "09:00", time_end: "10:30", purpose: "สัมภาษณ์ตำแหน่ง Developer", companions: 0, companion_names: null, created_by: "staff", offer_wifi: true, wifi_requested: false, slip_printed: null, area: "สำนักงานใหญ่", building: "อาคาร A", floor: "5", room: "501", created_at: "2026-03-17 11:00:00" },
+      ],
+    },
+    {
+      name: "appointment_equipment",
+      comment: "อุปกรณ์ที่นำเข้า — ผูกกับนัดหมาย",
+      columns: [
+        { name: "id", type: "SERIAL", nullable: false, comment: "รหัส Auto-increment (PK)", isPrimaryKey: true },
+        { name: "appointment_id", type: "INT", nullable: false, comment: "FK → appointments.id", isForeignKey: true, references: "appointments.id" },
+        { name: "name", type: "VARCHAR(100)", nullable: false, comment: "ชื่ออุปกรณ์" },
+        { name: "serial_number", type: "VARCHAR(100)", nullable: true, comment: "หมายเลขเครื่อง / Serial" },
+        { name: "description", type: "TEXT", nullable: true, comment: "รายละเอียดเพิ่มเติม" },
+      ],
+      seedData: [
+        { id: 1, appointment_id: 2, name: "โน้ตบุ๊ก", serial_number: "SN-2024-001", description: "Dell Latitude สำหรับนำเสนองาน" },
+        { id: 2, appointment_id: 3, name: "แท็บเล็ต", serial_number: null, description: "iPad สำหรับทำแบบทดสอบ" },
+      ],
+    },
+  ],
+  relationships: [
+    "appointments.visitor_id ──→ visitors.id (ผู้มาติดต่อ)",
+    "appointments.host_id ──→ staff.id (ผู้ที่ต้องการพบ)",
+    "appointments.approved_by ──→ staff.id (ผู้อนุมัติ)",
+    "appointments.checkout_by ──→ staff.id (ผู้ทำ Check-out)",
+    "appointment_equipment.appointment_id ──→ appointments.id (อุปกรณ์ที่นำเข้า)",
+  ],
+};
+
+// ════════════════════════════════════════════════════
+// 14. ค้นหาผู้ติดต่อ (Visitor Search)
+// ════════════════════════════════════════════════════
+
+const searchSchema: PageSchema = {
+  pageId: "search",
+  menuName: "ค้นหาผู้ติดต่อ",
+  menuNameEn: "Visitor Search",
+  path: "/web/search",
+  description: "ค้นหาผู้มาติดต่อ — ค้นหาตามชื่อ/บริษัท/รหัส, กรองตามประเภท/สถานะ/วัน, แสดงรายละเอียดผู้มาติดต่อ",
+  tables: [
+    {
+      name: "visitors",
+      comment: "ตารางผู้มาติดต่อ (reference — read-only search view)",
+      columns: [
+        { name: "id", type: "SERIAL", nullable: false, comment: "รหัส Auto-increment (PK)", isPrimaryKey: true },
+        { name: "name", type: "VARCHAR(100)", nullable: false, comment: "ชื่อ-นามสกุล (ภาษาไทย)" },
+        { name: "name_en", type: "VARCHAR(100)", nullable: true, comment: "ชื่อ-นามสกุล (ภาษาอังกฤษ)" },
+        { name: "company", type: "VARCHAR(150)", nullable: true, comment: "บริษัท / หน่วยงาน" },
+        { name: "id_card", type: "VARCHAR(20)", nullable: true, comment: "เลขบัตรประชาชน / Passport" },
+        { name: "phone", type: "VARCHAR(20)", nullable: true, comment: "เบอร์โทรศัพท์" },
+        { name: "email", type: "VARCHAR(100)", nullable: true, comment: "อีเมล" },
+        { name: "image_url", type: "VARCHAR(255)", nullable: true, comment: "URL รูปโปรไฟล์" },
+      ],
+      seedData: [],
+    },
+    {
+      name: "appointments",
+      comment: "ตารางนัดหมาย (reference — read-only search view)",
+      columns: [
+        { name: "id", type: "SERIAL", nullable: false, comment: "รหัส Auto-increment (PK)", isPrimaryKey: true },
+        { name: "code", type: "VARCHAR(30)", nullable: false, comment: "รหัสนัดหมาย", isUnique: true },
+        { name: "visitor_id", type: "INT", nullable: false, comment: "FK → visitors.id", isForeignKey: true, references: "visitors.id" },
+        { name: "host_id", type: "INT", nullable: false, comment: "FK → staff.id", isForeignKey: true, references: "staff.id" },
+        { name: "type", type: "ENUM('general','delivery','interview','maintenance','vip','contractor')", nullable: false, comment: "ประเภทการนัดหมาย" },
+        { name: "status", type: "ENUM('pending','approved','rejected','checked-in','checked-out','cancelled','expired','no-show')", nullable: false, comment: "สถานะนัดหมาย" },
+        { name: "date", type: "DATE", nullable: false, comment: "วันที่นัดหมาย" },
+        { name: "time_start", type: "TIME", nullable: false, comment: "เวลาเริ่ม" },
+        { name: "time_end", type: "TIME", nullable: false, comment: "เวลาสิ้นสุด" },
+        { name: "purpose", type: "VARCHAR(255)", nullable: false, comment: "วัตถุประสงค์" },
+        { name: "checkin_at", type: "TIMESTAMP", nullable: true, comment: "วันเวลาที่ Check-in" },
+        { name: "checkout_at", type: "TIMESTAMP", nullable: true, comment: "วันเวลาที่ Check-out" },
+      ],
+      seedData: [],
+    },
+  ],
+  relationships: [
+    "appointments.visitor_id ──→ visitors.id (ผู้มาติดต่อ)",
+    "appointments.host_id ──→ staff.id (ผู้ที่ต้องการพบ)",
+    "Note: This is a search/read-only page — references appointments and visitors tables",
+  ],
+};
+
+// ════════════════════════════════════════════════════
+// 15. Blocklist (Blocklist Management)
+// ════════════════════════════════════════════════════
+
+const blocklistSchema: PageSchema = {
+  pageId: "blocklist",
+  menuName: "Blocklist",
+  menuNameEn: "Blocklist Management",
+  path: "/web/blocklist",
+  description: "จัดการรายชื่อผู้ถูกบล็อก — ตรวจสอบด้วยชื่อ+นามสกุล (ไม่ใช้เลขบัตร เพราะระบบไม่เก็บ ID), ตรวจอัตโนมัติทุกช่องทาง: Kiosk, Counter, LINE OA, เจ้าหน้าที่สร้างนัดหมาย",
+  tables: [
+    {
+      name: "blocklist",
+      comment: "ตารางรายชื่อผู้ถูกบล็อก — ตรวจด้วย first_name + last_name (partial match, case-insensitive) ไม่ใช้เลขบัตรเพราะระบบไม่ได้เก็บ ID ไว้",
+      columns: [
+        { name: "id", type: "SERIAL", nullable: false, comment: "รหัส Auto-increment (PK)", isPrimaryKey: true },
+        { name: "first_name", type: "VARCHAR(100)", nullable: false, comment: "ชื่อผู้ถูกบล็อก (ใช้ในการตรวจสอบ — match แบบ partial, case-insensitive)" },
+        { name: "last_name", type: "VARCHAR(100)", nullable: false, comment: "นามสกุลผู้ถูกบล็อก (ใช้คู่กับ first_name ในการตรวจสอบ)" },
+        { name: "company", type: "VARCHAR(200)", nullable: true, comment: "บริษัท/หน่วยงาน (เพื่อช่วยยืนยันตัวตน กรณีชื่อซ้ำ)" },
+        { name: "visitor_id", type: "INT", nullable: true, comment: "FK → visitors.id อ้างอิงถ้ามีในระบบ (nullable — อาจบล็อกคนที่ยังไม่เคยเข้า)", isForeignKey: true, references: "visitors.id" },
+        { name: "reason", type: "TEXT", nullable: false, comment: "เหตุผลที่บล็อก" },
+        { name: "type", type: "ENUM('permanent','temporary')", nullable: false, comment: "ประเภทการบล็อก (ถาวร/ชั่วคราว)" },
+        { name: "expiry_date", type: "DATE", nullable: true, comment: "วันหมดอายุ (เฉพาะ temporary)" },
+        { name: "added_by", type: "INT", nullable: false, comment: "FK → staff.id ผู้เพิ่มรายการ", isForeignKey: true, references: "staff.id" },
+        { name: "added_at", type: "TIMESTAMP", nullable: false, comment: "วันเวลาที่เพิ่ม", defaultValue: "CURRENT_TIMESTAMP" },
+        { name: "updated_at", type: "TIMESTAMP", nullable: false, comment: "วันเวลาที่แก้ไขล่าสุด", defaultValue: "CURRENT_TIMESTAMP" },
+        { name: "is_active", type: "BOOLEAN", nullable: false, comment: "สถานะใช้งาน", defaultValue: "true" },
+      ],
+      seedData: [
+        { id: 1, first_name: "สมศักดิ์", last_name: "ปัญญาดี", company: null, visitor_id: 10, reason: "พฤติกรรมไม่เหมาะสมในพื้นที่สำนักงาน", type: "permanent", expiry_date: null, added_by: 1, added_at: "2026-01-15 10:00:00", is_active: true },
+        { id: 2, first_name: "John", last_name: "Smith", company: "ABC Corp", visitor_id: null, reason: "นำอุปกรณ์ต้องห้ามเข้าพื้นที่", type: "temporary", expiry_date: "2026-06-30", added_by: 2, added_at: "2026-03-01 14:30:00", is_active: true },
+      ],
+    },
+    {
+      name: "blocklist_check_logs",
+      comment: "บันทึกการตรวจสอบ Blocklist ทุกครั้ง — เก็บทุก hit (พบ) และ attempt (พยายามเข้า) สำหรับ audit",
+      columns: [
+        { name: "id", type: "SERIAL", nullable: false, comment: "รหัส Log (PK)", isPrimaryKey: true },
+        { name: "blocklist_id", type: "INT", nullable: false, comment: "FK → blocklist.id รายการที่ตรง", isForeignKey: true, references: "blocklist.id" },
+        { name: "matched_name", type: "VARCHAR(200)", nullable: false, comment: "ชื่อ-นามสกุลที่ตรวจแล้วตรง" },
+        { name: "check_channel", type: "ENUM('kiosk','counter','line','web_staff')", nullable: false, comment: "ช่องทางที่ตรวจพบ" },
+        { name: "action_taken", type: "ENUM('denied','alerted','expired_allow')", nullable: false, comment: "การกระทำ: ปฏิเสธ/แจ้งเตือน/หมดอายุ-อนุญาต" },
+        { name: "checked_at", type: "TIMESTAMP", nullable: false, comment: "วันเวลาที่ตรวจ", defaultValue: "CURRENT_TIMESTAMP" },
+        { name: "checked_by", type: "INT", nullable: true, comment: "FK → staff.id (ถ้าเป็นเจ้าหน้าที่ตรวจ)", isForeignKey: true, references: "staff.id" },
+      ],
+      seedData: [
+        { id: 1, blocklist_id: 1, matched_name: "สมศักดิ์ ปัญญาดี", check_channel: "kiosk", action_taken: "denied", checked_at: "2026-03-20 09:15:00", checked_by: null },
+      ],
+    },
+  ],
+  relationships: [
+    "blocklist.visitor_id ──→ visitors.id (อ้างอิงผู้ถูกบล็อก — nullable)",
+    "blocklist.added_by ──→ staff.id (ผู้เพิ่มรายการ)",
+    "blocklist_check_logs.blocklist_id ──→ blocklist.id (log การตรวจพบ)",
+    "ตรวจสอบด้วย first_name + last_name (partial match) — ไม่ใช้เลขบัตรเพราะระบบไม่ได้เก็บ ID",
+    "ตรวจทุกช่องทาง: Kiosk (สแกน QR/walk-in) → Counter (เจ้าหน้าที่ตรวจ) → LINE OA (จองนัดหมาย) → Web (เจ้าหน้าที่สร้างให้)",
+  ],
+};
+
+// ════════════════════════════════════════════════════
+// 16. รายงาน (Reports)
+// ════════════════════════════════════════════════════
+
+const reportsSchema: PageSchema = {
+  pageId: "reports",
+  menuName: "รายงาน",
+  menuNameEn: "Reports",
+  path: "/web/reports",
+  description: "รายงานสถิติผู้มาติดต่อ — สรุปรายวัน/รายสัปดาห์/รายเดือน, กราฟแนวโน้ม, วิเคราะห์ตามประเภท/แผนก/ช่องทาง, ส่งออก Excel/PDF",
+  tables: [
+    {
+      name: "report_daily_summary",
+      comment: "สรุปรายวัน — aggregate view",
+      columns: [
+        { name: "id", type: "SERIAL", nullable: false, comment: "รหัส Auto-increment (PK)", isPrimaryKey: true },
+        { name: "date", type: "DATE", nullable: false, comment: "วันที่", isUnique: true },
+        { name: "total_visitors", type: "INT", nullable: false, comment: "จำนวนผู้มาติดต่อทั้งหมด", defaultValue: "0" },
+        { name: "total_appointments", type: "INT", nullable: false, comment: "จำนวนนัดหมายทั้งหมด", defaultValue: "0" },
+        { name: "walkin_count", type: "INT", nullable: false, comment: "จำนวน Walk-in", defaultValue: "0" },
+        { name: "checked_in", type: "INT", nullable: false, comment: "จำนวนที่ Check-in แล้ว", defaultValue: "0" },
+        { name: "checked_out", type: "INT", nullable: false, comment: "จำนวนที่ Check-out แล้ว", defaultValue: "0" },
+        { name: "overstay_count", type: "INT", nullable: false, comment: "จำนวนที่อยู่เกินเวลา", defaultValue: "0" },
+        { name: "avg_visit_duration_min", type: "INT", nullable: true, comment: "ระยะเวลาเฉลี่ยการเข้าพื้นที่ (นาที)" },
+        { name: "created_at", type: "TIMESTAMP", nullable: false, comment: "วันเวลาที่สร้าง", defaultValue: "CURRENT_TIMESTAMP" },
+      ],
+      seedData: [
+        { id: 1, date: "2026-03-20", total_visitors: 45, total_appointments: 38, walkin_count: 7, checked_in: 42, checked_out: 40, overstay_count: 2, avg_visit_duration_min: 65, created_at: "2026-03-20 23:59:00" },
+        { id: 2, date: "2026-03-21", total_visitors: 52, total_appointments: 44, walkin_count: 8, checked_in: 50, checked_out: 48, overstay_count: 1, avg_visit_duration_min: 58, created_at: "2026-03-21 23:59:00" },
+        { id: 3, date: "2026-03-22", total_visitors: 30, total_appointments: 25, walkin_count: 5, checked_in: 28, checked_out: 28, overstay_count: 0, avg_visit_duration_min: 72, created_at: "2026-03-22 23:59:00" },
+        { id: 4, date: "2026-03-23", total_visitors: 60, total_appointments: 50, walkin_count: 10, checked_in: 55, checked_out: 52, overstay_count: 3, avg_visit_duration_min: 55, created_at: "2026-03-23 23:59:00" },
+        { id: 5, date: "2026-03-24", total_visitors: 48, total_appointments: 40, walkin_count: 8, checked_in: 46, checked_out: 44, overstay_count: 1, avg_visit_duration_min: 62, created_at: "2026-03-24 23:59:00" },
+      ],
+    },
+    {
+      name: "report_department_stats",
+      comment: "สถิติตามแผนก — aggregate view",
+      columns: [
+        { name: "id", type: "SERIAL", nullable: false, comment: "รหัส Auto-increment (PK)", isPrimaryKey: true },
+        { name: "date", type: "DATE", nullable: false, comment: "วันที่" },
+        { name: "department_id", type: "INT", nullable: false, comment: "FK → departments.id", isForeignKey: true, references: "departments.id" },
+        { name: "department_name", type: "VARCHAR(100)", nullable: false, comment: "ชื่อแผนก (denormalized)" },
+        { name: "visitor_count", type: "INT", nullable: false, comment: "จำนวนผู้มาติดต่อ", defaultValue: "0" },
+        { name: "appointment_count", type: "INT", nullable: false, comment: "จำนวนนัดหมาย", defaultValue: "0" },
+      ],
+      seedData: [
+        { id: 1, date: "2026-03-20", department_id: 1, department_name: "ฝ่ายบุคคล", visitor_count: 12, appointment_count: 10 },
+        { id: 2, date: "2026-03-20", department_id: 2, department_name: "ฝ่ายไอที", visitor_count: 8, appointment_count: 7 },
+        { id: 3, date: "2026-03-20", department_id: 3, department_name: "ฝ่ายการเงิน", visitor_count: 15, appointment_count: 13 },
+        { id: 4, date: "2026-03-21", department_id: 1, department_name: "ฝ่ายบุคคล", visitor_count: 14, appointment_count: 12 },
+        { id: 5, date: "2026-03-21", department_id: 2, department_name: "ฝ่ายไอที", visitor_count: 10, appointment_count: 9 },
+      ],
+    },
+    {
+      name: "report_visit_type_stats",
+      comment: "สถิติตามประเภทการนัดหมาย — aggregate view",
+      columns: [
+        { name: "id", type: "SERIAL", nullable: false, comment: "รหัส Auto-increment (PK)", isPrimaryKey: true },
+        { name: "date", type: "DATE", nullable: false, comment: "วันที่" },
+        { name: "visit_type", type: "ENUM('general','delivery','interview','maintenance','vip','contractor')", nullable: false, comment: "ประเภทการนัดหมาย" },
+        { name: "visitor_count", type: "INT", nullable: false, comment: "จำนวนผู้มาติดต่อ", defaultValue: "0" },
+      ],
+      seedData: [
+        { id: 1, date: "2026-03-20", visit_type: "general", visitor_count: 20 },
+        { id: 2, date: "2026-03-20", visit_type: "delivery", visitor_count: 10 },
+        { id: 3, date: "2026-03-20", visit_type: "interview", visitor_count: 5 },
+        { id: 4, date: "2026-03-20", visit_type: "maintenance", visitor_count: 4 },
+        { id: 5, date: "2026-03-20", visit_type: "vip", visitor_count: 6 },
+      ],
+    },
+  ],
+  relationships: [
+    "report_department_stats.department_id ──→ departments.id (แผนก)",
+    "Aggregated from appointments + visitors tables",
+  ],
+};
+
+// ════════════════════════════════════════════════════
 // EXPORT: รวมทุก schema
 // ════════════════════════════════════════════════════
 
@@ -1282,6 +1554,10 @@ export const allPageSchemas: PageSchema[] = [
   visitSlipsSchema,
   pdpaConsentSchema,
   visitRecordsSchema,
+  appointmentsSchema,
+  searchSchema,
+  blocklistSchema,
+  reportsSchema,
 ];
 
 /** ค้น schema ตาม pageId */

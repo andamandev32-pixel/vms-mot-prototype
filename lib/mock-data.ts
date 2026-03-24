@@ -1085,8 +1085,24 @@ export function searchAppointments(query: string): Appointment[] {
   );
 }
 
+/** @deprecated ไม่ใช้เลขบัตรตรวจ — ใช้ isNameBlocked แทน */
 export function isVisitorBlocked(idNumber: string): boolean {
   return visitors.some((v) => v.idNumber === idNumber && v.isBlocked);
+}
+
+/**
+ * ตรวจ Blocklist ด้วยชื่อ+นามสกุล (partial match, case-insensitive)
+ * ใช้ทุกช่องทาง: Kiosk, Counter, LINE OA, Web เจ้าหน้าที่สร้างให้
+ * ไม่ใช้เลขบัตรเพราะระบบไม่ได้เก็บ ID ไว้
+ */
+export function isNameBlocked(firstName: string, lastName: string): BlocklistEntry | undefined {
+  const fn = firstName.toLowerCase().trim();
+  const ln = lastName.toLowerCase().trim();
+  if (!fn && !ln) return undefined;
+  return blocklist.find((entry) => {
+    const blockedName = entry.visitor.name.toLowerCase();
+    return (fn && blockedName.includes(fn)) && (ln && blockedName.includes(ln));
+  });
 }
 
 // ===== MOCK PERSONNEL DATABASE (for staff registration lookup) =====
@@ -2189,6 +2205,8 @@ export const approverGroups: ApproverGroup[] = [
 
 // ===== PDPA CONSENT VERSION MANAGEMENT =====
 
+export type PdpaDisplayChannel = "kiosk" | "line";
+
 export interface PdpaVersion {
   id: number;
   configId: number;
@@ -2203,6 +2221,7 @@ export interface PdpaVersion {
   changedByName: string | null;
   changeNote: string;
   createdAt: string;
+  displayChannels: PdpaDisplayChannel[];
 }
 
 export interface PdpaConsentLog {
@@ -2367,6 +2386,7 @@ export const pdpaVersions: PdpaVersion[] = [
     changedByName: null,
     changeNote: "เวอร์ชันเริ่มต้น — ข้อความ PDPA พื้นฐาน",
     createdAt: "2025-01-01 00:00:00",
+    displayChannels: ["kiosk", "line"],
   },
   {
     id: 2,
@@ -2382,6 +2402,7 @@ export const pdpaVersions: PdpaVersion[] = [
     changedByName: "สมชาย วิชาญ",
     changeNote: "เพิ่มข้อมูลทะเบียนรถ + สิทธิของเจ้าของข้อมูล + วัตถุประสงค์สถิติ",
     createdAt: "2025-05-28 14:30:00",
+    displayChannels: ["kiosk", "line"],
   },
   {
     id: 3,
@@ -2397,6 +2418,7 @@ export const pdpaVersions: PdpaVersion[] = [
     changedByName: "สมชาย วิชาญ",
     changeNote: "เพิ่มหมวดการเปิดเผยข้อมูล + เปลี่ยน retention เป็น 120 วัน",
     createdAt: "2026-01-10 09:15:00",
+    displayChannels: ["kiosk"],
   },
 ];
 

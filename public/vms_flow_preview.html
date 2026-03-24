@@ -442,7 +442,55 @@ hr.div{border:none;border-top:1px dashed #c5d0e0;margin:18px 0}
     </tbody>
   </table>
 
-
+  <!-- Blocklist Check Points -->
+  <div class="ch-head" style="border-radius:8px 8px 0 0;margin-top:24px">🚫 Blocklist — จุดตรวจสอบทั้ง 4 ช่องทาง</div>
+  <div class="ch-body" style="margin-bottom:14px">
+    <div class="note note-red" style="max-width:100%;margin-bottom:12px">
+      <strong>สำคัญ:</strong> ระบบตรวจ Blocklist ด้วย <strong>ชื่อ + นามสกุล (first_name + last_name)</strong> แบบ partial match, case-insensitive — <strong>ไม่ใช้เลขบัตรประชาชน</strong> เนื่องจากระบบไม่เก็บเลขบัตร · ตรวจรวมถึง <strong>ผู้ติดตาม</strong> ด้วย · ประเภท: ถาวร (permanent) และ ชั่วคราว (มีวันหมดอายุ, auto-expiry)
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px">
+      <div style="background:#E6F4EA;border:2px solid #34A853;border-radius:10px;padding:12px;text-align:center">
+        <div style="font-size:22.0px;margin-bottom:4px">🖥️</div>
+        <div style="font-size:16.0px;font-weight:800;color:#1a5c2a">① Kiosk</div>
+        <div style="font-size:16.0px;color:#444;margin-top:4px">สแกน QR / Walk-in<br>กรอกชื่อ → ตรวจ Blocklist</div>
+      </div>
+      <div style="background:#F3E8FF;border:2px solid #7B2FBE;border-radius:10px;padding:12px;text-align:center">
+        <div style="font-size:22.0px;margin-bottom:4px">🛡️</div>
+        <div style="font-size:16.0px;font-weight:800;color:#3d1363">② Counter</div>
+        <div style="font-size:16.0px;color:#444;margin-top:4px">เจ้าหน้าที่ รปภ.<br>ตรวจชื่อ+นามสกุล</div>
+      </div>
+      <div style="background:#E7F5E7;border:2px solid #06C755;border-radius:10px;padding:12px;text-align:center">
+        <div style="font-size:22.0px;margin-bottom:4px">📱</div>
+        <div style="font-size:16.0px;font-weight:800;color:#004d1f">③ LINE OA</div>
+        <div style="font-size:16.0px;color:#444;margin-top:4px">จองนัดหมาย<br>ตรวจก่อนบันทึก</div>
+      </div>
+      <div style="background:#E8F0FE;border:2px solid #4285F4;border-radius:10px;padding:12px;text-align:center">
+        <div style="font-size:22.0px;margin-bottom:4px">👔</div>
+        <div style="font-size:16.0px;font-weight:800;color:#1a3a6e">④ Web (Staff)</div>
+        <div style="font-size:16.0px;color:#444;margin-top:4px">เจ้าหน้าที่สร้าง<br>นัดหมายให้ Visitor</div>
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;flex-wrap:wrap;gap:5px;padding:8px 0">
+      <div class="box start" style="font-size:15.0px">Visitor / ผู้ติดตาม<br>ชื่อ+นามสกุล</div>
+      <div class="darr-r">→</div>
+      <div class="box system" style="font-size:15.0px">Blocklist Check<br><span class="sub">partial match, case-insensitive</span></div>
+      <div class="darr-r">→</div>
+      <div class="box decision" style="font-size:15.0px">อยู่ใน<br>Blocklist?</div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        <div style="display:flex;align-items:center;gap:4px">
+          <span class="lbl lbl-n">No (ปกติ)</span><div class="darr-r">→</div>
+          <div class="box success" style="font-size:15.0px">ดำเนินการต่อ ✓</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:4px">
+          <span class="lbl lbl-y" style="background:#FDE8E8;color:#7a1a1a">Yes (ถูกบล็อก)</span><div class="darr-r">→</div>
+          <div class="box error" style="font-size:15.0px">ปฏิเสธ + บันทึก Log<br><span class="sub">blocklist_check_logs</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="note note-yellow mt8" style="max-width:100%">
+      <strong>📌 หมายเหตุ:</strong> blocklist มี 2 ประเภท — <strong>ถาวร (permanent)</strong> ไม่มีวันหมดอายุ และ <strong>ชั่วคราว (temporary)</strong> มีวันหมดอายุ auto-expiry · ทุกการตรวจบันทึกลง <strong>blocklist_check_logs</strong> เพื่อ audit trail · จัดการผ่านหน้า <span class="tag tag-b">/web/blocklist</span>
+    </div>
+  </div>
 
 </div>
 
@@ -743,6 +791,9 @@ hr.div{border:none;border-top:1px dashed #c5d0e0;margin:18px 0}
         </div>
       </div>
     </div>
+    <div class="note note-red mt8" style="max-width:100%">
+      <strong>🚫 Blocklist Check (LINE OA):</strong> ระบบตรวจสอบ Blocklist ด้วย <strong>ชื่อ+นามสกุล</strong> (partial match, case-insensitive) ก่อนบันทึกคำขอนัดหมาย — หากชื่อ Visitor หรือผู้ติดตามตรงกับ Blocklist ระบบจะ <strong>ปฏิเสธทันที</strong> พร้อมบันทึก log
+    </div>
   </div>
 
   <div id="p2b" style="display:none">
@@ -934,6 +985,9 @@ hr.div{border:none;border-top:1px dashed #c5d0e0;margin:18px 0}
           <li><span class="n g">→</span><span>หรือ Visitor ใช้บัตรที่ Kiosk → <strong>Tab 5 นัดหมาย B (บัตร)</strong></span></li>
           <li><span class="n" style="background:#4A1A8C">→</span><span>หรือ รปภ. ค้นหานัดหมายที่ Counter → <strong>Tab 6 Appointment</strong></span></li>
         </ul>
+        <div class="note note-red mt8" style="max-width:100%">
+          <strong>🚫 Blocklist Check (Staff สร้างนัดหมาย):</strong> ระบบตรวจ Blocklist ด้วย <strong>ชื่อ+นามสกุล</strong> (partial match, case-insensitive) ของ Visitor และ <strong>ผู้ติดตามทุกคน</strong> ก่อนบันทึกนัดหมาย — หากพบชื่อใน Blocklist จะ <strong>ไม่สามารถสร้างนัดหมายได้</strong> พร้อมบันทึก log
+        </div>
       </div>
       <div class="card">
         <h3>📊 Flow — Staff สร้างนัดหมายแทน</h3>
@@ -992,7 +1046,7 @@ hr.div{border:none;border-top:1px dashed #c5d0e0;margin:18px 0}
           <li><span class="n">2</span><span>อ่านและยอมรับ <strong>PDPA / นโยบายคุ้มครองข้อมูล</strong> <em>(120 วิ)</em></span></li>
           <li><span class="n">3</span><span>เลือกวิธียืนยันตัวตน: <strong>บัตรประชาชน / Passport / ThaiID App</strong> <em>(60 วิ)</em></span></li>
           <li><span class="n">4</span><span>เสียบบัตร/สแกนเอกสาร → ระบบอ่านข้อมูล <em>(60 วิ)</em></span></li>
-          <li><span class="n">5</span><span>Preview ข้อมูลที่อ่านได้ → ตรวจสอบ <strong>Blocklist</strong> → ยืนยัน <em>(120 วิ)</em></span></li>
+          <li><span class="n">5</span><span>Preview ข้อมูลที่อ่านได้ → ตรวจสอบ <strong>Blocklist ด้วยชื่อ+นามสกุล</strong> (partial match, case-insensitive, ไม่ใช้เลขบัตร) → ยืนยัน <em>(120 วิ)</em></span></li>
           <li><span class="n">6</span><span>เลือก <strong>วัตถุประสงค์</strong> + <strong>กอง/สำนัก</strong> ที่ต้องการติดต่อ <em>(60 วิ)</em></span></li>
           <li><span class="n">7</span><span><strong>ถ่ายภาพใบหน้า</strong> + ถ้าวัตถุประสงค์รองรับ WiFi → เลือกรับ/ไม่รับ <em>(60 วิ)</em></span></li>
           <li><span class="n">8</span><span>สำเร็จ → พิมพ์ Visit Pass หรือส่งผ่าน LINE <em>(10-30 วิ auto)</em></span></li>
@@ -1011,7 +1065,7 @@ hr.div{border:none;border-top:1px dashed #c5d0e0;margin:18px 0}
         <div class="branch">
           <div class="bcol">
             <span class="lbl lbl-y">Yes</span><div class="darr">↓</div>
-            <div class="box action" style="font-size:15.0px">Preview ข้อมูล<br>+ ตรวจ Blocklist</div><div class="darr">↓</div>
+            <div class="box action" style="font-size:15.0px">Preview ข้อมูล<br>+ ตรวจ Blocklist<br><span class="sub">ชื่อ+นามสกุล</span></div><div class="darr">↓</div>
             <div class="box decision" style="font-size:15.0px">อยู่ใน Blocklist?</div>
             <div class="branch">
               <div class="bcol">
@@ -1078,7 +1132,7 @@ hr.div{border:none;border-top:1px dashed #c5d0e0;margin:18px 0}
         <td><strong>PDPA Consent</strong><br>ยอมรับนโยบาย</td>
         <td>—</td>
         <td>120 วินาที</td>
-        <td>แสดงนโยบายคุ้มครองข้อมูลส่วนบุคคล (PDPA) แบบ scroll ✅ ยอมรับ → ไปต่อ / ❌ ไม่ยอมรับ → กลับหน้าต้อนรับ</td>
+        <td>แสดงนโยบายคุ้มครองข้อมูลส่วนบุคคล (PDPA) แบบ scroll ✅ ยอมรับ → ไปต่อ / ❌ ไม่ยอมรับ → กลับหน้าต้อนรับ · <strong>ระบบตรวจ display_channels</strong> ของ PDPA version ก่อนแสดง — เฉพาะ PDPA ที่กำหนด channel "kiosk" เท่านั้นที่แสดงบน Kiosk</td>
       </tr>
       <tr>
         <td style="text-align:center;font-weight:700">3</td>
@@ -1099,7 +1153,7 @@ hr.div{border:none;border-top:1px dashed #c5d0e0;margin:18px 0}
         <td><strong>Data Preview</strong><br>ตรวจสอบข้อมูล</td>
         <td>—</td>
         <td>120 วินาที</td>
-        <td>แสดงข้อมูลจากบัตร: รูป + ชื่อ (ไทย/อังกฤษ) + เลขบัตร (mask) + ชนิดเอกสาร · <strong>ตรวจ Blocklist</strong> อัตโนมัติ</td>
+        <td>แสดงข้อมูลจากบัตร: รูป + ชื่อ (ไทย/อังกฤษ) + เลขบัตร (mask) + ชนิดเอกสาร · <strong>ตรวจ Blocklist ด้วยชื่อ+นามสกุล</strong> (partial match, case-insensitive, ไม่ใช้เลขบัตร) อัตโนมัติ</td>
       </tr>
       <tr>
         <td style="text-align:center;font-weight:700">6</td>
@@ -1416,10 +1470,10 @@ hr.div{border:none;border-top:1px dashed #c5d0e0;margin:18px 0}
         <td>✅ แสดงข้อมูลนัดหมาย</td>
       </tr>
       <tr>
-        <td><strong>Blocklist Check</strong></td>
-        <td>✅ ตรวจ Data Preview</td>
-        <td>⚡ ตรวจตอนยืนยันตัวตน</td>
-        <td>⚡ ตรวจตอนยืนยันตัวตน</td>
+        <td><strong>Blocklist Check</strong><br><span style="font-size:14px;color:#7a1a1a">(ชื่อ+นามสกุล)</span></td>
+        <td>✅ ตรวจ Data Preview<br><span style="font-size:14px;color:#666">ชื่อ+นามสกุล</span></td>
+        <td>⚡ ตรวจตอนยืนยันตัวตน<br><span style="font-size:14px;color:#666">ชื่อ+นามสกุล</span></td>
+        <td>⚡ ตรวจตอนยืนยันตัวตน<br><span style="font-size:14px;color:#666">ชื่อ+นามสกุล</span></td>
       </tr>
       <tr>
         <td><strong>WiFi</strong></td>
@@ -1460,6 +1514,9 @@ hr.div{border:none;border-top:1px dashed #c5d0e0;margin:18px 0}
   <div id="p6a">
     <div class="note note-yellow" style="max-width:100%;margin-bottom:12px">
       <strong>🛡️ รปภ. — Walk-in:</strong> Visitor มาโดยไม่ได้นัดล่วงหน้า · รปภ.บันทึกข้อมูลที่เคาน์เตอร์ · ออก Visit Pass พร้อม QR Code + WiFi ทันที
+    </div>
+    <div class="note note-red" style="max-width:100%;margin-bottom:12px">
+      <strong>🚫 Blocklist Check (Counter Walk-in):</strong> ระบบตรวจ Blocklist ด้วย <strong>ชื่อ+นามสกุล</strong> (partial match, case-insensitive) หลังรปภ. กรอกข้อมูลหรืออ่านบัตร — หากพบชื่อใน Blocklist จะ <strong>แจ้งเตือนรปภ. ทันที</strong> ไม่สามารถออก Visit Pass ได้ · ตรวจผู้ติดตามด้วย
     </div>
     <div class="grid2">
       <div class="card">
@@ -1577,6 +1634,9 @@ hr.div{border:none;border-top:1px dashed #c5d0e0;margin:18px 0}
   <div id="p6b" style="display:none">
     <div class="note note-green" style="max-width:100%;margin-bottom:12px">
       <strong>🛡️ รปภ. — Appointment:</strong> Visitor มีนัดล่วงหน้า · รปภ.ค้นหานัดหมาย → ยืนยันตัวตน → ถ่ายภาพ → พิมพ์ Visit Pass ที่เคาน์เตอร์ทันที
+    </div>
+    <div class="note note-red" style="max-width:100%;margin-bottom:12px">
+      <strong>🚫 Blocklist Check (Counter Appointment):</strong> ระบบตรวจ Blocklist ด้วย <strong>ชื่อ+นามสกุล</strong> อีกครั้งตอน Check-in ที่ Counter — แม้ตอนจองจะผ่านแล้ว อาจมีการเพิ่ม Blocklist ภายหลัง
     </div>
     <div class="grid2">
       <div class="card">
@@ -1967,7 +2027,7 @@ hr.div{border:none;border-top:1px dashed #c5d0e0;margin:18px 0}
         <button onclick="toggleRowNote('rnote_26_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
       </td>
         <tr id="rnote_26_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_26" oninput="saveInlineNote('rnote_26')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
-            <tr><td style="padding:5px">ข้อความแจ้ง PDPA Consent ที่จะแสดงบน Kiosk</td><td style="padding:5px;text-align:center;vertical-align:middle">
+            <tr><td style="padding:5px">ข้อความแจ้ง PDPA Consent ที่จะแสดงบน Kiosk และ LINE OA (กำหนด display_channels แยกแต่ละ version)</td><td style="padding:5px;text-align:center;vertical-align:middle">
         <input type="checkbox" id="chk_27" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
         <button onclick="toggleRowNote('rnote_27_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
       </td>
@@ -1987,6 +2047,81 @@ hr.div{border:none;border-top:1px dashed #c5d0e0;margin:18px 0}
       </div>
     </div>
 
+    <!-- Additional Setup: Blocklist, PDPA Channels, Reports -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px">
+      <div class="card">
+        <h3>🚫 8. ตั้งค่า Blocklist เริ่มต้น</h3>
+        <table style="width:100%;font-size:15.0px;border-collapse:collapse">
+          <tr style="background:#003580;color:white"><th style="padding:5px;text-align:left">รายการ</th><th style="padding:5px;text-align:center;width:40px">สถานะ</th></tr>
+          <tr style="background:#f8faff"><td style="padding:5px">กำหนดรายชื่อ Blocklist เริ่มต้น (ถ้ามี) — ชื่อ+นามสกุล, เหตุผล, ประเภท (ถาวร/ชั่วคราว)</td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_40" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_40_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_40_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_40" oninput="saveInlineNote('rnote_40')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+          <tr><td style="padding:5px">กำหนดสิทธิ์ผู้ดูแล Blocklist (Admin / Staff ที่มีสิทธิ์เพิ่ม-ลบ)</td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_41" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_41_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_41_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_41" oninput="saveInlineNote('rnote_41')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+          <tr style="background:#f8faff"><td style="padding:5px">ทดสอบ Blocklist Check ทุกจุด: Kiosk, Counter, LINE OA, Web Staff</td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_42" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_42_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_42_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_42" oninput="saveInlineNote('rnote_42')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+        </table>
+        <div class="note note-yellow mt8" style="max-width:100%">
+          <strong>📌 หมายเหตุ:</strong> Blocklist ตรวจด้วย <strong>ชื่อ+นามสกุล</strong> (partial match, case-insensitive) ไม่ใช้เลขบัตร · จัดการผ่าน <span class="tag tag-b">/web/blocklist</span> · มีปุ่ม DB Schema + Flow Rule
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>📋 9. PDPA Consent + Display Channels</h3>
+        <table style="width:100%;font-size:15.0px;border-collapse:collapse">
+          <tr style="background:#003580;color:white"><th style="padding:5px;text-align:left">รายการ</th><th style="padding:5px;text-align:center;width:40px">สถานะ</th></tr>
+          <tr style="background:#f8faff"><td style="padding:5px">จัดทำข้อความ PDPA Consent สำหรับ <strong>Kiosk</strong> (display_channels: ["kiosk"])</td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_43" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_43_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_43_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_43" oninput="saveInlineNote('rnote_43')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+          <tr><td style="padding:5px">จัดทำข้อความ PDPA Consent สำหรับ <strong>LINE OA</strong> (display_channels: ["line"])</td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_44" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_44_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_44_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_44" oninput="saveInlineNote('rnote_44')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+          <tr style="background:#f8faff"><td style="padding:5px">ตรวจสอบ display_channels ทำงานถูกต้อง (Kiosk แสดงเฉพาะ kiosk, LINE แสดงเฉพาะ line)</td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_45" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_45_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_45_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_45" oninput="saveInlineNote('rnote_45')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+        </table>
+        <div class="note note-blue mt8" style="max-width:100%">
+          <strong>📌 PDPA Display Channels:</strong> แต่ละ PDPA version กำหนด display_channels ได้: <span class="tag tag-g">["kiosk"]</span> <span class="tag tag-l">["line"]</span> <span class="tag tag-b">["kiosk","line"]</span> · สามารถสร้าง PDPA items ใหม่ได้ (ไม่จำกัดแค่แก้ไขของเดิม)
+        </div>
+      </div>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr;gap:14px;margin-top:14px">
+      <div class="card">
+        <h3>📊 10. ตั้งค่า Reports</h3>
+        <table style="width:100%;font-size:15.0px;border-collapse:collapse">
+          <tr style="background:#003580;color:white"><th style="padding:5px;text-align:left">รายการ</th><th style="padding:5px;text-align:center;width:40px">สถานะ</th></tr>
+          <tr style="background:#f8faff"><td style="padding:5px">ทดสอบหน้า <span class="tag tag-b">/web/reports</span> — KPI cards, กราฟตามประเภท/หน่วยงาน/ช่องทาง</td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_46" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_46_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_46_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_46" oninput="saveInlineNote('rnote_46')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+          <tr><td style="padding:5px">ตรวจสอบปุ่ม DB Schema + Flow Rule บนหน้า <span class="tag tag-b">/web/appointments</span> และ <span class="tag tag-b">/web/search</span></td><td style="padding:5px;text-align:center;vertical-align:middle">
+        <input type="checkbox" id="chk_47" onchange="onCheckChange()" style="width:18px;height:18px;cursor:pointer;accent-color:#003580"><br>
+        <button onclick="toggleRowNote('rnote_47_row')" title="หมายเหตุ" style="font-size:11px;background:none;border:none;cursor:pointer;color:#aaa;margin-top:2px;font-family:inherit;padding:0">✏️</button>
+      </td>
+        <tr id="rnote_47_row" class="note-row" style="display:none"><td colspan="10" style="padding:4px 10px 8px 10px;background:#f8faff"><textarea id="rnote_47" oninput="saveInlineNote('rnote_47')" placeholder="หมายเหตุ..." style="width:100%;min-height:44px;font-family:inherit;font-size:13px;border:1px solid #c5d0e0;border-radius:6px;padding:6px 8px;resize:vertical;color:#1a202c;background:white"></textarea></td></tr></tr>
+        </table>
+        <div class="note note-blue mt8" style="max-width:100%">
+          <strong>📌 หน้าใหม่ที่เพิ่ม:</strong> <span class="tag tag-b">/web/blocklist</span> จัดการ Blocklist (DB Schema + Flow Rule) · <span class="tag tag-b">/web/reports</span> รายงาน KPI + กราฟ · ปุ่ม DB Schema + Flow Rule เพิ่มบน <span class="tag tag-b">/web/appointments</span> และ <span class="tag tag-b">/web/search</span>
+        </div>
+      </div>
+    </div>
+
     <!-- Summary checklist download note -->
     <div class="note note-green" style="max-width:100%;margin-top:8px">
       <strong>✅ สรุปไฟล์ที่หน่วยงานต้องส่ง:</strong>
@@ -1996,6 +2131,7 @@ hr.div{border:none;border-top:1px dashed #c5d0e0;margin:18px 0}
       <span class="tag tag-b">แผนผังอาคาร.pdf</span>
       <span class="tag tag-y">Template Visit Pass</span>
       <span class="tag tag-p">PDPA Consent Text</span>
+      <span class="tag tag-p">Blocklist เริ่มต้น (ถ้ามี)</span>
     </div>
   </div>
 

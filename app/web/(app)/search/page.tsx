@@ -2,6 +2,10 @@
 
 import { useState } from "react";
 import Topbar from "@/components/web/Topbar";
+import { DatabaseSchemaModal, DbSchemaButton } from "@/components/web/DatabaseSchemaModal";
+import { FlowchartModal, FlowRulesButton } from "@/components/web/FlowchartModal";
+import { getSchemaByPageId } from "@/lib/database-schema";
+import { getFlowByPageId } from "@/lib/flowchart-data";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
@@ -40,6 +44,11 @@ const visitTypeColors: Record<VisitType, { icon: string }> = {
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50];
 
 export default function WebSearchPage() {
+  const [showSchema, setShowSchema] = useState(false);
+  const [showFlow, setShowFlow] = useState(false);
+  const schema = getSchemaByPageId("search");
+  const flowData = getFlowByPageId("search");
+
   const allAppts = appointments;
 
   const [page, setPage] = useState(1);
@@ -86,7 +95,24 @@ export default function WebSearchPage() {
   return (
     <div>
       <Topbar title="รายชื่อการติดต่อ" />
-      <div className="p-6">
+      {schema && <DatabaseSchemaModal open={showSchema} onClose={() => setShowSchema(false)} schema={schema} />}
+      {flowData && <FlowchartModal open={showFlow} onClose={() => setShowFlow(false)} flowData={flowData} />}
+      <div className="p-6 space-y-6">
+        {/* Page Header with DB/Flow buttons */}
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-primary-100 flex items-center justify-center">
+            <Search size={20} className="text-primary-600" />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-text-primary flex items-center gap-2">
+              ค้นหาผู้มาติดต่อ
+              {schema && <DbSchemaButton onClick={() => setShowSchema(true)} />}
+              {flowData && <FlowRulesButton onClick={() => setShowFlow(true)} />}
+            </h2>
+            <p className="text-sm text-text-muted">ค้นหาตามชื่อ/บริษัท/รหัส, กรองตามประเภท/สถานะ/วัน, ดูรายละเอียด</p>
+          </div>
+        </div>
+
         <Card className="overflow-hidden border-0 shadow-lg rounded-2xl">
           <CardHeader className="bg-gradient-to-r from-primary-50 to-white border-b border-primary-100 px-6 py-4">
             <div className="flex justify-between items-center mb-3">

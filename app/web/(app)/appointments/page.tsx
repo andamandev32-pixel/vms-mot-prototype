@@ -2,6 +2,10 @@
 
 import { useState, useRef, useMemo, useCallback } from "react";
 import Topbar from "@/components/web/Topbar";
+import { DatabaseSchemaModal, DbSchemaButton } from "@/components/web/DatabaseSchemaModal";
+import { FlowchartModal, FlowRulesButton } from "@/components/web/FlowchartModal";
+import { getSchemaByPageId } from "@/lib/database-schema";
+import { getFlowByPageId } from "@/lib/flowchart-data";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -42,6 +46,11 @@ interface CompanionEntry {
 }
 
 export default function AppointmentsPage() {
+  const [showSchema, setShowSchema] = useState(false);
+  const [showFlow, setShowFlow] = useState(false);
+  const schema = getSchemaByPageId("appointments");
+  const flowData = getFlowByPageId("appointments");
+
   const [activeTab, setActiveTab] = useState<TabFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -87,7 +96,23 @@ export default function AppointmentsPage() {
   return (
     <>
       <Topbar title="การนัดหมาย" />
+      {schema && <DatabaseSchemaModal open={showSchema} onClose={() => setShowSchema(false)} schema={schema} />}
+      {flowData && <FlowchartModal open={showFlow} onClose={() => setShowFlow(false)} flowData={flowData} />}
       <main className="flex-1 p-6 space-y-6">
+        {/* Page Header with DB/Flow buttons */}
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-primary-100 flex items-center justify-center">
+            <Calendar size={20} className="text-primary-600" />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-text-primary flex items-center gap-2">
+              จัดการนัดหมาย
+              {schema && <DbSchemaButton onClick={() => setShowSchema(true)} />}
+              {flowData && <FlowRulesButton onClick={() => setShowFlow(true)} />}
+            </h2>
+            <p className="text-sm text-text-muted">สร้าง/อนุมัติ/ปฏิเสธนัดหมาย, ติดตามสถานะ, จัดการผู้ติดตามและ WiFi</p>
+          </div>
+        </div>
 
         {/* Tabs */}
         <div className="flex gap-1 bg-gray-100 rounded-xl p-1 w-fit">
