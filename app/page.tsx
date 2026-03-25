@@ -1,6 +1,12 @@
-import { Smartphone, Monitor, Tablet, Shield, GitBranch } from "lucide-react";
+"use client";
+
+import { useState } from "react";
+import { Smartphone, Monitor, Tablet, Shield, GitBranch, ZoomIn } from "lucide-react";
+import VmsLogo from "@/components/ui/VmsLogo";
+import { ImagePreviewModal } from "@/components/ui/ImagePreviewModal";
 
 export default function Home() {
+  const [previewImage, setPreviewImage] = useState<{ src: string; alt: string } | null>(null);
   const apps = [
     {
       title: "LINE OA",
@@ -57,9 +63,7 @@ export default function Home() {
         {/* Header */}
         <div className="text-center mb-12 space-y-6">
           <div className="inline-flex items-center gap-4 mb-6">
-            <div className="w-14 h-14 bg-gradient-to-br from-accent to-accent-600 rounded-xl flex items-center justify-center shadow-lg">
-              <span className="text-2xl font-bold text-white">V</span>
-            </div>
+            <VmsLogo size={48} darkMode />
             <div className="text-left">
               <h1 className="text-3xl font-bold text-white tracking-tight">eVMS Prototype</h1>
               <p className="text-white/60 text-sm font-medium">Visitor Management System</p>
@@ -148,24 +152,42 @@ export default function Home() {
             <div className="grid grid-cols-3 gap-6 items-center">
               {/* Blueprint */}
               <div className="flex flex-col items-center gap-3">
-                <div className="bg-white rounded-xl p-3 shadow-lg">
+                <button
+                  onClick={() => setPreviewImage({ src: "/images/kiosk-blueprint.png", alt: "Kiosk Blueprint — แบบแปลน" })}
+                  className="bg-white rounded-xl p-3 shadow-lg cursor-pointer group/img relative transition-all duration-300 hover:shadow-2xl hover:scale-[1.03]"
+                >
                   <img src="/images/kiosk-blueprint.png" alt="Kiosk Blueprint" className="w-full h-auto max-h-[320px] object-contain" />
-                </div>
-                <span className="text-white/40 text-xs">แบบแปลน (Blueprint)</span>
+                  <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/20 rounded-xl transition-all duration-300 flex items-center justify-center">
+                    <ZoomIn size={28} className="text-white opacity-0 group-hover/img:opacity-100 transition-opacity drop-shadow-lg" />
+                  </div>
+                </button>
+                <span className="text-white/40 text-xs">แบบแปลน (Blueprint) — คลิกเพื่อขยาย</span>
               </div>
               {/* 3D Side */}
               <div className="flex flex-col items-center gap-3">
-                <div className="rounded-xl overflow-hidden shadow-lg">
+                <button
+                  onClick={() => setPreviewImage({ src: "/images/kiosk-3d-side.jpg", alt: "Kiosk 3D Side View — มุมมองด้านข้าง" })}
+                  className="rounded-xl overflow-hidden shadow-lg cursor-pointer group/img relative transition-all duration-300 hover:shadow-2xl hover:scale-[1.03]"
+                >
                   <img src="/images/kiosk-3d-side.jpg" alt="Kiosk 3D Side View" className="w-full h-auto max-h-[320px] object-contain" />
-                </div>
-                <span className="text-white/40 text-xs">มุมมอง 3D (ด้านข้าง)</span>
+                  <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/20 rounded-xl transition-all duration-300 flex items-center justify-center">
+                    <ZoomIn size={28} className="text-white opacity-0 group-hover/img:opacity-100 transition-opacity drop-shadow-lg" />
+                  </div>
+                </button>
+                <span className="text-white/40 text-xs">มุมมอง 3D (ด้านข้าง) — คลิกเพื่อขยาย</span>
               </div>
               {/* 3D Front */}
               <div className="flex flex-col items-center gap-3">
-                <div className="rounded-xl overflow-hidden shadow-lg">
+                <button
+                  onClick={() => setPreviewImage({ src: "/images/kiosk-3d-front.jpg", alt: "Kiosk 3D Front View — มุมมองด้านหน้า" })}
+                  className="rounded-xl overflow-hidden shadow-lg cursor-pointer group/img relative transition-all duration-300 hover:shadow-2xl hover:scale-[1.03]"
+                >
                   <img src="/images/kiosk-3d-front.jpg" alt="Kiosk 3D Front View" className="w-full h-auto max-h-[320px] object-contain" />
-                </div>
-                <span className="text-white/40 text-xs">มุมมอง 3D (ด้านหน้า)</span>
+                  <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/20 rounded-xl transition-all duration-300 flex items-center justify-center">
+                    <ZoomIn size={28} className="text-white opacity-0 group-hover/img:opacity-100 transition-opacity drop-shadow-lg" />
+                  </div>
+                </button>
+                <span className="text-white/40 text-xs">มุมมอง 3D (ด้านหน้า) — คลิกเพื่อขยาย</span>
               </div>
             </div>
             {/* Specs */}
@@ -186,11 +208,61 @@ export default function Home() {
           </div>
         </div>
 
+        {/* Counter Hardware */}
+        <div className="mt-14 max-w-5xl w-full">
+          <div className="text-center mb-6">
+            <h2 className="text-xl font-bold text-white mb-1">Counter Hardware</h2>
+            <p className="text-white/40 text-sm">เคาน์เตอร์บริการ — Service Counter</p>
+          </div>
+          <div className="bg-white/[0.06] backdrop-blur-xl border border-white/[0.12] rounded-2xl p-6 overflow-hidden">
+            <div className="grid grid-cols-3 gap-6 items-center">
+              <div className="col-start-2 flex flex-col items-center gap-3">
+                <button
+                  onClick={() => setPreviewImage({ src: "/images/counter.png", alt: "Counter Hardware — เคาน์เตอร์บริการ" })}
+                  className="rounded-xl overflow-hidden shadow-lg cursor-pointer group/img relative transition-all duration-300 hover:shadow-2xl hover:scale-[1.03]"
+                >
+                  <img src="/images/counter.png" alt="Counter Hardware" className="w-full h-auto max-h-[320px] object-contain" />
+                  <div className="absolute inset-0 bg-black/0 group-hover/img:bg-black/20 rounded-xl transition-all duration-300 flex items-center justify-center">
+                    <ZoomIn size={28} className="text-white opacity-0 group-hover/img:opacity-100 transition-opacity drop-shadow-lg" />
+                  </div>
+                  {/* Watermark */}
+                  <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none">
+                    <span className="text-white/[0.08] text-6xl font-bold rotate-[-30deg] tracking-widest uppercase">PROTOTYPE</span>
+                  </div>
+                </button>
+                <span className="text-white/40 text-xs">เคาน์เตอร์บริการ — คลิกเพื่อขยาย</span>
+              </div>
+            </div>
+            {/* Specs */}
+            <div className="mt-5 flex flex-wrap justify-center gap-3">
+              {[
+                "หน้าจอสัมผัส 15.6\"",
+                "เครื่องอ่านบัตรประชาชน",
+                "กล้องบันทึกภาพ",
+                "QR Scanner",
+                "เครื่องพิมพ์ VisitPass",
+              ].map((spec) => (
+                <span key={spec} className="text-[11px] text-white/50 bg-white/[0.06] border border-white/[0.08] rounded-full px-3 py-1">
+                  {spec}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+
         {/* Footer */}
         <div className="mt-12 text-center text-white/30 text-sm">
           &copy; 2569 กระทรวงการท่องเที่ยวและกีฬา — Prototype v2.0
         </div>
       </div>
+
+      {/* Image Preview Modal */}
+      <ImagePreviewModal
+        open={!!previewImage}
+        onClose={() => setPreviewImage(null)}
+        src={previewImage?.src ?? ""}
+        alt={previewImage?.alt ?? ""}
+      />
     </main>
   );
 }

@@ -2,13 +2,17 @@
 
 import { useState } from "react";
 import Topbar from "@/components/web/Topbar";
+import { DatabaseSchemaModal, DbSchemaButton } from "@/components/web/DatabaseSchemaModal";
+import { FlowchartModal, FlowRulesButton } from "@/components/web/FlowchartModal";
+import { getSchemaByPageId } from "@/lib/database-schema";
+import { getFlowByPageId } from "@/lib/flowchart-data";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
   Users, Clock, ArrowUpRight, ArrowDown, AlertTriangle, Ban,
   Building2, Briefcase, FileText, Wrench, Package, MoreHorizontal,
   CalendarClock, CheckCircle2, XCircle, Timer, UserCheck, LogOut, Bookmark,
-  ChevronLeft, ChevronRight, Search, X
+  ChevronLeft, ChevronRight, Search, X, Database, Code2
 } from "lucide-react";
 import {
   appointments,
@@ -88,13 +92,84 @@ const statusIcons: Record<string, React.ReactNode> = {
   blocked: <Ban size={16} />,
 };
 
+// ===== API/DB Info Tag =====
+function ApiDbTag({ api, tables, query }: { api: string; tables: string; query?: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="relative inline-block">
+      <button
+        onClick={() => setOpen(!open)}
+        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-colors"
+        title="DB / API Info"
+      >
+        <Database size={10} />
+        <Code2 size={10} />
+        API
+      </button>
+      {open && (
+        <div className="absolute top-full left-0 mt-1 z-50 bg-white border border-gray-200 rounded-xl shadow-xl p-4 min-w-[360px] max-w-[440px]">
+          <button onClick={() => setOpen(false)} className="absolute top-2 right-2 text-text-muted hover:text-text-primary">
+            <X size={14} />
+          </button>
+          <div className="space-y-2.5">
+            <div>
+              <p className="text-[10px] font-bold text-emerald-700 uppercase tracking-wider mb-0.5">API Endpoint</p>
+              <p className="text-xs font-mono text-text-primary bg-gray-50 px-2 py-1 rounded">{api}</p>
+            </div>
+            <div>
+              <p className="text-[10px] font-bold text-blue-700 uppercase tracking-wider mb-0.5">Tables</p>
+              <p className="text-xs font-mono text-text-secondary">{tables}</p>
+            </div>
+            {query && (
+              <div>
+                <p className="text-[10px] font-bold text-purple-700 uppercase tracking-wider mb-0.5">Query</p>
+                <pre className="text-[10px] font-mono text-purple-800 bg-purple-50 px-2 py-1.5 rounded whitespace-pre-wrap leading-relaxed">{query}</pre>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function WebDashboard() {
+  const [showSchema, setShowSchema] = useState(false);
+  const [showFlow, setShowFlow] = useState(false);
+  const schema = getSchemaByPageId("dashboard");
+  const flowData = getFlowByPageId("dashboard");
+
   return (
     <div>
       <Topbar title="ภาพรวม" />
+      {schema && <DatabaseSchemaModal open={showSchema} onClose={() => setShowSchema(false)} schema={schema} />}
+      {flowData && <FlowchartModal open={showFlow} onClose={() => setShowFlow(false)} flowData={flowData} />}
       <div className="p-6 space-y-6">
 
+        {/* Page Header with DB/Flow buttons */}
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-primary-100 flex items-center justify-center">
+            <Building2 size={20} className="text-primary-600" />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-text-primary flex items-center gap-2">
+              ภาพรวม — Dashboard
+              {schema && <DbSchemaButton onClick={() => setShowSchema(true)} />}
+              {flowData && <FlowRulesButton onClick={() => setShowFlow(true)} />}
+            </h2>
+            <p className="text-sm text-text-muted">สรุป KPI, สถานะวันนี้, แยกตามประเภท, รายการรออนุมัติ</p>
+          </div>
+        </div>
+
         {/* ===== Section 1: Hero KPI Strip ===== */}
+        <div className="flex items-center gap-2 -mb-3">
+          <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">Section 1: KPI Strip</span>
+          <ApiDbTag
+            api="GET /api/dashboard/stats"
+            tables="appointments → COUNT(*) GROUP BY status WHERE date_start = CURDATE()"
+            query={`SELECT\n  COUNT(*) AS total_visitors,\n  SUM(status='checked-in') AS in_building,\n  SUM(status='pending') AS pending,\n  SUM(status='overstay') AS overstay\nFROM appointments\nWHERE date_start = CURDATE()`}
+          />
+        </div>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           <KPICard
             title="ผู้มาติดต่อวันนี้"
@@ -147,8 +222,13 @@ export default function WebDashboard() {
         {/* ===== Section 2: Status Overview Bar ===== */}
         <Card className="border-0 shadow-md rounded-2xl overflow-hidden">
           <CardHeader className="bg-gradient-to-r from-primary-50 to-white border-b border-primary-100 px-6 py-4">
-            <CardTitle className="text-base font-bold text-primary">
+            <CardTitle className="text-base font-bold text-primary flex items-center gap-2">
               สถานะทั้งหมดวันนี้ — Status Overview
+              <ApiDbTag
+                api="GET /api/dashboard/status-overview"
+                tables="appointments"
+                query={`SELECT status, COUNT(*) AS count\nFROM appointments\nWHERE date_start = CURDATE()\nGROUP BY status`}
+              />
             </CardTitle>
           </CardHeader>
           <CardContent className="p-5">
@@ -179,6 +259,11 @@ export default function WebDashboard() {
           <h2 className="text-lg font-bold text-text-primary mb-4 flex items-center gap-2">
             <CalendarClock size={20} className="text-primary" />
             แยกตามประเภทการเข้าพื้นที่ — By Visit Type
+            <ApiDbTag
+              api="GET /api/dashboard/by-type"
+              tables="appointments"
+              query={`SELECT type, status, COUNT(*) AS count\nFROM appointments\nWHERE date_start = CURDATE()\nGROUP BY type, status`}
+            />
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {(Object.keys(visitTypes) as VisitType[]).map((type) => {
@@ -228,6 +313,11 @@ export default function WebDashboard() {
                   <span className="ml-2 inline-flex items-center justify-center w-6 h-6 rounded-full bg-warning text-white text-xs font-bold">
                     {pendingAppts.length}
                   </span>
+                  <ApiDbTag
+                    api="GET /api/dashboard/pending"
+                    tables="appointments JOIN visitors JOIN staff JOIN departments"
+                    query={`SELECT a.*, v.name, v.company,\n  s.name AS host_name, d.name AS dept_name\nFROM appointments a\nJOIN visitors v ON a.visitor_id = v.id\nJOIN staff s ON a.host_id = s.id\nJOIN departments d ON s.department_id = d.id\nWHERE a.date_start = CURDATE()\n  AND a.status = 'pending'`}
+                  />
                 </CardTitle>
               </div>
             </CardHeader>
@@ -409,8 +499,13 @@ function AllVisitorsTodayTable({ appointments: appts }: { appointments: Appointm
     <Card className="overflow-hidden border-0 shadow-lg rounded-2xl">
       <CardHeader className="bg-gradient-to-r from-primary-50 to-white border-b border-primary-100 px-6 py-4">
         <div className="flex justify-between items-center mb-3">
-          <CardTitle className="text-base font-bold text-primary">
+          <CardTitle className="text-base font-bold text-primary flex items-center gap-2">
             ผู้มาติดต่อวันนี้ทั้งหมด — All Visitors Today
+            <ApiDbTag
+              api="GET /api/appointments?date=today&page=1&limit=10"
+              tables="appointments JOIN visitors JOIN staff JOIN departments"
+              query={`SELECT a.*, v.name, v.company, v.name_en,\n  s.name AS host_name,\n  d.name AS dept_name\nFROM appointments a\nJOIN visitors v ON a.visitor_id = v.id\nJOIN staff s ON a.host_id = s.id\nJOIN departments d ON s.department_id = d.id\nWHERE a.date_start = CURDATE()\nORDER BY a.time_start\nLIMIT :limit OFFSET :offset`}
+            />
           </CardTitle>
           <span className="text-xs text-primary/60 font-medium bg-primary-100 px-3 py-1 rounded-full">
             {appts.length} รายการ · อัปเดตอัตโนมัติ

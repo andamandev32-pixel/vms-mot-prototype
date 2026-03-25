@@ -26,7 +26,7 @@ export type VisitType =
 
 export type EntryMode = "single" | "period";
 
-export type UserRole = "admin" | "supervisor" | "officer" | "staff" | "security" | "visitor";
+export type UserRole = "admin" | "supervisor" | "staff" | "security" | "visitor";
 
 export type NotificationType = "approved" | "rejected" | "reminder" | "checkin" | "wifi" | "overstay" | "system";
 
