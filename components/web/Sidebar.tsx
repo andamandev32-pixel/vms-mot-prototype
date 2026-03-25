@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, Calendar, Search, FileText, Settings, Shield, LogOut, ChevronRight, ClipboardList, DoorOpen, ShieldCheck, UserCog, Monitor, FileCheck, Clock, Bell, Printer, Building2, Mail, MessageCircle } from "lucide-react";
+import { LayoutDashboard, Calendar, Search, FileText, Settings, Shield, LogOut, ChevronRight, ClipboardList, DoorOpen, ShieldCheck, UserCog, Monitor, FileCheck, Clock, Bell, Printer, Building2, Mail, MessageCircle, Users } from "lucide-react";
 import VmsLogo from "@/components/ui/VmsLogo";
 import { canAccess, roleConfig, type AppRole } from "@/lib/auth-config";
 
@@ -25,6 +25,7 @@ export default function Sidebar() {
         { href: "/web/settings/locations", label: "สถานที่และแผนก", icon: <Building2 size={20} />, resource: "settings" },
         { href: "/web/settings/access-zones", label: "โซนเข้าพื้นที่", icon: <DoorOpen size={20} />, resource: "settings" },
         { href: "/web/settings/approver-groups", label: "กลุ่มผู้อนุมัติ", icon: <ShieldCheck size={20} />, resource: "settings" },
+        { href: "/web/settings/users", label: "จัดการผู้ใช้งาน", icon: <Users size={20} />, resource: "settings" },
         { href: "/web/settings/staff", label: "จัดการพนักงาน", icon: <UserCog size={20} />, resource: "settings" },
         { href: "/web/settings/service-points", label: "จุดให้บริการ Kiosk/Counter", icon: <Monitor size={20} />, resource: "settings" },
         { href: "/web/settings/document-types", label: "ประเภทเอกสาร", icon: <FileCheck size={20} />, resource: "settings" },
