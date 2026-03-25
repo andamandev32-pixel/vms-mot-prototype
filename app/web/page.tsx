@@ -107,6 +107,33 @@ export default function WebLoginPage() {
                         </Button>
                     </div>
 
+                    {/* Demo accounts */}
+                    <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                        <p className="text-xs font-bold text-text-secondary mb-2.5 uppercase tracking-wider">บัญชีทดสอบ (Demo)</p>
+                        <div className="space-y-2">
+                            {[
+                                { email: "admin@mots.go.th", password: "admin1234", role: "Admin", color: "text-red-600 bg-red-50" },
+                                { email: "prawit.s@mots.go.th", password: "pass1234", role: "Supervisor", color: "text-purple-600 bg-purple-50" },
+                                { email: "somsri.r@mots.go.th", password: "pass1234", role: "Staff", color: "text-emerald-600 bg-emerald-50" },
+                                { email: "somchai.p@mots.go.th", password: "pass1234", role: "Security", color: "text-orange-600 bg-orange-50" },
+                                { email: "wichai@siamtech.co.th", password: "pass1234", role: "Visitor", color: "text-blue-600 bg-blue-50" },
+                            ].map((acc) => (
+                                <button
+                                    key={acc.email}
+                                    type="button"
+                                    onClick={() => { setEmail(acc.email); setPassword(acc.password); }}
+                                    className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-white hover:shadow-sm border border-transparent hover:border-gray-200 transition-all text-left group"
+                                >
+                                    <div className="min-w-0">
+                                        <p className="text-xs font-mono text-text-primary truncate group-hover:text-primary transition-colors">{acc.email}</p>
+                                        <p className="text-[10px] text-text-muted">pw: {acc.password}</p>
+                                    </div>
+                                    <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${acc.color}`}>{acc.role}</span>
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
                     <div className="text-center text-sm text-text-secondary pt-4 border-t border-gray-100">
                         ยังไม่มีบัญชี?{" "}
                         <Link href="/web/register" className="text-primary font-bold hover:text-primary-dark hover:underline">
