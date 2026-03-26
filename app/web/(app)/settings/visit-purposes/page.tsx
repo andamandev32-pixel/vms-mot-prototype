@@ -4,8 +4,10 @@ import { useState } from "react";
 import Topbar from "@/components/web/Topbar";
 import { DatabaseSchemaModal, DbSchemaButton } from "@/components/web/DatabaseSchemaModal";
 import { FlowchartModal, FlowRulesButton } from "@/components/web/FlowchartModal";
+import { ApiDocModal, ApiDocButton } from "@/components/web/ApiDocModal";
 import { getSchemaByPageId } from "@/lib/database-schema";
 import { getFlowByPageId } from "@/lib/flowchart-data";
+import { getApiDocByPageId } from "@/lib/api-doc-data";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -79,8 +81,10 @@ function BoolIcon({
 export default function VisitPurposeSettingsPage() {
   const [showSchema, setShowSchema] = useState(false);
   const [showFlow, setShowFlow] = useState(false);
+  const [showApiDoc, setShowApiDoc] = useState(false);
   const schema = getSchemaByPageId("visit-purposes")!;
   const flowData = getFlowByPageId("visit-purposes")!;
+  const apiDoc = getApiDocByPageId("visit-purposes");
   const [configs, setConfigs] = useState<VisitPurposeConfig[]>(visitPurposeConfigs);
   const [expandedRow, setExpandedRow] = useState<number | null>(null);
 
@@ -126,6 +130,7 @@ export default function VisitPurposeSettingsPage() {
       <Topbar title="ตั้งค่าวัตถุประสงค์การเข้าพื้นที่" />
       <DatabaseSchemaModal open={showSchema} onClose={() => setShowSchema(false)} schema={schema} />
       <FlowchartModal open={showFlow} onClose={() => setShowFlow(false)} flowData={flowData} />
+      {apiDoc && <ApiDocModal open={showApiDoc} onClose={() => setShowApiDoc(false)} apiDoc={apiDoc} />}
       <main className="flex-1 p-6 space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -135,6 +140,7 @@ export default function VisitPurposeSettingsPage() {
               เงื่อนไขการเข้าพื้นที่
               <DbSchemaButton onClick={() => setShowSchema(true)} />
               <FlowRulesButton onClick={() => setShowFlow(true)} />
+              {apiDoc && <ApiDocButton onClick={() => setShowApiDoc(true)} />}
             </h3>
             <p className="text-sm text-text-muted mt-1">
               กำหนดประเภทวัตถุประสงค์ เลือกแผนกที่ต้องการ

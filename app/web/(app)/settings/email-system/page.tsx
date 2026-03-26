@@ -3,7 +3,9 @@
 import { useState } from "react";
 import Topbar from "@/components/web/Topbar";
 import { DatabaseSchemaModal, DbSchemaButton } from "@/components/web/DatabaseSchemaModal";
+import { ApiDocModal, ApiDocButton } from "@/components/web/ApiDocModal";
 import { getSchemaByPageId } from "@/lib/database-schema";
+import { getApiDocByPageId } from "@/lib/api-doc-data";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -25,7 +27,9 @@ import {
    ══════════════════════════════════════════════════ */
 export default function EmailSystemSettingsPage() {
   const [showSchema, setShowSchema] = useState(false);
+  const [showApiDoc, setShowApiDoc] = useState(false);
   const schema = getSchemaByPageId("email-system");
+  const apiDoc = getApiDocByPageId("email-system");
 
   /* ── SMTP Config ── */
   const [smtpHost, setSmtpHost] = useState("smtp.gmail.com");
@@ -76,6 +80,7 @@ export default function EmailSystemSettingsPage() {
       {schema && (
         <DatabaseSchemaModal open={showSchema} onClose={() => setShowSchema(false)} schema={schema} />
       )}
+      {apiDoc && <ApiDocModal open={showApiDoc} onClose={() => setShowApiDoc(false)} apiDoc={apiDoc} />}
       <main className="flex-1 p-6 space-y-6">
         {/* Header */}
         <div>
@@ -83,6 +88,7 @@ export default function EmailSystemSettingsPage() {
             <Mail size={22} className="text-primary" />
             ตั้งค่าอีเมลระบบ — Email System
             <DbSchemaButton onClick={() => setShowSchema(true)} />
+            {apiDoc && <ApiDocButton onClick={() => setShowApiDoc(true)} />}
           </h3>
           <p className="text-sm text-text-muted mt-1">
             กำหนดค่า SMTP Server และข้อมูลผู้ส่งอีเมลสำหรับระบบแจ้งเตือนอัตโนมัติ

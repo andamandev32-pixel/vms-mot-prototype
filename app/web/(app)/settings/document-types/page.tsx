@@ -4,8 +4,10 @@ import { useState } from "react";
 import Topbar from "@/components/web/Topbar";
 import { DatabaseSchemaModal, DbSchemaButton } from "@/components/web/DatabaseSchemaModal";
 import { FlowchartModal, FlowRulesButton } from "@/components/web/FlowchartModal";
+import { ApiDocModal, ApiDocButton } from "@/components/web/ApiDocModal";
 import { getSchemaByPageId } from "@/lib/database-schema";
 import { getFlowByPageId } from "@/lib/flowchart-data";
+import { getApiDocByPageId } from "@/lib/api-doc-data";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Drawer } from "@/components/ui/Drawer";
@@ -32,8 +34,10 @@ import {
 export default function DocumentTypesSettingsPage() {
   const [showSchema, setShowSchema] = useState(false);
   const [showFlow, setShowFlow] = useState(false);
+  const [showApiDoc, setShowApiDoc] = useState(false);
   const schema = getSchemaByPageId("document-types")!;
   const flowData = getFlowByPageId("document-types")!;
+  const apiDoc = getApiDocByPageId("document-types");
   const [items, setItems] = useState<DocumentType[]>(documentTypes);
   const [drawer, setDrawer] = useState<{ mode: "add" | "edit"; item?: DocumentType } | null>(null);
 
@@ -49,6 +53,7 @@ export default function DocumentTypesSettingsPage() {
       <Topbar title="ประเภทเอกสาร / Document Types" />
       <DatabaseSchemaModal open={showSchema} onClose={() => setShowSchema(false)} schema={schema} />
       <FlowchartModal open={showFlow} onClose={() => setShowFlow(false)} flowData={flowData} />
+      {apiDoc && <ApiDocModal open={showApiDoc} onClose={() => setShowApiDoc(false)} apiDoc={apiDoc} />}
       <main className="flex-1 p-6 space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -58,6 +63,7 @@ export default function DocumentTypesSettingsPage() {
               ตั้งค่าประเภทเอกสาร
               <DbSchemaButton onClick={() => setShowSchema(true)} />
               <FlowRulesButton onClick={() => setShowFlow(true)} />
+              {apiDoc && <ApiDocButton onClick={() => setShowApiDoc(true)} />}
             </h3>
             <p className="text-sm text-text-muted mt-1">กำหนดเอกสารที่ต้องใช้ในการลงทะเบียนตามวัตถุประสงค์การเข้าพื้นที่</p>
           </div>

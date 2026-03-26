@@ -4,8 +4,10 @@ import { useState } from "react";
 import Topbar from "@/components/web/Topbar";
 import { DatabaseSchemaModal, DbSchemaButton } from "@/components/web/DatabaseSchemaModal";
 import { FlowchartModal, FlowRulesButton } from "@/components/web/FlowchartModal";
+import { ApiDocModal, ApiDocButton } from "@/components/web/ApiDocModal";
 import { getSchemaByPageId } from "@/lib/database-schema";
 import { getFlowByPageId } from "@/lib/flowchart-data";
+import { getApiDocByPageId } from "@/lib/api-doc-data";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
@@ -136,14 +138,17 @@ function ApiDbTag({ api, tables, query }: { api: string; tables: string; query?:
 export default function WebDashboard() {
   const [showSchema, setShowSchema] = useState(false);
   const [showFlow, setShowFlow] = useState(false);
+  const [showApiDoc, setShowApiDoc] = useState(false);
   const schema = getSchemaByPageId("dashboard");
   const flowData = getFlowByPageId("dashboard");
+  const apiDoc = getApiDocByPageId("dashboard");
 
   return (
     <div>
       <Topbar title="ภาพรวม" />
       {schema && <DatabaseSchemaModal open={showSchema} onClose={() => setShowSchema(false)} schema={schema} />}
       {flowData && <FlowchartModal open={showFlow} onClose={() => setShowFlow(false)} flowData={flowData} />}
+      {apiDoc && <ApiDocModal open={showApiDoc} onClose={() => setShowApiDoc(false)} apiDoc={apiDoc} />}
       <div className="p-6 space-y-6">
 
         {/* Page Header with DB/Flow buttons */}
@@ -156,6 +161,7 @@ export default function WebDashboard() {
               ภาพรวม — Dashboard
               {schema && <DbSchemaButton onClick={() => setShowSchema(true)} />}
               {flowData && <FlowRulesButton onClick={() => setShowFlow(true)} />}
+              {apiDoc && <ApiDocButton onClick={() => setShowApiDoc(true)} />}
             </h2>
             <p className="text-sm text-text-muted">สรุป KPI, สถานะวันนี้, แยกตามประเภท, รายการรออนุมัติ</p>
           </div>

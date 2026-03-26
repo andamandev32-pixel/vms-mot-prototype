@@ -4,8 +4,10 @@ import { useState, useMemo } from "react";
 import Topbar from "@/components/web/Topbar";
 import { DatabaseSchemaModal, DbSchemaButton } from "@/components/web/DatabaseSchemaModal";
 import { FlowchartModal, FlowRulesButton } from "@/components/web/FlowchartModal";
+import { ApiDocModal, ApiDocButton } from "@/components/web/ApiDocModal";
 import { getSchemaByPageId } from "@/lib/database-schema";
 import { getFlowByPageId } from "@/lib/flowchart-data";
+import { getApiDocByPageId } from "@/lib/api-doc-data";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { cn } from "@/lib/utils";
@@ -163,8 +165,10 @@ const previewSlipData: SlipData = {
 export default function VisitSlipTemplatesSettingsPage() {
   const [showSchema, setShowSchema] = useState(false);
   const [showFlow, setShowFlow] = useState(false);
+  const [showApiDoc, setShowApiDoc] = useState(false);
   const schema = getSchemaByPageId("visit-slips")!;
   const flowData = getFlowByPageId("visit-slips")!;
+  const apiDoc = getApiDocByPageId("visit-slips");
 
   const [sections, setSections] = useState<ThermalSection[]>(defaultSections);
   const [expandedSection, setExpandedSection] = useState<string | null>("header");
@@ -211,6 +215,7 @@ export default function VisitSlipTemplatesSettingsPage() {
       <Topbar title="แบบฟอร์ม Visit Slip / Thermal Slip Editor" />
       <DatabaseSchemaModal open={showSchema} onClose={() => setShowSchema(false)} schema={schema} />
       <FlowchartModal open={showFlow} onClose={() => setShowFlow(false)} flowData={flowData} />
+      {apiDoc && <ApiDocModal open={showApiDoc} onClose={() => setShowApiDoc(false)} apiDoc={apiDoc} />}
       <main className="flex-1 p-6 space-y-5">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -220,6 +225,7 @@ export default function VisitSlipTemplatesSettingsPage() {
               ตั้งค่า Visit Slip (80mm Thermal)
               <DbSchemaButton onClick={() => setShowSchema(true)} />
               <FlowRulesButton onClick={() => setShowFlow(true)} />
+              {apiDoc && <ApiDocButton onClick={() => setShowApiDoc(true)} />}
             </h3>
             <p className="text-sm text-text-muted mt-1">แก้ไขเนื้อหา ส่วนที่แสดง และลำดับฟิลด์ของ Visit Slip ที่พิมพ์จาก Kiosk</p>
           </div>

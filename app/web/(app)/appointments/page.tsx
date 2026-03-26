@@ -4,8 +4,10 @@ import { useState, useRef, useMemo, useCallback } from "react";
 import Topbar from "@/components/web/Topbar";
 import { DatabaseSchemaModal, DbSchemaButton } from "@/components/web/DatabaseSchemaModal";
 import { FlowchartModal, FlowRulesButton } from "@/components/web/FlowchartModal";
+import { ApiDocModal, ApiDocButton } from "@/components/web/ApiDocModal";
 import { getSchemaByPageId } from "@/lib/database-schema";
 import { getFlowByPageId } from "@/lib/flowchart-data";
+import { getApiDocByPageId } from "@/lib/api-doc-data";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -48,8 +50,10 @@ interface CompanionEntry {
 export default function AppointmentsPage() {
   const [showSchema, setShowSchema] = useState(false);
   const [showFlow, setShowFlow] = useState(false);
+  const [showApiDoc, setShowApiDoc] = useState(false);
   const schema = getSchemaByPageId("appointments");
   const flowData = getFlowByPageId("appointments");
+  const apiDoc = getApiDocByPageId("appointments");
 
   const [activeTab, setActiveTab] = useState<TabFilter>("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -98,6 +102,7 @@ export default function AppointmentsPage() {
       <Topbar title="การนัดหมาย" />
       {schema && <DatabaseSchemaModal open={showSchema} onClose={() => setShowSchema(false)} schema={schema} />}
       {flowData && <FlowchartModal open={showFlow} onClose={() => setShowFlow(false)} flowData={flowData} />}
+      {apiDoc && <ApiDocModal open={showApiDoc} onClose={() => setShowApiDoc(false)} apiDoc={apiDoc} />}
       <main className="flex-1 p-6 space-y-6">
         {/* Page Header with DB/Flow buttons */}
         <div className="flex items-center gap-3">
@@ -109,6 +114,7 @@ export default function AppointmentsPage() {
               จัดการนัดหมาย
               {schema && <DbSchemaButton onClick={() => setShowSchema(true)} />}
               {flowData && <FlowRulesButton onClick={() => setShowFlow(true)} />}
+              {apiDoc && <ApiDocButton onClick={() => setShowApiDoc(true)} />}
             </h2>
             <p className="text-sm text-text-muted">สร้าง/อนุมัติ/ปฏิเสธนัดหมาย, ติดตามสถานะ, จัดการผู้ติดตามและ WiFi</p>
           </div>

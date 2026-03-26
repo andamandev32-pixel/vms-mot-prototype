@@ -4,8 +4,10 @@ import { useState, useMemo } from "react";
 import Topbar from "@/components/web/Topbar";
 import { DatabaseSchemaModal, DbSchemaButton } from "@/components/web/DatabaseSchemaModal";
 import { FlowchartModal, FlowRulesButton } from "@/components/web/FlowchartModal";
+import { ApiDocModal, ApiDocButton } from "@/components/web/ApiDocModal";
 import { getSchemaByPageId } from "@/lib/database-schema";
 import { getFlowByPageId } from "@/lib/flowchart-data";
+import { getApiDocByPageId } from "@/lib/api-doc-data";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -62,8 +64,10 @@ const roleLabels: Record<string, { th: string; color: string; bg: string }> = {
 export default function StaffPage() {
   const [showSchema, setShowSchema] = useState(false);
   const [showFlow, setShowFlow] = useState(false);
+  const [showApiDoc, setShowApiDoc] = useState(false);
   const schema = getSchemaByPageId("staff")!;
   const flowData = getFlowByPageId("staff")!;
+  const apiDoc = getApiDocByPageId("staff");
   const [search, setSearch] = useState("");
   const [filterDept, setFilterDept] = useState<"all" | number>("all");
   const [filterStatus, setFilterStatus] = useState<"all" | "active" | "inactive">("all");
@@ -98,6 +102,7 @@ export default function StaffPage() {
       <Topbar title="จัดการพนักงาน" />
       <DatabaseSchemaModal open={showSchema} onClose={() => setShowSchema(false)} schema={schema} />
       <FlowchartModal open={showFlow} onClose={() => setShowFlow(false)} flowData={flowData} />
+      {apiDoc && <ApiDocModal open={showApiDoc} onClose={() => setShowApiDoc(false)} apiDoc={apiDoc} />}
       <main className="flex-1 p-6 space-y-6">
         {/* header */}
         <div className="flex items-center justify-between">
@@ -107,6 +112,7 @@ export default function StaffPage() {
               รายชื่อพนักงานและเจ้าหน้าที่
               <DbSchemaButton onClick={() => setShowSchema(true)} />
               <FlowRulesButton onClick={() => setShowFlow(true)} />
+              {apiDoc && <ApiDocButton onClick={() => setShowApiDoc(true)} />}
             </h3>
             <p className="text-sm text-text-muted mt-1">
               จัดการข้อมูลพนักงาน กำหนดสถานะ

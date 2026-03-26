@@ -3,7 +3,9 @@
 import { useState } from "react";
 import Topbar from "@/components/web/Topbar";
 import { DatabaseSchemaModal, DbSchemaButton } from "@/components/web/DatabaseSchemaModal";
+import { ApiDocModal, ApiDocButton } from "@/components/web/ApiDocModal";
 import { getSchemaByPageId } from "@/lib/database-schema";
+import { getApiDocByPageId } from "@/lib/api-doc-data";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
@@ -25,7 +27,9 @@ import {
 
 export default function LineOaConfigPage() {
   const [showSchema, setShowSchema] = useState(false);
+  const [showApiDoc, setShowApiDoc] = useState(false);
   const schema = getSchemaByPageId("line-oa-config");
+  const apiDoc = getApiDocByPageId("line-oa-config");
 
   /* ── Card 1: Messaging API ── */
   const [channelId, setChannelId] = useState("1234567890");
@@ -90,6 +94,7 @@ export default function LineOaConfigPage() {
       {schema && (
         <DatabaseSchemaModal open={showSchema} onClose={() => setShowSchema(false)} schema={schema} />
       )}
+      {apiDoc && <ApiDocModal open={showApiDoc} onClose={() => setShowApiDoc(false)} apiDoc={apiDoc} />}
 
       <main className="flex-1 p-6 space-y-6">
         {/* ── Header ── */}
@@ -98,6 +103,7 @@ export default function LineOaConfigPage() {
             <MessageCircle size={22} className="text-primary" />
             ตั้งค่า LINE Official Account
             <DbSchemaButton onClick={() => setShowSchema(true)} />
+            {apiDoc && <ApiDocButton onClick={() => setShowApiDoc(true)} />}
           </h3>
           <p className="text-sm text-text-muted mt-1">
             กำหนดค่าการเชื่อมต่อ LINE Messaging API, LIFF, Webhook และ Rich Menu

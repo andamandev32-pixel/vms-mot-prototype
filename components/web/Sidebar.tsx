@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, Calendar, Search, FileText, Settings, Shield, LogOut, ChevronRight, ClipboardList, DoorOpen, ShieldCheck, UserCog, Monitor, FileCheck, Clock, Bell, Printer, Building2, Mail, MessageCircle, Users } from "lucide-react";
+import { LayoutDashboard, Calendar, Search, FileText, Settings, Shield, LogOut, ChevronRight, ClipboardList, DoorOpen, ShieldCheck, UserCog, Monitor, FileCheck, Clock, Bell, Printer, Building2, Mail, MessageCircle, Users, User } from "lucide-react";
 import VmsLogo from "@/components/ui/VmsLogo";
 import { canAccess, roleConfig, type AppRole } from "@/lib/auth-config";
 
@@ -77,8 +77,8 @@ export default function Sidebar() {
             </nav>
 
             {/* User Footer */}
-            <div className="p-4 border-t border-white/10 bg-black/20 backdrop-blur-md">
-                <div className="flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 transition-colors cursor-pointer group">
+            <div className="p-4 border-t border-white/10 bg-black/20 backdrop-blur-md space-y-1">
+                <Link href="/web/profile" className="flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 transition-colors cursor-pointer group">
                     <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-300 to-primary-700 p-[2px]">
                         <div className="w-full h-full rounded-full bg-primary-dark flex items-center justify-center text-xs font-bold text-accent">
                             AD
@@ -88,10 +88,11 @@ export default function Sidebar() {
                         <p className="text-sm font-bold truncate text-white group-hover:text-accent transition-colors">Admin User</p>
                         <p className="text-xs text-white/50 truncate">{rc.label} ({rc.labelEn})</p>
                     </div>
-                    <Link href="/web" className="text-white/40 hover:text-error transition-colors" title="ออกจากระบบ">
-                        <LogOut size={18} />
-                    </Link>
-                </div>
+                    <User size={16} className="text-white/30 group-hover:text-accent transition-colors" />
+                </Link>
+                <Link href="/web" className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-white/40 hover:text-error hover:bg-white/5 transition-colors text-xs">
+                    <LogOut size={14} /> ออกจากระบบ
+                </Link>
             </div>
         </aside>
     );

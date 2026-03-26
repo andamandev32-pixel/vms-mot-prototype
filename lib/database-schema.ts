@@ -648,7 +648,9 @@ const staffSchema: PageSchema = {
         { name: "department_id", type: "INT", nullable: false, comment: "FK → departments.id — แผนกที่สังกัด", isForeignKey: true, references: "departments.id" },
         { name: "email", type: "VARCHAR(100)", nullable: false, comment: "อีเมลราชการ" },
         { name: "phone", type: "VARCHAR(20)", nullable: false, comment: "เบอร์โทรศัพท์" },
-        { name: "line_user_id", type: "VARCHAR(50)", nullable: true, comment: "LINE User ID (สำหรับแจ้งเตือนผ่าน LINE)" },
+        { name: "line_user_id", type: "VARCHAR(50)", nullable: true, comment: "LINE User ID — ได้จาก LINE Login/LIFF (null = ยังไม่ผูก)", isUnique: true },
+        { name: "line_display_name", type: "VARCHAR(100)", nullable: true, comment: "LINE Display Name — อัปเดตทุกครั้งที่ผูกใหม่" },
+        { name: "line_linked_at", type: "TIMESTAMP", nullable: true, comment: "วันเวลาที่ผูกบัญชี LINE" },
         { name: "avatar_url", type: "VARCHAR(255)", nullable: true, comment: "URL รูปภาพโปรไฟล์" },
         { name: "role", type: "ENUM('admin','supervisor','officer','staff','security','visitor')", nullable: false, comment: "บทบาท: admin=ผู้ดูแลระบบ, staff=เจ้าหน้าที่, security=รปภ." },
         { name: "status", type: "ENUM('active','inactive','locked')", nullable: false, comment: "สถานะ: active=ใช้งาน, inactive=ปิดใช้งาน, locked=ล็อก", defaultValue: "active" },
@@ -1229,7 +1231,7 @@ const visitRecordsSchema: PageSchema = {
         { name: "wifi_ssid", type: "VARCHAR(50)", nullable: true, comment: "SSID ที่แจก (ถ้ารับ WiFi)" },
         { name: "wifi_password", type: "VARCHAR(50)", nullable: true, comment: "รหัส WiFi ที่แจก" },
         { name: "wifi_valid_until", type: "TIMESTAMP", nullable: true, comment: "WiFi ใช้ได้ถึงเมื่อไร" },
-        { name: "line_linked", type: "BOOLEAN", nullable: false, comment: "ผู้เยี่ยมผูก LINE OA ไว้ — ใช้ตัดสินถามพิมพ์ slip", defaultValue: "false" },
+        { name: "line_linked", type: "BOOLEAN", nullable: false, comment: "ผู้เยี่ยมผูก LINE OA ณ เวลา check-in — snapshot จาก visitors.line_user_id IS NOT NULL (denormalize เพื่อ performance, ไม่ต้อง JOIN)", defaultValue: "false" },
         { name: "slip_printed", type: "BOOLEAN", nullable: true, comment: "พิมพ์ slip หรือไม่ (null = ไม่ได้ถาม, true = พิมพ์, false = ไม่พิมพ์/ส่ง LINE)" },
         { name: "slip_number", type: "VARCHAR(30)", nullable: true, comment: "เลขที่ slip eVMS-25680315-0042" },
         { name: "companions_count", type: "INT", nullable: false, comment: "จำนวนผู้ติดตาม", defaultValue: "0" },
@@ -1291,7 +1293,9 @@ const appointmentsSchema: PageSchema = {
         { name: "company", type: "VARCHAR(150)", nullable: true, comment: "บริษัท / หน่วยงาน" },
         { name: "phone", type: "VARCHAR(20)", nullable: false, comment: "เบอร์โทรศัพท์" },
         { name: "email", type: "VARCHAR(100)", nullable: true, comment: "อีเมล" },
-        { name: "line_user_id", type: "VARCHAR(50)", nullable: true, comment: "LINE User ID (ถ้าผูก LINE OA)" },
+        { name: "line_user_id", type: "VARCHAR(50)", nullable: true, comment: "LINE User ID — ได้จาก LINE Login/LIFF (null = ยังไม่ผูก)", isUnique: true },
+        { name: "line_display_name", type: "VARCHAR(100)", nullable: true, comment: "LINE Display Name" },
+        { name: "line_linked_at", type: "TIMESTAMP", nullable: true, comment: "วันเวลาที่ผูกบัญชี LINE" },
         { name: "photo", type: "VARCHAR(255)", nullable: true, comment: "URL รูปถ่ายใบหน้า" },
         { name: "nationality", type: "VARCHAR(50)", nullable: true, comment: "สัญชาติ" },
         { name: "is_blocked", type: "BOOLEAN", nullable: false, comment: "สถานะถูกบล็อก", defaultValue: "false" },
@@ -1336,9 +1340,9 @@ const appointmentsSchema: PageSchema = {
       comment: "หลัก — ข้อมูลนัดหมาย (id เป็น INT running number ไม่ใช่ SERIAL — generate ฝั่ง application)",
       columns: [
         { name: "id", type: "INT", nullable: false, comment: "รหัสนัดหมาย (PK, running number เริ่มจาก 1 — generate ฝั่ง app: SELECT COALESCE(MAX(id),0)+1)", isPrimaryKey: true },
-        { name: "code", type: "VARCHAR(30)", nullable: false, comment: "รหัสนัดหมาย format: eVMS-YYYYMMDD-XXXX (running 4 หลัก reset ทุกวัน)", isUnique: true },
+        { name: "booking_code", type: "VARCHAR(30)", nullable: false, comment: "รหัสนัดหมาย format: eVMS-YYYYMMDD-XXXX (running 4 หลัก reset ทุกวัน)", isUnique: true },
         { name: "visitor_id", type: "INT", nullable: false, comment: "FK → visitors.id ผู้มาติดต่อ", isForeignKey: true, references: "visitors.id" },
-        { name: "host_id", type: "INT", nullable: false, comment: "FK → staff.id ผู้ที่ต้องการพบ", isForeignKey: true, references: "staff.id" },
+        { name: "host_staff_id", type: "INT", nullable: false, comment: "FK → staff.id ผู้ที่ต้องการพบ", isForeignKey: true, references: "staff.id" },
         { name: "visit_purpose_id", type: "INT", nullable: false, comment: "FK → visit_purposes.id วัตถุประสงค์", isForeignKey: true, references: "visit_purposes.id" },
         { name: "department_id", type: "INT", nullable: false, comment: "FK → departments.id แผนกที่ไป", isForeignKey: true, references: "departments.id" },
         { name: "type", type: "ENUM('official','meeting','document','contractor','delivery','other')", nullable: false, comment: "ประเภทการนัดหมาย (VisitType)" },
@@ -1490,9 +1494,9 @@ const searchSchema: PageSchema = {
       comment: "ตารางนัดหมาย (reference — read-only search view)",
       columns: [
         { name: "id", type: "SERIAL", nullable: false, comment: "รหัส Auto-increment (PK)", isPrimaryKey: true },
-        { name: "code", type: "VARCHAR(30)", nullable: false, comment: "รหัสนัดหมาย", isUnique: true },
+        { name: "booking_code", type: "VARCHAR(30)", nullable: false, comment: "รหัสนัดหมาย eVMS-YYYYMMDD-XXXX", isUnique: true },
         { name: "visitor_id", type: "INT", nullable: false, comment: "FK → visitors.id", isForeignKey: true, references: "visitors.id" },
-        { name: "host_id", type: "INT", nullable: false, comment: "FK → staff.id", isForeignKey: true, references: "staff.id" },
+        { name: "host_staff_id", type: "INT", nullable: false, comment: "FK → staff.id ผู้ที่ต้องการพบ", isForeignKey: true, references: "staff.id" },
         { name: "type", type: "ENUM('general','delivery','interview','maintenance','vip','contractor')", nullable: false, comment: "ประเภทการนัดหมาย" },
         { name: "status", type: "ENUM('pending','approved','rejected','checked-in','checked-out','cancelled','expired','no-show')", nullable: false, comment: "สถานะนัดหมาย" },
         { name: "date", type: "DATE", nullable: false, comment: "วันที่นัดหมาย" },
@@ -1664,9 +1668,9 @@ const dashboardSchema: PageSchema = {
       comment: "ตารางนัดหมาย — แหล่งข้อมูลหลักของทุก section บน Dashboard (id = INT running number)",
       columns: [
         { name: "id", type: "INT", nullable: false, comment: "รหัสนัดหมาย (PK, running number)", isPrimaryKey: true },
-        { name: "code", type: "VARCHAR(30)", nullable: false, comment: "รหัสนัดหมาย eVMS-YYYYMMDD-XXXX", isUnique: true },
+        { name: "booking_code", type: "VARCHAR(30)", nullable: false, comment: "รหัสนัดหมาย eVMS-YYYYMMDD-XXXX", isUnique: true },
         { name: "visitor_id", type: "INT", nullable: false, comment: "FK → visitors.id", isForeignKey: true, references: "visitors.id" },
-        { name: "host_id", type: "INT", nullable: false, comment: "FK → staff.id ผู้ที่ต้องการพบ", isForeignKey: true, references: "staff.id" },
+        { name: "host_staff_id", type: "INT", nullable: false, comment: "FK → staff.id ผู้ที่ต้องการพบ", isForeignKey: true, references: "staff.id" },
         { name: "visit_purpose_id", type: "INT", nullable: false, comment: "FK → visit_purposes.id", isForeignKey: true, references: "visit_purposes.id" },
         { name: "department_id", type: "INT", nullable: false, comment: "FK → departments.id", isForeignKey: true, references: "departments.id" },
         { name: "type", type: "ENUM('official','meeting','document','contractor','delivery','other')", nullable: false, comment: "ประเภทการนัดหมาย — ใช้แยกข้อมูล Section 3 (By Visit Type)" },
@@ -1742,7 +1746,7 @@ const userManagementSchema: PageSchema = {
   menuName: "ระบบผู้ใช้งาน",
   menuNameEn: "User Management",
   path: "/web/settings/staff",
-  description: "จัดการบัญชีผู้ใช้งาน, สิทธิ์การเข้าถึง, Login/Register, ลืมรหัสผ่าน\n\nAPI Endpoints:\n• POST /api/auth/login — เข้าสู่ระบบ\n• POST /api/auth/register — สมัครสมาชิก\n• POST /api/auth/forgot-password — ส่ง link reset password\n• POST /api/auth/reset-password — ตั้งรหัสผ่านใหม่\n• GET /api/users — รายชื่อผู้ใช้ (admin only)\n• PATCH /api/users/:id/role — เปลี่ยน role (admin only)",
+  description: "จัดการบัญชีผู้ใช้งาน, สิทธิ์การเข้าถึง, Login/Register, ลืมรหัสผ่าน, ผูก/ยกเลิก LINE\n\nAPI Endpoints:\n• POST /api/auth/login — เข้าสู่ระบบ\n• POST /api/auth/register — สมัครสมาชิก\n• POST /api/auth/forgot-password — ส่ง link reset password\n• POST /api/auth/reset-password — ตั้งรหัสผ่านใหม่\n• GET /api/users — รายชื่อผู้ใช้ (admin only)\n• PATCH /api/users/:id/role — เปลี่ยน role (admin only)\n• POST /api/users/me/line/link — ผูกบัญชี LINE (ส่ง LINE access token จาก LIFF)\n• DELETE /api/users/me/line/unlink — ยกเลิกการผูก LINE (user เอง)\n• DELETE /api/users/:id/line/unlink — admin ยกเลิกการผูก LINE ให้ user",
   tables: [
     {
       name: "user_accounts",
@@ -1759,6 +1763,9 @@ const userManagementSchema: PageSchema = {
         { name: "phone", type: "VARCHAR(20)", nullable: true, comment: "เบอร์โทรศัพท์" },
         { name: "is_active", type: "BOOLEAN", nullable: false, comment: "สถานะบัญชี (active/locked)", defaultValue: "true" },
         { name: "is_email_verified", type: "BOOLEAN", nullable: false, comment: "ยืนยันอีเมลแล้วหรือยัง", defaultValue: "false" },
+        { name: "line_user_id", type: "VARCHAR(50)", nullable: true, comment: "LINE User ID — ได้จาก LINE Login/LIFF (null = ยังไม่ผูก)", isUnique: true },
+        { name: "line_display_name", type: "VARCHAR(100)", nullable: true, comment: "LINE Display Name — แสดงใน admin panel" },
+        { name: "line_linked_at", type: "TIMESTAMP", nullable: true, comment: "วันเวลาที่ผูกบัญชี LINE" },
         { name: "reset_token", type: "VARCHAR(255)", nullable: true, comment: "Token สำหรับ reset password (null = ไม่มี request)" },
         { name: "reset_token_expires", type: "TIMESTAMP", nullable: true, comment: "วันหมดอายุ token reset" },
         { name: "last_login_at", type: "TIMESTAMP", nullable: true, comment: "วันเวลาที่ login ล่าสุด" },
@@ -1766,11 +1773,11 @@ const userManagementSchema: PageSchema = {
         { name: "updated_at", type: "TIMESTAMP", nullable: false, comment: "วันเวลาที่แก้ไขล่าสุด", defaultValue: "CURRENT_TIMESTAMP" },
       ],
       seedData: [
-        { id: 1, email: "admin@mots.go.th", password_hash: "$2b$10$xxx", user_type: "staff", role: "admin", ref_id: 5, first_name: "อนันต์", last_name: "มั่นคง", phone: "02-283-1500", is_active: true, is_email_verified: true, last_login_at: "2026-03-25 08:00:00" },
-        { id: 2, email: "somsri.r@mots.go.th", password_hash: "$2b$10$xxx", user_type: "staff", role: "staff", ref_id: 1, first_name: "สมศรี", last_name: "รักงาน", phone: "02-283-1501", is_active: true, is_email_verified: true, last_login_at: "2026-03-25 09:15:00" },
+        { id: 1, email: "admin@mots.go.th", password_hash: "$2b$10$xxx", user_type: "staff", role: "admin", ref_id: 5, first_name: "อนันต์", last_name: "มั่นคง", phone: "02-283-1500", line_user_id: "U1234567890", line_display_name: "อนันต์ Admin", line_linked_at: "2025-06-10 09:00:00", is_active: true, is_email_verified: true, last_login_at: "2026-03-25 08:00:00" },
+        { id: 2, email: "somsri.r@mots.go.th", password_hash: "$2b$10$xxx", user_type: "staff", role: "staff", ref_id: 1, first_name: "สมศรี", last_name: "รักงาน", phone: "02-283-1501", line_user_id: "U0987654321", line_display_name: "สมศรี R.", line_linked_at: "2025-08-20 14:30:00", is_active: true, is_email_verified: true, last_login_at: "2026-03-25 09:15:00" },
         { id: 3, email: "prawit.s@mots.go.th", password_hash: "$2b$10$xxx", user_type: "staff", role: "supervisor", ref_id: 2, first_name: "ประเสริฐ", last_name: "ศรีวิโล", phone: "02-283-1502", is_active: true, is_email_verified: true, last_login_at: "2026-03-24 14:30:00" },
         { id: 4, email: "somchai.p@mots.go.th", password_hash: "$2b$10$xxx", user_type: "staff", role: "security", ref_id: 6, first_name: "สมชาย", last_name: "ปลอดภัย", phone: "02-283-1510", is_active: true, is_email_verified: true, last_login_at: "2026-03-25 06:45:00" },
-        { id: 5, email: "wichai@siamtech.co.th", password_hash: "$2b$10$xxx", user_type: "visitor", role: "visitor", ref_id: 1, first_name: "วิชัย", last_name: "สุขสำราญ", phone: "081-234-5678", is_active: true, is_email_verified: true, last_login_at: "2026-03-20 10:00:00" },
+        { id: 5, email: "wichai@siamtech.co.th", password_hash: "$2b$10$xxx", user_type: "visitor", role: "visitor", ref_id: 1, first_name: "วิชัย", last_name: "สุขสำราญ", phone: "081-234-5678", line_user_id: "Uabc1234567", line_display_name: "วิชัย S.", line_linked_at: "2026-01-15 10:00:00", is_active: true, is_email_verified: true, last_login_at: "2026-03-20 10:00:00" },
         { id: 6, email: "porntip@tourismthai.com", password_hash: "$2b$10$xxx", user_type: "visitor", role: "visitor", ref_id: 2, first_name: "พรทิพย์", last_name: "มีสุข", phone: "089-876-5432", is_active: true, is_email_verified: false },
       ],
     },
@@ -1808,6 +1815,8 @@ const userManagementSchema: PageSchema = {
     "role_permissions.role ──→ user_accounts.role (สิทธิ์ตาม role ของ user)",
     "สมัครสมาชิก: user_type = 'visitor' → role = 'visitor' / user_type = 'staff' → role = 'staff' (default)",
     "Admin เป็นคนเปลี่ยน role ผ่านหน้า Settings > Staff",
+    "user_accounts.line_user_id ──→ LINE Login/LIFF (ผูกผ่าน LINE OA, user ผูก/ยกเลิกเอง หรือ admin ยกเลิกให้)",
+    "line_user_id = null → ยังไม่ผูก LINE / line_user_id != null → ผูกแล้ว (ใช้ส่ง notification ผ่าน LINE Messaging API)",
   ],
 };
 
@@ -1896,6 +1905,51 @@ const lineOaConfigSchema: PageSchema = {
 };
 
 // ════════════════════════════════════════════════════
+// 21. โปรไฟล์ของฉัน (My Profile — Web)
+// ════════════════════════════════════════════════════
+
+const myProfileSchema: PageSchema = {
+  pageId: "my-profile",
+  menuName: "โปรไฟล์ของฉัน",
+  menuNameEn: "My Profile",
+  path: "/web/profile",
+  description: "ดูและแก้ไขข้อมูลส่วนตัว, ผูก/เปลี่ยน/ยกเลิกบัญชี LINE, เปลี่ยนรหัสผ่าน\n\nAPI Endpoints:\n• GET /api/users/me — ดึงข้อมูลโปรไฟล์ตัวเอง\n• PATCH /api/users/me — แก้ไขข้อมูลส่วนตัว (ชื่อ, เบอร์โทร)\n• POST /api/users/me/line/link — ผูกบัญชี LINE (ส่ง LINE access token จาก LIFF)\n• DELETE /api/users/me/line/unlink — ยกเลิกการผูก LINE\n• POST /api/users/me/change-password — เปลี่ยนรหัสผ่าน (ต้องส่ง old + new password)",
+  tables: [
+    {
+      name: "user_accounts",
+      comment: "ใช้ตารางเดียวกับ User Management — อ่านเฉพาะ row ของตัวเอง (WHERE id = current_user_id)",
+      columns: [
+        { name: "id", type: "INT", nullable: false, comment: "รหัสบัญชี (PK)", isPrimaryKey: true },
+        { name: "email", type: "VARCHAR(100)", nullable: false, comment: "อีเมล (อ่านอย่างเดียว — เปลี่ยนไม่ได้)", isUnique: true },
+        { name: "first_name", type: "VARCHAR(100)", nullable: false, comment: "ชื่อ (แก้ไขได้)" },
+        { name: "last_name", type: "VARCHAR(100)", nullable: false, comment: "นามสกุล (แก้ไขได้)" },
+        { name: "phone", type: "VARCHAR(20)", nullable: true, comment: "เบอร์โทรศัพท์ (แก้ไขได้)" },
+        { name: "user_type", type: "ENUM('visitor','staff')", nullable: false, comment: "ประเภท (อ่านอย่างเดียว)" },
+        { name: "role", type: "ENUM(...)", nullable: false, comment: "สิทธิ์ (อ่านอย่างเดียว — Admin เปลี่ยน)" },
+        { name: "line_user_id", type: "VARCHAR(50)", nullable: true, comment: "LINE User ID — null = ยังไม่ผูก", isUnique: true },
+        { name: "line_display_name", type: "VARCHAR(100)", nullable: true, comment: "LINE Display Name" },
+        { name: "line_linked_at", type: "TIMESTAMP", nullable: true, comment: "วันที่ผูก LINE" },
+        { name: "is_active", type: "BOOLEAN", nullable: false, comment: "สถานะบัญชี (อ่านอย่างเดียว — Admin เปลี่ยน)", defaultValue: "true" },
+        { name: "is_email_verified", type: "BOOLEAN", nullable: false, comment: "ยืนยันอีเมลแล้วหรือยัง (อ่านอย่างเดียว)", defaultValue: "false" },
+        { name: "password_hash", type: "VARCHAR(255)", nullable: false, comment: "bcrypt hash — ไม่ส่งไป frontend เด็ดขาด, เปลี่ยนผ่าน /change-password เท่านั้น" },
+        { name: "created_at", type: "TIMESTAMP", nullable: false, comment: "วันที่สมัคร (อ่านอย่างเดียว)", defaultValue: "CURRENT_TIMESTAMP" },
+        { name: "updated_at", type: "TIMESTAMP", nullable: false, comment: "วันที่แก้ไขล่าสุด (auto-update)", defaultValue: "CURRENT_TIMESTAMP" },
+      ],
+      seedData: [
+        { id: 2, email: "somsri.r@mots.go.th", first_name: "สมศรี", last_name: "รักงาน", phone: "02-283-1501", user_type: "staff", role: "staff", line_user_id: "U0987654321", line_display_name: "สมศรี R.", line_linked_at: "2025-08-20 14:30:00", is_active: true, is_email_verified: true },
+      ],
+    },
+  ],
+  relationships: [
+    "อ่าน/แก้ไขเฉพาะ row ของตัวเอง (WHERE user_accounts.id = session.user_id)",
+    "line_user_id — ผูก/ยกเลิกผ่าน LIFF SDK (user ดำเนินการเอง)",
+    "password_hash — เปลี่ยนได้เฉพาะเมื่อส่ง old password ถูกต้อง (bcrypt.compare)",
+    "email — อ่านอย่างเดียว ไม่ให้เปลี่ยนเพื่อป้องกัน account hijack",
+    "role — อ่านอย่างเดียว ต้องให้ Admin เปลี่ยนผ่านหน้า User Management",
+  ],
+};
+
+// ════════════════════════════════════════════════════
 // EXPORT: รวมทุก schema
 // ════════════════════════════════════════════════════
 
@@ -1920,6 +1974,7 @@ export const allPageSchemas: PageSchema[] = [
   userManagementSchema,
   emailSystemSchema,
   lineOaConfigSchema,
+  myProfileSchema,
 ];
 
 /** ค้น schema ตาม pageId */

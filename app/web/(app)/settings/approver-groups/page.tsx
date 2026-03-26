@@ -4,8 +4,10 @@ import { useState } from "react";
 import Topbar from "@/components/web/Topbar";
 import { DatabaseSchemaModal, DbSchemaButton } from "@/components/web/DatabaseSchemaModal";
 import { FlowchartModal, FlowRulesButton } from "@/components/web/FlowchartModal";
+import { ApiDocModal, ApiDocButton } from "@/components/web/ApiDocModal";
 import { getSchemaByPageId } from "@/lib/database-schema";
 import { getFlowByPageId } from "@/lib/flowchart-data";
+import { getApiDocByPageId } from "@/lib/api-doc-data";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
@@ -85,8 +87,10 @@ const channelConfig: Record<
 export default function ApproverGroupsPage() {
   const [showSchema, setShowSchema] = useState(false);
   const [showFlow, setShowFlow] = useState(false);
+  const [showApiDoc, setShowApiDoc] = useState(false);
   const schema = getSchemaByPageId("approver-groups")!;
   const flowData = getFlowByPageId("approver-groups")!;
+  const apiDoc = getApiDocByPageId("approver-groups");
   const [groups] = useState<ApproverGroup[]>(approverGroups);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [drawerData, setDrawerData] = useState<{ mode: "add" | "edit"; group?: ApproverGroup } | null>(null);
@@ -109,6 +113,7 @@ export default function ApproverGroupsPage() {
       <Topbar title="กลุ่มผู้อนุมัติ" />
       <DatabaseSchemaModal open={showSchema} onClose={() => setShowSchema(false)} schema={schema} />
       <FlowchartModal open={showFlow} onClose={() => setShowFlow(false)} flowData={flowData} />
+      {apiDoc && <ApiDocModal open={showApiDoc} onClose={() => setShowApiDoc(false)} apiDoc={apiDoc} />}
       <main className="flex-1 p-6 space-y-6">
         {/* header */}
         <div className="flex items-center justify-between">
@@ -118,6 +123,7 @@ export default function ApproverGroupsPage() {
               กลุ่มผู้อนุมัติและการแจ้งเตือน
               <DbSchemaButton onClick={() => setShowSchema(true)} />
               <FlowRulesButton onClick={() => setShowFlow(true)} />
+              {apiDoc && <ApiDocButton onClick={() => setShowApiDoc(true)} />}
             </h3>
             <p className="text-sm text-text-muted mt-1">
               กำหนดกลุ่มผู้รับผิดชอบอนุมัติรายการเข้าพื้นที่

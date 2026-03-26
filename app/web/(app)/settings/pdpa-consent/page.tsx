@@ -4,8 +4,10 @@ import { useState } from "react";
 import Topbar from "@/components/web/Topbar";
 import { DatabaseSchemaModal, DbSchemaButton } from "@/components/web/DatabaseSchemaModal";
 import { FlowchartModal, FlowRulesButton } from "@/components/web/FlowchartModal";
+import { ApiDocModal, ApiDocButton } from "@/components/web/ApiDocModal";
 import { getSchemaByPageId } from "@/lib/database-schema";
 import { getFlowByPageId } from "@/lib/flowchart-data";
+import { getApiDocByPageId } from "@/lib/api-doc-data";
 import { Card, CardContent } from "@/components/ui/Card";
 import { cn } from "@/lib/utils";
 import {
@@ -528,8 +530,10 @@ function ConsentLogsTab({ logs }: { logs: PdpaConsentLog[] }) {
 export default function PdpaConsentSettingsPage() {
   const [showSchema, setShowSchema] = useState(false);
   const [showFlow, setShowFlow] = useState(false);
+  const [showApiDoc, setShowApiDoc] = useState(false);
   const schema = getSchemaByPageId("pdpa-consent")!;
   const flowData = getFlowByPageId("pdpa-consent")!;
+  const apiDoc = getApiDocByPageId("pdpa-consent");
 
   const [activeTab, setActiveTab] = useState<TabId>("versions");
   const [versions, setVersions] = useState<PdpaVersion[]>(initialVersions);
@@ -607,6 +611,7 @@ export default function PdpaConsentSettingsPage() {
       <Topbar title="PDPA / นโยบายคุ้มครองข้อมูลส่วนบุคคล" />
       <DatabaseSchemaModal open={showSchema} onClose={() => setShowSchema(false)} schema={schema} />
       <FlowchartModal open={showFlow} onClose={() => setShowFlow(false)} flowData={flowData} />
+      {apiDoc && <ApiDocModal open={showApiDoc} onClose={() => setShowApiDoc(false)} apiDoc={apiDoc} />}
 
       <div className="p-6 space-y-6">
         {/* Header */}
@@ -620,6 +625,7 @@ export default function PdpaConsentSettingsPage() {
                 จัดการ PDPA — เวอร์ชัน & ประวัติการยินยอม
                 <DbSchemaButton onClick={() => setShowSchema(true)} />
                 <FlowRulesButton onClick={() => setShowFlow(true)} />
+                {apiDoc && <ApiDocButton onClick={() => setShowApiDoc(true)} />}
               </h2>
               <p className="text-sm text-text-muted">
                 จัดการเวอร์ชันข้อความ PDPA, เปิด/ปิดใช้งาน, และดูประวัติการยินยอมของผู้เยี่ยม

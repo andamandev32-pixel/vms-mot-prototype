@@ -4,8 +4,10 @@ import { useState } from "react";
 import Topbar from "@/components/web/Topbar";
 import { DatabaseSchemaModal, DbSchemaButton } from "@/components/web/DatabaseSchemaModal";
 import { FlowchartModal, FlowRulesButton } from "@/components/web/FlowchartModal";
+import { ApiDocModal, ApiDocButton } from "@/components/web/ApiDocModal";
 import { getSchemaByPageId } from "@/lib/database-schema";
 import { getFlowByPageId } from "@/lib/flowchart-data";
+import { getApiDocByPageId } from "@/lib/api-doc-data";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Drawer } from "@/components/ui/Drawer";
@@ -59,8 +61,10 @@ function ChannelBadge({ channel }: { channel: NotificationChannel }) {
 export default function NotificationTemplatesSettingsPage() {
   const [showSchema, setShowSchema] = useState(false);
   const [showFlow, setShowFlow] = useState(false);
+  const [showApiDoc, setShowApiDoc] = useState(false);
   const schema = getSchemaByPageId("notification-templates")!;
   const flowData = getFlowByPageId("notification-templates")!;
+  const apiDoc = getApiDocByPageId("notification-templates");
   const [items, setItems] = useState<NotificationTemplate[]>(notificationTemplates);
   const [filterChannel, setFilterChannel] = useState<"all" | NotificationChannel>("all");
   const [expandedId, setExpandedId] = useState<number | null>(null);
@@ -89,6 +93,7 @@ export default function NotificationTemplatesSettingsPage() {
       <Topbar title="เทมเพลตแจ้งเตือน / Notification Templates" />
       <DatabaseSchemaModal open={showSchema} onClose={() => setShowSchema(false)} schema={schema} />
       <FlowchartModal open={showFlow} onClose={() => setShowFlow(false)} flowData={flowData} />
+      {apiDoc && <ApiDocModal open={showApiDoc} onClose={() => setShowApiDoc(false)} apiDoc={apiDoc} />}
       <main className="flex-1 p-6 space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -98,6 +103,7 @@ export default function NotificationTemplatesSettingsPage() {
               ตั้งค่าเทมเพลตการแจ้งเตือน
               <DbSchemaButton onClick={() => setShowSchema(true)} />
               <FlowRulesButton onClick={() => setShowFlow(true)} />
+              {apiDoc && <ApiDocButton onClick={() => setShowApiDoc(true)} />}
             </h3>
             <p className="text-sm text-text-muted mt-1">จัดการข้อความแจ้งเตือนผ่าน LINE, Email, SMS สำหรับแต่ละ event</p>
           </div>

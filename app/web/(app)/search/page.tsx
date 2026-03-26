@@ -4,8 +4,10 @@ import { useState } from "react";
 import Topbar from "@/components/web/Topbar";
 import { DatabaseSchemaModal, DbSchemaButton } from "@/components/web/DatabaseSchemaModal";
 import { FlowchartModal, FlowRulesButton } from "@/components/web/FlowchartModal";
+import { ApiDocModal, ApiDocButton } from "@/components/web/ApiDocModal";
 import { getSchemaByPageId } from "@/lib/database-schema";
 import { getFlowByPageId } from "@/lib/flowchart-data";
+import { getApiDocByPageId } from "@/lib/api-doc-data";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
@@ -46,8 +48,10 @@ const PAGE_SIZE_OPTIONS = [5, 10, 20, 50];
 export default function WebSearchPage() {
   const [showSchema, setShowSchema] = useState(false);
   const [showFlow, setShowFlow] = useState(false);
+  const [showApiDoc, setShowApiDoc] = useState(false);
   const schema = getSchemaByPageId("search");
   const flowData = getFlowByPageId("search");
+  const apiDoc = getApiDocByPageId("search");
 
   const allAppts = appointments;
 
@@ -97,6 +101,7 @@ export default function WebSearchPage() {
       <Topbar title="รายชื่อการติดต่อ" />
       {schema && <DatabaseSchemaModal open={showSchema} onClose={() => setShowSchema(false)} schema={schema} />}
       {flowData && <FlowchartModal open={showFlow} onClose={() => setShowFlow(false)} flowData={flowData} />}
+      {apiDoc && <ApiDocModal open={showApiDoc} onClose={() => setShowApiDoc(false)} apiDoc={apiDoc} />}
       <div className="p-6 space-y-6">
         {/* Page Header with DB/Flow buttons */}
         <div className="flex items-center gap-3">
@@ -108,6 +113,7 @@ export default function WebSearchPage() {
               ค้นหาผู้มาติดต่อ
               {schema && <DbSchemaButton onClick={() => setShowSchema(true)} />}
               {flowData && <FlowRulesButton onClick={() => setShowFlow(true)} />}
+              {apiDoc && <ApiDocButton onClick={() => setShowApiDoc(true)} />}
             </h2>
             <p className="text-sm text-text-muted">ค้นหาตามชื่อ/บริษัท/รหัส, กรองตามประเภท/สถานะ/วัน, ดูรายละเอียด</p>
           </div>

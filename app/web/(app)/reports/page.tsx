@@ -4,8 +4,10 @@ import { useState, useMemo } from "react";
 import Topbar from "@/components/web/Topbar";
 import { DatabaseSchemaModal, DbSchemaButton } from "@/components/web/DatabaseSchemaModal";
 import { FlowchartModal, FlowRulesButton } from "@/components/web/FlowchartModal";
+import { ApiDocModal, ApiDocButton } from "@/components/web/ApiDocModal";
 import { getSchemaByPageId } from "@/lib/database-schema";
 import { getFlowByPageId } from "@/lib/flowchart-data";
+import { getApiDocByPageId } from "@/lib/api-doc-data";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import {
@@ -40,8 +42,10 @@ function SimpleBar({ value, max, color }: { value: number; max: number; color: s
 export default function ReportsPage() {
   const [showSchema, setShowSchema] = useState(false);
   const [showFlow, setShowFlow] = useState(false);
+  const [showApiDoc, setShowApiDoc] = useState(false);
   const schema = getSchemaByPageId("reports");
   const flowData = getFlowByPageId("reports");
+  const apiDoc = getApiDocByPageId("reports");
 
   const [dateRange, setDateRange] = useState<DateRange>("today");
 
@@ -110,6 +114,7 @@ export default function ReportsPage() {
       <Topbar title="รายงาน" />
       {schema && <DatabaseSchemaModal open={showSchema} onClose={() => setShowSchema(false)} schema={schema} />}
       {flowData && <FlowchartModal open={showFlow} onClose={() => setShowFlow(false)} flowData={flowData} />}
+      {apiDoc && <ApiDocModal open={showApiDoc} onClose={() => setShowApiDoc(false)} apiDoc={apiDoc} />}
 
       <div className="p-6 space-y-6">
         {/* Header */}
@@ -123,6 +128,7 @@ export default function ReportsPage() {
                 รายงานสถิติผู้มาติดต่อ
                 {schema && <DbSchemaButton onClick={() => setShowSchema(true)} />}
                 {flowData && <FlowRulesButton onClick={() => setShowFlow(true)} />}
+                {apiDoc && <ApiDocButton onClick={() => setShowApiDoc(true)} />}
               </h2>
               <p className="text-sm text-text-muted">
                 สรุปสถิติ, กราฟแนวโน้ม, วิเคราะห์ตามประเภท/แผนก/ช่องทาง

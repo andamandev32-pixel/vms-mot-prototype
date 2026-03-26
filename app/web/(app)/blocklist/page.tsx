@@ -4,8 +4,10 @@ import { useState, useMemo } from "react";
 import Topbar from "@/components/web/Topbar";
 import { DatabaseSchemaModal, DbSchemaButton } from "@/components/web/DatabaseSchemaModal";
 import { FlowchartModal, FlowRulesButton } from "@/components/web/FlowchartModal";
+import { ApiDocModal, ApiDocButton } from "@/components/web/ApiDocModal";
 import { getSchemaByPageId } from "@/lib/database-schema";
 import { getFlowByPageId } from "@/lib/flowchart-data";
+import { getApiDocByPageId } from "@/lib/api-doc-data";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -21,8 +23,10 @@ type BlocklistType = "all" | "permanent" | "temporary";
 export default function BlocklistPage() {
   const [showSchema, setShowSchema] = useState(false);
   const [showFlow, setShowFlow] = useState(false);
+  const [showApiDoc, setShowApiDoc] = useState(false);
   const schema = getSchemaByPageId("blocklist");
   const flowData = getFlowByPageId("blocklist");
+  const apiDoc = getApiDocByPageId("blocklist");
 
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<BlocklistType>("all");
@@ -55,6 +59,7 @@ export default function BlocklistPage() {
       <Topbar title="Blocklist" />
       {schema && <DatabaseSchemaModal open={showSchema} onClose={() => setShowSchema(false)} schema={schema} />}
       {flowData && <FlowchartModal open={showFlow} onClose={() => setShowFlow(false)} flowData={flowData} />}
+      {apiDoc && <ApiDocModal open={showApiDoc} onClose={() => setShowApiDoc(false)} apiDoc={apiDoc} />}
 
       <div className="p-6 space-y-6">
         {/* Header */}
@@ -68,6 +73,7 @@ export default function BlocklistPage() {
                 จัดการ Blocklist — รายชื่อผู้ถูกบล็อก
                 {schema && <DbSchemaButton onClick={() => setShowSchema(true)} />}
                 {flowData && <FlowRulesButton onClick={() => setShowFlow(true)} />}
+                {apiDoc && <ApiDocButton onClick={() => setShowApiDoc(true)} />}
               </h2>
               <p className="text-sm text-text-muted">
                 เพิ่ม/แก้ไข/ลบรายชื่อผู้ถูกบล็อก — ระบบจะตรวจสอบอัตโนมัติก่อนอนุญาตเข้าพื้นที่
