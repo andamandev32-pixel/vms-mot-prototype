@@ -22,7 +22,12 @@ export function kioskReducer(state: KioskState, event: KioskEvent): KioskState {
     // ───────────── WELCOME ─────────────
     case "WELCOME":
       if (event.type === "SELECT_WALKIN")
-        return { type: "PDPA_CONSENT", case: "walkin" };
+        return {
+          type: "PDPA_CONSENT",
+          case: "walkin",
+          identityVerified: event.identityVerified,
+          visitorData: event.visitorData,
+        };
       if (event.type === "SELECT_APPOINTMENT")
         return { type: "PDPA_CONSENT", case: "appointment" };
       break;
@@ -31,7 +36,7 @@ export function kioskReducer(state: KioskState, event: KioskEvent): KioskState {
     case "PDPA_CONSENT":
       if (event.type === "ACCEPT_PDPA") {
         if (state.case === "walkin")
-          return { ...state, type: "SELECT_ID_METHOD" };
+          return { ...state, type: "SELECT_PURPOSE" };
         return { ...state, type: "QR_SCAN" };
       }
       if (event.type === "GO_BACK")
@@ -44,7 +49,7 @@ export function kioskReducer(state: KioskState, event: KioskEvent): KioskState {
       if (event.type === "CHOOSE_ID_METHOD" && event.idMethod)
         return { ...state, type: "ID_VERIFICATION", idMethod: event.idMethod };
       if (event.type === "GO_BACK") {
-        if (state.case === "walkin") return { ...state, type: "PDPA_CONSENT" };
+        if (state.case === "walkin") return { ...state, type: "SELECT_PURPOSE" };
         // Appointment no-QR path: back to QR scan
         return { ...state, type: "QR_SCAN" };
       }
@@ -83,7 +88,7 @@ export function kioskReducer(state: KioskState, event: KioskEvent): KioskState {
     // ───────────── DATA PREVIEW (Walk-in) ─────────────
     case "DATA_PREVIEW":
       if (event.type === "CONFIRM_DATA")
-        return { ...state, type: "SELECT_PURPOSE" };
+        return { ...state, type: "FACE_CAPTURE" };
       if (event.type === "GO_BACK")
         return { ...state, type: "ID_VERIFICATION" };
       if (event.type === "TIMEOUT") return { type: "TIMEOUT" };
@@ -91,10 +96,14 @@ export function kioskReducer(state: KioskState, event: KioskEvent): KioskState {
 
     // ───────────── SELECT PURPOSE (Walk-in) ─────────────
     case "SELECT_PURPOSE":
-      if (event.type === "SELECT_VISIT_PURPOSE" && event.purpose)
-        return { ...state, type: "FACE_CAPTURE", selectedPurpose: event.purpose };
+      if (event.type === "SELECT_VISIT_PURPOSE" && event.purpose) {
+        // If visitor already verified identity (returning walk-in), skip ID steps
+        if (state.identityVerified)
+          return { ...state, type: "FACE_CAPTURE", selectedPurpose: event.purpose };
+        return { ...state, type: "SELECT_ID_METHOD", selectedPurpose: event.purpose };
+      }
       if (event.type === "GO_BACK")
-        return { ...state, type: "DATA_PREVIEW" };
+        return { ...state, type: "PDPA_CONSENT" };
       if (event.type === "TIMEOUT") return { type: "TIMEOUT" };
       break;
 
@@ -129,7 +138,10 @@ export function kioskReducer(state: KioskState, event: KioskEvent): KioskState {
       if (event.type === "GO_BACK") {
         if (state.case === "appointment")
           return { ...state, type: "APPOINTMENT_VERIFY_ID" };
-        return { ...state, type: "SELECT_PURPOSE" };
+        // Walk-in: if already verified, back to purpose; otherwise back to data preview
+        if (state.identityVerified)
+          return { ...state, type: "SELECT_PURPOSE" };
+        return { ...state, type: "DATA_PREVIEW" };
       }
       if (event.type === "TIMEOUT") return { type: "TIMEOUT" };
       break;

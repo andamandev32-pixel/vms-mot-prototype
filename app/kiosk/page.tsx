@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils";
 
 // State machine
 import { kioskReducer, initialKioskState } from "@/lib/kiosk/kiosk-state-machine";
-import { walkinSteps, appointmentSteps } from "@/lib/kiosk/kiosk-flow-config";
+import { walkinSteps, walkinVerifiedSteps, appointmentSteps } from "@/lib/kiosk/kiosk-flow-config";
 import { getActiveDevice } from "@/lib/kiosk/kiosk-device-map";
 import { getAudioCue, speakText, stopSpeech } from "@/lib/kiosk/kiosk-audio-config";
 import { mockVisitorIdCard, mockVisitorPassport, mockVisitorThaiId, mockAppointment } from "@/lib/kiosk/kiosk-mock-data";
@@ -33,16 +33,18 @@ import QrScanScreen from "@/components/kiosk/screens/QrScanScreen";
 import AppointmentPreviewScreen from "@/components/kiosk/screens/AppointmentPreviewScreen";
 import ErrorScreen from "@/components/kiosk/screens/ErrorScreen";
 
-type DemoCase = "walkin" | "appointment";
+type DemoCase = "walkin" | "walkin-verified" | "appointment";
 
 const demoCases: { id: DemoCase; label: string; labelEn: string }[] = [
-  { id: "walkin", label: "Walk-in (8 ขั้นตอน)", labelEn: "Walk-in (8 steps)" },
+  { id: "walkin", label: "Walk-in (7 ขั้นตอน)", labelEn: "Walk-in (7 steps)" },
+  { id: "walkin-verified", label: "Walk-in ยืนยันแล้ว (4 ขั้นตอน)", labelEn: "Walk-in Verified (4 steps)" },
   { id: "appointment", label: "นัดหมาย (6 ขั้นตอน)", labelEn: "Appointment (6 steps)" },
 ];
 
 function getStepsForCase(c: DemoCase): StepInfo[] {
   switch (c) {
     case "walkin": return walkinSteps;
+    case "walkin-verified": return walkinVerifiedSteps;
     case "appointment": return appointmentSteps;
   }
 }
@@ -258,7 +260,15 @@ export default function KioskDemoPage() {
         return (
           <WelcomeScreen
             locale={locale}
-            onSelectWalkin={() => fire({ type: "SELECT_WALKIN" })}
+            onSelectWalkin={() => {
+              if (selectedCase === "walkin-verified") {
+                // Walk-in ที่ยืนยันตัวตนแล้ว — ส่ง identityVerified + mock visitor data
+                const visitor = getMockVisitor("thai-id-card");
+                fire({ type: "SELECT_WALKIN", identityVerified: true, visitorData: visitor });
+              } else {
+                fire({ type: "SELECT_WALKIN" });
+              }
+            }}
             onSelectAppointment={() => fire({ type: "SELECT_APPOINTMENT" })}
             onChangeLocale={() => setLocale(locale === "th" ? "en" : "th")}
           />
