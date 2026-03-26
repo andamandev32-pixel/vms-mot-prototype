@@ -13,13 +13,15 @@ interface ApiSectionProps {
 
 type TabId = "request" | "response" | "error";
 
-function MethodBadge({ method }: { method: "GET" | "POST" }) {
+function MethodBadge({ method }: { method: "GET" | "POST" | "PATCH" }) {
   return (
     <span
       className={cn(
         "px-1.5 py-0.5 rounded text-[9px] font-bold font-mono uppercase tracking-wider shrink-0",
         method === "GET"
           ? "bg-blue-500/20 text-blue-400 border border-blue-500/30"
+          : method === "PATCH"
+          ? "bg-amber-500/20 text-amber-400 border border-amber-500/30"
           : "bg-green-500/20 text-green-400 border border-green-500/30"
       )}
     >

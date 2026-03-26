@@ -1,11 +1,12 @@
 "use client";
 
 import { useState } from "react";
-import { ChevronDown, ChevronRight, Volume2, Monitor, Code, ArrowRight, Clock, Zap } from "lucide-react";
+import { ChevronDown, ChevronRight, Volume2, Monitor, Code, ArrowRight, Clock, Zap, Settings, Lightbulb, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { KioskState, StepInfo, KioskLocale } from "@/lib/kiosk/kiosk-types";
 import { getActiveDevice, deviceInfoList } from "@/lib/kiosk/kiosk-device-map";
 import { getAudioCue } from "@/lib/kiosk/kiosk-audio-config";
+import { getApiSpec } from "@/lib/kiosk/kiosk-api-data";
 import ApiSection from "@/components/kiosk/ApiSection";
 
 interface StatePanelProps {
@@ -17,10 +18,11 @@ interface StatePanelProps {
 }
 
 export default function StatePanel({ state, stepInfo, locale, currentStepIndex, totalSteps }: StatePanelProps) {
-  const [openSections, setOpenSections] = useState<Set<string>>(new Set(["state", "device", "transitions"]));
+  const [openSections, setOpenSections] = useState<Set<string>>(new Set(["state", "api", "config"]));
   const device = getActiveDevice(state.type, state.idMethod);
   const deviceInfo = device ? deviceInfoList.find((d) => d.id === device) : null;
   const audioCue = getAudioCue(state.type);
+  const apiSpec = getApiSpec(state.type);
 
   const toggle = (key: string) => {
     setOpenSections((prev) => {
@@ -146,10 +148,65 @@ export default function StatePanel({ state, stepInfo, locale, currentStepIndex, 
           )}
         </Section>
 
+        {/* State Description */}
+        {apiSpec && (
+          <Section title="📋 คำอธิบาย State" id="desc" open={openSections.has("desc")} onToggle={toggle}>
+            <p className="text-[10px] text-gray-300 leading-relaxed">
+              {locale === "th" ? apiSpec.description : apiSpec.descriptionEn}
+            </p>
+          </Section>
+        )}
+
         {/* API Endpoint */}
         <Section title="🔌 API Endpoint" id="api" open={openSections.has("api")} onToggle={toggle}>
           <ApiSection stateType={state.type} locale={locale} />
         </Section>
+
+        {/* Config Sources — Web Settings ที่เกี่ยวข้อง */}
+        {apiSpec && apiSpec.configSources.length > 0 && (
+          <Section title="⚙️ Web Settings ที่เกี่ยวข้อง" id="config" open={openSections.has("config")} onToggle={toggle}>
+            <div className="space-y-2.5">
+              {apiSpec.configSources.map((src, i) => (
+                <div key={i} className="rounded-lg bg-gray-900 border border-gray-800 p-2.5 space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <Settings size={10} className="text-amber-400 shrink-0" />
+                    <span className="text-[10px] font-bold text-amber-300">
+                      {locale === "th" ? src.settingsPage : src.settingsPageEn}
+                    </span>
+                    <span className="text-[8px] font-mono text-gray-600 ml-auto">{src.settingsPath}</span>
+                  </div>
+                  <p className="text-[9px] text-gray-400 leading-relaxed">
+                    {locale === "th" ? src.usage : src.usageEn}
+                  </p>
+                  <div className="flex flex-wrap gap-1">
+                    {src.fields.map((f) => (
+                      <span key={f} className="text-[7px] font-mono text-cyan-500 bg-cyan-500/10 px-1 py-0.5 rounded border border-cyan-500/20">
+                        {f}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Section>
+        )}
+
+        {/* Dev Notes */}
+        {apiSpec?.devNotes && apiSpec.devNotes.length > 0 && (
+          <Section title="💡 Dev Notes" id="devnotes" open={openSections.has("devnotes")} onToggle={toggle}>
+            <div className="space-y-1">
+              {(locale === "th" ? apiSpec.devNotes : apiSpec.devNotesEn ?? apiSpec.devNotes).map((note, i) => (
+                <div key={i} className="flex items-start gap-1.5 text-[9px]">
+                  <Lightbulb size={9} className="text-yellow-400 shrink-0 mt-0.5" />
+                  <span className={cn(
+                    "leading-relaxed",
+                    note.startsWith("★") ? "text-yellow-300 font-bold" : "text-gray-400"
+                  )}>{note}</span>
+                </div>
+              ))}
+            </div>
+          </Section>
+        )}
 
         {/* Flutter Hint */}
         <Section title="Flutter / BLoC Hint" id="flutter" open={openSections.has("flutter")} onToggle={toggle}>

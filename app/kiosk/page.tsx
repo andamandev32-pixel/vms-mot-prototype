@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useReducer, useState } from "react";
-import { RotateCcw, Volume2, VolumeX, Globe, Settings, ChevronDown, ChevronUp, X, Lock } from "lucide-react";
+import { RotateCcw, Volume2, VolumeX, Globe, Settings, ChevronDown, ChevronUp, X, Lock, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // State machine
@@ -32,6 +32,7 @@ import KioskSettingsScreen from "@/components/kiosk/screens/KioskSettingsScreen"
 import QrScanScreen from "@/components/kiosk/screens/QrScanScreen";
 import AppointmentPreviewScreen from "@/components/kiosk/screens/AppointmentPreviewScreen";
 import ErrorScreen from "@/components/kiosk/screens/ErrorScreen";
+import KioskApiDocModal from "@/components/kiosk/KioskApiDocModal";
 
 type DemoCase = "walkin" | "walkin-verified" | "appointment";
 
@@ -194,6 +195,9 @@ export default function KioskDemoPage() {
   const [selectedKioskId, setSelectedKioskId] = useState<number>(kioskList[0]?.id ?? 1);
   const [showPinModal, setShowPinModal] = useState(false);
   const [showConfigPanel, setShowConfigPanel] = useState(false);
+
+  // === API Doc Modal ===
+  const [showApiDocModal, setShowApiDocModal] = useState(false);
 
   // === In-screen settings (inside kiosk display) ===
   const [showScreenPinModal, setShowScreenPinModal] = useState(false);
@@ -426,6 +430,9 @@ export default function KioskDemoPage() {
 
   return (
     <div className="flex h-screen overflow-hidden">
+      {/* API Doc Modal */}
+      <KioskApiDocModal open={showApiDocModal} onClose={() => setShowApiDocModal(false)} locale={locale} />
+
       {/* PIN Modal */}
       <PinModal
         open={showPinModal}
@@ -506,8 +513,15 @@ export default function KioskDemoPage() {
           </div>
         </div>
 
-        {/* Toolbar: locale, audio, reset */}
+        {/* Toolbar: locale, audio, reset, API doc */}
         <div className="flex items-center justify-center gap-1.5 px-3 py-2 border-b border-gray-100">
+          <button
+            onClick={() => setShowApiDocModal(true)}
+            className="w-7 h-7 rounded-md border border-blue-200 bg-blue-50 flex items-center justify-center text-blue-500 hover:bg-blue-100"
+            title="📡 API Documentation"
+          >
+            <FileText size={13} />
+          </button>
           <button
             onClick={() => setLocale(locale === "th" ? "en" : "th")}
             className="w-7 h-7 rounded-md border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50"
