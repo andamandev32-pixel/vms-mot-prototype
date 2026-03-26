@@ -1,7 +1,7 @@
 # Kiosk API Specification
 
-> ออกแบบ RESTful API สำหรับ Kiosk Flutter App — แต่ละ State ใช้ API อะไร, Request/Response เป็นอย่างไร
-> อ้างอิงจาก Database Schema (`lib/database-schema.ts`) และ State Machine (`lib/kiosk/kiosk-state-machine.ts`)
+> RESTful API สำหรับ Kiosk Flutter App — แต่ละ State ใช้ API อะไร, Request/Response, และตั้งค่าจาก Web App ที่ไหน
+> อ้างอิงจาก: `lib/kiosk/kiosk-api-data.ts`, `lib/kiosk/kiosk-state-machine.ts`, `lib/kiosk/kiosk-config-resolver.ts`
 
 ---
 
@@ -17,43 +17,65 @@ https://api.evms.mots.go.th/v1
 
 ```
 Authorization: Bearer <kiosk_device_token>
-X-Kiosk-Serial: <serial_number>
-X-Kiosk-Id: <service_point_id>
+X-Kiosk-Serial: KIOSK-C1-L001
+X-Kiosk-Id: 1
 ```
 
 Token ได้จาก Device Registration ครั้งแรก (ผูกกับ `service_points.serial_number`)
 
 ---
 
-## สรุป API ตาม Kiosk State
+## Walk-in Flow (ลำดับใหม่)
 
-| # | State | Method | Endpoint | สรุป |
-|---|-------|--------|----------|------|
-| 1 | WELCOME | GET | `/kiosk/config` | โหลด config ตู้ + เช็คสถานะ online |
-| 2 | PDPA_CONSENT | GET | `/kiosk/pdpa` | ดึงข้อความ PDPA เวอร์ชันล่าสุด |
-| 2b | PDPA_CONSENT | POST | `/kiosk/pdpa/consent` | บันทึกการยินยอม PDPA |
-| 3 | SELECT_ID_METHOD | GET | `/kiosk/id-methods` | ดึงวิธียืนยันตัวตนที่ตู้นี้รองรับ |
-| 4 | ID_VERIFICATION | POST | `/kiosk/verify-identity` | ส่งข้อมูลจากเครื่องอ่านบัตร + เช็ค blocklist |
-| 5 | DATA_PREVIEW | — | *(ใช้ข้อมูลจาก state, ไม่ต้องเรียก API)* | |
-| 6 | SELECT_PURPOSE | GET | `/kiosk/purposes` | ดึงวัตถุประสงค์ที่แสดงบน Kiosk |
-| 7 | FACE_CAPTURE | POST | `/kiosk/face-photo` | อัปโหลดภาพถ่ายใบหน้า |
-| 8 | WIFI_OFFER | POST | `/kiosk/wifi/generate` | สร้าง WiFi Credentials |
-| 9 | SUCCESS | POST | `/kiosk/checkin` | สร้าง visit_record + ออก QR/Slip |
-| 9b | SUCCESS | POST | `/kiosk/slip/print` | บันทึกว่าพิมพ์ slip แล้ว |
-| 10 | QR_SCAN | POST | `/kiosk/appointment/lookup-qr` | ค้นหานัดหมายจาก QR Code |
-| 11 | APPOINTMENT_PREVIEW | — | *(ใช้ข้อมูลจาก lookup, ไม่ต้องเรียก API)* | |
-| 12 | APPOINTMENT_VERIFY_ID | POST | `/kiosk/appointment/verify` | ยืนยันตัวตนกับนัดหมาย |
-| — | ERROR | POST | `/kiosk/error-log` | รายงาน error ไป backend (optional) |
+```
+WELCOME → PDPA → SELECT_PURPOSE+DEPT → SELECT_ID → VERIFY_ID → DATA_PREVIEW → FACE+WIFI → SUCCESS
+   1        2            3                  4           5            6              7          8
+```
+
+**Walk-in ที่ยืนยันแล้ว** (ข้ามขั้นตอน ID):
+
+```
+WELCOME → PDPA → SELECT_PURPOSE+DEPT → FACE+WIFI → SUCCESS
+   1        2            3                  4          5
+```
+
+## Appointment Flow
+
+```
+WELCOME → PDPA → QR_SCAN → APPOINTMENT_PREVIEW → VERIFY_ID → FACE → WIFI → SUCCESS
+   1        2       3              4                  5         6      7       8
+```
+
+---
+
+## สรุป API ตาม State
+
+| # | State | Method | Endpoint | สรุป | Web Settings |
+|---|-------|--------|----------|------|--------------|
+| 1 | WELCOME | `GET` | `/api/kiosk/{spId}/config` | โหลด config ตู้ + สถานะ + เวลาทำการ | Service Points, Business Hours |
+| 2 | PDPA_CONSENT | `GET` | `/api/kiosk/pdpa/latest` | ดึงข้อความ PDPA ล่าสุด | PDPA Consent |
+| 2b | PDPA_CONSENT | `POST` | `/api/kiosk/pdpa/consent` | บันทึกการยินยอม | |
+| 3 | SELECT_PURPOSE | `GET` | `/api/kiosk/{spId}/purposes` | ดึงวัตถุประสงค์ + แผนก | Visit Purposes, Locations |
+| 3b | SELECT_PURPOSE | `GET` | `/api/kiosk/visitor/{id}/check-verified` | ตรวจว่ายืนยันแล้วหรือไม่ | |
+| 4 | SELECT_ID_METHOD | `GET` | `/api/kiosk/{spId}/id-methods` | ดึงเอกสารที่ตู้รองรับ | Document Types, Service Points |
+| 5 | ID_VERIFICATION | `POST` | `/api/kiosk/identity/verify` | ยืนยันตัวตน + ตรวจ Blocklist | Service Points, Blocklist |
+| 6 | DATA_PREVIEW | — | *(ใช้ข้อมูลจาก state)* | | |
+| 7 | FACE_CAPTURE | `POST` | `/api/kiosk/identity/photo` | อัปโหลดภาพใบหน้า | Visit Purposes, Service Points |
+| 8 | SUCCESS | `POST` | `/api/kiosk/checkin` | สร้าง visit + QR/Slip + แจ้งเตือน | Visit Slips, Notifications, Access Zones |
+| 8b | SUCCESS | `POST` | `/api/kiosk/slip/print` | บันทึกสถานะพิมพ์ slip | |
+| A1 | QR_SCAN | `POST` | `/api/kiosk/appointment/lookup` | ค้นหานัดหมายจาก QR | Service Points |
+| A2 | APPOINTMENT_PREVIEW | — | *(ใช้ข้อมูลจาก lookup)* | | |
+| A3 | APPOINTMENT_VERIFY_ID | `POST` | `/api/kiosk/appointment/verify-identity` | ยืนยันตัวตนกับนัดหมาย | Service Points, Blocklist |
+| — | WIFI_OFFER | `POST` | `/api/kiosk/wifi/generate` | สร้าง WiFi credentials | Service Points |
+| — | ERROR | `POST` | `/api/kiosk/error-log` | รายงาน error (optional) | |
 
 ---
 
 ## 1. WELCOME — โหลด Config ตู้
 
-เรียกตอน boot หรือ reset กลับหน้าแรก — ดึงข้อมูล service_points + business_hours_rules
+### `GET /api/kiosk/{servicePointId}/config`
 
-### `GET /kiosk/config`
-
-**Tables ที่ใช้:** `service_points`, `business_hours_rules`, `service_point_purposes`, `service_point_documents`
+โหลด config ตู้ Kiosk ทั้งหมด — เรียก 1 ครั้งตอน boot หรือ reset กลับหน้าแรก
 
 **Response:**
 
@@ -62,49 +84,61 @@ Token ได้จาก Device Registration ครั้งแรก (ผูก
   "servicePoint": {
     "id": 1,
     "name": "Kiosk ล็อบบี้ ชั้น 1 (ซ้าย)",
-    "nameEn": "Lobby Kiosk 1F (Left)",
     "type": "kiosk",
     "status": "online",
     "serialNumber": "KIOSK-C1-L001",
-    "location": "ชั้น 1 ล็อบบี้ ศูนย์ราชการ อาคาร C",
-    "wifi": {
-      "ssid": "MOTS-Guest",
-      "passwordPattern": "MOTSGuest{YYYY}",
-      "validityMode": "end-of-day",
-      "fixedDurationMin": null
-    },
-    "slip": {
-      "headerText": "กระทรวงการท่องเที่ยวและกีฬา",
-      "footerText": "ขอบคุณที่มาเยือน — กรุณาคืนบัตรผู้เยี่ยมก่อนออก"
-    },
-    "supportedDocuments": [
-      { "id": 1, "code": "thai-id-card", "name": "บัตรประชาชน", "nameEn": "Thai National ID Card" },
-      { "id": 2, "code": "passport", "name": "หนังสือเดินทาง", "nameEn": "Passport" },
-      { "id": 5, "code": "thai-id-app", "name": "แอป ThaiID", "nameEn": "ThaiID App" }
-    ],
-    "supportedPurposes": [1, 2, 3, 4, 5, 6, 7]
+    "location": "ชั้น 1 อาคาร A (ฝั่งซ้าย)",
+    "adminPin": "10210"
   },
+  "supportedDocuments": [
+    { "id": 1, "code": "thai-id-card", "name": "บัตรประชาชน", "nameEn": "Thai National ID Card", "icon": "🪪" },
+    { "id": 2, "code": "passport", "name": "หนังสือเดินทาง", "nameEn": "Passport", "icon": "📘" },
+    { "id": 5, "code": "thai-id-app", "name": "แอป ThaiID", "nameEn": "ThaiID App", "icon": "📱" }
+  ],
+  "supportedPurposeIds": [1, 2, 3, 4, 5, 7],
+  "wifi": { "ssid": "MOTS-Guest", "passwordPattern": "mots{year}" },
+  "timeouts": {
+    "pdpaConsent": 120, "selectIdMethod": 60, "idVerification": 60,
+    "dataPreview": 120, "selectPurpose": 60, "faceCapture": 60,
+    "qrScan": 60, "appointmentPreview": 120, "successRedirect": 10
+  },
+  "pdpa": { "requireScroll": true, "retentionDays": 90 },
+  "slip": { "headerText": "กระทรวงการท่องเที่ยวและกีฬา", "footerText": "กรุณาส่งคืนบัตรเมื่อออกจากอาคาร" },
+  "idMaskingPattern": "show-first1-last5",
   "businessHours": {
+    "followBusinessHours": true,
     "isOpen": true,
     "allowWalkin": true,
     "allowKiosk": true,
-    "todaySchedule": {
-      "openTime": "08:00",
-      "closeTime": "17:00"
-    },
-    "message": null
+    "currentRule": "เวลาทำการปกติ (จ-ศ)",
+    "todaySchedule": { "openTime": "08:30", "closeTime": "16:30" }
   },
-  "serverTime": "2026-03-15T08:30:00+07:00"
+  "serverTime": "2026-03-26T09:00:00+07:00"
 }
 ```
 
+**DB Tables:** `service_points`, `business_hours_rules`, `service_point_purposes`, `service_point_documents`
+
+**Web Settings ที่เกี่ยวข้อง:**
+
+| Settings Page | Fields | การใช้งาน |
+|---|---|---|
+| **Service Points** (`/web/settings/service-points`) | `status`, `type`, `location`, `follow_business_hours` | กำหนดสถานะตู้, ตำแหน่ง, เปิดตามเวลาทำการ |
+| **Business Hours** (`/web/settings/business-hours`) | `days_of_week`, `open_time`, `close_time`, `allow_kiosk` | ตรวจสอบเวลาเปิด-ปิด + อนุญาต Kiosk |
+
+**Dev Notes:**
+- เรียก API ตอน boot + refresh ทุก 5 นาที (health check)
+- ถ้า `status ≠ online` → แสดงหน้า "ปิดปรับปรุง"
+- ถ้า `isOpen=false` → แสดงหน้า "นอกเวลาทำการ"
+- Flutter: สร้าง `KioskConfigRepository` เก็บ config ไว้ใน memory
+
 ---
 
-## 2. PDPA_CONSENT — ข้อความ PDPA
+## 2. PDPA_CONSENT — ยินยอม PDPA
 
-### `GET /kiosk/pdpa`
+### `GET /api/kiosk/pdpa/latest`
 
-**Tables ที่ใช้:** `pdpa_consent_configs`, `pdpa_consent_versions`
+ดึงข้อความ PDPA เวอร์ชันล่าสุด
 
 **Response:**
 
@@ -113,20 +147,17 @@ Token ได้จาก Device Registration ครั้งแรก (ผูก
   "version": 3,
   "titleTh": "นโยบายคุ้มครองข้อมูลส่วนบุคคล",
   "titleEn": "Personal Data Protection Policy",
-  "bodyTh": "กระทรวงการท่องเที่ยวและกีฬา มีความจำเป็นต้องเก็บรวบรวม...",
-  "bodyEn": "The Ministry of Tourism and Sports needs to collect...",
+  "bodyTh": "กระทรวงการท่องเที่ยวและกีฬา ให้ความสำคัญกับการคุ้มครองข้อมูลส่วนบุคคลของท่าน...",
+  "bodyEn": "The Ministry of Tourism and Sports values the protection of your personal data...",
   "retentionDays": 90,
   "requireScrollToBottom": true,
-  "showDetailedPurpose": true,
   "effectiveDate": "2026-01-15"
 }
 ```
 
-### `POST /kiosk/pdpa/consent`
+### `POST /api/kiosk/pdpa/consent`
 
-บันทึกว่าผู้เยี่ยมกดยินยอมแล้ว (อาจบันทึกก่อนหรือหลัง verify ก็ได้ ขึ้นกับ design)
-
-**Tables ที่ใช้:** `pdpa_consent_logs`
+บันทึกการยินยอม PDPA (หลังกดยอมรับ)
 
 **Request:**
 
@@ -135,9 +166,8 @@ Token ได้จาก Device Registration ครั้งแรก (ผูก
   "configVersion": 3,
   "consentChannel": "kiosk",
   "servicePointId": 1,
-  "visitorIdNumber": "1234567890123",
   "consentGiven": true,
-  "ipAddress": "192.168.1.100"
+  "locale": "th"
 }
 ```
 
@@ -146,145 +176,34 @@ Token ได้จาก Device Registration ครั้งแรก (ผูก
 ```json
 {
   "consentId": 42,
-  "recordedAt": "2026-03-15T09:01:00+07:00"
+  "recordedAt": "2026-03-26T09:01:00+07:00"
 }
 ```
+
+**DB Tables:** `pdpa_consent_configs`, `pdpa_consent_versions`, `pdpa_consent_logs`
+
+**Web Settings ที่เกี่ยวข้อง:**
+
+| Settings Page | Fields | การใช้งาน |
+|---|---|---|
+| **PDPA Consent** (`/web/settings/pdpa-consent`) | `body_th`, `body_en`, `retention_days` | ข้อความ PDPA + จำนวนวันเก็บข้อมูล |
+| **Service Points** (`/web/settings/service-points`) | `pdpa_config.require_scroll`, `pdpa_config.retention_days` | Override ค่า PDPA ต่อ Kiosk |
+
+**Dev Notes:**
+- ★ Flow ใหม่: PDPA → **SELECT_PURPOSE** (ไม่ใช่ ID verification แล้ว)
+- บันทึกหลังกดยอมรับ — ยังไม่มี `visitorIdNumber` (ยังไม่ยืนยันตัวตน)
+- `consentId` ต้องเก็บไว้ใน state เพื่อใช้ตอน checkin
+- ถ้า `requireScrollToBottom=true` → ปุ่มยอมรับ disable จนกว่าจะ scroll จนสุด
 
 ---
 
-## 3. SELECT_ID_METHOD — วิธียืนยันตัวตน
+## 3. SELECT_PURPOSE — เลือกวัตถุประสงค์ + แผนก
 
-### `GET /kiosk/id-methods`
+> ★ **Flow ใหม่**: ขั้นตอนนี้มาก่อน ID verification
 
-ดึงจาก config ตอน boot ได้เลย (cached จาก `/kiosk/config`) แต่ถ้าแยก API:
+### `GET /api/kiosk/{servicePointId}/purposes`
 
-**Tables ที่ใช้:** `identity_document_types`, `service_point_documents`, `visit_purpose_channel_documents`
-
-**Response:**
-
-```json
-{
-  "methods": [
-    {
-      "id": 1,
-      "code": "thai-id-card",
-      "name": "บัตรประชาชน",
-      "nameEn": "Thai National ID Card",
-      "icon": "credit-card",
-      "deviceRequired": "id-reader",
-      "description": "เสียบบัตรประชาชนที่ช่องอ่านบัตร",
-      "descriptionEn": "Insert your Thai ID card into the reader"
-    },
-    {
-      "id": 2,
-      "code": "passport",
-      "name": "หนังสือเดินทาง",
-      "nameEn": "Passport",
-      "icon": "book-open",
-      "deviceRequired": "passport-reader",
-      "description": "วางหนังสือเดินทางบนเครื่องสแกน",
-      "descriptionEn": "Place your passport on the scanner"
-    },
-    {
-      "id": 5,
-      "code": "thai-id-app",
-      "name": "แอป ThaiID (Digital ID)",
-      "nameEn": "ThaiID App",
-      "icon": "smartphone",
-      "deviceRequired": "qr-reader",
-      "description": "สแกน QR จากแอป ThaiID",
-      "descriptionEn": "Scan QR from ThaiID app"
-    }
-  ]
-}
-```
-
----
-
-## 4. ID_VERIFICATION — ยืนยันตัวตน + เช็ค Blocklist
-
-เมื่อเครื่องอ่านบัตร/Passport/ThaiID อ่านข้อมูลได้แล้ว → ส่งข้อมูลไป backend เพื่อตรวจ blocklist + บันทึกผู้เยี่ยม
-
-### `POST /kiosk/verify-identity`
-
-**Tables ที่ใช้:** `visitors` (upsert), `blocklist` (check), `visit_records` (check existing)
-
-**Request:**
-
-```json
-{
-  "documentType": "thai-id-card",
-  "idNumber": "1234567890123",
-  "fullNameTh": "นายสมชาย ใจดี",
-  "fullNameEn": "MR. SOMCHAI JAIDEE",
-  "dateOfBirth": "1985-06-15",
-  "address": "123 ถ.ราชดำเนิน แขวงพระบรมมหาราชวัง เขตพระนคร กรุงเทพ 10200",
-  "issueDate": "2022-01-10",
-  "expiryDate": "2031-01-09",
-  "photo": "<base64_photo_from_id_card>",
-  "servicePointId": 1
-}
-```
-
-**Response — สำเร็จ:**
-
-```json
-{
-  "status": "ok",
-  "visitorId": 15,
-  "isNewVisitor": false,
-  "isBlocked": false,
-  "existingAppointments": [
-    {
-      "bookingCode": "eVMS-20260315-0042",
-      "purposeName": "ประชุม / สัมมนา",
-      "purposeNameEn": "Meeting / Seminar",
-      "hostName": "นางสาวพิมพา เกษมศรี",
-      "department": "กองการต่างประเทศ",
-      "date": "2026-03-15",
-      "timeSlot": "10:00-11:30",
-      "status": "approved"
-    }
-  ],
-  "previousVisitCount": 3,
-  "verifiedData": {
-    "fullNameTh": "นายสมชาย ใจดี",
-    "fullNameEn": "MR. SOMCHAI JAIDEE",
-    "idNumber": "1-2345-67890-12-3",
-    "dateOfBirth": "15 มิ.ย. 2528",
-    "photo": "<base64_or_url>"
-  }
-}
-```
-
-**Response — Blocked:**
-
-```json
-{
-  "status": "blocked",
-  "isBlocked": true,
-  "blockReason": "ประพฤติไม่เหมาะสมในพื้นที่ราชการ",
-  "blockedAt": "2025-12-01",
-  "message": "ท่านถูกระงับการเข้าพื้นที่ กรุณาติดต่อเจ้าหน้าที่"
-}
-```
-
----
-
-## 5. DATA_PREVIEW
-
-**ไม่ต้องเรียก API** — ใช้ข้อมูลจาก response ของ `POST /kiosk/verify-identity` แสดงบนหน้าจอให้ผู้เยี่ยมตรวจสอบ
-
----
-
-## 6. SELECT_PURPOSE — เลือกวัตถุประสงค์
-
-### `GET /kiosk/purposes`
-
-**Query Parameters:**
-- `servicePointId` — กรองเฉพาะวัตถุประสงค์ที่ตู้นี้รองรับ
-
-**Tables ที่ใช้:** `visit_purposes`, `visit_purpose_department_rules` (where `show_on_kiosk = true`), `visit_purpose_channel_configs` (where `channel = 'kiosk'`), `service_point_purposes`
+ดึงวัตถุประสงค์ + แผนกที่แสดงบน Kiosk
 
 **Response:**
 
@@ -296,42 +215,27 @@ Token ได้จาก Device Registration ครั้งแรก (ผูก
       "name": "ติดต่อราชการ",
       "nameEn": "Official Business",
       "icon": "🏛️",
+      "order": 1,
+      "wifiEnabled": true,
       "requirePhoto": true,
       "departments": [
         {
           "departmentId": 1,
-          "departmentName": "สำนักงานปลัดกระทรวง",
-          "departmentNameEn": "Office of the Permanent Secretary",
+          "name": "สำนักงานปลัดกระทรวง",
+          "nameEn": "Office of the Permanent Secretary",
           "floor": "ชั้น 3",
-          "requirePersonName": true,
+          "building": "อาคาร A",
           "requireApproval": true,
+          "approverGroupId": 2,
           "offerWifi": true
         },
         {
-          "departmentId": 2,
-          "departmentName": "กองกลาง",
-          "departmentNameEn": "General Administration Division",
-          "floor": "ชั้น 2",
-          "requirePersonName": true,
-          "requireApproval": true,
-          "offerWifi": true
-        }
-      ]
-    },
-    {
-      "id": 2,
-      "name": "ประชุม / สัมมนา",
-      "nameEn": "Meeting / Seminar",
-      "icon": "📋",
-      "requirePhoto": true,
-      "departments": [
-        {
-          "departmentId": 1,
-          "departmentName": "สำนักงานปลัดกระทรวง",
-          "departmentNameEn": "Office of the Permanent Secretary",
-          "floor": "ชั้น 3",
-          "requirePersonName": true,
-          "requireApproval": true,
+          "departmentId": 4,
+          "name": "กองกิจการท่องเที่ยว",
+          "nameEn": "Tourism Affairs Division",
+          "floor": "ชั้น 4",
+          "building": "อาคาร A",
+          "requireApproval": false,
           "offerWifi": true
         }
       ]
@@ -339,85 +243,188 @@ Token ได้จาก Device Registration ครั้งแรก (ผูก
     {
       "id": 3,
       "name": "ส่งเอกสาร / พัสดุ",
-      "nameEn": "Document / Parcel Delivery",
+      "nameEn": "Document Delivery",
       "icon": "📄",
+      "order": 3,
+      "wifiEnabled": false,
       "requirePhoto": true,
       "departments": [
-        {
-          "departmentId": 1,
-          "departmentName": "สำนักงานปลัดกระทรวง",
-          "departmentNameEn": "Office of the Permanent Secretary",
-          "floor": "ชั้น 3",
-          "requirePersonName": false,
-          "requireApproval": false,
-          "offerWifi": false
-        }
-      ]
-    },
-    {
-      "id": 7,
-      "name": "รับ-ส่งสินค้า",
-      "nameEn": "Delivery / Pickup",
-      "icon": "📦",
-      "requirePhoto": false,
-      "departments": [
-        {
-          "departmentId": 1,
-          "departmentName": "สำนักงานปลัดกระทรวง",
-          "departmentNameEn": "Office of the Permanent Secretary",
-          "floor": "ชั้น 3",
-          "requirePersonName": false,
-          "requireApproval": false,
-          "offerWifi": false
-        }
+        { "departmentId": 2, "name": "กองกลาง", "floor": "ชั้น 2", "requireApproval": false, "offerWifi": false }
       ]
     }
   ]
 }
 ```
 
+### `GET /api/kiosk/visitor/{idNumber}/check-verified`
+
+ตรวจสอบว่า walk-in เคยยืนยันตัวตนแล้วหรือไม่ (สำหรับ returning visitor)
+
+**Response (verified):**
+
+```json
+{
+  "verified": true,
+  "visitorId": 15,
+  "lastVerifiedAt": "2026-03-26T08:30:00+07:00",
+  "lastIdMethod": "thai-id-card",
+  "fullNameTh": "นายสมชาย ใจดี",
+  "fullNameEn": "MR. SOMCHAI JAIDEE",
+  "photoPath": "/photos/visitor-15-face.jpg"
+}
+```
+
+**Response (not verified):**
+
+```json
+{ "verified": false, "message": "ไม่พบข้อมูลยืนยันตัวตน" }
+```
+
+**DB Tables:** `visit_purposes`, `visit_purpose_department_rules`, `visit_purpose_channel_configs`, `service_point_purposes`, `departments`, `floors`, `visitors`, `visit_records`
+
+**Web Settings ที่เกี่ยวข้อง:**
+
+| Settings Page | Fields | การใช้งาน |
+|---|---|---|
+| **Visit Purposes** (`/web/settings/visit-purposes`) | `name`, `icon`, `order`, `show_on_kiosk`, `offer_wifi`, `require_approval`, `require_photo` | กำหนดวัตถุประสงค์ + เงื่อนไขแต่ละแผนก |
+| **Service Points** (`/web/settings/service-points`) | `allowed_purpose_ids` | กรองวัตถุประสงค์เฉพาะที่ตู้นี้รองรับ |
+| **Locations** (`/web/settings/locations`) | `departments.name`, `departments.floor`, `departments.building` | ข้อมูลแผนก/ชั้น/อาคาร |
+| **Approver Groups** (`/web/settings/approver-groups`) | `approver_groups.id`, `members` | ส่งแจ้งกลุ่มผู้อนุมัติหลัง checkin |
+
+**Dev Notes:**
+- กรองเฉพาะ `show_on_kiosk = true` + `allowed_purpose_ids`
+- ถ้า dept เดียว → auto-select ไม่ต้องแสดงหน้าเลือกแผนก
+- เก็บ `purposeId` + `departmentId` ใน state → ใช้ตอน checkin
+- ถ้า `identityVerified=true` → ข้ามไป FACE_CAPTURE (ไม่ผ่าน ID verification)
+
 ---
 
-## 7. FACE_CAPTURE — อัปโหลดภาพถ่ายใบหน้า
+## 4. SELECT_ID_METHOD — เลือกวิธียืนยันตัวตน
 
-### `POST /kiosk/face-photo`
+> ข้ามขั้นตอนนี้ทั้งหมดถ้า `state.identityVerified = true`
 
-**Tables ที่ใช้:** *(file storage)*, `visit_records.face_photo_path`
-
-**Request:** `multipart/form-data`
-
-```
-photo: <binary_jpeg>
-visitorId: 15
-servicePointId: 1
-```
+### `GET /api/kiosk/{servicePointId}/id-methods`
 
 **Response:**
 
 ```json
 {
-  "photoPath": "/photos/2026/03/15/visitor-15-face.jpg",
-  "faceDetected": true,
-  "faceCount": 1,
-  "quality": "good"
+  "methods": [
+    { "id": 1, "code": "thai-id-card", "name": "บัตรประชาชน", "nameEn": "Thai National ID Card", "icon": "🪪", "deviceRequired": "id-reader" },
+    { "id": 2, "code": "passport", "name": "หนังสือเดินทาง", "nameEn": "Passport", "icon": "📘", "deviceRequired": "passport-reader" },
+    { "id": 5, "code": "thai-id-app", "name": "แอป ThaiID", "nameEn": "ThaiID App", "icon": "📱", "deviceRequired": "qr-reader" }
+  ]
 }
 ```
 
+**Web Settings:** Document Types (`/web/settings/document-types`), Service Points (`allowed_document_ids`)
+
+**Dev Notes:**
+- ใช้ข้อมูลจาก `/kiosk/config` ได้ (cached) — ไม่ต้องเรียกซ้ำ
+- `GO_BACK` → กลับไป **SELECT_PURPOSE** (ไม่ใช่ PDPA แล้ว)
+
 ---
 
-## 8. WIFI_OFFER — สร้าง WiFi Credentials
+## 5. ID_VERIFICATION — ยืนยันตัวตน
 
-### `POST /kiosk/wifi/generate`
+> ข้ามถ้า `identityVerified = true`
 
-**Tables ที่ใช้:** `service_points` (wifi config), `visit_records` (update wifi fields)
+### `POST /api/kiosk/identity/verify`
+
+ยืนยันตัวตน + ตรวจ Blocklist + Upsert visitor
 
 **Request:**
 
 ```json
 {
+  "servicePointId": 1,
+  "documentType": "thai-id-card",
+  "idNumber": "1234567890123",
+  "fullNameTh": "นายสมชาย ใจดี",
+  "fullNameEn": "MR. SOMCHAI JAIDEE",
+  "dateOfBirth": "2528-06-15",
+  "address": "123 ถ.ราชดำเนิน เขตพระนคร กรุงเทพฯ 10200",
+  "issueDate": "2565-01-15",
+  "expiryDate": "2574-06-14",
+  "photo": "<base64_from_card>"
+}
+```
+
+**Response (success):**
+
+```json
+{
+  "status": "ok",
+  "visitorId": 15,
+  "isNewVisitor": false,
+  "isBlocked": false,
+  "previousVisitCount": 3,
+  "lastVisitDate": "2026-03-20",
+  "existingAppointments": [],
+  "maskedIdNumber": "1-xxxx-xxxxx-90-3",
+  "verifiedData": {
+    "fullNameTh": "นายสมชาย ใจดี",
+    "fullNameEn": "MR. SOMCHAI JAIDEE",
+    "idNumber": "1-xxxx-xxxxx-90-3",
+    "dateOfBirth": "15 มิ.ย. 2528"
+  }
+}
+```
+
+**Response (blocked):**
+
+```json
+{
+  "status": "blocked",
+  "isBlocked": true,
+  "blockReason": "ประพฤติไม่เหมาะสม",
+  "blockedAt": "2026-01-10T00:00:00+07:00",
+  "message": "ท่านถูกระงับการเข้าพื้นที่ กรุณาติดต่อเจ้าหน้าที่"
+}
+```
+
+**DB Tables:** `visitors`, `blocklist`, `visit_records`
+
+**Web Settings:**
+
+| Settings Page | Fields | การใช้งาน |
+|---|---|---|
+| **Service Points** | `id_masking_pattern` | mask เลขบัตร: show-first1-last5 |
+| **Blocklist** (`/web/blocklist`) | `id_number`, `full_name`, `reason` | ตรวจ Blocklist ทั้ง idNumber + ชื่อ |
+
+**Dev Notes:**
+- Upsert visitor — ถ้ามีอยู่แล้วอัปเดต, ถ้าใหม่สร้าง record
+- ตรวจ Blocklist ก่อน — ถ้า blocked → ERROR state
+- Hardware: SmartCardReader / PassportReader / QR Scanner (ThaiID)
+- Flutter plugin: `smart_card_reader` / `passport_reader` / `flutter_barcode_scanner`
+
+---
+
+## 6. DATA_PREVIEW — ตรวจสอบข้อมูล
+
+**ไม่ต้องเรียก API** — ใช้ข้อมูลจาก verify-identity response ที่อยู่ใน state
+
+**Dev Notes:**
+- `CONFIRM_DATA` → ไปหน้า **FACE_CAPTURE** (flow ใหม่: ไม่ผ่าน SELECT_PURPOSE อีกแล้ว)
+- `GO_BACK` → กลับ ID_VERIFICATION
+- แสดง ID number แบบ masked ตาม `idMaskingPattern`
+
+---
+
+## 7. FACE_CAPTURE — ถ่ายภาพใบหน้า + WiFi
+
+### `POST /api/kiosk/identity/photo`
+
+**Content-Type:** `multipart/form-data`
+
+**Request:**
+
+```json
+{
+  "photo": "<binary_jpeg>",
   "visitorId": 15,
   "servicePointId": 1,
-  "accepted": true
+  "purposeId": 1
 }
 ```
 
@@ -425,25 +432,36 @@ servicePointId: 1
 
 ```json
 {
-  "ssid": "MOTS-Guest",
-  "password": "MOTSGuest2026",
-  "validUntil": "2026-03-15T17:00:00+07:00",
-  "validityDisplay": "ถึง 17:00 น. วันนี้",
-  "validityDisplayEn": "Until 17:00 today"
+  "photoPath": "/photos/2026/03/26/visitor-15-face.jpg",
+  "faceDetected": true,
+  "faceCount": 1,
+  "quality": "good",
+  "faceMatchScore": 0.92
 }
 ```
 
+**Web Settings:**
+
+| Settings Page | Fields | การใช้งาน |
+|---|---|---|
+| **Visit Purposes** | `require_photo`, `offer_wifi` | ตรวจว่าต้องถ่ายรูป + แสดง WiFi offer |
+| **Service Points** | `wifi_config.ssid`, `wifi_config.password_pattern`, `wifi_config.validity_mode` | WiFi SSID, password pattern, ระยะเวลา |
+
+**Dev Notes:**
+- Compress JPEG 80% ก่อนอัปโหลด
+- ถ้า `requirePhoto = false` → ข้ามถ่ายภาพได้
+- WiFi ถามในหน้าเดียวกัน — ถ้า `wifiEnabled = false` → ไม่แสดง
+- WiFi password: ใช้ pattern เช่น `mots{year}` → `mots2026`
+- Hardware: USB Camera — `camera` / `google_mlkit_face_detection`
+- `GO_BACK` → DATA_PREVIEW (ถ้า `identityVerified=true` → SELECT_PURPOSE)
+
 ---
 
-## 9. SUCCESS — สร้าง Visit Record + ออก QR/Slip
+## 8. SUCCESS — Checkin + Slip + Notifications
 
-### `POST /kiosk/checkin`
+### `POST /api/kiosk/checkin`
 
-**นี่คือ API หลัก** — รวม transaction: สร้าง `visit_record`, assign `access_group`, generate QR Code, resolve slip template
-
-**Tables ที่ใช้:** `visit_records` (INSERT/UPDATE), `access_groups`, `access_group_zones`, `department_access_mappings`, `visit_slip_templates`, `visit_slip_sections`, `visit_slip_fields`, `purpose_slip_mappings`
-
-### Walk-in Check-in
+> ★ **API หลัก** — รวม transaction ทั้งหมดในครั้งเดียว
 
 **Request:**
 
@@ -453,106 +471,11 @@ servicePointId: 1
   "visitorId": 15,
   "servicePointId": 1,
   "visitPurposeId": 1,
-  "departmentId": 1,
-  "hostStaffId": null,
+  "departmentId": 4,
   "idMethod": "thai-id-card",
-  "facePhotoPath": "/photos/2026/03/15/visitor-15-face.jpg",
-  "wifiAccepted": true,
-  "companionsCount": 0,
-  "vehiclePlate": null,
-  "pdpaConsentId": 42
-}
-```
-
-### Appointment Check-in
-
-**Request:**
-
-```json
-{
-  "type": "appointment",
-  "bookingCode": "eVMS-20260315-0042",
-  "visitorId": 15,
-  "servicePointId": 1,
-  "idMethod": "thai-id-card",
-  "facePhotoPath": "/photos/2026/03/15/visitor-15-face.jpg",
+  "facePhotoPath": "/photos/2026/03/26/visitor-15-face.jpg",
   "wifiAccepted": true,
   "pdpaConsentId": 42
-}
-```
-
-### Response (ทั้ง walk-in และ appointment):
-
-```json
-{
-  "visitRecord": {
-    "id": 42,
-    "bookingCode": "eVMS-20260315-0099",
-    "status": "checked-in",
-    "checkinAt": "2026-03-15T09:05:00+07:00"
-  },
-  "accessControl": {
-    "accessGroupId": 2,
-    "accessGroupName": "ติดต่อราชการ ชั้น 2-5",
-    "qrCodeData": "eVMS-OFA-20260315-0099-A2B3C4",
-    "qrCodeExpiry": "2026-03-15T11:05:00+07:00",
-    "allowedZones": [
-      { "id": 1, "name": "ล็อบบี้ ชั้น 1", "nameEn": "Lobby 1F" },
-      { "id": 6, "name": "สำนักงานปลัด", "nameEn": "OPS Office" },
-      { "id": 7, "name": "ห้องประชุม ชั้น 3", "nameEn": "Meeting Room 3F" }
-    ],
-    "hikvisionSynced": true
-  },
-  "slip": {
-    "slipNumber": "eVMS-25680315-0099",
-    "templateId": 1,
-    "data": {
-      "orgName": "กระทรวงการท่องเที่ยวและกีฬา",
-      "orgNameEn": "Ministry of Tourism and Sports",
-      "slipTitle": "บัตรผู้เยี่ยม / Visitor Pass",
-      "visitorName": "นายสมชาย ใจดี",
-      "visitorNameEn": "MR. SOMCHAI JAIDEE",
-      "idNumber": "1-2345-XXXX-XX-3",
-      "visitPurpose": "ติดต่อราชการ",
-      "visitPurposeEn": "Official Business",
-      "hostName": "-",
-      "department": "สำนักงานปลัดกระทรวง",
-      "departmentEn": "Office of the Permanent Secretary",
-      "accessZone": "ล็อบบี้ ชั้น 1, สำนักงานปลัด",
-      "date": "15 มี.ค. 2569",
-      "timeIn": "09:05",
-      "timeOut": "-",
-      "companions": 0,
-      "vehiclePlate": null,
-      "wifi": {
-        "ssid": "MOTS-Guest",
-        "password": "MOTSGuest2026",
-        "validUntil": "17:00"
-      },
-      "qrCodeData": "eVMS-OFA-20260315-0099-A2B3C4",
-      "footer": "ขอบคุณที่มาเยือน — กรุณาคืนบัตรผู้เยี่ยมก่อนออก"
-    },
-    "lineLinked": false,
-    "askPrint": false
-  },
-  "notification": {
-    "hostNotified": true,
-    "channel": "line",
-    "message": "ผู้เยี่ยม นายสมชาย ใจดี ได้ Check-in แล้ว"
-  }
-}
-```
-
-### `POST /kiosk/slip/print`
-
-บันทึกว่าพิมพ์ slip แล้วหรือเลือกไม่พิมพ์ (กรณีผูก LINE)
-
-**Request:**
-
-```json
-{
-  "visitRecordId": 42,
-  "printed": true
 }
 ```
 
@@ -560,191 +483,207 @@ servicePointId: 1
 
 ```json
 {
-  "updated": true,
-  "slipPrinted": true
+  "visitRecord": {
+    "id": 99,
+    "bookingCode": "eVMS-25690326-0099",
+    "status": "checked-in",
+    "checkinTime": "2026-03-26T09:15:00+07:00",
+    "expectedCheckout": "2026-03-26T16:30:00+07:00"
+  },
+  "accessControl": {
+    "accessGroupId": 2,
+    "accessGroupName": "ติดต่อราชการ ชั้น 2-5",
+    "qrCodeData": "eVMS-OFA-20260326-0099-A2B3C4",
+    "allowedZones": ["ล็อบบี้ ชั้น 1", "สำนักงานกองกิจการท่องเที่ยว ชั้น 4"],
+    "validityMinutes": 120,
+    "hikvisionSynced": true,
+    "hikvisionDoorIds": ["DOOR-4F-MAIN"]
+  },
+  "slip": {
+    "slipNumber": "eVMS-25690326-0099",
+    "templateId": 1,
+    "headerText": "กระทรวงการท่องเที่ยวและกีฬา",
+    "footerText": "กรุณาส่งคืนบัตรเมื่อออกจากอาคาร",
+    "visitorName": "นายสมชาย ใจดี",
+    "idNumber": "1-xxxx-xxxxx-90-3",
+    "visitPurpose": "ติดต่อราชการ",
+    "department": "กองกิจการท่องเที่ยว",
+    "accessZone": "ชั้น 4 อาคาร A",
+    "date": "26 มี.ค. 2569",
+    "timeIn": "09:15",
+    "timeOut": "16:30 น.",
+    "wifi": { "ssid": "MOTS-Guest", "password": "mots2026", "validUntil": "16:30 น." },
+    "qrCodeData": "eVMS-OFA-20260326-0099-A2B3C4",
+    "lineLinked": false,
+    "askPrint": false
+  },
+  "notifications": [
+    { "trigger": "checkin-welcome", "channel": "line", "sent": true, "recipient": "host" },
+    { "trigger": "wifi-credentials", "channel": "line", "sent": false, "reason": "visitor not LINE-linked" }
+  ]
 }
 ```
 
+### `POST /api/kiosk/slip/print`
+
+```json
+// Request
+{ "visitRecordId": 99, "printed": true, "printMethod": "thermal-80mm" }
+
+// Response
+{ "updated": true, "slipPrinted": true }
+```
+
+**DB Tables:** `visit_records`, `visitors`, `visit_purposes`, `departments`, `access_groups`, `access_group_zones`, `department_access_mappings`, `visit_slip_templates`, `visit_slip_fields`, `notification_templates`, `notification_logs`
+
+**Web Settings:**
+
+| Settings Page | Fields | การใช้งาน |
+|---|---|---|
+| **Visit Slips** (`/web/settings/visit-slips`) | `size`, `fields`, `header_text`, `footer_text` | รูปแบบ slip: ขนาด, field ที่แสดง |
+| **Notification Templates** (`/web/settings/notification-templates`) | `trigger`, `channel`, `body_th`, `variables` | ข้อความแจ้งเตือน: checkin-welcome, wifi-credentials |
+| **Access Zones** (`/web/settings/access-zones`) | `access_groups`, `access_group_zones`, `department_access_mappings` | access group → zone → sync Hikvision door |
+| **Service Points** | `slip_config.header_text`, `slip_config.footer_text` | Override slip header/footer ต่อ Kiosk |
+
+**Dev Notes:**
+- ★ Transaction สำคัญที่สุด — ต้อง handle failure gracefully
+- ใช้ `booking_code` เป็น idempotency key — กัน double checkin
+- Hikvision sync ทำ async ฝั่ง backend (ไม่ block kiosk)
+- ถ้า `lineLinked=true` → ถามก่อนพิมพ์ slip (ส่ง LINE แทนได้)
+- ถ้า `lineLinked=false` → พิมพ์ slip อัตโนมัติ
+- QR code ใช้สำหรับ scan ที่ประตู (Hikvision Access Control)
+- Hardware: Thermal Printer (80mm) — `esc_pos_printer`
+- Redirect กลับ WELCOME หลัง `successRedirect` timeout (default 10s)
+
 ---
 
-## 10. QR_SCAN — ค้นหานัดหมายจาก QR Code
+## A1. QR_SCAN — สแกน QR Code นัดหมาย (Appointment)
 
-### `POST /kiosk/appointment/lookup-qr`
-
-**Tables ที่ใช้:** `visit_records`, `visitors`, `staff`, `departments`, `visit_purposes`, `floor_departments`, `floors`
+### `POST /api/kiosk/appointment/lookup`
 
 **Request:**
 
 ```json
 {
-  "qrCodeData": "eVMS-20260315-0042",
+  "qrCodeData": "eVMS-20260326-0042",
   "servicePointId": 1
 }
 ```
 
-**Response — พบนัดหมาย:**
+**Response (found):**
 
 ```json
 {
   "found": true,
   "appointment": {
-    "bookingCode": "eVMS-20260315-0042",
+    "bookingCode": "eVMS-20260326-0042",
     "visitorName": "นายสมชาย ใจดี",
-    "visitorCompany": "บริษัท ABC จำกัด",
+    "visitorCompany": "บจก. ท่องเที่ยวสยาม",
     "hostName": "นางสาวพิมพา เกษมศรี",
     "hostDepartment": "กองการต่างประเทศ",
     "hostFloor": "ชั้น 5",
-    "location": "ศูนย์ราชการ อาคาร C",
-    "locationEn": "Government Center Building C",
-    "date": "2026-03-15",
-    "dateEnd": null,
-    "timeSlot": "10:00-11:30",
-    "entryMode": "single",
+    "location": "กระทรวงการท่องเที่ยวและกีฬา",
+    "date": "26 มีนาคม 2569",
+    "timeSlot": "10:00 — 11:30",
     "purposeName": "ประชุม / สัมมนา",
-    "purposeNameEn": "Meeting / Seminar",
     "purposeIcon": "📋",
     "status": "approved",
     "wifiRequested": true,
-    "lineLinked": true,
-    "requirePhoto": true
+    "lineLinked": true
   }
 }
 ```
 
-**Response — ไม่พบ:**
+**Response (not found):**
 
 ```json
-{
-  "found": false,
-  "reason": "not-found",
-  "message": "ไม่พบนัดหมายที่ตรงกับ QR Code นี้",
-  "messageEn": "No appointment found for this QR code"
-}
+{ "found": false, "reason": "not-found", "message": "ไม่พบนัดหมายที่ตรงกับ QR Code นี้" }
 ```
 
-**Response — นัดหมายยังไม่ได้อนุมัติ:**
-
-```json
-{
-  "found": true,
-  "canCheckin": false,
-  "reason": "pending-approval",
-  "message": "นัดหมายนี้ยังรอการอนุมัติ",
-  "messageEn": "This appointment is still pending approval",
-  "appointment": { "..." : "..." }
-}
-```
+**Dev Notes:**
+- ตรวจสถานะ `approved` ก่อน check-in
+- ถ้า `pending` → แสดง "รอการอนุมัติ" / ถ้า `rejected` → แสดง "นัดหมายถูกปฏิเสธ"
+- Hardware: QR Scanner — `usb_serial` / `flutter_barcode_scanner`
+- "ไม่มี QR" → ไปหน้า SELECT_ID_METHOD
 
 ---
 
-## 11. APPOINTMENT_PREVIEW
+## A2. APPOINTMENT_PREVIEW — ข้อมูลนัดหมาย
 
-**ไม่ต้องเรียก API** — ใช้ข้อมูลจาก response ของ `POST /kiosk/appointment/lookup-qr` แสดงบนหน้าจอ
+**ไม่ต้องเรียก API** — ใช้ข้อมูลจาก lookup response
 
 ---
 
-## 12. APPOINTMENT_VERIFY_ID — ยืนยันตัวตนกับนัดหมาย
+## A3. APPOINTMENT_VERIFY_ID — ยืนยันตัวตน (นัดหมาย)
 
-### `POST /kiosk/appointment/verify`
-
-เช่นเดียวกับ `POST /kiosk/verify-identity` แต่เพิ่มการตรวจสอบว่าข้อมูลตรงกับนัดหมายหรือไม่
-
-**Tables ที่ใช้:** `visitors`, `visit_records`, `blocklist`
+### `POST /api/kiosk/appointment/verify-identity`
 
 **Request:**
 
 ```json
 {
-  "bookingCode": "eVMS-20260315-0042",
+  "bookingCode": "eVMS-20260326-0042",
   "documentType": "thai-id-card",
   "idNumber": "1234567890123",
   "fullNameTh": "นายสมชาย ใจดี",
-  "fullNameEn": "MR. SOMCHAI JAIDEE",
-  "dateOfBirth": "1985-06-15",
-  "photo": "<base64>",
   "servicePointId": 1
 }
 ```
 
-**Response — ตรงกัน:**
+**Response (matched):**
 
 ```json
 {
   "status": "matched",
   "visitorId": 15,
   "isBlocked": false,
-  "matchResult": {
-    "nameMatch": true,
-    "idMatch": true,
-    "confidence": 1.0
-  }
+  "matchResult": { "nameMatch": true, "idMatch": true, "confidence": 1.0 }
 }
 ```
 
-**Response — ไม่ตรง:**
+**Response (mismatch):**
 
 ```json
 {
   "status": "mismatch",
-  "matchResult": {
-    "nameMatch": false,
-    "idMatch": false,
-    "confidence": 0.0
-  },
-  "message": "ข้อมูลบัตรไม่ตรงกับผู้จองนัดหมาย",
-  "messageEn": "ID data does not match the appointment holder"
+  "matchResult": { "nameMatch": false, "idMatch": false, "confidence": 0.0 },
+  "message": "ข้อมูลบัตรไม่ตรงกับผู้จองนัดหมาย"
 }
 ```
 
 ---
 
-## 13. Appointment No-QR Path — ค้นหานัดหมายจากบัตรประชาชน
+## WIFI_OFFER — WiFi Credentials (Appointment)
 
-กรณีผู้เยี่ยมไม่มี QR Code → ใช้บัตร ปชช. ค้นหานัดหมาย
-
-### `POST /kiosk/appointment/lookup-id`
-
-**Tables ที่ใช้:** `visit_records`, `visitors`
+### `POST /api/kiosk/wifi/generate`
 
 **Request:**
 
 ```json
-{
-  "documentType": "thai-id-card",
-  "idNumber": "1234567890123",
-  "servicePointId": 1,
-  "date": "2026-03-15"
-}
+{ "visitorId": 15, "servicePointId": 1, "visitRecordId": 42, "accepted": true }
 ```
 
 **Response:**
 
 ```json
 {
-  "found": true,
-  "appointments": [
-    {
-      "bookingCode": "eVMS-20260315-0042",
-      "purposeName": "ประชุม / สัมมนา",
-      "purposeNameEn": "Meeting / Seminar",
-      "purposeIcon": "📋",
-      "hostName": "นางสาวพิมพา เกษมศรี",
-      "hostDepartment": "กองการต่างประเทศ",
-      "hostFloor": "ชั้น 5",
-      "timeSlot": "10:00-11:30",
-      "status": "approved",
-      "wifiRequested": true,
-      "lineLinked": true
-    }
-  ]
+  "ssid": "MOTS-Guest",
+  "password": "mots2026",
+  "validUntil": "2026-03-26T16:30:00+07:00",
+  "validityDisplay": "ถึง 16:30 น. วันนี้"
 }
 ```
 
+**Dev Notes:**
+- ถ้า `appointment.wifiRequested=true` → pre-select "รับ WiFi" ไว้ให้ (แก้ได้)
+- Password generate ตาม pattern: `mots{year}` → `mots2026`
+- อาจ generate ฝั่ง Kiosk ตาม pattern จาก config — ไม่ต้องเรียก API
+
 ---
 
-## ERROR — รายงาน Error (Optional)
+## ERROR — รายงาน Error Log
 
-### `POST /kiosk/error-log`
+### `POST /api/kiosk/error-log`
 
 **Request:**
 
@@ -755,234 +694,63 @@ servicePointId: 1
   "device": "id-reader",
   "stateAtError": "ID_VERIFICATION",
   "message": "Card reader timeout after 60s",
-  "visitorId": 15,
-  "timestamp": "2026-03-15T09:10:00+07:00"
+  "stackTrace": "..."
 }
 ```
 
 **Response:**
 
 ```json
-{
-  "logged": true,
-  "errorId": "ERR-20260315-0001"
-}
+{ "logged": true, "errorId": "ERR-20260326-0001" }
 ```
+
+**Dev Notes:** Optional — ส่ง async ไม่ต้องรอ response, ใช้สำหรับ monitoring dashboard
 
 ---
 
-## Flow Diagram — API ตาม State
+## Web Settings → Kiosk Behavior Mapping (สรุป)
 
-```
-┌──────────────────────────────────────────────────────────────────────┐
-│                         WALK-IN FLOW                                 │
-├──────────────────────────────────────────────────────────────────────┤
-│                                                                      │
-│  WELCOME ──────────── GET /kiosk/config                              │
-│    │                                                                 │
-│    ▼                                                                 │
-│  PDPA_CONSENT ─────── GET /kiosk/pdpa                                │
-│    │                  POST /kiosk/pdpa/consent                       │
-│    ▼                                                                 │
-│  SELECT_ID_METHOD ─── GET /kiosk/id-methods (or cached)              │
-│    │                                                                 │
-│    ▼                                                                 │
-│  ID_VERIFICATION ──── POST /kiosk/verify-identity                    │
-│    │                  ✓ blocklist check                               │
-│    ▼                  ✓ upsert visitor                                │
-│  DATA_PREVIEW ─────── (no API — display verified data)               │
-│    │                                                                 │
-│    ▼                                                                 │
-│  SELECT_PURPOSE ───── GET /kiosk/purposes                            │
-│    │                                                                 │
-│    ▼                                                                 │
-│  FACE_CAPTURE ─────── POST /kiosk/face-photo                         │
-│    │                                                                 │
-│    ▼                                                                 │
-│  WIFI_OFFER ──────── POST /kiosk/wifi/generate (if accepted)         │
-│    │                                                                 │
-│    ▼                                                                 │
-│  SUCCESS ──────────── POST /kiosk/checkin                             │
-│                       POST /kiosk/slip/print                         │
-│                       → visit_record created                         │
-│                       → QR code generated                            │
-│                       → Hikvision synced                             │
-│                       → slip printed                                 │
-│                       → host notified                                │
-└──────────────────────────────────────────────────────────────────────┘
-
-┌──────────────────────────────────────────────────────────────────────┐
-│                       APPOINTMENT FLOW                               │
-├──────────────────────────────────────────────────────────────────────┤
-│                                                                      │
-│  WELCOME ──────────── GET /kiosk/config                              │
-│    │                                                                 │
-│    ▼                                                                 │
-│  PDPA_CONSENT ─────── GET /kiosk/pdpa                                │
-│    │                  POST /kiosk/pdpa/consent                       │
-│    ▼                                                                 │
-│  QR_SCAN ──────────── POST /kiosk/appointment/lookup-qr              │
-│    │                                                                 │
-│    ├─ (has QR) ──────────────────────────┐                           │
-│    │                                     ▼                           │
-│    │                   APPOINTMENT_PREVIEW (no API)                   │
-│    │                                     │                           │
-│    │                                     ▼                           │
-│    │                   APPOINTMENT_VERIFY_ID                          │
-│    │                     POST /kiosk/appointment/verify               │
-│    │                                     │                           │
-│    └─ (no QR) ─── SELECT_ID_METHOD       │                           │
-│                     │                    │                           │
-│                     ▼                    │                           │
-│                   ID_VERIFICATION        │                           │
-│                     POST /kiosk/verify-identity                      │
-│                     │                    │                           │
-│                     ▼                    │                           │
-│                   POST /kiosk/appointment/lookup-id                  │
-│                     │                    │                           │
-│                     ▼                    │                           │
-│                   APPOINTMENT_PREVIEW    │                           │
-│                     │                    │                           │
-│                     ▼                    ▼                           │
-│                   FACE_CAPTURE ── POST /kiosk/face-photo             │
-│                     │                                                │
-│                     ▼                                                │
-│                   WIFI_OFFER ─── POST /kiosk/wifi/generate           │
-│                     │                                                │
-│                     ▼                                                │
-│                   SUCCESS ────── POST /kiosk/checkin                  │
-│                                  POST /kiosk/slip/print              │
-└──────────────────────────────────────────────────────────────────────┘
-```
+| Web Settings Page | Kiosk State ที่ใช้ | การใช้งาน |
+|---|---|---|
+| **Service Points** | ทุก state | สถานะตู้, timeouts, WiFi, PDPA, slip, ID masking, allowedPurposeIds, allowedDocumentIds |
+| **Business Hours** | WELCOME | เวลาเปิด-ปิด, allowKiosk |
+| **Visit Purposes** | SELECT_PURPOSE, FACE_CAPTURE | วัตถุประสงค์ + เงื่อนไขแผนก + requirePhoto + offerWifi |
+| **PDPA Consent** | PDPA_CONSENT | ข้อความ PDPA, retentionDays, requireScroll |
+| **Document Types** | SELECT_ID_METHOD | ชื่อ/ไอคอนเอกสาร |
+| **Locations** | SELECT_PURPOSE | แผนก/ชั้น/อาคาร |
+| **Approver Groups** | SELECT_PURPOSE → SUCCESS | กลุ่มผู้อนุมัติ |
+| **Visit Slips** | SUCCESS | รูปแบบ slip |
+| **Notification Templates** | SUCCESS | ข้อความแจ้งเตือน (checkin-welcome, wifi-credentials) |
+| **Access Zones** | SUCCESS | access group → zone → Hikvision door |
+| **Blocklist** | ID_VERIFICATION, APPOINTMENT_VERIFY_ID | ตรวจสอบผู้เยี่ยม |
 
 ---
 
-## Database Tables ↔ API Mapping
+## Timeout Config (ต่อหน้า)
 
-| Table | Used by API |
-|-------|------------|
-| `service_points` | `GET /kiosk/config` |
-| `service_point_documents` | `GET /kiosk/config`, `GET /kiosk/id-methods` |
-| `service_point_purposes` | `GET /kiosk/config`, `GET /kiosk/purposes` |
-| `business_hours_rules` | `GET /kiosk/config` |
-| `pdpa_consent_configs` | `GET /kiosk/pdpa` |
-| `pdpa_consent_versions` | `GET /kiosk/pdpa` |
-| `pdpa_consent_logs` | `POST /kiosk/pdpa/consent` |
-| `identity_document_types` | `GET /kiosk/id-methods` |
-| `visitors` | `POST /kiosk/verify-identity` (upsert) |
-| `blocklist` | `POST /kiosk/verify-identity` (check) |
-| `visit_purposes` | `GET /kiosk/purposes` |
-| `visit_purpose_department_rules` | `GET /kiosk/purposes` |
-| `visit_purpose_channel_configs` | `GET /kiosk/purposes` |
-| `visit_purpose_channel_documents` | `GET /kiosk/id-methods` |
-| `departments` | `GET /kiosk/purposes` |
-| `floors` | `GET /kiosk/purposes` (join) |
-| `floor_departments` | `GET /kiosk/purposes` (join) |
-| `visit_records` | `POST /kiosk/checkin` (INSERT/UPDATE), lookup APIs |
-| `access_groups` | `POST /kiosk/checkin` (resolve) |
-| `access_group_zones` | `POST /kiosk/checkin` (resolve) |
-| `access_zones` | `POST /kiosk/checkin` (resolve) |
-| `department_access_mappings` | `POST /kiosk/checkin` (resolve) |
-| `visit_slip_templates` | `POST /kiosk/checkin` (resolve) |
-| `visit_slip_sections` | `POST /kiosk/checkin` (resolve) |
-| `visit_slip_fields` | `POST /kiosk/checkin` (resolve) |
-| `purpose_slip_mappings` | `POST /kiosk/checkin` (resolve) |
-| `notification_templates` | `POST /kiosk/checkin` (trigger) |
-| `staff` | lookup host, approvers |
+| หน้า | Default (วินาที) | Config Field |
+|------|:-:|---|
+| PDPA Consent | 120 | `timeouts.pdpaConsent` |
+| Select ID Method | 60 | `timeouts.selectIdMethod` |
+| ID Verification | 60 | `timeouts.idVerification` |
+| Data Preview | 120 | `timeouts.dataPreview` |
+| Select Purpose | 60 | `timeouts.selectPurpose` |
+| Face Capture | 60 | `timeouts.faceCapture` |
+| QR Scan | 60 | `timeouts.qrScan` |
+| Appointment Preview | 120 | `timeouts.appointmentPreview` |
+| Success Redirect | 10 | `timeouts.successRedirect` |
 
 ---
 
-## Error Responses (Standard)
+## Source Files
 
-ทุก API ใช้รูปแบบ error เหมือนกัน:
-
-```json
-{
-  "error": {
-    "code": "KIOSK_OFFLINE",
-    "message": "ตู้ Kiosk ไม่พร้อมใช้งาน",
-    "messageEn": "Kiosk is currently unavailable",
-    "details": null
-  }
-}
-```
-
-### Error Codes
-
-| Code | HTTP Status | คำอธิบาย |
-|------|------------|----------|
-| `KIOSK_OFFLINE` | 503 | ตู้ถูกปิดการใช้งาน |
-| `OUTSIDE_BUSINESS_HOURS` | 403 | นอกเวลาทำการ |
-| `VISITOR_BLOCKED` | 403 | ผู้เยี่ยมอยู่ใน blocklist |
-| `APPOINTMENT_NOT_FOUND` | 404 | ไม่พบนัดหมาย |
-| `APPOINTMENT_EXPIRED` | 410 | นัดหมายหมดอายุ |
-| `APPOINTMENT_PENDING` | 409 | นัดหมายยังรออนุมัติ |
-| `APPOINTMENT_ALREADY_CHECKEDIN` | 409 | Check-in แล้ว |
-| `ID_MISMATCH` | 422 | ข้อมูลบัตรไม่ตรงกับนัดหมาย |
-| `DEVICE_ERROR` | 502 | อุปกรณ์ฮาร์ดแวร์ขัดข้อง |
-| `HIKVISION_SYNC_FAILED` | 502 | ส่งสิทธิ์ไป Hikvision ไม่สำเร็จ |
-| `INVALID_QR_CODE` | 422 | QR Code ไม่ถูกต้อง |
-| `FACE_NOT_DETECTED` | 422 | ตรวจไม่พบใบหน้าในภาพ |
-| `UNAUTHORIZED` | 401 | Token ไม่ถูกต้อง |
-| `INTERNAL_ERROR` | 500 | ข้อผิดพลาดภายใน |
-
----
-
-## Sequence Diagram — Walk-in Full Flow
-
-```
-Kiosk App                Backend API                     Database                  Hikvision
-   │                         │                              │                         │
-   │── GET /kiosk/config ───▶│── SELECT service_points ────▶│                         │
-   │◀── config + hours ──────│◀── result ──────────────────│                         │
-   │                         │                              │                         │
-   │── GET /kiosk/pdpa ─────▶│── SELECT pdpa_consent_* ───▶│                         │
-   │◀── PDPA text ───────────│◀── result ──────────────────│                         │
-   │                         │                              │                         │
-   │ [User accepts PDPA]     │                              │                         │
-   │── POST /pdpa/consent ──▶│── INSERT pdpa_consent_logs ─▶│                         │
-   │◀── consentId ───────────│◀── id ──────────────────────│                         │
-   │                         │                              │                         │
-   │ [User inserts ID card]  │                              │                         │
-   │── POST /verify-identity▶│── SELECT blocklist ─────────▶│                         │
-   │                         │── UPSERT visitors ──────────▶│                         │
-   │◀── verifiedData ────────│◀── result ──────────────────│                         │
-   │                         │                              │                         │
-   │ [User confirms data]    │                              │                         │
-   │── GET /kiosk/purposes ─▶│── SELECT visit_purposes ───▶│                         │
-   │                         │── JOIN dept_rules + channels▶│                         │
-   │◀── purposes list ───────│◀── result ──────────────────│                         │
-   │                         │                              │                         │
-   │ [User selects purpose]  │                              │                         │
-   │ [Camera captures face]  │                              │                         │
-   │── POST /face-photo ────▶│── STORE photo ──────────────▶│ (file storage)          │
-   │◀── photoPath ───────────│◀── path ────────────────────│                         │
-   │                         │                              │                         │
-   │ [User accepts WiFi]     │                              │                         │
-   │── POST /wifi/generate ─▶│── GENERATE credentials ─────▶│                         │
-   │◀── wifi creds ──────────│◀── creds ───────────────────│                         │
-   │                         │                              │                         │
-   │── POST /kiosk/checkin ─▶│── INSERT visit_records ─────▶│                         │
-   │                         │── RESOLVE access_group ─────▶│                         │
-   │                         │── GENERATE QR code ──────────│                         │
-   │                         │── RESOLVE slip template ────▶│                         │
-   │                         │── SYNC access rights ────────│────── POST /person ────▶│
-   │                         │── SEND notification ─────────│     + POST /access ────▶│
-   │◀── visit + QR + slip ───│◀── complete ────────────────│◀── ACK ────────────────│
-   │                         │                              │                         │
-   │ [Print slip]            │                              │                         │
-   │── POST /slip/print ────▶│── UPDATE visit_records ─────▶│                         │
-   │◀── ok ──────────────────│◀── done ────────────────────│                         │
-```
-
----
-
-## หมายเหตุสำหรับ Dev
-
-1. **Caching**: `GET /kiosk/config`, `GET /kiosk/pdpa`, `GET /kiosk/purposes` สามารถ cache ฝั่ง Kiosk ได้ (refresh ทุก 5 นาที หรือเมื่อ reset)
-2. **Offline Mode**: Kiosk ควรมี cached config เพื่อแสดง "offline" message ได้แม้ไม่มี internet
-3. **Retry Logic**: API ที่เป็น write (POST) ควรมี idempotency key เพื่อป้องกัน duplicate — ใช้ `booking_code` เป็น key
-4. **Photo Upload**: แนะนำ compress JPEG quality 80% ก่อนอัปโหลด เพื่อลด bandwidth
-5. **WiFi Generation**: อาจ generate ฝั่ง Kiosk ได้ตาม pattern จาก config (ไม่ต้องเรียก API) — แต่ถ้าต้องการ central control ใช้ API
-6. **Hikvision Sync**: ทำ async ฝั่ง backend — ไม่ต้องรอ response ก่อนตอบ Kiosk (eventual consistency)
-7. **PDPA Consent**: บันทึกก่อน verify-identity ได้ (ใช้ idNumber จาก card read — หรือบันทึกทีหลังพร้อม checkin)
+| ไฟล์ | คำอธิบาย |
+|------|----------|
+| `lib/kiosk/kiosk-api-data.ts` | API spec data ทุก state (TypeScript) |
+| `lib/kiosk/kiosk-state-machine.ts` | State machine reducer |
+| `lib/kiosk/kiosk-flow-config.ts` | Step definitions (walk-in / appointment) |
+| `lib/kiosk/kiosk-config-resolver.ts` | Web Settings → Kiosk Config resolver |
+| `lib/kiosk/kiosk-types.ts` | Type definitions |
+| `lib/kiosk/kiosk-mock-data.ts` | Mock data |
+| `components/kiosk/KioskApiDocModal.tsx` | API Doc modal UI |
+| `components/kiosk/StatePanel.tsx` | State panel (shows API per state) |
