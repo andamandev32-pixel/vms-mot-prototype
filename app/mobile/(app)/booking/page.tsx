@@ -9,16 +9,18 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useRichMenu } from "@/components/mobile/RichMenuContext";
-import { staffMembers } from "@/lib/mock-data";
+import { staffMembers, visitPurposeConfigs } from "@/lib/mock-data";
 
-// Visit type config
-const visitTypes = [
-    { id: "official", icon: <Briefcase size={24} />, label: "ติดต่อราชการ", desc: "ยื่นเอกสาร, ติดต่อเจ้าหน้าที่" },
-    { id: "meeting", icon: <Users size={24} />, label: "ประชุม", desc: "เข้าร่วมประชุมตามนัดหมาย" },
-    { id: "delivery", icon: <FileText size={24} />, label: "รับ-ส่งเอกสาร", desc: "Messenger, ไปรษณีย์" },
-    { id: "contractor", icon: <Wrench size={24} />, label: "ผู้รับเหมา", desc: "ซ่อมบำรุง, ติดตั้งอุปกรณ์" },
-    { id: "other", icon: <MoreHorizontal size={24} />, label: "อื่นๆ", desc: "ผู้มาติดต่อทั่วไป" },
-];
+// Visit types rendered from visitPurposeConfigs — filter showOnLine (LINE + Web App channel)
+const visitTypes = visitPurposeConfigs
+    .filter((c) => c.isActive && c.showOnLine)
+    .sort((a, b) => a.order - b.order)
+    .map((c) => ({
+        id: String(c.id),
+        icon: <span className="text-2xl">{c.icon}</span>,
+        label: c.name,
+        desc: c.nameEn,
+    }));
 
 // March 2026 calendar helper
 const MARCH_2026_OFFSET = 6; // March 1, 2026 = Sunday (col index 0)

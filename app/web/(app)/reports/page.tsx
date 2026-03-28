@@ -76,13 +76,18 @@ export default function ReportsPage() {
       .sort((a, b) => b.count - a.count)
       .slice(0, 6);
 
-    // Channel breakdown
-    const channelBreakdown = [
-      { label: "Kiosk", count: Math.floor(total * 0.45), color: "bg-blue-500" },
-      { label: "LINE OA", count: Math.floor(total * 0.35), color: "bg-green-500" },
-      { label: "Counter", count: Math.floor(total * 0.15), color: "bg-purple-500" },
-      { label: "Walk-in", count: Math.ceil(total * 0.05), color: "bg-amber-500" },
-    ];
+    // Channel breakdown — rendered from shared enum (reportChannel)
+    const reportChannelEnum: Record<string, { label: string; color: string; pct: number }> = {
+      kiosk:   { label: "Kiosk",    color: "bg-blue-500",   pct: 0.45 },
+      line:    { label: "LINE OA",  color: "bg-green-500",  pct: 0.35 },
+      counter: { label: "Counter",  color: "bg-purple-500", pct: 0.15 },
+      walkin:  { label: "Walk-in",  color: "bg-amber-500",  pct: 0.05 },
+    };
+    const channelBreakdown = Object.entries(reportChannelEnum).map(([, cfg]) => ({
+      label: cfg.label,
+      count: Math.round(total * cfg.pct),
+      color: cfg.color,
+    }));
 
     return { total, checkedIn, checkedOut, pending, overstay, walkin, typeBreakdown, deptBreakdown, channelBreakdown };
   }, []);

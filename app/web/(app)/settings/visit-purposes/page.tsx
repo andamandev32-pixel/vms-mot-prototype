@@ -114,16 +114,9 @@ export default function VisitPurposeSettingsPage() {
       sum + c.departmentRules.filter((r) => r.isActive && r.requireApproval).length,
     0
   );
-  const onLine = activeConfigs.reduce(
-    (sum, c) =>
-      sum + c.departmentRules.filter((r) => r.isActive && r.showOnLine).length,
-    0
-  );
-  const onKiosk = activeConfigs.reduce(
-    (sum, c) =>
-      sum + c.departmentRules.filter((r) => r.isActive && r.showOnKiosk).length,
-    0
-  );
+  const onLine = activeConfigs.filter((c) => c.showOnLine).length;
+  const onKiosk = activeConfigs.filter((c) => c.showOnKiosk).length;
+  const onCounter = activeConfigs.filter((c) => c.showOnCounter).length;
 
   return (
     <>
@@ -178,8 +171,8 @@ export default function VisitPurposeSettingsPage() {
                   เข้าพื้นที่ได้เลย
                 </li>
                 <li>
-                  5. เลือก<strong>ช่องทางแสดงผล</strong> LINE OA / Kiosk
-                  แยกรายแผนก
+                  5. เลือก<strong>ช่องทางแสดงผล</strong> LINE OA / Kiosk /
+                  Counter ที่ตัววัตถุประสงค์ แล้วกำหนดแผนกรับงานจากช่องทางไหนบ้าง
                 </li>
               </ul>
             </div>
@@ -225,9 +218,9 @@ export default function VisitPurposeSettingsPage() {
             bgColor="bg-warning-light"
           />
           <SummaryCard
-            label="LINE / Kiosk"
+            label="LINE / Kiosk / Counter"
             value={onLine}
-            sub={`LINE ${onLine} · Kiosk ${onKiosk}`}
+            sub={`LINE ${onLine} · Kiosk ${onKiosk} · Counter ${onCounter}`}
             color="text-success"
             bgColor="bg-success-light"
           />
@@ -330,6 +323,11 @@ function PurposeCard({
                   ? "ช่วงเวลา"
                   : "ครั้งเดียว"}
             </span>
+            <span className="flex items-center gap-1">
+              {config.showOnLine && <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-50 text-green-700">LINE</span>}
+              {config.showOnKiosk && <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-700">Kiosk</span>}
+              {config.showOnCounter && <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-700">Counter</span>}
+            </span>
           </div>
 
           {/* action buttons */}
@@ -397,8 +395,9 @@ function PurposeCard({
                   <th className="px-5 py-3 text-center">ต้องอนุมัติ</th>
                   <th className="px-5 py-3 text-center">กลุ่มผู้อนุมัติ</th>
                   <th className="px-5 py-3 text-center">WiFi</th>
-                  <th className="px-5 py-3 text-center">LINE+Web</th>
-                  <th className="px-5 py-3 text-center">Kiosk</th>
+                  <th className="px-5 py-3 text-center">รับจาก LINE</th>
+                  <th className="px-5 py-3 text-center">รับจาก Kiosk</th>
+                  <th className="px-5 py-3 text-center">รับจาก Counter</th>
                   <th className="px-5 py-3 text-center">สถานะ</th>
                   <th className="px-5 py-3 text-center">Flow</th>
                   <th className="px-5 py-3 text-right">จัดการ</th>
@@ -503,21 +502,30 @@ function DeptRuleRow({ rule, onEdit }: { rule: DepartmentRule; onEdit: () => voi
         />
       </td>
 
-      {/* LINE+Web */}
+      {/* acceptFromLine */}
       <td className="px-5 py-3.5 text-center">
         <BoolIcon
-          value={rule.showOnLine}
+          value={rule.acceptFromLine}
           trueIcon={<Smartphone size={13} />}
           trueClass="bg-green-50 text-green-600"
         />
       </td>
 
-      {/* Kiosk */}
+      {/* acceptFromKiosk */}
       <td className="px-5 py-3.5 text-center">
         <BoolIcon
-          value={rule.showOnKiosk}
+          value={rule.acceptFromKiosk}
           trueIcon={<Monitor size={13} />}
           trueClass="bg-blue-50 text-blue-600"
+        />
+      </td>
+
+      {/* acceptFromCounter */}
+      <td className="px-5 py-3.5 text-center">
+        <BoolIcon
+          value={rule.acceptFromCounter}
+          trueIcon={<Users size={13} />}
+          trueClass="bg-amber-50 text-amber-600"
         />
       </td>
 
@@ -579,6 +587,9 @@ function PurposeDrawer({
   const [icon, setIcon] = useState("📌");
   const [isActive, setIsActive] = useState(true);
   const [order, setOrder] = useState(1);
+  const [showOnLine, setShowOnLine] = useState(true);
+  const [showOnKiosk, setShowOnKiosk] = useState(true);
+  const [showOnCounter, setShowOnCounter] = useState(true);
   const [kioskDocs, setKioskDocs] = useState<number[]>(defaultChannel.allowedDocuments);
   const [kioskPhoto, setKioskPhoto] = useState(false);
   const [counterDocs, setCounterDocs] = useState<number[]>(defaultChannel.allowedDocuments);
@@ -594,6 +605,9 @@ function PurposeDrawer({
       setIcon(config.icon);
       setIsActive(config.isActive);
       setOrder(config.order);
+      setShowOnLine(config.showOnLine);
+      setShowOnKiosk(config.showOnKiosk);
+      setShowOnCounter(config.showOnCounter);
       setKioskDocs(config.kioskConfig.allowedDocuments);
       setKioskPhoto(config.kioskConfig.requirePhoto);
       setCounterDocs(config.counterConfig.allowedDocuments);
@@ -605,6 +619,9 @@ function PurposeDrawer({
       setIcon("📌");
       setIsActive(true);
       setOrder(visitPurposeConfigs.length + 1);
+      setShowOnLine(true);
+      setShowOnKiosk(true);
+      setShowOnCounter(true);
       setKioskDocs([1]);
       setKioskPhoto(false);
       setCounterDocs([1]);
@@ -712,6 +729,37 @@ function PurposeDrawer({
               isActive ? "translate-x-5" : "translate-x-0.5"
             )} />
           </button>
+        </div>
+
+        {/* ─── Channel Visibility (Purpose Level) ── */}
+        <div className="space-y-3">
+          <p className="text-sm font-bold text-text-primary flex items-center gap-2">
+            <Smartphone size={16} className="text-green-600" />
+            ช่องทางที่แสดงวัตถุประสงค์นี้
+          </p>
+          <p className="text-xs text-text-muted">เลือกช่องทางที่จะแสดงวัตถุประสงค์นี้ให้ผู้ใช้เลือก (ระดับวัตถุประสงค์)</p>
+
+          <ToggleOption
+            icon={<Smartphone size={16} className="text-green-600" />}
+            label="LINE OA + Web App"
+            description="แสดงวัตถุประสงค์นี้บน LINE OA และ Web App"
+            value={showOnLine}
+            onChange={setShowOnLine}
+          />
+          <ToggleOption
+            icon={<Monitor size={16} className="text-blue-600" />}
+            label="Kiosk"
+            description="แสดงวัตถุประสงค์นี้บนตู้ Kiosk"
+            value={showOnKiosk}
+            onChange={setShowOnKiosk}
+          />
+          <ToggleOption
+            icon={<Users size={16} className="text-amber-600" />}
+            label="Counter"
+            description="แสดงวัตถุประสงค์นี้ที่เคาน์เตอร์ รปภ."
+            value={showOnCounter}
+            onChange={setShowOnCounter}
+          />
         </div>
 
         {/* ─── Entry Mode Config ── */}
@@ -842,6 +890,14 @@ function PurposeDrawer({
               <span className="px-1.5 py-0.5 rounded-full bg-purple-50 text-purple-700 font-medium">ช่วงเวลา</span>
             )}
           </div>
+          <div className="mt-2 flex items-center gap-2 text-[11px]">
+            <Smartphone size={12} className="text-green-600" />
+            <span className="text-text-secondary">ช่องทาง:</span>
+            {showOnLine && <span className="px-1.5 py-0.5 rounded-full bg-green-50 text-green-700 font-medium">LINE+Web</span>}
+            {showOnKiosk && <span className="px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 font-medium">Kiosk</span>}
+            {showOnCounter && <span className="px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 font-medium">Counter</span>}
+            {!showOnLine && !showOnKiosk && !showOnCounter && <span className="text-text-muted">ไม่มีช่องทาง</span>}
+          </div>
         </div>
       </div>
 
@@ -875,8 +931,9 @@ function DeptRuleDrawer({
   const [requireApproval, setRequireApproval] = useState(rule?.requireApproval ?? false);
   const [approverGroupId, setApproverGroupId] = useState(rule?.approverGroupId ?? 0);
   const [offerWifi, setOfferWifi] = useState(rule?.offerWifi ?? false);
-  const [showOnLine, setShowOnLine] = useState(rule?.showOnLine ?? true);
-  const [showOnKiosk, setShowOnKiosk] = useState(rule?.showOnKiosk ?? true);
+  const [acceptFromLine, setAcceptFromLine] = useState(rule?.acceptFromLine ?? true);
+  const [acceptFromKiosk, setAcceptFromKiosk] = useState(rule?.acceptFromKiosk ?? true);
+  const [acceptFromCounter, setAcceptFromCounter] = useState(rule?.acceptFromCounter ?? true);
   const [isActive, setIsActive] = useState(rule?.isActive ?? true);
 
   /* reset when drawer data changes */
@@ -887,8 +944,9 @@ function DeptRuleDrawer({
       setRequireApproval(rule.requireApproval);
       setApproverGroupId(rule.approverGroupId ?? 0);
       setOfferWifi(rule.offerWifi);
-      setShowOnLine(rule.showOnLine);
-      setShowOnKiosk(rule.showOnKiosk);
+      setAcceptFromLine(rule.acceptFromLine);
+      setAcceptFromKiosk(rule.acceptFromKiosk);
+      setAcceptFromCounter(rule.acceptFromCounter);
       setIsActive(rule.isActive);
     } else {
       setDeptId(0);
@@ -896,8 +954,9 @@ function DeptRuleDrawer({
       setRequireApproval(false);
       setApproverGroupId(0);
       setOfferWifi(false);
-      setShowOnLine(true);
-      setShowOnKiosk(true);
+      setAcceptFromLine(true);
+      setAcceptFromKiosk(true);
+      setAcceptFromCounter(true);
       setIsActive(true);
     }
   });
@@ -980,24 +1039,33 @@ function DeptRuleDrawer({
           />
         </div>
 
-        {/* Channel options */}
+        {/* Channel acceptance */}
         <div className="space-y-3">
-          <p className="text-sm font-bold text-text-primary">ช่องทางแสดงผล</p>
+          <p className="text-sm font-bold text-text-primary">แผนกรับงานจากช่องทาง</p>
+          <p className="text-xs text-text-muted">กำหนดว่าแผนกนี้จะโผล่ให้เลือกเมื่อผู้ใช้เข้าจากช่องทางไหนบ้าง</p>
 
           <ToggleOption
             icon={<Smartphone size={16} className="text-green-600" />}
-            label="LINE OA + Web App"
-            description="แสดงวัตถุประสงค์นี้บน LINE และ Web App"
-            value={showOnLine}
-            onChange={setShowOnLine}
+            label="รับจาก LINE OA + Web App"
+            description="แผนกนี้โผล่ให้เลือกเมื่อผู้ใช้เข้าจาก LINE / Web App"
+            value={acceptFromLine}
+            onChange={setAcceptFromLine}
           />
 
           <ToggleOption
             icon={<Monitor size={16} className="text-blue-600" />}
-            label="Kiosk"
-            description="แสดงวัตถุประสงค์นี้บน Kiosk"
-            value={showOnKiosk}
-            onChange={setShowOnKiosk}
+            label="รับจาก Kiosk"
+            description="แผนกนี้โผล่ให้เลือกเมื่อผู้ใช้เข้าจาก Kiosk"
+            value={acceptFromKiosk}
+            onChange={setAcceptFromKiosk}
+          />
+
+          <ToggleOption
+            icon={<Users size={16} className="text-amber-600" />}
+            label="รับจาก Counter"
+            description="แผนกนี้โผล่ให้เลือกเมื่อผู้ใช้เข้าจากเคาน์เตอร์ รปภ."
+            value={acceptFromCounter}
+            onChange={setAcceptFromCounter}
           />
         </div>
 

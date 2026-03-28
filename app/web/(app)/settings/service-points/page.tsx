@@ -187,32 +187,32 @@ export default function ServicePointsSettingsPage() {
         {/* Filters */}
         <div className="flex items-center gap-3">
           <span className="text-sm font-medium text-text-secondary">ประเภท:</span>
-          {(["all", "kiosk", "counter"] as const).map((t) => (
+          {([{ key: "all", label: "ทั้งหมด" }, { key: "kiosk", label: "Kiosk" }, { key: "counter", label: "Counter" }] as const).map((t) => (
             <button
-              key={t}
-              onClick={() => setFilterType(t)}
+              key={t.key}
+              onClick={() => setFilterType(t.key as typeof filterType)}
               className={cn(
                 "px-3 py-1.5 text-sm rounded-lg transition-colors font-medium",
-                filterType === t ? "bg-primary text-white" : "bg-gray-100 text-text-secondary hover:bg-gray-200"
+                filterType === t.key ? "bg-primary text-white" : "bg-gray-100 text-text-secondary hover:bg-gray-200"
               )}
             >
-              {t === "all" ? "ทั้งหมด" : t === "kiosk" ? "Kiosk" : "Counter"}
+              {t.label}
             </button>
           ))}
 
           <div className="w-px h-6 bg-border mx-2" />
 
           <span className="text-sm font-medium text-text-secondary">สถานะ:</span>
-          {(["all", "online", "offline", "maintenance"] as const).map((s) => (
+          {([{ key: "all", label: "ทั้งหมด" }, { key: "online", label: "ออนไลน์" }, { key: "offline", label: "ออฟไลน์" }, { key: "maintenance", label: "ปิดปรับปรุง" }] as const).map((s) => (
             <button
-              key={s}
-              onClick={() => setFilterStatus(s)}
+              key={s.key}
+              onClick={() => setFilterStatus(s.key as typeof filterStatus)}
               className={cn(
                 "px-3 py-1.5 text-sm rounded-lg transition-colors font-medium",
-                filterStatus === s ? "bg-primary text-white" : "bg-gray-100 text-text-secondary hover:bg-gray-200"
+                filterStatus === s.key ? "bg-primary text-white" : "bg-gray-100 text-text-secondary hover:bg-gray-200"
               )}
             >
-              {s === "all" ? "ทั้งหมด" : s === "online" ? "ออนไลน์" : s === "offline" ? "ออฟไลน์" : "ปิดปรับปรุง"}
+              {s.label}
             </button>
           ))}
         </div>

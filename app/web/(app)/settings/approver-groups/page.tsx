@@ -343,7 +343,7 @@ function GroupCard({
                 ช่องทางการแจ้งเตือน
               </p>
               <div className="space-y-2">
-                {(["line", "email", "web-app"] as ApproverNotifyChannel[]).map(
+                {(Object.keys(channelConfig) as ApproverNotifyChannel[]).map(
                   (ch) => {
                     const c = channelConfig[ch];
                     const enabled = group.notifyChannels.includes(ch);
@@ -758,7 +758,7 @@ function ApproverGroupDrawer({
         <div>
           <label className="block text-sm font-medium text-text-primary mb-2">ช่องทางแจ้งเตือน</label>
           <div className="space-y-2">
-            {(["line", "email", "web-app"] as ApproverNotifyChannel[]).map((ch) => {
+            {(Object.keys(channelConfig) as ApproverNotifyChannel[]).map((ch) => {
               const c = channelConfig[ch];
               const enabled = notifyChannels.includes(ch);
               return (

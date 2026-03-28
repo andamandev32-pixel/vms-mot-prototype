@@ -27,10 +27,10 @@ export interface ResolvedKioskConfig {
   /** Service point ที่ kiosk ใช้งาน */
   servicePoint: ServicePoint;
 
-  /** วัตถุประสงค์ที่แสดงบน kiosk (กรองตาม allowedPurposeIds + showOnKiosk + isActive) */
+  /** วัตถุประสงค์ที่แสดงบน kiosk (กรองตาม allowedPurposeIds + purpose.showOnKiosk + isActive) */
   purposes: VisitPurposeOption[];
 
-  /** purpose ID → department IDs ที่ kiosk นี้แสดง (กรองเฉพาะ showOnKiosk=true) */
+  /** purpose ID → department IDs ที่ kiosk นี้แสดง (กรองเฉพาะ acceptFromKiosk=true) */
   purposeDepartmentMap: Record<number, number[]>;
 
   /** ID methods ที่ kiosk นี้รับ (กรองจาก allowedDocumentIds → map เป็น IdMethod) */
@@ -202,18 +202,19 @@ export function resolveKioskConfig(servicePointId: number): ResolvedKioskConfig 
   const sp = servicePoints.find((s) => s.id === servicePointId);
   if (!sp) return null;
 
-  // 1. Resolve allowed purposes (filtered by SP's allowedPurposeIds + showOnKiosk + isActive)
+  // 1. Resolve allowed purposes (filtered by SP's allowedPurposeIds + purpose.showOnKiosk + isActive)
   const purposes: VisitPurposeOption[] = [];
   const purposeDeptMap: Record<number, number[]> = {};
   const purposeRequirePhoto: Record<number, boolean> = {};
 
   for (const config of visitPurposeConfigs) {
     if (!config.isActive) continue;
+    if (!config.showOnKiosk) continue;  // ← ระดับวัตถุประสงค์: แสดงบน Kiosk ไหม
     if (!sp.allowedPurposeIds.includes(config.id)) continue;
 
-    // Check if ANY department has showOnKiosk=true for this purpose
+    // Filter departments that accept from kiosk
     const kioskDeptRules = config.departmentRules.filter(
-      (r: DepartmentRule) => r.showOnKiosk && r.isActive
+      (r: DepartmentRule) => r.acceptFromKiosk && r.isActive
     );
     if (kioskDeptRules.length === 0) continue;
 
@@ -390,9 +391,9 @@ export function getStateConfigInfo(
           `วัตถุประสงค์ที่แสดง (${config.purposes.length} รายการ):`,
           ...config.purposes.map((p) => `  ${p.icon} ${p.name} ${p.wifiEnabled ? "(WiFi ✅)" : ""}`),
           `Timeout: ${config.timeouts.selectPurpose} วินาที`,
-          `กรองจาก: allowedPurposeIds + showOnKiosk=true`,
+          `กรองจาก: purpose.showOnKiosk + allowedPurposeIds + dept.acceptFromKiosk`,
         ],
-        configSource: ["servicePoints.allowedPurposeIds", "visitPurposeConfigs.departmentRules.showOnKiosk"],
+        configSource: ["visitPurposeConfigs.showOnKiosk", "servicePoints.allowedPurposeIds", "departmentRules.acceptFromKiosk"],
       };
 
     case "FACE_CAPTURE":
