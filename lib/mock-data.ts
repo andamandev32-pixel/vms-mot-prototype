@@ -1215,7 +1215,8 @@ export interface DepartmentRule {
   requireApproval: boolean;       // ต้องมีการอนุมัติก่อนเข้าพื้นที่
   approverGroupId?: number;       // กลุ่มผู้อนุมัติ (เมื่อ requireApproval = true)
   offerWifi: boolean;             // เสนอ WiFi ให้ผู้เข้าเยี่ยม
-  acceptFromLine: boolean;        // แผนกนี้รับจาก LINE OA + Web App
+  acceptFromLine: boolean;        // แผนกนี้รับจาก LINE OA
+  acceptFromWeb: boolean;         // แผนกนี้รับจาก Web App
   acceptFromKiosk: boolean;       // แผนกนี้รับจาก Kiosk
   acceptFromCounter: boolean;     // แผนกนี้รับจาก Counter
   isActive: boolean;
@@ -1226,14 +1227,15 @@ export interface EntryChannelConfig {
   requirePhoto: boolean;          // ต้องถ่ายภาพ
 }
 
-export type EntryChannel = "line" | "kiosk" | "counter";
+export type EntryChannel = "line" | "web" | "kiosk" | "counter";
 
 export interface VisitPurposeConfig {
   id: number;
   name: string;
   nameEn: string;
   icon: string;
-  showOnLine: boolean;             // แสดงวัตถุประสงค์นี้บน LINE OA + Web App
+  showOnLine: boolean;             // แสดงวัตถุประสงค์นี้บน LINE OA
+  showOnWeb: boolean;              // แสดงวัตถุประสงค์นี้บน Web App
   showOnKiosk: boolean;            // แสดงวัตถุประสงค์นี้บน Kiosk
   showOnCounter: boolean;          // แสดงวัตถุประสงค์นี้บน Counter
   departmentRules: DepartmentRule[];
@@ -1251,19 +1253,20 @@ export const visitPurposeConfigs: VisitPurposeConfig[] = [
     nameEn: "Official Business",
     icon: "🏛️",
     showOnLine: true,
+    showOnWeb: true,
     showOnKiosk: true,
     showOnCounter: true,
     allowedEntryModes: ["single", "period"],
     kioskConfig: { allowedDocuments: [1, 2, 4, 5], requirePhoto: true },
     counterConfig: { allowedDocuments: [1, 2, 3, 4, 5], requirePhoto: true },
     departmentRules: [
-      { departmentId: 1, requirePersonName: true,  requireApproval: true,  approverGroupId: 1,  offerWifi: true,  acceptFromLine: true,  acceptFromKiosk: true,  acceptFromCounter: true,  isActive: true },
-      { departmentId: 2, requirePersonName: true,  requireApproval: true,  approverGroupId: 3,  offerWifi: true,  acceptFromLine: true,  acceptFromKiosk: true,  acceptFromCounter: true,  isActive: true },
-      { departmentId: 3, requirePersonName: true,  requireApproval: true,  approverGroupId: 5,  offerWifi: true,  acceptFromLine: true,  acceptFromKiosk: true,  acceptFromCounter: true,  isActive: true },
-      { departmentId: 4, requirePersonName: true,  requireApproval: true,  approverGroupId: 6,  offerWifi: false, acceptFromLine: true,  acceptFromKiosk: false, acceptFromCounter: true,  isActive: true },
-      { departmentId: 5, requirePersonName: true,  requireApproval: false,                      offerWifi: true,  acceptFromLine: true,  acceptFromKiosk: true,  acceptFromCounter: true,  isActive: true },
-      { departmentId: 8, requirePersonName: false, requireApproval: false,                      offerWifi: false, acceptFromLine: true,  acceptFromKiosk: true,  acceptFromCounter: true,  isActive: true },
-      { departmentId: 9, requirePersonName: true,  requireApproval: true,  approverGroupId: 10, offerWifi: true,  acceptFromLine: true,  acceptFromKiosk: false, acceptFromCounter: true,  isActive: true },
+      { departmentId: 1, requirePersonName: true,  requireApproval: true,  approverGroupId: 1,  offerWifi: true,  acceptFromLine: true,  acceptFromWeb: true,  acceptFromKiosk: true,  acceptFromCounter: true,  isActive: true },
+      { departmentId: 2, requirePersonName: true,  requireApproval: true,  approverGroupId: 3,  offerWifi: true,  acceptFromLine: true,  acceptFromWeb: true,  acceptFromKiosk: true,  acceptFromCounter: true,  isActive: true },
+      { departmentId: 3, requirePersonName: true,  requireApproval: true,  approverGroupId: 5,  offerWifi: true,  acceptFromLine: true,  acceptFromWeb: true,  acceptFromKiosk: true,  acceptFromCounter: true,  isActive: true },
+      { departmentId: 4, requirePersonName: true,  requireApproval: true,  approverGroupId: 6,  offerWifi: false, acceptFromLine: true,  acceptFromWeb: true,  acceptFromKiosk: false, acceptFromCounter: true,  isActive: true },
+      { departmentId: 5, requirePersonName: true,  requireApproval: false,                      offerWifi: true,  acceptFromLine: true,  acceptFromWeb: true,  acceptFromKiosk: true,  acceptFromCounter: true,  isActive: true },
+      { departmentId: 8, requirePersonName: false, requireApproval: false,                      offerWifi: false, acceptFromLine: true,  acceptFromWeb: true,  acceptFromKiosk: true,  acceptFromCounter: true,  isActive: true },
+      { departmentId: 9, requirePersonName: true,  requireApproval: true,  approverGroupId: 10, offerWifi: true,  acceptFromLine: true,  acceptFromWeb: true,  acceptFromKiosk: false, acceptFromCounter: true,  isActive: true },
     ],
     isActive: true,
     order: 1,
@@ -1274,16 +1277,17 @@ export const visitPurposeConfigs: VisitPurposeConfig[] = [
     nameEn: "Meeting / Seminar",
     icon: "📋",
     showOnLine: true,
+    showOnWeb: true,
     showOnKiosk: true,
     showOnCounter: true,
     allowedEntryModes: ["single", "period"],
     kioskConfig: { allowedDocuments: [1, 2, 4, 5], requirePhoto: true },
     counterConfig: { allowedDocuments: [1, 2, 3, 4, 5], requirePhoto: false },
     departmentRules: [
-      { departmentId: 1, requirePersonName: true,  requireApproval: true,  approverGroupId: 1,  offerWifi: true,  acceptFromLine: true,  acceptFromKiosk: true,  acceptFromCounter: true,  isActive: true },
-      { departmentId: 3, requirePersonName: true,  requireApproval: true,  approverGroupId: 5,  offerWifi: true,  acceptFromLine: true,  acceptFromKiosk: false, acceptFromCounter: true,  isActive: true },
-      { departmentId: 4, requirePersonName: true,  requireApproval: false,                      offerWifi: true,  acceptFromLine: true,  acceptFromKiosk: true,  acceptFromCounter: true,  isActive: true },
-      { departmentId: 9, requirePersonName: true,  requireApproval: true,  approverGroupId: 10, offerWifi: true,  acceptFromLine: true,  acceptFromKiosk: false, acceptFromCounter: true,  isActive: true },
+      { departmentId: 1, requirePersonName: true,  requireApproval: true,  approverGroupId: 1,  offerWifi: true,  acceptFromLine: true,  acceptFromWeb: true,  acceptFromKiosk: true,  acceptFromCounter: true,  isActive: true },
+      { departmentId: 3, requirePersonName: true,  requireApproval: true,  approverGroupId: 5,  offerWifi: true,  acceptFromLine: true,  acceptFromWeb: true,  acceptFromKiosk: false, acceptFromCounter: true,  isActive: true },
+      { departmentId: 4, requirePersonName: true,  requireApproval: false,                      offerWifi: true,  acceptFromLine: true,  acceptFromWeb: true,  acceptFromKiosk: true,  acceptFromCounter: true,  isActive: true },
+      { departmentId: 9, requirePersonName: true,  requireApproval: true,  approverGroupId: 10, offerWifi: true,  acceptFromLine: true,  acceptFromWeb: true,  acceptFromKiosk: false, acceptFromCounter: true,  isActive: true },
     ],
     isActive: true,
     order: 2,
@@ -1294,15 +1298,16 @@ export const visitPurposeConfigs: VisitPurposeConfig[] = [
     nameEn: "Document / Parcel Delivery",
     icon: "📄",
     showOnLine: true,
+    showOnWeb: true,
     showOnKiosk: true,
     showOnCounter: true,
     allowedEntryModes: ["single"],
     kioskConfig: { allowedDocuments: [1, 3], requirePhoto: true },
     counterConfig: { allowedDocuments: [1, 3, 2], requirePhoto: false },
     departmentRules: [
-      { departmentId: 1, requirePersonName: false, requireApproval: false,                     offerWifi: false, acceptFromLine: true,  acceptFromKiosk: true,  acceptFromCounter: true,  isActive: true },
-      { departmentId: 2, requirePersonName: false, requireApproval: false,                     offerWifi: false, acceptFromLine: true,  acceptFromKiosk: true,  acceptFromCounter: true,  isActive: true },
-      { departmentId: 4, requirePersonName: true,  requireApproval: true,  approverGroupId: 6, offerWifi: false, acceptFromLine: false, acceptFromKiosk: true,  acceptFromCounter: true,  isActive: true },
+      { departmentId: 1, requirePersonName: false, requireApproval: false,                     offerWifi: false, acceptFromLine: true,  acceptFromWeb: true,  acceptFromKiosk: true,  acceptFromCounter: true,  isActive: true },
+      { departmentId: 2, requirePersonName: false, requireApproval: false,                     offerWifi: false, acceptFromLine: true,  acceptFromWeb: true,  acceptFromKiosk: true,  acceptFromCounter: true,  isActive: true },
+      { departmentId: 4, requirePersonName: true,  requireApproval: true,  approverGroupId: 6, offerWifi: false, acceptFromLine: false, acceptFromWeb: false, acceptFromKiosk: true,  acceptFromCounter: true,  isActive: true },
     ],
     isActive: true,
     order: 3,
@@ -1313,14 +1318,15 @@ export const visitPurposeConfigs: VisitPurposeConfig[] = [
     nameEn: "Contractor / Maintenance",
     icon: "🔧",
     showOnLine: false,
+    showOnWeb: false,
     showOnKiosk: true,
     showOnCounter: true,
     allowedEntryModes: ["single", "period"],
     kioskConfig: { allowedDocuments: [1, 3], requirePhoto: true },
     counterConfig: { allowedDocuments: [1, 2, 3, 4], requirePhoto: true },
     departmentRules: [
-      { departmentId: 2, requirePersonName: false, requireApproval: true,  approverGroupId: 4, offerWifi: false, acceptFromLine: false, acceptFromKiosk: true,  acceptFromCounter: true,  isActive: true },
-      { departmentId: 6, requirePersonName: false, requireApproval: true,  approverGroupId: 9, offerWifi: false, acceptFromLine: false, acceptFromKiosk: true,  acceptFromCounter: true,  isActive: true },
+      { departmentId: 2, requirePersonName: false, requireApproval: true,  approverGroupId: 4, offerWifi: false, acceptFromLine: false, acceptFromWeb: false, acceptFromKiosk: true,  acceptFromCounter: true,  isActive: true },
+      { departmentId: 6, requirePersonName: false, requireApproval: true,  approverGroupId: 9, offerWifi: false, acceptFromLine: false, acceptFromWeb: false, acceptFromKiosk: true,  acceptFromCounter: true,  isActive: true },
     ],
     isActive: true,
     order: 4,
@@ -1331,13 +1337,14 @@ export const visitPurposeConfigs: VisitPurposeConfig[] = [
     nameEn: "Job Application / Interview",
     icon: "💼",
     showOnLine: true,
+    showOnWeb: true,
     showOnKiosk: true,
     showOnCounter: true,
     allowedEntryModes: ["single"],
     kioskConfig: { allowedDocuments: [1, 2, 5], requirePhoto: true },
     counterConfig: { allowedDocuments: [1, 2, 3, 4, 5], requirePhoto: true },
     departmentRules: [
-      { departmentId: 2, requirePersonName: true,  requireApproval: false, offerWifi: false, acceptFromLine: true,  acceptFromKiosk: true,  acceptFromCounter: true,  isActive: true },
+      { departmentId: 2, requirePersonName: true,  requireApproval: false, offerWifi: false, acceptFromLine: true,  acceptFromWeb: true,  acceptFromKiosk: true,  acceptFromCounter: true,  isActive: true },
     ],
     isActive: true,
     order: 5,
@@ -1348,15 +1355,16 @@ export const visitPurposeConfigs: VisitPurposeConfig[] = [
     nameEn: "Study Visit / Tour",
     icon: "🎓",
     showOnLine: true,
+    showOnWeb: true,
     showOnKiosk: false,
     showOnCounter: true,
     allowedEntryModes: ["single", "period"],
     kioskConfig: { allowedDocuments: [1, 2, 5], requirePhoto: true },
     counterConfig: { allowedDocuments: [1, 2, 3, 4, 5], requirePhoto: false },
     departmentRules: [
-      { departmentId: 4, requirePersonName: true,  requireApproval: true,  approverGroupId: 7, offerWifi: true,  acceptFromLine: true,  acceptFromKiosk: false, acceptFromCounter: true,  isActive: true },
-      { departmentId: 5, requirePersonName: true,  requireApproval: true,  approverGroupId: 8, offerWifi: true,  acceptFromLine: true,  acceptFromKiosk: false, acceptFromCounter: true,  isActive: true },
-      { departmentId: 7, requirePersonName: false, requireApproval: true,                      offerWifi: true,  acceptFromLine: true,  acceptFromKiosk: false, acceptFromCounter: true,  isActive: false },
+      { departmentId: 4, requirePersonName: true,  requireApproval: true,  approverGroupId: 7, offerWifi: true,  acceptFromLine: true,  acceptFromWeb: true,  acceptFromKiosk: false, acceptFromCounter: true,  isActive: true },
+      { departmentId: 5, requirePersonName: true,  requireApproval: true,  approverGroupId: 8, offerWifi: true,  acceptFromLine: true,  acceptFromWeb: true,  acceptFromKiosk: false, acceptFromCounter: true,  isActive: true },
+      { departmentId: 7, requirePersonName: false, requireApproval: true,                      offerWifi: true,  acceptFromLine: true,  acceptFromWeb: true,  acceptFromKiosk: false, acceptFromCounter: true,  isActive: false },
     ],
     isActive: true,
     order: 6,
@@ -1367,15 +1375,16 @@ export const visitPurposeConfigs: VisitPurposeConfig[] = [
     nameEn: "Delivery / Pickup",
     icon: "📦",
     showOnLine: false,
+    showOnWeb: false,
     showOnKiosk: true,
     showOnCounter: true,
     allowedEntryModes: ["single"],
     kioskConfig: { allowedDocuments: [1, 3], requirePhoto: false },
     counterConfig: { allowedDocuments: [1, 3], requirePhoto: false },
     departmentRules: [
-      { departmentId: 1, requirePersonName: false, requireApproval: false, offerWifi: false, acceptFromLine: false, acceptFromKiosk: true,  acceptFromCounter: true,  isActive: true },
-      { departmentId: 2, requirePersonName: false, requireApproval: false, offerWifi: false, acceptFromLine: false, acceptFromKiosk: true,  acceptFromCounter: true,  isActive: true },
-      { departmentId: 4, requirePersonName: false, requireApproval: false, offerWifi: false, acceptFromLine: false, acceptFromKiosk: true,  acceptFromCounter: true,  isActive: true },
+      { departmentId: 1, requirePersonName: false, requireApproval: false, offerWifi: false, acceptFromLine: false, acceptFromWeb: false, acceptFromKiosk: true,  acceptFromCounter: true,  isActive: true },
+      { departmentId: 2, requirePersonName: false, requireApproval: false, offerWifi: false, acceptFromLine: false, acceptFromWeb: false, acceptFromKiosk: true,  acceptFromCounter: true,  isActive: true },
+      { departmentId: 4, requirePersonName: false, requireApproval: false, offerWifi: false, acceptFromLine: false, acceptFromWeb: false, acceptFromKiosk: true,  acceptFromCounter: true,  isActive: true },
     ],
     isActive: true,
     order: 7,
@@ -1386,14 +1395,15 @@ export const visitPurposeConfigs: VisitPurposeConfig[] = [
     nameEn: "Other",
     icon: "🔖",
     showOnLine: true,
+    showOnWeb: true,
     showOnKiosk: true,
     showOnCounter: true,
     allowedEntryModes: ["single"],
     kioskConfig: { allowedDocuments: [1, 2], requirePhoto: false },
     counterConfig: { allowedDocuments: [1, 2, 3], requirePhoto: false },
     departmentRules: [
-      { departmentId: 1, requirePersonName: false, requireApproval: true,  approverGroupId: 2, offerWifi: false, acceptFromLine: true,  acceptFromKiosk: true,  acceptFromCounter: true,  isActive: true },
-      { departmentId: 2, requirePersonName: false, requireApproval: true,  approverGroupId: 3, offerWifi: false, acceptFromLine: true,  acceptFromKiosk: true,  acceptFromCounter: true,  isActive: true },
+      { departmentId: 1, requirePersonName: false, requireApproval: true,  approverGroupId: 2, offerWifi: false, acceptFromLine: true,  acceptFromWeb: true,  acceptFromKiosk: true,  acceptFromCounter: true,  isActive: true },
+      { departmentId: 2, requirePersonName: false, requireApproval: true,  approverGroupId: 3, offerWifi: false, acceptFromLine: true,  acceptFromWeb: true,  acceptFromKiosk: true,  acceptFromCounter: true,  isActive: true },
     ],
     isActive: false,
     order: 8,

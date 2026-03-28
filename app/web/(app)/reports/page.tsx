@@ -78,8 +78,9 @@ export default function ReportsPage() {
 
     // Channel breakdown — rendered from shared enum (reportChannel)
     const reportChannelEnum: Record<string, { label: string; color: string; pct: number }> = {
-      kiosk:   { label: "Kiosk",    color: "bg-blue-500",   pct: 0.45 },
-      line:    { label: "LINE OA",  color: "bg-green-500",  pct: 0.35 },
+      kiosk:   { label: "Kiosk",    color: "bg-blue-500",   pct: 0.40 },
+      line:    { label: "LINE OA",  color: "bg-green-500",  pct: 0.25 },
+      web:     { label: "Web App",  color: "bg-indigo-500", pct: 0.15 },
       counter: { label: "Counter",  color: "bg-purple-500", pct: 0.15 },
       walkin:  { label: "Walk-in",  color: "bg-amber-500",  pct: 0.05 },
     };

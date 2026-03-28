@@ -11,7 +11,7 @@ import { cn } from "@/lib/utils";
 import { useRichMenu } from "@/components/mobile/RichMenuContext";
 import { staffMembers, visitPurposeConfigs } from "@/lib/mock-data";
 
-// Visit types rendered from visitPurposeConfigs — filter showOnLine (LINE + Web App channel)
+// Visit types rendered from visitPurposeConfigs — filter showOnLine (LINE OA channel)
 const visitTypes = visitPurposeConfigs
     .filter((c) => c.isActive && c.showOnLine)
     .sort((a, b) => a.order - b.order)

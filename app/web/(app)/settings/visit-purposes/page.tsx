@@ -115,6 +115,7 @@ export default function VisitPurposeSettingsPage() {
     0
   );
   const onLine = activeConfigs.filter((c) => c.showOnLine).length;
+  const onWeb = activeConfigs.filter((c) => c.showOnWeb).length;
   const onKiosk = activeConfigs.filter((c) => c.showOnKiosk).length;
   const onCounter = activeConfigs.filter((c) => c.showOnCounter).length;
 
@@ -218,9 +219,9 @@ export default function VisitPurposeSettingsPage() {
             bgColor="bg-warning-light"
           />
           <SummaryCard
-            label="LINE / Kiosk / Counter"
+            label="LINE / Web / Kiosk / Counter"
             value={onLine}
-            sub={`LINE ${onLine} · Kiosk ${onKiosk} · Counter ${onCounter}`}
+            sub={`LINE ${onLine} · Web ${onWeb} · Kiosk ${onKiosk} · Counter ${onCounter}`}
             color="text-success"
             bgColor="bg-success-light"
           />
@@ -325,6 +326,7 @@ function PurposeCard({
             </span>
             <span className="flex items-center gap-1">
               {config.showOnLine && <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-50 text-green-700">LINE</span>}
+              {config.showOnWeb && <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-indigo-50 text-indigo-700">Web</span>}
               {config.showOnKiosk && <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-700">Kiosk</span>}
               {config.showOnCounter && <span className="px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-50 text-amber-700">Counter</span>}
             </span>
@@ -396,6 +398,7 @@ function PurposeCard({
                   <th className="px-5 py-3 text-center">กลุ่มผู้อนุมัติ</th>
                   <th className="px-5 py-3 text-center">WiFi</th>
                   <th className="px-5 py-3 text-center">รับจาก LINE</th>
+                  <th className="px-5 py-3 text-center">รับจาก Web</th>
                   <th className="px-5 py-3 text-center">รับจาก Kiosk</th>
                   <th className="px-5 py-3 text-center">รับจาก Counter</th>
                   <th className="px-5 py-3 text-center">สถานะ</th>
@@ -511,6 +514,15 @@ function DeptRuleRow({ rule, onEdit }: { rule: DepartmentRule; onEdit: () => voi
         />
       </td>
 
+      {/* acceptFromWeb */}
+      <td className="px-5 py-3.5 text-center">
+        <BoolIcon
+          value={rule.acceptFromWeb}
+          trueIcon={<Monitor size={13} />}
+          trueClass="bg-indigo-50 text-indigo-600"
+        />
+      </td>
+
       {/* acceptFromKiosk */}
       <td className="px-5 py-3.5 text-center">
         <BoolIcon
@@ -588,6 +600,7 @@ function PurposeDrawer({
   const [isActive, setIsActive] = useState(true);
   const [order, setOrder] = useState(1);
   const [showOnLine, setShowOnLine] = useState(true);
+  const [showOnWeb, setShowOnWeb] = useState(true);
   const [showOnKiosk, setShowOnKiosk] = useState(true);
   const [showOnCounter, setShowOnCounter] = useState(true);
   const [kioskDocs, setKioskDocs] = useState<number[]>(defaultChannel.allowedDocuments);
@@ -606,6 +619,7 @@ function PurposeDrawer({
       setIsActive(config.isActive);
       setOrder(config.order);
       setShowOnLine(config.showOnLine);
+      setShowOnWeb(config.showOnWeb);
       setShowOnKiosk(config.showOnKiosk);
       setShowOnCounter(config.showOnCounter);
       setKioskDocs(config.kioskConfig.allowedDocuments);
@@ -620,6 +634,7 @@ function PurposeDrawer({
       setIsActive(true);
       setOrder(visitPurposeConfigs.length + 1);
       setShowOnLine(true);
+      setShowOnWeb(true);
       setShowOnKiosk(true);
       setShowOnCounter(true);
       setKioskDocs([1]);
@@ -741,10 +756,17 @@ function PurposeDrawer({
 
           <ToggleOption
             icon={<Smartphone size={16} className="text-green-600" />}
-            label="LINE OA + Web App"
-            description="แสดงวัตถุประสงค์นี้บน LINE OA และ Web App"
+            label="LINE OA"
+            description="แสดงวัตถุประสงค์นี้บน LINE OA"
             value={showOnLine}
             onChange={setShowOnLine}
+          />
+          <ToggleOption
+            icon={<Monitor size={16} className="text-indigo-600" />}
+            label="Web App"
+            description="แสดงวัตถุประสงค์นี้บน Web App"
+            value={showOnWeb}
+            onChange={setShowOnWeb}
           />
           <ToggleOption
             icon={<Monitor size={16} className="text-blue-600" />}
@@ -893,10 +915,11 @@ function PurposeDrawer({
           <div className="mt-2 flex items-center gap-2 text-[11px]">
             <Smartphone size={12} className="text-green-600" />
             <span className="text-text-secondary">ช่องทาง:</span>
-            {showOnLine && <span className="px-1.5 py-0.5 rounded-full bg-green-50 text-green-700 font-medium">LINE+Web</span>}
+            {showOnLine && <span className="px-1.5 py-0.5 rounded-full bg-green-50 text-green-700 font-medium">LINE</span>}
+            {showOnWeb && <span className="px-1.5 py-0.5 rounded-full bg-indigo-50 text-indigo-700 font-medium">Web</span>}
             {showOnKiosk && <span className="px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 font-medium">Kiosk</span>}
             {showOnCounter && <span className="px-1.5 py-0.5 rounded-full bg-amber-50 text-amber-700 font-medium">Counter</span>}
-            {!showOnLine && !showOnKiosk && !showOnCounter && <span className="text-text-muted">ไม่มีช่องทาง</span>}
+            {!showOnLine && !showOnWeb && !showOnKiosk && !showOnCounter && <span className="text-text-muted">ไม่มีช่องทาง</span>}
           </div>
         </div>
       </div>
@@ -932,6 +955,7 @@ function DeptRuleDrawer({
   const [approverGroupId, setApproverGroupId] = useState(rule?.approverGroupId ?? 0);
   const [offerWifi, setOfferWifi] = useState(rule?.offerWifi ?? false);
   const [acceptFromLine, setAcceptFromLine] = useState(rule?.acceptFromLine ?? true);
+  const [acceptFromWeb, setAcceptFromWeb] = useState(rule?.acceptFromWeb ?? true);
   const [acceptFromKiosk, setAcceptFromKiosk] = useState(rule?.acceptFromKiosk ?? true);
   const [acceptFromCounter, setAcceptFromCounter] = useState(rule?.acceptFromCounter ?? true);
   const [isActive, setIsActive] = useState(rule?.isActive ?? true);
@@ -945,6 +969,7 @@ function DeptRuleDrawer({
       setApproverGroupId(rule.approverGroupId ?? 0);
       setOfferWifi(rule.offerWifi);
       setAcceptFromLine(rule.acceptFromLine);
+      setAcceptFromWeb(rule.acceptFromWeb);
       setAcceptFromKiosk(rule.acceptFromKiosk);
       setAcceptFromCounter(rule.acceptFromCounter);
       setIsActive(rule.isActive);
@@ -955,6 +980,7 @@ function DeptRuleDrawer({
       setApproverGroupId(0);
       setOfferWifi(false);
       setAcceptFromLine(true);
+      setAcceptFromWeb(true);
       setAcceptFromKiosk(true);
       setAcceptFromCounter(true);
       setIsActive(true);
@@ -1046,10 +1072,18 @@ function DeptRuleDrawer({
 
           <ToggleOption
             icon={<Smartphone size={16} className="text-green-600" />}
-            label="รับจาก LINE OA + Web App"
-            description="แผนกนี้โผล่ให้เลือกเมื่อผู้ใช้เข้าจาก LINE / Web App"
+            label="รับจาก LINE OA"
+            description="แผนกนี้โผล่ให้เลือกเมื่อผู้ใช้เข้าจาก LINE OA"
             value={acceptFromLine}
             onChange={setAcceptFromLine}
+          />
+
+          <ToggleOption
+            icon={<Monitor size={16} className="text-indigo-600" />}
+            label="รับจาก Web App"
+            description="แผนกนี้โผล่ให้เลือกเมื่อผู้ใช้เข้าจาก Web App"
+            value={acceptFromWeb}
+            onChange={setAcceptFromWeb}
           />
 
           <ToggleOption
