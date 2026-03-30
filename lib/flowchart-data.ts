@@ -953,16 +953,18 @@ const visitSlipsFlow: PageFlowData = {
   menuName: "แบบฟอร์ม Visit Slip",
   menuNameEn: "Visit Slip Templates",
   path: "/web/settings/visit-slips",
-  summary: "จัดการ Visit Slip (Thermal 80mm) — ตั้งค่า Section, เปิด/ปิด Field, แก้ไข Label, Live Preview, และสลิปพิมพ์จาก Kiosk",
+  summary: "จัดการ Visit Slip (Thermal 80mm) — ตั้งค่า Section, อัปโหลดโลโก้/ปรับขนาด, ลงชื่อเจ้าหน้าที่/ประทับตรา, เปิด/ปิด Field, แก้ไข Label, Live Preview, และสลิปพิมพ์จาก Kiosk",
   flowcharts: [
     {
       id: "vs-section-edit",
       title: "การแก้ไข Section & Field บนสลิป",
       titleEn: "Section & Field Configuration Flow",
-      description: "ขั้นตอนการปรับแต่ง Visit Slip ผ่าน Section Editor + Live Preview",
+      description: "ขั้นตอนการปรับแต่ง Visit Slip ผ่าน Logo Upload, Section Editor, Officer Sign + Live Preview",
       steps: [
         { id: "s1", label: "เปิดหน้า Visit Slip Editor", type: "start" },
-        { id: "s2", label: "แสดง 9 Sections\n(Header, SlipNo, Visitor,\nHost, Time, Extras, WiFi,\nQR, Footer)", type: "process" },
+        { id: "s1a", label: "อัปโหลดโลโก้หน่วยงาน\n(PNG/JPG/SVG/WebP ≤200KB)", type: "subprocess" },
+        { id: "s1b", label: "ปรับขนาดโลโก้\n(Slider 20–100px)", type: "process" },
+        { id: "s2", label: "แสดง 10 Sections\n(Header, SlipNo, Visitor,\nHost, Time, Extras, WiFi,\nQR, OfficerSign, Footer)", type: "process" },
         { id: "s3", label: "Toggle Section\nเปิด/ปิด", type: "subprocess" },
         { id: "s4", label: "Expand Section\nดู Fields ภายใน", type: "process" },
         { id: "s5", label: "Toggle Field\nเปิด/ปิด", type: "subprocess" },
@@ -972,7 +974,9 @@ const visitSlipsFlow: PageFlowData = {
         { id: "s9", label: "กดบันทึก", type: "end" },
       ],
       connections: [
-        { from: "s1", to: "s2" },
+        { from: "s1", to: "s1a" },
+        { from: "s1a", to: "s1b" },
+        { from: "s1b", to: "s2" },
         { from: "s2", to: "s3" },
         { from: "s3", to: "s4" },
         { from: "s4", to: "s5" },
@@ -1034,6 +1038,27 @@ const visitSlipsFlow: PageFlowData = {
       ],
     },
     {
+      field: "โลโก้หน่วยงาน",
+      fieldEn: "Organization Logo",
+      rules: [
+        "รองรับไฟล์ PNG, JPG, SVG, WebP — แนะนำไม่เกิน 200KB",
+        "ปรับขนาดได้ 20–100px ผ่าน Slider (ค่าเริ่มต้น 40px)",
+        "ลบโลโก้ที่อัปโหลด → กลับไปใช้โลโก้เริ่มต้นของหน่วยงาน",
+        "Live Preview อัปเดตทันทีเมื่ออัปโหลดหรือปรับขนาด",
+      ],
+    },
+    {
+      field: "ลงชื่อเจ้าหน้าที่ / ประทับตรา",
+      fieldEn: "Officer Signature & Stamp",
+      rules: [
+        "เปิด/ปิดทั้ง Section ได้ — ปิดแล้วจะไม่แสดงส่วนลงชื่อและประทับตราบนสลิป",
+        "แก้ไข Label ลงชื่อ (TH/EN) ได้ เช่น 'ลงชื่อเจ้าหน้าที่' → 'ลงชื่อผู้อนุมัติ'",
+        "แก้ไข Label ประทับตรา ได้ เช่น 'ประทับตรา / Stamp' → 'ตราประจำตำแหน่ง'",
+        "แก้ไขข้อความใต้ตรา ได้ เช่น 'ประทับตราหน่วยงาน' → 'ตราหน่วยงาน'",
+        "เส้นลงชื่อ (Signature Line) เปิด/ปิดได้แต่แก้ไขข้อความไม่ได้",
+      ],
+    },
+    {
       field: "WiFi Section",
       fieldEn: "WiFi Info",
       rules: [
@@ -1081,6 +1106,32 @@ const visitSlipsFlow: PageFlowData = {
         "ผู้ติดตาม (Companions) — แสดงจำนวนคนที่มาพร้อมกัน",
         "ทะเบียนรถ (Vehicle Plate) — สำหรับผู้เยี่ยมที่ขับรถมา",
         "ปิดเป็นค่าเริ่มต้น เพราะไม่จำเป็นสำหรับผู้เยี่ยมทั่วไป",
+      ],
+    },
+    {
+      title: "โลโก้หน่วยงาน (Organization Logo)",
+      titleEn: "Organization Logo Upload & Sizing",
+      description: "อัปโหลดและปรับขนาดโลโก้ที่แสดงบน Header ของ Visit Slip",
+      conditions: [
+        "อัปโหลดได้ PNG, JPG, SVG, WebP — แนะนำไม่เกิน 200KB เพื่อความเร็วในการพิมพ์",
+        "ปรับขนาด 20–100px ผ่าน Slider — ค่าเริ่มต้น 40px",
+        "เก็บไฟล์ใน /uploads/ → บันทึก path ลง visit_slip_templates.logo_url",
+        "ลบโลโก้ → set logo_url = null → fallback เป็นโลโก้เริ่มต้น (/images/mot_logo_slip.png)",
+        "Live Preview อัปเดตทันทีเมื่อเปลี่ยนรูปหรือขนาด",
+      ],
+    },
+    {
+      title: "ลงชื่อเจ้าหน้าที่ / ประทับตรา (Officer Signature & Stamp)",
+      titleEn: "Officer Signature & Stamp Section",
+      description: "ส่วนลงชื่อเจ้าหน้าที่ผู้รับผิดชอบและประทับตราหน่วยงาน — อยู่ระหว่าง QR Code กับ Footer",
+      conditions: [
+        "แบ่งเป็น 2 คอลัมน์: ซ้าย = เส้นลงชื่อ + ชื่อเจ้าหน้าที่ / ขวา = ช่องประทับตรา",
+        "เปิดเป็นค่าเริ่มต้น — ปิดได้ถ้าหน่วยงานไม่ต้องการ",
+        "Label ทั้ง 4 fields แก้ไขได้ (ยกเว้น Signature Line)",
+        "ตอน Runtime (พิมพ์จริง) — เส้นลงชื่อเป็นช่องว่างให้เจ้าหน้าที่เซ็นด้วยมือ",
+        "ตอน Runtime — ช่องประทับตราเป็นพื้นที่ว่างให้ประทับตรายาง",
+        "Counter App → เจ้าหน้าที่เซ็นชื่อ + ประทับตราก่อนมอบสลิปให้ผู้เยี่ยม",
+        "Kiosk → พิมพ์ช่องว่างไว้ — เจ้าหน้าที่ที่ผู้เยี่ยมไปพบเซ็น + ประทับตราภายหลัง",
       ],
     },
   ],

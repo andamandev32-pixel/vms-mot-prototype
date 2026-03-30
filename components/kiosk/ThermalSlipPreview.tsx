@@ -1,6 +1,6 @@
 "use client";
 
-import { QrCode, Wifi, Scissors } from "lucide-react";
+import { QrCode, Wifi, Scissors, Stamp } from "lucide-react";
 import type { SlipData } from "@/lib/kiosk/kiosk-types";
 
 interface ThermalSlipPreviewProps {
@@ -10,13 +10,31 @@ interface ThermalSlipPreviewProps {
   headerText?: string;
   /** Slip footer text from kiosk config */
   footerText?: string;
+  /** Custom logo image source (URL or data-uri) */
+  logoSrc?: string;
+  /** Logo display size in px (before scale) */
+  logoSize?: number;
+  /** Show officer signature & stamp section */
+  showOfficerSign?: boolean;
+  /** Officer sign label TH */
+  officerSignLabelTh?: string;
+  /** Officer sign label EN */
+  officerSignLabelEn?: string;
+  /** Stamp label */
+  stampLabel?: string;
 }
 
 /**
  * 80mm thermal printer slip preview
  * Actual 80mm = 302px at 96dpi
  */
-export default function ThermalSlipPreview({ data, scale = 1, headerText, footerText }: ThermalSlipPreviewProps) {
+export default function ThermalSlipPreview({
+  data, scale = 1, headerText, footerText, logoSrc, logoSize = 40,
+  showOfficerSign = true,
+  officerSignLabelTh = "ลงชื่อเจ้าหน้าที่ / Officer Signature",
+  officerSignLabelEn = "ประทับตรา / Stamp",
+  stampLabel = "ประทับตราหน่วยงาน",
+}: ThermalSlipPreviewProps) {
   return (
     <div
       className="bg-white text-black font-mono mx-auto shadow-lg"
@@ -28,18 +46,17 @@ export default function ThermalSlipPreview({ data, scale = 1, headerText, footer
     >
       {/* Header — MOTS Logo area */}
       <div className="text-center" style={{ marginBottom: 8 * scale }}>
-        <div
-          className="mx-auto bg-[#1B2B5E] text-white font-bold flex items-center justify-center"
+        <img
+          src={logoSrc || "/images/mot_logo_slip.png"}
+          alt="Logo"
+          className="mx-auto"
           style={{
-            width: 40 * scale,
-            height: 40 * scale,
-            borderRadius: 8 * scale,
-            fontSize: 18 * scale,
+            width: logoSize * scale,
+            height: logoSize * scale,
+            objectFit: "contain",
             marginBottom: 4 * scale,
           }}
-        >
-          🏛️
-        </div>
+        />
         <p className="font-bold" style={{ fontSize: 13 * scale }}>
           {headerText || "กระทรวงการท่องเที่ยวและกีฬา"}
         </p>
@@ -145,6 +162,48 @@ export default function ThermalSlipPreview({ data, scale = 1, headerText, footer
           สแกนเพื่อ Check-out / Scan to Check-out
         </p>
       </div>
+
+      {/* Officer Signature & Stamp */}
+      {showOfficerSign && (
+        <>
+          <DashedLine scale={scale} />
+          <div style={{ margin: `${6 * scale}px 0` }}>
+            <div className="flex gap-2" style={{ marginBottom: 6 * scale }}>
+              {/* Signature area */}
+              <div className="flex-1 text-center">
+                <p style={{ fontSize: 8 * scale, color: "#999", marginBottom: 2 * scale }}>
+                  {officerSignLabelTh}
+                </p>
+                <div
+                  className="border-b border-gray-400 mx-auto"
+                  style={{ width: "80%", height: 24 * scale, marginBottom: 2 * scale }}
+                />
+                <p style={{ fontSize: 7 * scale, color: "#bbb" }}>
+                  (................................................)
+                </p>
+              </div>
+              {/* Stamp area */}
+              <div className="flex-1 text-center">
+                <p style={{ fontSize: 8 * scale, color: "#999", marginBottom: 2 * scale }}>
+                  {officerSignLabelEn}
+                </p>
+                <div
+                  className="mx-auto border-2 border-dashed border-gray-300 rounded flex items-center justify-center"
+                  style={{
+                    width: 44 * scale,
+                    height: 44 * scale,
+                  }}
+                >
+                  <Stamp size={18 * scale} className="text-gray-300" />
+                </div>
+                <p style={{ fontSize: 7 * scale, color: "#bbb", marginTop: 2 * scale }}>
+                  {stampLabel}
+                </p>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
 
       {/* Footer */}
       <DashedLine scale={scale} />

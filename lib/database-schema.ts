@@ -994,7 +994,7 @@ const visitSlipsSchema: PageSchema = {
   menuName: "แบบฟอร์ม Visit Slip",
   menuNameEn: "Visit Slip Templates",
   path: "/web/settings/visit-slips",
-  description: "จัดการ Visit Slip (Thermal 80mm) — กำหนด Section ที่แสดง, ฟิลด์, ป้ายกำกับ, WiFi, QR Code, และ Live Preview",
+  description: "จัดการ Visit Slip (Thermal 80mm) — กำหนด Section ที่แสดง, ฟิลด์, ป้ายกำกับ, โลโก้ (Upload/ปรับขนาด), ลงชื่อเจ้าหน้าที่/ประทับตรา, WiFi, QR Code, และ Live Preview",
   tables: [
     {
       name: "visit_slip_templates",
@@ -1012,13 +1012,15 @@ const visitSlipsSchema: PageSchema = {
         { name: "footer_text_th", type: "VARCHAR(200)", nullable: false, comment: "ข้อความท้ายสลิป (TH)", defaultValue: "กรุณาส่งคืนบัตรเมื่อออกจากอาคาร" },
         { name: "footer_text_en", type: "VARCHAR(200)", nullable: false, comment: "ข้อความท้ายสลิป (EN)", defaultValue: "Please return this pass when leaving" },
         { name: "show_org_logo", type: "BOOLEAN", nullable: false, comment: "แสดงโลโก้หน่วยงานบน Header", defaultValue: "true" },
+        { name: "logo_url", type: "VARCHAR(500)", nullable: true, comment: "URL/path โลโก้ที่อัปโหลด — null = ใช้โลโก้เริ่มต้น", defaultValue: "null" },
+        { name: "logo_size_px", type: "INT", nullable: false, comment: "ขนาดโลโก้ (px) บนสลิป — ปรับได้ 20-100", defaultValue: "40" },
         { name: "is_default", type: "BOOLEAN", nullable: false, comment: "เป็น Template เริ่มต้น (ใช้เมื่อไม่ระบุ)", defaultValue: "false" },
         { name: "is_active", type: "BOOLEAN", nullable: false, comment: "สถานะเปิด/ปิดใช้งาน", defaultValue: "true" },
         { name: "created_at", type: "TIMESTAMP", nullable: false, comment: "วันที่สร้าง", defaultValue: "CURRENT_TIMESTAMP" },
         { name: "updated_at", type: "TIMESTAMP", nullable: false, comment: "วันที่แก้ไขล่าสุด", defaultValue: "CURRENT_TIMESTAMP" },
       ],
       seedData: [
-        { id: 1, name: "Thermal 80mm มาตรฐาน", name_en: "Standard Thermal 80mm", description: "สลิป Thermal 80mm สำหรับ Kiosk / Counter", paper_size: "thermal-80mm", paper_width_px: 302, org_name: "กระทรวงการท่องเที่ยวและกีฬา", org_name_en: "Ministry of Tourism and Sports", slip_title: "VISITOR PASS", footer_text_th: "กรุณาส่งคืนบัตรเมื่อออกจากอาคาร", footer_text_en: "Please return this pass when leaving", show_org_logo: true, is_default: true, is_active: true },
+        { id: 1, name: "Thermal 80mm มาตรฐาน", name_en: "Standard Thermal 80mm", description: "สลิป Thermal 80mm สำหรับ Kiosk / Counter", paper_size: "thermal-80mm", paper_width_px: 302, org_name: "กระทรวงการท่องเที่ยวและกีฬา", org_name_en: "Ministry of Tourism and Sports", slip_title: "VISITOR PASS", footer_text_th: "กรุณาส่งคืนบัตรเมื่อออกจากอาคาร", footer_text_en: "Please return this pass when leaving", show_org_logo: true, logo_url: null, logo_size_px: 40, is_default: true, is_active: true },
       ],
     },
     {
@@ -1042,7 +1044,8 @@ const visitSlipsSchema: PageSchema = {
         { id: 6, template_id: 1, section_key: "extras", name: "ข้อมูลเพิ่มเติม", name_en: "Additional Info", is_enabled: false, sort_order: 6 },
         { id: 7, template_id: 1, section_key: "wifi", name: "WiFi สำหรับผู้เยี่ยม", name_en: "Guest WiFi", is_enabled: true, sort_order: 7 },
         { id: 8, template_id: 1, section_key: "qrCode", name: "QR Code (Check-out)", name_en: "Checkout QR Code", is_enabled: true, sort_order: 8 },
-        { id: 9, template_id: 1, section_key: "footer", name: "ส่วนท้าย (Footer)", name_en: "Footer Section", is_enabled: true, sort_order: 9 },
+        { id: 9, template_id: 1, section_key: "officerSign", name: "ลงชื่อเจ้าหน้าที่ / ประทับตรา", name_en: "Officer Signature & Stamp", is_enabled: true, sort_order: 9 },
+        { id: 10, template_id: 1, section_key: "footer", name: "ส่วนท้าย (Footer)", name_en: "Footer Section", is_enabled: true, sort_order: 10 },
       ],
     },
     {
@@ -1091,9 +1094,14 @@ const visitSlipsSchema: PageSchema = {
         // Section 8: QR Code
         { id: 23, section_id: 8, field_key: "qrCode", label: "QR Code", label_en: "QR Code", is_enabled: true, is_editable: false, sort_order: 1 },
         { id: 24, section_id: 8, field_key: "qrLabel", label: "สแกนเพื่อ Check-out / Scan to Check-out", label_en: "QR Label", is_enabled: true, is_editable: true, sort_order: 2 },
-        // Section 9: Footer
-        { id: 25, section_id: 9, field_key: "footerTh", label: "กรุณาส่งคืนบัตรเมื่อออกจากอาคาร", label_en: "Footer TH", is_enabled: true, is_editable: true, sort_order: 1 },
-        { id: 26, section_id: 9, field_key: "footerEn", label: "Please return this pass when leaving", label_en: "Footer EN", is_enabled: true, is_editable: true, sort_order: 2 },
+        // Section 9: Officer Signature & Stamp
+        { id: 25, section_id: 9, field_key: "officerSignLabel", label: "ลงชื่อเจ้าหน้าที่ / Officer Signature", label_en: "Signature Label", is_enabled: true, is_editable: true, sort_order: 1 },
+        { id: 26, section_id: 9, field_key: "officerSignLine", label: "เส้นลงชื่อ (................................................)", label_en: "Signature Line", is_enabled: true, is_editable: false, sort_order: 2 },
+        { id: 27, section_id: 9, field_key: "stampLabel", label: "ประทับตรา / Stamp", label_en: "Stamp Label", is_enabled: true, is_editable: true, sort_order: 3 },
+        { id: 28, section_id: 9, field_key: "stampPlaceholder", label: "ประทับตราหน่วยงาน", label_en: "Stamp Placeholder Text", is_enabled: true, is_editable: true, sort_order: 4 },
+        // Section 10: Footer
+        { id: 29, section_id: 10, field_key: "footerTh", label: "กรุณาส่งคืนบัตรเมื่อออกจากอาคาร", label_en: "Footer TH", is_enabled: true, is_editable: true, sort_order: 1 },
+        { id: 30, section_id: 10, field_key: "footerEn", label: "Please return this pass when leaving", label_en: "Footer EN", is_enabled: true, is_editable: true, sort_order: 2 },
       ],
     },
     {
@@ -1112,9 +1120,10 @@ const visitSlipsSchema: PageSchema = {
     },
   ],
   relationships: [
-    "visit_slip_templates 1 ──→ N visit_slip_sections (แต่ละ Template มีหลาย Section)",
-    "visit_slip_sections 1 ──→ N visit_slip_fields (แต่ละ Section มีหลาย Field)",
+    "visit_slip_templates 1 ──→ N visit_slip_sections (แต่ละ Template มีหลาย Section — 10 sections default)",
+    "visit_slip_sections 1 ──→ N visit_slip_fields (แต่ละ Section มีหลาย Field — 30 fields default)",
     "visit_slip_templates 1 ←──→ N visit_purposes ผ่าน purpose_slip_mappings",
+    "visit_slip_templates.logo_url → ไฟล์โลโก้ที่อัปโหลดใน /uploads/ (null = ใช้ค่าเริ่มต้น)",
     "purpose_slip_mappings.slip_template_id = null → ใช้ Template ที่ is_default=true",
   ],
 };

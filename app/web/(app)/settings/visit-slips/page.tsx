@@ -15,6 +15,7 @@ import {
   Settings, Printer, Pencil, QrCode, Wifi, Scissors,
   ChevronDown, ChevronUp, Info, Save, Eye,
   GripVertical, Check, X, Plus, ToggleRight, ToggleLeft,
+  Upload, ImageIcon, Trash2, ZoomIn,
 } from "lucide-react";
 import ThermalSlipPreview from "@/components/kiosk/ThermalSlipPreview";
 import type { SlipData } from "@/lib/kiosk/kiosk-types";
@@ -128,6 +129,18 @@ const defaultSections: ThermalSection[] = [
     ],
   },
   {
+    id: "officerSign",
+    name: "ลงชื่อเจ้าหน้าที่ / ประทับตรา",
+    nameEn: "Officer Signature & Stamp",
+    enabled: true,
+    fields: [
+      { key: "officerSignLabel", label: "ลงชื่อเจ้าหน้าที่ / Officer Signature", labelEn: "Signature Label", enabled: true, editable: true },
+      { key: "officerSignLine", label: "เส้นลงชื่อ (................................................)", labelEn: "Signature Line", enabled: true, editable: false },
+      { key: "stampLabel", label: "ประทับตรา / Stamp", labelEn: "Stamp Label", enabled: true, editable: true },
+      { key: "stampPlaceholder", label: "ประทับตราหน่วยงาน", labelEn: "Stamp Placeholder Text", enabled: true, editable: true },
+    ],
+  },
+  {
     id: "footer",
     name: "ส่วนท้าย (Footer)",
     nameEn: "Footer Section",
@@ -173,6 +186,42 @@ export default function VisitSlipTemplatesSettingsPage() {
   const [sections, setSections] = useState<ThermalSection[]>(defaultSections);
   const [expandedSection, setExpandedSection] = useState<string | null>("header");
   const [editingField, setEditingField] = useState<string | null>(null);
+
+  // Logo settings
+  const [logoSrc, setLogoSrc] = useState<string>("/images/mot_logo_slip.png");
+  const [logoSize, setLogoSize] = useState<number>(40);
+  const [logoFileName, setLogoFileName] = useState<string>("mot_logo_slip.png");
+
+  const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith("image/")) return;
+    setLogoFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      setLogoSrc(ev.target?.result as string);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleLogoRemove = () => {
+    setLogoSrc("/images/mot_logo_slip.png");
+    setLogoFileName("mot_logo_slip.png");
+    setLogoSize(40);
+  };
+
+  // Derive officer sign props from sections state
+  const officerSignSection = useMemo(() => sections.find((s) => s.id === "officerSign"), [sections]);
+  const officerSignProps = useMemo(() => {
+    if (!officerSignSection) return {};
+    const field = (key: string) => officerSignSection.fields.find((f) => f.key === key);
+    return {
+      showOfficerSign: officerSignSection.enabled,
+      officerSignLabelTh: field("officerSignLabel")?.label,
+      officerSignLabelEn: field("stampLabel")?.label,
+      stampLabel: field("stampPlaceholder")?.label,
+    };
+  }, [officerSignSection]);
 
   const enabledSections = useMemo(() => sections.filter((s) => s.enabled), [sections]);
   const totalFields = useMemo(() => sections.flatMap((s) => s.fields).length, [sections]);
@@ -261,6 +310,85 @@ export default function VisitSlipTemplatesSettingsPage() {
         <div className="grid grid-cols-[1fr_340px] gap-6 items-start">
           {/* LEFT: Section editor */}
           <div className="space-y-2">
+            {/* Logo Settings Card */}
+            <Card className="border shadow-sm">
+              <CardContent className="p-4 space-y-4">
+                <div className="flex items-center gap-2">
+                  <div className="w-8 h-8 rounded-lg bg-primary-50 text-primary flex items-center justify-center">
+                    <ImageIcon size={16} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold text-text-primary">โลโก้หน่วยงาน</p>
+                    <p className="text-[10px] text-text-muted">Organization Logo — อัปโหลดและปรับขนาดโลโก้บน Visit Slip</p>
+                  </div>
+                </div>
+
+                {/* Upload + Preview row */}
+                <div className="flex items-start gap-4">
+                  {/* Current logo preview */}
+                  <div className="shrink-0 w-20 h-20 rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 flex items-center justify-center overflow-hidden">
+                    <img
+                      src={logoSrc}
+                      alt="Logo preview"
+                      className="max-w-full max-h-full object-contain"
+                    />
+                  </div>
+
+                  <div className="flex-1 space-y-3">
+                    {/* File name + upload/remove buttons */}
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-text-muted truncate max-w-[160px]">{logoFileName}</span>
+                      <label className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary-50 text-primary text-xs font-medium cursor-pointer hover:bg-primary-100 transition-colors">
+                        <Upload size={12} />
+                        อัปโหลด
+                        <input
+                          type="file"
+                          accept="image/png,image/jpeg,image/svg+xml,image/webp"
+                          className="hidden"
+                          onChange={handleLogoUpload}
+                        />
+                      </label>
+                      {logoSrc !== "/images/mot_logo_slip.png" && (
+                        <button
+                          onClick={handleLogoRemove}
+                          className="flex items-center gap-1 px-2 py-1.5 rounded-lg text-red-500 hover:bg-red-50 text-xs transition-colors"
+                        >
+                          <Trash2 size={12} />
+                          ลบ
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Size slider */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <label className="flex items-center gap-1.5 text-xs text-text-muted">
+                          <ZoomIn size={12} />
+                          ขนาดโลโก้
+                        </label>
+                        <span className="text-xs font-mono font-semibold text-text-primary">{logoSize}px</span>
+                      </div>
+                      <input
+                        type="range"
+                        min={20}
+                        max={100}
+                        value={logoSize}
+                        onChange={(e) => setLogoSize(Number(e.target.value))}
+                        className="w-full h-1.5 rounded-full appearance-none bg-gray-200 accent-primary cursor-pointer"
+                      />
+                      <div className="flex justify-between text-[9px] text-text-muted">
+                        <span>20px</span>
+                        <span>60px</span>
+                        <span>100px</span>
+                      </div>
+                    </div>
+
+                    <p className="text-[10px] text-text-muted">รองรับ PNG, JPG, SVG, WebP — แนะนำขนาดไม่เกิน 200KB</p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             {sections.map((section) => {
               const isExpanded = expandedSection === section.id;
               const enabledCount = section.fields.filter((f) => f.enabled).length;
@@ -334,7 +462,7 @@ export default function VisitSlipTemplatesSettingsPage() {
                 </div>
                 <span className="text-[10px] text-text-muted bg-white px-2 py-0.5 rounded-full border border-gray-200">80mm (302px)</span>
               </div>
-              <ThermalSlipPreview data={previewSlipData} scale={0.9} />
+              <ThermalSlipPreview data={previewSlipData} scale={0.9} logoSrc={logoSrc} logoSize={logoSize} {...officerSignProps} />
               <p className="text-[10px] text-text-muted text-center mt-3">
                 <Scissors size={10} className="inline mr-1" />
                 ขนาดจริง 80mm — แสดงที่ 90%
