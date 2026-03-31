@@ -413,15 +413,15 @@ const visitPurposesApi: PageApiDoc = {
 
 const locationsApi: PageApiDoc = {
   pageId: "locations",
-  menuName: "อาคาร / ชั้น / แผนก",
+  menuName: "อาคาร / แผนก / ชั้น",
   menuNameEn: "Locations",
   baseUrl: "/api/locations",
   endpoints: [
     {
       method: "GET",
       path: "/api/locations/buildings",
-      summary: "ดึงรายการอาคารทั้งหมด",
-      summaryEn: "List all buildings",
+      summary: "ดึงรายการอาคารทั้งหมด (พร้อมชั้นและแผนกที่ผูก)",
+      summaryEn: "List all buildings with floors and assigned departments",
       auth: "user",
       responseExample: `{
   "data": [
@@ -435,15 +435,32 @@ const locationsApi: PageApiDoc = {
           "id": 1,
           "name_th": "ชั้น 1",
           "floor_number": 1,
-          "departments": [
-            { "id": 1, "name_th": "ประชาสัมพันธ์", "name_en": "Public Relations" }
-          ]
+          "department_ids": [1, 2]
         }
       ],
       "is_active": true
     }
   ]
 }`,
+    },
+    {
+      method: "GET",
+      path: "/api/locations/departments",
+      summary: "ดึงรายการแผนกทั้งหมด (master data)",
+      summaryEn: "List all departments (master data, independent of floor)",
+      auth: "user",
+      responseExample: `{
+  "data": [
+    {
+      "id": 1,
+      "name_th": "สำนักงานปลัดกระทรวง",
+      "name_en": "Office of the Permanent Secretary",
+      "is_active": true,
+      "location": { "building": "ศูนย์ราชการ อาคาร C", "floor": "ชั้น 3" }
+    }
+  ]
+}`,
+      notes: ["location เป็นค่าที่ derive จาก floor_departments — ถ้าแผนกยังไม่ผูกชั้น จะเป็น null"],
     },
     {
       method: "POST",
@@ -459,6 +476,17 @@ const locationsApi: PageApiDoc = {
     },
     {
       method: "POST",
+      path: "/api/locations/departments",
+      summary: "สร้างแผนกใหม่ (master data — ไม่ต้องระบุชั้น)",
+      summaryEn: "Create department (master data, no floor required)",
+      auth: "admin",
+      requestBody: [
+        { name: "name_th", type: "string", required: true, description: "ชื่อแผนก (ไทย)" },
+        { name: "name_en", type: "string", required: false, description: "ชื่อแผนก (อังกฤษ)" },
+      ],
+    },
+    {
+      method: "POST",
       path: "/api/locations/buildings/:buildingId/floors",
       summary: "เพิ่มชั้นในอาคาร",
       summaryEn: "Add floor to building",
@@ -469,21 +497,22 @@ const locationsApi: PageApiDoc = {
       requestBody: [
         { name: "name_th", type: "string", required: true, description: "ชื่อชั้น เช่น ชั้น 1" },
         { name: "floor_number", type: "number", required: true, description: "ลำดับชั้น" },
+        { name: "department_ids", type: "number[]", required: false, description: "รหัสแผนกที่อยู่ในชั้นนี้" },
       ],
     },
     {
-      method: "POST",
+      method: "PUT",
       path: "/api/locations/floors/:floorId/departments",
-      summary: "เพิ่มแผนกในชั้น",
-      summaryEn: "Add department to floor",
+      summary: "กำหนดแผนกที่อยู่ในชั้น (assign/unassign)",
+      summaryEn: "Assign departments to floor",
       auth: "admin",
       pathParams: [
         { name: "floorId", type: "number", required: true, description: "Floor ID" },
       ],
       requestBody: [
-        { name: "name_th", type: "string", required: true, description: "ชื่อแผนก (ไทย)" },
-        { name: "name_en", type: "string", required: false, description: "ชื่อแผนก (อังกฤษ)" },
+        { name: "department_ids", type: "number[]", required: true, description: "รายการ department ID ที่ต้องการผูกกับชั้นนี้ (แทนที่ทั้งหมด)" },
       ],
+      notes: ["ส่ง array ใหม่ทั้งชุด — ระบบจะ sync floor_departments ให้ตรง"],
     },
     {
       method: "DELETE",
@@ -495,7 +524,11 @@ const locationsApi: PageApiDoc = {
         { name: "type", type: "string", required: true, description: "buildings | floors | departments" },
         { name: "id", type: "number", required: true, description: "ID ของรายการ" },
       ],
-      notes: ["ลบอาคาร → cascade ลบชั้นและแผนกที่อยู่ภายใน", "ถ้ามี appointment อ้างอิง → soft delete"],
+      notes: [
+        "ลบอาคาร → cascade ลบชั้น (ถอดแผนกออกอัตโนมัติ แต่ไม่ลบแผนก)",
+        "ลบชั้น → ถอดแผนกที่ผูกอยู่ออก (ไม่ลบแผนก)",
+        "ลบแผนก → ถ้ามี Staff/Appointment อ้างอิง → soft delete (inactive)",
+      ],
     },
   ],
 };
