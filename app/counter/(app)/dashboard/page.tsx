@@ -24,6 +24,9 @@ import {
   staffMembers,
   departments,
   type ServicePoint,
+  type BlocklistEntry,
+  checkBlocklist,
+  getDepartmentLocation,
 } from "@/lib/mock-data";
 import { purposeDepartmentMap } from "@/lib/kiosk/kiosk-mock-data";
 
@@ -279,6 +282,8 @@ export default function CounterDashboard() {
   const [checkoutScan, setCheckoutScan] = useState("");
   const [time, setTime] = useState("");
   const [date, setDate] = useState("");
+  const [blocklistWarning, setBlocklistWarning] = useState<BlocklistEntry | null>(null);
+  const [showBlocklistModal, setShowBlocklistModal] = useState(false);
   const [aptPage, setAptPage] = useState(1);
   const [checkedInPage, setCheckedInPage] = useState(1);
   const PANEL_PAGE_SIZE = 5;
@@ -357,7 +362,7 @@ export default function CounterDashboard() {
   }, [selectedPurposeId]);
 
   const purposeFloors = useMemo(() => {
-    return [...new Set(purposeDepartments.map(d => d.floor))].sort((a, b) => {
+    return [...new Set(purposeDepartments.map(d => getDepartmentLocation(d.id)?.floor).filter(Boolean) as string[])].sort((a, b) => {
       const numA = parseInt(a.replace(/\D/g, ""));
       const numB = parseInt(b.replace(/\D/g, ""));
       return numA - numB;
@@ -365,7 +370,7 @@ export default function CounterDashboard() {
   }, [purposeDepartments]);
 
   const filteredDepartments = floorFilter
-    ? purposeDepartments.filter(d => d.floor === floorFilter)
+    ? purposeDepartments.filter(d => getDepartmentLocation(d.id)?.floor === floorFilter)
     : purposeDepartments;
 
   const selectedDepartment = selectedDepartmentId ? departments.find(d => d.id === selectedDepartmentId) : null;
@@ -386,7 +391,18 @@ export default function CounterDashboard() {
     setAppointmentSearch("");
   }, []);
 
-  const handleSave = useCallback(() => {
+  // Blocklist check — runs before save
+  const handleCheckAndSave = useCallback(() => {
+    const blocked = checkBlocklist(firstName, lastName);
+    if (blocked) {
+      setBlocklistWarning(blocked);
+      setShowBlocklistModal(true);
+      return; // ไม่ save → แสดง warning ก่อน
+    }
+    doSave();
+  }, [firstName, lastName]);
+
+  const doSave = useCallback(() => {
     const slip = `eVMS-${String(Math.floor(Math.random() * 9000) + 1000)}`;
     if (checkinMode === "walkin") {
       setSuccessData({ name: `${firstName} ${lastName}`, slip, type: "Walk-in", method: inputMethod });
@@ -394,7 +410,12 @@ export default function CounterDashboard() {
       setSuccessData({ name: selectedAppointment.visitorName, slip, type: "นัดหมาย", method: inputMethod });
     }
     setShowSuccess(true);
+    setShowBlocklistModal(false);
+    setBlocklistWarning(null);
   }, [checkinMode, firstName, lastName, selectedAppointment, inputMethod]);
+
+  // Keep old ref for backward compat
+  const handleSave = handleCheckAndSave;
 
   const handleCloseSuccess = useCallback(() => {
     setShowSuccess(false);
@@ -823,7 +844,7 @@ export default function CounterDashboard() {
                             <p className="text-xs font-bold leading-tight truncate">{dept.name}</p>
                             <p className="text-[10px] opacity-60 truncate">{dept.nameEn}</p>
                           </div>
-                          <span className="text-[10px] text-text-muted shrink-0">{dept.floor}</span>
+                          <span className="text-[10px] text-text-muted shrink-0">{getDepartmentLocation(dept.id)?.floor ?? ""}</span>
                         </button>
                       ))}
                     </div>
@@ -867,7 +888,7 @@ export default function CounterDashboard() {
               <SummaryRow label="เอกสาร" value={selectedDocTypeId ? identityDocumentTypes.find(d => d.id === selectedDocTypeId)?.name || "-" : "-"} />
               <SummaryRow label="วัตถุประสงค์" value={selectedPurposeId ? visitPurposeConfigs.find(p => p.id === selectedPurposeId)?.name || "-" : "-"} />
               <SummaryRow label="หน่วยงาน" value={selectedDepartment ? selectedDepartment.name : "-"} />
-              <SummaryRow label="ชั้น / อาคาร" value={selectedDepartment ? `${selectedDepartment.floor} — ${selectedDepartment.building}` : "-"} />
+              <SummaryRow label="ชั้น / อาคาร" value={selectedDepartment ? (() => { const loc = getDepartmentLocation(selectedDepartment.id); return loc ? `${loc.floor} — ${loc.building}` : "-"; })() : "-"} />
               <SummaryRow label="ผู้ที่มาพบ" value={contactHost || selectedAppointment?.host || "-"} />
               <SummaryRow label="เบอร์โทร" value={phoneNumber || "-"} />
               <div className="pt-2 border-t border-dashed border-gray-200">
@@ -974,6 +995,70 @@ export default function CounterDashboard() {
         </div>
       )}
       </div>
+
+      {/* ═══ BLOCKLIST WARNING MODAL ═══ */}
+      {showBlocklistModal && blocklistWarning && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-2xl shadow-2xl w-[420px] overflow-hidden">
+            {/* Header */}
+            <div className="bg-red-600 px-6 py-4 flex items-center gap-3">
+              <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+                <Shield size={22} className="text-white" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-white">Blocklist Warning</h3>
+                <p className="text-xs text-white/80">พบรายชื่อในระบบ Blocklist</p>
+              </div>
+            </div>
+
+            {/* Body */}
+            <div className="p-6 space-y-4">
+              <div className="bg-red-50 border border-red-200 rounded-xl p-4 space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-red-600">ชื่อ-สกุล</span>
+                  <span className="font-bold text-red-800">{blocklistWarning.visitor.name}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-red-600">ประเภท</span>
+                  <span className={cn("font-bold px-2 py-0.5 rounded-full text-xs",
+                    blocklistWarning.type === "permanent" ? "bg-red-100 text-red-700" : "bg-amber-100 text-amber-700")}>
+                    {blocklistWarning.type === "permanent" ? "ถาวร (Permanent)" : "ชั่วคราว (Temporary)"}
+                  </span>
+                </div>
+                {blocklistWarning.expiryDate && (
+                  <div className="flex justify-between text-sm">
+                    <span className="text-red-600">หมดอายุ</span>
+                    <span className="font-bold text-red-800">{blocklistWarning.expiryDate}</span>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <p className="text-xs font-bold text-text-secondary mb-1">เหตุผลการ Block</p>
+                <p className="text-sm text-text-primary bg-gray-50 rounded-xl p-3 border border-border">{blocklistWarning.reason}</p>
+              </div>
+
+              <div className="text-xs text-text-muted">
+                <p>เพิ่มโดย: {blocklistWarning.addedBy} | วันที่: {blocklistWarning.addedAt}</p>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="px-6 pb-6 flex gap-3">
+              <button onClick={() => { setShowBlocklistModal(false); setBlocklistWarning(null); handleReset(); }}
+                className="flex-1 h-11 rounded-xl border-2 border-red-200 text-red-600 font-bold text-sm hover:bg-red-50 transition-colors">
+                ยกเลิก — กลับหน้าหลัก
+              </button>
+              {blocklistWarning.type === "temporary" && (
+                <button onClick={doSave}
+                  className="flex-1 h-11 rounded-xl bg-amber-500 text-white font-bold text-sm hover:bg-amber-600 transition-colors">
+                  ดำเนินการต่อ (ชั่วคราว)
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ═══ STATE PANEL (Dev Tool) ═══ */}
       {showStatePanel && (

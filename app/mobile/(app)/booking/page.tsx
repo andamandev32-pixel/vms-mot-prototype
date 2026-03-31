@@ -9,7 +9,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useRichMenu } from "@/components/mobile/RichMenuContext";
-import { staffMembers, visitPurposeConfigs } from "@/lib/mock-data";
+import { staffMembers, visitPurposeConfigs, getDepartmentLocation } from "@/lib/mock-data";
 
 // Visit types rendered from visitPurposeConfigs — filter showOnLine (LINE OA channel)
 const visitTypes = visitPurposeConfigs
@@ -364,7 +364,7 @@ function Step2DateTime({
                                         <div className="min-w-0">
                                             <p className="text-sm font-bold text-text-primary">{s.name}</p>
                                             <p className="text-[11px] text-text-muted truncate">{s.position}</p>
-                                            <p className="text-[10px] text-text-muted">{s.department.name} • {s.department.building} {s.department.floor}</p>
+                                            <p className="text-[10px] text-text-muted">{s.department.name} • {(() => { const loc = getDepartmentLocation(s.department.id); return loc ? `${loc.building} ${loc.floor}` : ""; })()}</p>
                                         </div>
                                     </button>
                                 ))}
@@ -521,7 +521,7 @@ function Step4Confirm({
                         <>
                             <DetailRow label="ผู้รับพบ" value={host.name} />
                             <DetailRow label="แผนก/ฝ่าย" value={host.department.name} />
-                            <DetailRow label="สถานที่" value={`${host.department.building} ${host.department.floor}`} />
+                            <DetailRow label="สถานที่" value={(() => { const loc = getDepartmentLocation(host.department.id); return loc ? `${loc.building} ${loc.floor}` : "-"; })()} />
                         </>
                     )}
                     <div className="border-t border-border my-2" />

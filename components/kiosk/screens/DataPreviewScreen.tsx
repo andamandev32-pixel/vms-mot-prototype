@@ -1,17 +1,19 @@
 "use client";
 
-import { ChevronLeft, User, Calendar, MapPin, CreditCard } from "lucide-react";
+import { ChevronLeft, User, Calendar, MapPin, CreditCard, ShieldAlert } from "lucide-react";
 import type { VisitorIdentity } from "@/lib/kiosk/kiosk-types";
+import type { BlocklistEntry } from "@/lib/mock-data";
 import { maskIdNumber } from "@/lib/kiosk/kiosk-mock-data";
 
 interface DataPreviewScreenProps {
   locale: "th" | "en";
   visitor: VisitorIdentity;
+  blocklistEntry?: BlocklistEntry | null;
   onConfirm: () => void;
   onBack: () => void;
 }
 
-export default function DataPreviewScreen({ locale, visitor, onConfirm, onBack }: DataPreviewScreenProps) {
+export default function DataPreviewScreen({ locale, visitor, blocklistEntry, onConfirm, onBack }: DataPreviewScreenProps) {
   const rows: { icon: React.ReactNode; label: string; value: string }[] = [
     {
       icon: <User size={10} className="text-[#2E3192]" />,
@@ -61,6 +63,26 @@ export default function DataPreviewScreen({ locale, visitor, onConfirm, onBack }
 
       {/* Content */}
       <main className="flex-1 flex flex-col items-center px-3 py-2 gap-2 overflow-hidden">
+        {/* Blocklist Warning Banner */}
+        {blocklistEntry && (
+          <div className="w-full rounded-lg bg-red-50 border-2 border-red-300 p-2 flex items-start gap-2">
+            <ShieldAlert size={14} className="text-red-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-[9px] font-bold text-red-700">
+                {locale === "th" ? "พบรายชื่อใน Blocklist" : "Blocklist Match Found"}
+              </p>
+              <p className="text-[7px] text-red-600 mt-0.5 leading-tight">
+                {blocklistEntry.reason}
+              </p>
+              <p className="text-[7px] text-red-500 mt-0.5">
+                {blocklistEntry.type === "permanent"
+                  ? (locale === "th" ? "ถูก Block ถาวร — ไม่สามารถเข้าพื้นที่ได้" : "Permanently Blocked")
+                  : (locale === "th" ? "ถูก Block ชั่วคราว" : "Temporarily Blocked")}
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Single card — all data in one bordered frame */}
         <div className="w-full rounded-lg bg-gray-50 border border-gray-200 p-2.5 text-[8px] text-gray-600 leading-[1.4] space-y-2">
           {/* Photo + name row */}
@@ -95,14 +117,23 @@ export default function DataPreviewScreen({ locale, visitor, onConfirm, onBack }
           ))}
         </div>
 
-        {/* Confirm button — centered */}
+        {/* Confirm button — disabled if permanently blocked */}
         <div className="w-full space-y-1.5">
-          <button
-            onClick={onConfirm}
-            className="w-full py-2.5 rounded-xl bg-[#2E3192] text-white font-bold text-[11px] shadow-lg hover:bg-[#252880] hover:shadow-xl active:scale-[0.98] transition-all"
-          >
-            {locale === "th" ? "ยืนยันข้อมูล" : "Confirm Data"}
-          </button>
+          {blocklistEntry?.type === "permanent" ? (
+            <button
+              disabled
+              className="w-full py-2.5 rounded-xl bg-red-200 text-red-400 font-bold text-[11px] cursor-not-allowed"
+            >
+              {locale === "th" ? "ไม่สามารถเข้าพื้นที่ได้ (Blocked)" : "Access Denied (Blocked)"}
+            </button>
+          ) : (
+            <button
+              onClick={onConfirm}
+              className="w-full py-2.5 rounded-xl bg-[#2E3192] text-white font-bold text-[11px] shadow-lg hover:bg-[#252880] hover:shadow-xl active:scale-[0.98] transition-all"
+            >
+              {locale === "th" ? "ยืนยันข้อมูล" : "Confirm Data"}
+            </button>
+          )}
           <button
             onClick={onBack}
             className="w-full py-1.5 rounded-xl text-[10px] text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-all"

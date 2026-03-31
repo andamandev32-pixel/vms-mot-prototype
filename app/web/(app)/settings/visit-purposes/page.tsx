@@ -48,6 +48,7 @@ import {
   type DepartmentRule,
   type EntryChannelConfig,
   type EntryMode,
+  getDepartmentLocation,
 } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
@@ -463,7 +464,7 @@ function DeptRuleRow({ rule, onEdit }: { rule: DepartmentRule; onEdit: () => voi
 
       {/* floor / building */}
       <td className="px-5 py-3.5 text-text-muted text-xs">
-        {dept ? `${dept.floor} · ${dept.building}` : "-"}
+        {dept ? (() => { const loc = getDepartmentLocation(dept.id); return loc ? `${loc.floor} · ${loc.building}` : "-"; })() : "-"}
       </td>
 
       {/* require person */}
@@ -1008,7 +1009,7 @@ function DeptRuleDrawer({
           >
             <option value="">— เลือกแผนก —</option>
             {departments.map((d) => (
-              <option key={d.id} value={d.id}>{d.name} ({d.floor})</option>
+              <option key={d.id} value={d.id}>{d.name} ({getDepartmentLocation(d.id)?.floor ?? ""})</option>
             ))}
           </select>
         </div>
@@ -1016,7 +1017,7 @@ function DeptRuleDrawer({
         {selectedDept && (
           <div className="p-3 bg-gray-50 rounded-lg text-xs text-text-secondary">
             <p><strong>{selectedDept.name}</strong></p>
-            <p>{selectedDept.nameEn} · {selectedDept.floor} · {selectedDept.building}</p>
+            <p>{selectedDept.nameEn} · {(() => { const loc = getDepartmentLocation(selectedDept.id); return loc ? `${loc.floor} · ${loc.building}` : "ยังไม่กำหนดชั้น"; })()}</p>
           </div>
         )}
 

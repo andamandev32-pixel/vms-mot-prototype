@@ -36,8 +36,6 @@ export interface Department {
   id: number;
   name: string;
   nameEn: string;
-  floor: string;
-  building: string;
   isActive: boolean;
 }
 
@@ -59,9 +57,13 @@ export interface Staff {
 
 export interface Visitor {
   id: number;
-  name: string;
-  nameEn?: string;
-  idNumber: string;       // เลขบัตรประชาชน or Passport
+  firstName: string;        // ชื่อ (ไม่รวมคำนำหน้า)
+  lastName: string;         // นามสกุล
+  firstNameEn?: string;     // First Name (English)
+  lastNameEn?: string;      // Last Name (English)
+  name: string;             // ชื่อเต็มภาษาไทย (คำนำหน้า+ชื่อ+สกุล) — backward compat
+  nameEn?: string;          // ชื่อเต็มภาษาอังกฤษ — backward compat
+  idNumber: string;         // เลขบัตรประชาชน or Passport
   idType: "thai-id" | "passport" | "driver-license";
   company: string;
   phone: string;
@@ -166,19 +168,19 @@ export const statusConfig: Record<VisitStatus, { label: string; labelEn: string;
 // ===== DEPARTMENTS =====
 
 export const departments: Department[] = [
-  { id: 1, name: "สำนักงานปลัดกระทรวง", nameEn: "Office of the Permanent Secretary", floor: "ชั้น 3", building: "ศูนย์ราชการ อาคาร C", isActive: true },
-  { id: 2, name: "กองกลาง", nameEn: "General Administration Division", floor: "ชั้น 2", building: "ศูนย์ราชการ อาคาร C", isActive: true },
-  { id: 3, name: "กองการต่างประเทศ", nameEn: "International Affairs Division", floor: "ชั้น 5", building: "ศูนย์ราชการ อาคาร C", isActive: true },
-  { id: 4, name: "กองกิจการท่องเที่ยว", nameEn: "Tourism Affairs Division", floor: "ชั้น 4", building: "ศูนย์ราชการ อาคาร C", isActive: true },
-  { id: 5, name: "กรมการท่องเที่ยว", nameEn: "Department of Tourism", floor: "ชั้น 6", building: "ศูนย์ราชการ อาคาร C", isActive: true },
-  { id: 6, name: "กรมพลศึกษา", nameEn: "Department of Physical Education", floor: "ชั้น 7", building: "ศูนย์ราชการ อาคาร C", isActive: true },
-  { id: 7, name: "การกีฬาแห่งประเทศไทย", nameEn: "Sports Authority of Thailand", floor: "ชั้น 8", building: "ศูนย์ราชการ อาคาร C", isActive: true },
-  { id: 8, name: "สำนักนโยบายและแผน", nameEn: "Policy and Planning Division", floor: "ชั้น 4", building: "ศูนย์ราชการ อาคาร C", isActive: true },
-  { id: 9, name: "สำนักงานรัฐมนตรี", nameEn: "Minister's Office", floor: "ชั้น 9", building: "ศูนย์ราชการ อาคาร C", isActive: true },
-  { id: 10, name: "การท่องเที่ยวแห่งประเทศไทย", nameEn: "Tourism Authority of Thailand", floor: "ชั้น 6", building: "ศูนย์ราชการ อาคาร C", isActive: true },
-  { id: 11, name: "มหาวิทยาลัยการกีฬาแห่งชาติ", nameEn: "National Sports University", floor: "ชั้น 7", building: "ศูนย์ราชการ อาคาร C", isActive: true },
-  { id: 12, name: "กองบัญชาการตำรวจท่องเที่ยว", nameEn: "Tourist Police Bureau", floor: "ชั้น 8", building: "ศูนย์ราชการ อาคาร C", isActive: true },
-  { id: 13, name: "องค์การบริหารการพัฒนาพื้นที่พิเศษเพื่อการท่องเที่ยวอย่างยั่งยืน (อพท.)", nameEn: "DASTA", floor: "ชั้น 8", building: "ศูนย์ราชการ อาคาร C", isActive: true },
+  { id: 1, name: "สำนักงานปลัดกระทรวง", nameEn: "Office of the Permanent Secretary", isActive: true },
+  { id: 2, name: "กองกลาง", nameEn: "General Administration Division", isActive: true },
+  { id: 3, name: "กองการต่างประเทศ", nameEn: "International Affairs Division", isActive: true },
+  { id: 4, name: "กองกิจการท่องเที่ยว", nameEn: "Tourism Affairs Division", isActive: true },
+  { id: 5, name: "กรมการท่องเที่ยว", nameEn: "Department of Tourism", isActive: true },
+  { id: 6, name: "กรมพลศึกษา", nameEn: "Department of Physical Education", isActive: true },
+  { id: 7, name: "การกีฬาแห่งประเทศไทย", nameEn: "Sports Authority of Thailand", isActive: true },
+  { id: 8, name: "สำนักนโยบายและแผน", nameEn: "Policy and Planning Division", isActive: true },
+  { id: 9, name: "สำนักงานรัฐมนตรี", nameEn: "Minister's Office", isActive: true },
+  { id: 10, name: "การท่องเที่ยวแห่งประเทศไทย", nameEn: "Tourism Authority of Thailand", isActive: true },
+  { id: 11, name: "มหาวิทยาลัยการกีฬาแห่งชาติ", nameEn: "National Sports University", isActive: true },
+  { id: 12, name: "กองบัญชาการตำรวจท่องเที่ยว", nameEn: "Tourist Police Bureau", isActive: true },
+  { id: 13, name: "องค์การบริหารการพัฒนาพื้นที่พิเศษเพื่อการท่องเที่ยวอย่างยั่งยืน (อพท.)", nameEn: "DASTA", isActive: true },
 ];
 
 // ===== STAFF =====
@@ -351,104 +353,69 @@ export const staffMembers: Staff[] = [
 export const visitors: Visitor[] = [
   {
     id: 1,
-    name: "นายวิชัย มั่นคง",
-    nameEn: "Wichai Mankong",
-    idNumber: "1-3045-00123-45-6",
-    idType: "thai-id",
-    company: "บริษัท ทัวร์ไทย จำกัด",
-    phone: "081-234-5678",
-    email: "wichai@tourthai.co.th",
-    lineUserId: "U1234567890",
-    nationality: "ไทย",
-    isBlocked: false,
+    firstName: "วิชัย", lastName: "มั่นคง", firstNameEn: "Wichai", lastNameEn: "Mankong",
+    name: "นายวิชัย มั่นคง", nameEn: "Wichai Mankong",
+    idNumber: "1-3045-00123-45-6", idType: "thai-id",
+    company: "บริษัท ทัวร์ไทย จำกัด", phone: "081-234-5678", email: "wichai@tourthai.co.th",
+    lineUserId: "U1234567890", nationality: "ไทย", isBlocked: false,
   },
   {
     id: 2,
-    name: "นางอัญชลี แสงทอง",
-    nameEn: "Anchalee Saengthong",
-    idNumber: "1-1234-56789-01-2",
-    idType: "thai-id",
-    company: "สมาคมส่งเสริมการท่องเที่ยวไทย",
-    phone: "089-876-5432",
-    email: "anchalee@tat.or.th",
-    lineUserId: "U0987654321",
-    nationality: "ไทย",
-    isBlocked: false,
+    firstName: "อัญชลี", lastName: "แสงทอง", firstNameEn: "Anchalee", lastNameEn: "Saengthong",
+    name: "นางอัญชลี แสงทอง", nameEn: "Anchalee Saengthong",
+    idNumber: "1-1234-56789-01-2", idType: "thai-id",
+    company: "สมาคมส่งเสริมการท่องเที่ยวไทย", phone: "089-876-5432", email: "anchalee@tat.or.th",
+    lineUserId: "U0987654321", nationality: "ไทย", isBlocked: false,
   },
   {
     id: 3,
-    name: "Mr. James Wilson",
-    nameEn: "James Wilson",
-    idNumber: "AB1234567",
-    idType: "passport",
-    company: "World Tourism Organization",
-    phone: "+66-92-345-6789",
-    email: "james.wilson@unwto.org",
-    nationality: "American",
-    isBlocked: false,
+    firstName: "James", lastName: "Wilson", firstNameEn: "James", lastNameEn: "Wilson",
+    name: "Mr. James Wilson", nameEn: "James Wilson",
+    idNumber: "AB1234567", idType: "passport",
+    company: "World Tourism Organization", phone: "+66-92-345-6789", email: "james.wilson@unwto.org",
+    nationality: "American", isBlocked: false,
   },
   {
     id: 4,
-    name: "นายธนพล สุขสำราญ",
-    nameEn: "Thanapol Suksamran",
-    idNumber: "3-5678-01234-56-7",
-    idType: "thai-id",
-    company: "บริษัท ก่อสร้างเอก จำกัด",
-    phone: "086-111-2222",
-    email: "thanapol@ekconstruction.com",
-    nationality: "ไทย",
-    isBlocked: false,
+    firstName: "ธนพล", lastName: "สุขสำราญ", firstNameEn: "Thanapol", lastNameEn: "Suksamran",
+    name: "นายธนพล สุขสำราญ", nameEn: "Thanapol Suksamran",
+    idNumber: "3-5678-01234-56-7", idType: "thai-id",
+    company: "บริษัท ก่อสร้างเอก จำกัด", phone: "086-111-2222", email: "thanapol@ekconstruction.com",
+    nationality: "ไทย", isBlocked: false,
   },
   {
     id: 5,
-    name: "นางสาวพิมพ์ใจ รุ่งเรือง",
-    nameEn: "Pimjai Rungreung",
-    idNumber: "1-2345-67890-12-3",
-    idType: "thai-id",
-    company: "สำนักข่าว Thai PBS",
-    phone: "083-333-4444",
-    email: "pimjai@thaipbs.or.th",
-    lineUserId: "U5555555555",
-    nationality: "ไทย",
-    isBlocked: false,
+    firstName: "พิมพ์ใจ", lastName: "รุ่งเรือง", firstNameEn: "Pimjai", lastNameEn: "Rungreung",
+    name: "นางสาวพิมพ์ใจ รุ่งเรือง", nameEn: "Pimjai Rungreung",
+    idNumber: "1-2345-67890-12-3", idType: "thai-id",
+    company: "สำนักข่าว Thai PBS", phone: "083-333-4444", email: "pimjai@thaipbs.or.th",
+    lineUserId: "U5555555555", nationality: "ไทย", isBlocked: false,
   },
   {
     id: 6,
-    name: "นายสุรศักดิ์ อันตราย",
-    nameEn: "Surasak Antarai",
-    idNumber: "1-9876-54321-09-8",
-    idType: "thai-id",
-    company: "-",
-    phone: "099-999-0000",
-    nationality: "ไทย",
+    firstName: "สุรศักดิ์", lastName: "อันตราย", firstNameEn: "Surasak", lastNameEn: "Antarai",
+    name: "นายสุรศักดิ์ อันตราย", nameEn: "Surasak Antarai",
+    idNumber: "1-9876-54321-09-8", idType: "thai-id",
+    company: "-", phone: "099-999-0000", nationality: "ไทย",
     isBlocked: true,
     blockReason: "พฤติกรรมไม่เหมาะสม — ก่อความวุ่นวายในพื้นที่เมื่อ 15 ม.ค. 2569",
-    blockedBy: "คุณอนันต์ มั่นคง",
-    blockedDate: "2569-01-16",
+    blockedBy: "คุณอนันต์ มั่นคง", blockedDate: "2569-01-16",
   },
   {
     id: 7,
-    name: "Ms. Yuki Tanaka",
-    nameEn: "Yuki Tanaka",
-    idNumber: "TK8901234",
-    idType: "passport",
-    company: "Japan National Tourism Organization",
-    phone: "+66-95-678-9012",
-    email: "yuki.tanaka@jnto.go.jp",
-    nationality: "Japanese",
-    isBlocked: false,
+    firstName: "Yuki", lastName: "Tanaka", firstNameEn: "Yuki", lastNameEn: "Tanaka",
+    name: "Ms. Yuki Tanaka", nameEn: "Yuki Tanaka",
+    idNumber: "TK8901234", idType: "passport",
+    company: "Japan National Tourism Organization", phone: "+66-95-678-9012", email: "yuki.tanaka@jnto.go.jp",
+    nationality: "Japanese", isBlocked: false,
   },
   {
     id: 8,
-    name: "นายพิพัฒน์ เจริญกิจ",
-    nameEn: "Pipat Charoenkij",
-    idNumber: "1-4567-89012-34-5",
-    idType: "thai-id",
-    company: "บริษัท ไอที โซลูชั่น จำกัด",
-    phone: "084-555-6666",
-    email: "pipat@itsolution.co.th",
-    nationality: "ไทย",
-    isBlocked: false,
+    firstName: "พิพัฒน์", lastName: "เจริญกิจ", firstNameEn: "Pipat", lastNameEn: "Charoenkij",
+    name: "นายพิพัฒน์ เจริญกิจ", nameEn: "Pipat Charoenkij",
+    idNumber: "1-4567-89012-34-5", idType: "thai-id",
+    company: "บริษัท ไอที โซลูชั่น จำกัด", phone: "084-555-6666", email: "pipat@itsolution.co.th",
+    nationality: "ไทย", isBlocked: false,
   },
 ];
 
@@ -1085,23 +1052,35 @@ export function searchAppointments(query: string): Appointment[] {
   );
 }
 
-/** @deprecated ไม่ใช้เลขบัตรตรวจ — ใช้ isNameBlocked แทน */
+/** @deprecated ไม่ใช้เลขบัตรตรวจ — ใช้ checkBlocklist แทน */
 export function isVisitorBlocked(idNumber: string): boolean {
   return visitors.some((v) => v.idNumber === idNumber && v.isBlocked);
 }
 
+/** @deprecated ใช้ checkBlocklist แทน */
+export function isNameBlocked(firstName: string, lastName: string): BlocklistEntry | undefined {
+  return checkBlocklist(firstName, lastName);
+}
+
 /**
  * ตรวจ Blocklist ด้วยชื่อ+นามสกุล (partial match, case-insensitive)
- * ใช้ทุกช่องทาง: Kiosk, Counter, LINE OA, Web เจ้าหน้าที่สร้างให้
- * ไม่ใช้เลขบัตรเพราะระบบไม่ได้เก็บ ID ไว้
+ * ตรวจทั้งชื่อไทยและอังกฤษ
+ * ใช้ทุกช่องทาง: Kiosk, Counter, LINE OA, Web
  */
-export function isNameBlocked(firstName: string, lastName: string): BlocklistEntry | undefined {
+export function checkBlocklist(firstName: string, lastName: string): BlocklistEntry | undefined {
   const fn = firstName.toLowerCase().trim();
   const ln = lastName.toLowerCase().trim();
   if (!fn && !ln) return undefined;
   return blocklist.find((entry) => {
-    const blockedName = entry.visitor.name.toLowerCase();
-    return (fn && blockedName.includes(fn)) && (ln && blockedName.includes(ln));
+    const v = entry.visitor;
+    // ตรวจชื่อไทย (firstName + lastName แยก)
+    const thaiMatch = (fn && v.firstName.toLowerCase().includes(fn)) && (ln && v.lastName.toLowerCase().includes(ln));
+    // ตรวจชื่ออังกฤษ
+    const enMatch = v.firstNameEn && v.lastNameEn &&
+      (fn && v.firstNameEn.toLowerCase().includes(fn)) && (ln && v.lastNameEn.toLowerCase().includes(ln));
+    // ตรวจชื่อเต็ม (backward compat)
+    const fullMatch = (fn && v.name.toLowerCase().includes(fn)) && (ln && v.name.toLowerCase().includes(ln));
+    return thaiMatch || enMatch || fullMatch;
   });
 }
 
@@ -1491,6 +1470,18 @@ export const floors: Floor[] = [
   { id: 8, buildingId: 1, floorNumber: 8, name: "ชั้น 8 — กกท. / ตร.ท่องเที่ยว / อพท.", nameEn: "8F — SAT / Tourist Police / DASTA", departmentIds: [7, 12, 13] },
   { id: 9, buildingId: 1, floorNumber: 9, name: "ชั้น 9 — สำนักงานรัฐมนตรี / ห้องประชุมอเนกประสงค์", nameEn: "9F — Minister's Office / Conference", departmentIds: [9] },
 ];
+
+// ── Helper: derive department location from floors ──
+
+export function getDepartmentLocation(departmentId: number): { building: string; floor: string } | null {
+  const floor = floors.find((f) => f.departmentIds.includes(departmentId));
+  if (!floor) return null;
+  const building = buildings.find((b) => b.id === floor.buildingId);
+  return {
+    building: building?.name ?? "",
+    floor: `ชั้น ${floor.floorNumber}`,
+  };
+}
 
 // ── Access Zones (areas controlled by Hikvision readers) ──
 

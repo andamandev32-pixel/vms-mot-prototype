@@ -1640,6 +1640,40 @@ const blocklistApi: PageApiDoc = {
       ],
     },
     {
+      method: "POST",
+      path: "/api/blocklist/check",
+      summary: "ตรวจสอบชื่อ-นามสกุลกับ Blocklist (ใช้โดย Kiosk/Counter)",
+      summaryEn: "Check name against blocklist",
+      auth: "admin",
+      requestBody: [
+        { name: "first_name", type: "string", required: true, description: "ชื่อ" },
+        { name: "last_name", type: "string", required: true, description: "นามสกุล" },
+        { name: "channel", type: "string", required: true, description: "ช่องทาง: kiosk | counter | web | line" },
+        { name: "checked_by", type: "number", required: false, description: "รหัสเจ้าหน้าที่ (counter only)" },
+      ],
+      responseExample: `{
+  "is_blocked": true,
+  "entry": {
+    "id": 1,
+    "first_name": "สุรศักดิ์",
+    "last_name": "อันตราย",
+    "type": "permanent",
+    "reason": "พฤติกรรมไม่เหมาะสม — ก่อความวุ่นวายในพื้นที่",
+    "expiry_date": null,
+    "added_by": "อนันต์ มั่นคง",
+    "added_at": "2569-01-16T10:00:00Z"
+  },
+  "check_logged": true
+}`,
+      notes: [
+        "ตรวจ partial match (case-insensitive) กับทั้งชื่อไทยและอังกฤษ",
+        "ไม่ตรวจเลขบัตร — ระบบเก็บเฉพาะ mask (หลักหน้า+4หลักท้าย)",
+        "ทุกครั้งที่ตรวจจะ log ใน blocklist_check_logs",
+        "ถ้าพบ permanent → Kiosk แสดง error, Counter แสดง warning",
+        "ถ้าพบ temporary + expired → อนุญาตดำเนินการต่อ",
+      ],
+    },
+    {
       method: "DELETE",
       path: "/api/blocklist/:id",
       summary: "ลบรายชื่อออกจาก Blocklist",

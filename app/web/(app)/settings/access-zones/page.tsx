@@ -50,6 +50,7 @@ import {
   type AccessZone,
   type AccessZoneType,
   type DepartmentAccessMapping,
+  getDepartmentLocation,
 } from "@/lib/mock-data";
 
 /* ── helpers ───────────────────────────────────── */
@@ -707,7 +708,7 @@ function DepartmentMappingTable({
                     <p className="text-[11px] text-text-muted">{dept?.nameEn}</p>
                   </td>
                   <td className="px-5 py-3.5 text-text-muted text-xs">
-                    {dept ? `${dept.building} · ${dept.floor}` : "-"}
+                    {dept ? (() => { const loc = getDepartmentLocation(dept.id); return loc ? `${loc.building} · ${loc.floor}` : "-"; })() : "-"}
                   </td>
                   <td className="px-5 py-3.5">
                     {defaultGroup && (
@@ -1166,7 +1167,7 @@ function MappingDrawer({
         {dept && (
           <div className="p-4 bg-gray-50 rounded-lg">
             <p className="text-sm font-bold text-text-primary">{dept.name}</p>
-            <p className="text-xs text-text-muted">{dept.nameEn} · {dept.floor} · {dept.building}</p>
+            <p className="text-xs text-text-muted">{dept.nameEn} · {(() => { const loc = getDepartmentLocation(dept.id); return loc ? `${loc.floor} · ${loc.building}` : "ยังไม่กำหนดชั้น"; })()}</p>
           </div>
         )}
 

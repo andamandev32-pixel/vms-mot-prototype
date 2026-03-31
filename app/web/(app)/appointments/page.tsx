@@ -27,6 +27,7 @@ import {
   type Appointment,
   type EntryMode,
   visitTypes,
+  getDepartmentLocation,
 } from "@/lib/mock-data";
 
 // ===== Tab definition =====
@@ -615,7 +616,7 @@ function CreateAppointmentDrawer({ open, onClose }: { open: boolean; onClose: ()
   const deptOptions = selectedPurpose
     ? selectedPurpose.departmentRules.filter(r => r.isActive).map(r => {
       const dept = departments.find(d => d.id === r.departmentId);
-      return dept ? { id: dept.id, name: dept.name, floor: dept.floor } : null;
+      return dept ? { id: dept.id, name: dept.name, floor: getDepartmentLocation(dept.id)?.floor ?? "" } : null;
     }).filter(Boolean)
     : [];
 
@@ -727,7 +728,7 @@ function CreateAppointmentDrawer({ open, onClose }: { open: boolean; onClose: ()
                   >
                     <option value="">-- เลือกหน่วยงาน --</option>
                     {deptOptions.map(d => d && (
-                      <option key={d.id} value={d.id}>{d.name} ({d.floor})</option>
+                      <option key={d.id} value={d.id}>{d.name} ({getDepartmentLocation(d.id)?.floor ?? ""})</option>
                     ))}
                   </select>
                   <ChevronDown size={14} className="absolute right-3 top-3 text-text-muted pointer-events-none" />

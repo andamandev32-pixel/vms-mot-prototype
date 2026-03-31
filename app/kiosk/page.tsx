@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 
 // State machine
 import { kioskReducer, initialKioskState } from "@/lib/kiosk/kiosk-state-machine";
+import { checkBlocklist, type BlocklistEntry } from "@/lib/mock-data";
 import { walkinSteps, walkinVerifiedSteps, appointmentSteps } from "@/lib/kiosk/kiosk-flow-config";
 import { getActiveDevice } from "@/lib/kiosk/kiosk-device-map";
 import { getAudioCue, speakText, stopSpeech } from "@/lib/kiosk/kiosk-audio-config";
@@ -186,6 +187,7 @@ function PinModal({
 
 export default function KioskDemoPage() {
   const [state, dispatch] = useReducer(kioskReducer, initialKioskState);
+  const [kioskBlocklistEntry, setKioskBlocklistEntry] = useState<BlocklistEntry | null>(null);
   const [selectedCase, setSelectedCase] = useState<DemoCase>("walkin");
   const [locale, setLocale] = useState<KioskLocale>("th");
   const [audioEnabled, setAudioEnabled] = useState(false);
@@ -308,15 +310,30 @@ export default function KioskDemoPage() {
             onTimeout={reset}
           />
         );
-      case "DATA_PREVIEW":
+      case "DATA_PREVIEW": {
+        const visitor = state.visitorData || mockVisitorIdCard;
         return (
           <DataPreviewScreen
             locale={locale}
-            visitor={state.visitorData || mockVisitorIdCard}
-            onConfirm={() => fire({ type: "CONFIRM_DATA" })}
-            onBack={() => fire({ type: "GO_BACK" })}
+            visitor={visitor}
+            blocklistEntry={kioskBlocklistEntry}
+            onConfirm={() => {
+              // ตรวจ Blocklist ก่อน confirm
+              const nameParts = (visitor.fullNameTh || visitor.fullNameEn).replace(/^(นาย|นาง|นางสาว|Mr\.|Ms\.|Mrs\.)\s*/i, "").split(" ");
+              const fn = nameParts[0] || "";
+              const ln = nameParts.slice(1).join(" ") || "";
+              const blocked = checkBlocklist(fn, ln);
+              if (blocked) {
+                setKioskBlocklistEntry(blocked);
+                return; // ไม่ confirm → แสดง warning ใน DataPreview
+              }
+              setKioskBlocklistEntry(null);
+              fire({ type: "CONFIRM_DATA" });
+            }}
+            onBack={() => { setKioskBlocklistEntry(null); fire({ type: "GO_BACK" }); }}
           />
         );
+      }
       case "SELECT_PURPOSE":
         return (
           <SelectPurposeScreen

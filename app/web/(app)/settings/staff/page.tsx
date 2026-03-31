@@ -35,6 +35,7 @@ import {
   approverGroups,
   appointments,
   type Staff,
+  getDepartmentLocation,
 } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
@@ -341,7 +342,7 @@ function StaffRow({ staff, onEdit }: { staff: Staff; onEdit: () => void }) {
           <Building2 size={12} className="text-text-muted" />
           {staff.department.name}
         </p>
-        <p className="text-[10px] text-text-muted">{staff.department.floor}</p>
+        <p className="text-[10px] text-text-muted">{getDepartmentLocation(staff.department.id)?.floor ?? ""}</p>
       </td>
 
       {/* email */}
@@ -556,7 +557,7 @@ function StaffDrawer({
           <label className="block text-sm font-medium text-text-primary mb-1">แผนก <span className="text-error">*</span></label>
           <select value={departmentId} onChange={(e) => setDepartmentId(Number(e.target.value))} className="w-full h-10 px-3 text-sm rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-primary/20">
             <option value="">— เลือกแผนก —</option>
-            {departments.map((d) => <option key={d.id} value={d.id}>{d.name} ({d.floor})</option>)}
+            {departments.map((d) => <option key={d.id} value={d.id}>{d.name} ({getDepartmentLocation(d.id)?.floor ?? ""})</option>)}
           </select>
         </div>
 

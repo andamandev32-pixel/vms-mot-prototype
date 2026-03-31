@@ -11,7 +11,7 @@ import LineStatePanel from "@/components/mobile/LineStatePanel";
 import { getMessagesForState } from "@/components/mobile/LineChatMessages";
 import NewFriendRichMenu from "@/components/mobile/NewFriendRichMenu";
 import { Input } from "@/components/ui/Input";
-import { staffMembers, visitPurposeConfigs } from "@/lib/mock-data";
+import { staffMembers, visitPurposeConfigs, getDepartmentLocation } from "@/lib/mock-data";
 import { lookupPersonnel, type PersonnelRecord } from "@/lib/mock-data";
 import {
   type LineFlowStateId,
@@ -664,7 +664,7 @@ function LiffBooking({ onSubmit }: { onSubmit: () => void }) {
               <div className="flex justify-between"><span className="text-text-muted">วันที่</span><span className="font-bold">{selectedDate} เม.ย. 2569</span></div>
               <div className="flex justify-between"><span className="text-text-muted">เวลา</span><span className="font-bold">10:00 - 11:00</span></div>
               <div className="flex justify-between"><span className="text-text-muted">ผู้รับพบ</span><span className="font-bold">{selectedHost?.name || "-"}</span></div>
-              <div className="flex justify-between"><span className="text-text-muted">สถานที่</span><span className="font-bold">{selectedHost?.department.building} {selectedHost?.department.floor}</span></div>
+              <div className="flex justify-between"><span className="text-text-muted">สถานที่</span><span className="font-bold">{(() => { const loc = selectedHost ? getDepartmentLocation(selectedHost.department.id) : null; return loc ? `${loc.building} ${loc.floor}` : "-"; })()}</span></div>
             </div>
             <div onClick={() => setAgreed(!agreed)} className={cn("flex items-start gap-2 p-2.5 rounded-xl border cursor-pointer", agreed ? "bg-green-50 border-green-200" : "border-gray-200")}>
               <div className={cn("mt-0.5 w-4 h-4 rounded border-2 flex items-center justify-center shrink-0", agreed ? "bg-[#06C755] border-[#06C755]" : "border-gray-300")}>

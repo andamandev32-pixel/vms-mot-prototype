@@ -4,7 +4,7 @@ import { ChevronLeft, Building2, Wifi } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { VisitPurposeOption } from "@/lib/kiosk/kiosk-types";
 import { mockKioskPurposes, purposeDepartmentMap as defaultPurposeDeptMap } from "@/lib/kiosk/kiosk-mock-data";
-import { departments } from "@/lib/mock-data";
+import { departments, getDepartmentLocation } from "@/lib/mock-data";
 import { useState, useCallback } from "react";
 
 interface SelectPurposeScreenProps {
@@ -62,14 +62,14 @@ export default function SelectPurposeScreen({ locale, onSelect, onBack, purposes
     : activeDepartments;
 
   // Get unique floors sorted (from filtered departments)
-  const floors = [...new Set(purposeDepartments.map((d) => d.floor))].sort((a, b) => {
+  const floorList = [...new Set(purposeDepartments.map((d) => getDepartmentLocation(d.id)?.floor).filter(Boolean) as string[])].sort((a, b) => {
     const numA = parseInt(a.replace(/\D/g, ""));
     const numB = parseInt(b.replace(/\D/g, ""));
     return numA - numB;
   });
 
   const filteredDepartments = floorFilter
-    ? purposeDepartments.filter((d) => d.floor === floorFilter)
+    ? purposeDepartments.filter((d) => getDepartmentLocation(d.id)?.floor === floorFilter)
     : purposeDepartments;
 
   // ── Step 1: Purpose selection (FIRST) ──
@@ -175,7 +175,7 @@ export default function SelectPurposeScreen({ locale, onSelect, onBack, purposes
           >
             {locale === "th" ? "ทั้งหมด" : "All"}
           </button>
-          {floors.map((floor) => (
+          {floorList.map((floor) => (
             <button
               key={floor}
               onClick={() => setFloorFilter(floorFilter === floor ? null : floor)}
@@ -212,7 +212,7 @@ export default function SelectPurposeScreen({ locale, onSelect, onBack, purposes
                   {dept.name}
                 </p>
                 <p className="text-[6.5px] text-gray-400 leading-tight truncate w-full">{dept.nameEn}</p>
-                <span className="text-[6px] text-gray-300">{dept.floor}</span>
+                <span className="text-[6px] text-gray-300">{getDepartmentLocation(dept.id)?.floor ?? ""}</span>
               </button>
             ))}
           </div>

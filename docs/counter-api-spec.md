@@ -972,3 +972,70 @@ Officer              Counter App              Backend
   │                      │                       │
   │  DONE ✓              │                       │
 ```
+
+---
+
+## Blocklist Check (เพิ่มเติม — ตรวจหลัง Identity Input)
+
+### เมื่อไหร่ที่ตรวจ?
+ตรวจ **หลังขั้นตอน Identity Input** (ป้อนชื่อ-สกุลเสร็จ) ก่อนเลือกวัตถุประสงค์
+
+### API: POST `/api/blocklist/check`
+
+```
+POST /v1/blocklist/check
+Authorization: Bearer <officer_session_token>
+Content-Type: application/json
+```
+
+**Request:**
+```json
+{
+  "first_name": "สุรศักดิ์",
+  "last_name": "อันตราย",
+  "channel": "counter",
+  "checked_by": 5
+}
+```
+
+**Response (ถ้าพบ):**
+```json
+{
+  "is_blocked": true,
+  "entry": {
+    "id": 1,
+    "first_name": "สุรศักดิ์",
+    "last_name": "อันตราย",
+    "type": "permanent",
+    "reason": "พฤติกรรมไม่เหมาะสม — ก่อความวุ่นวายในพื้นที่",
+    "expiry_date": null,
+    "added_by": "อนันต์ มั่นคง"
+  }
+}
+```
+
+**Response (ไม่พบ):**
+```json
+{
+  "is_blocked": false,
+  "entry": null
+}
+```
+
+### Logic:
+- ตรวจ partial match (case-insensitive) กับชื่อ-นามสกุลทั้งไทยและอังกฤษ
+- **ไม่ตรวจเลขบัตร** — ระบบเก็บเฉพาะ mask (หลักหน้า + 4 หลักท้าย)
+- ถ้า `type: "permanent"` → แสดง Warning Modal + **ปิดปุ่มดำเนินการต่อ**
+- ถ้า `type: "temporary"` + หมดอายุแล้ว → อนุญาตดำเนินการต่อได้
+- ทุกครั้งที่ตรวจ log ใน `blocklist_check_logs`
+
+### Visitor Name Fields (updated)
+```
+visitors table:
+  first_name      VARCHAR(100)   — ชื่อ (ไม่รวมคำนำหน้า)
+  last_name       VARCHAR(100)   — นามสกุล
+  first_name_en   VARCHAR(100)   — First Name (English)
+  last_name_en    VARCHAR(100)   — Last Name (English)
+  name            VARCHAR(200)   — ชื่อเต็ม (computed, backward compat)
+  name_en         VARCHAR(200)   — ชื่อเต็ม English (computed)
+```

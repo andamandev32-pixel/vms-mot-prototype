@@ -41,6 +41,7 @@ import {
   accessGroups,
   accessZones,
   departmentAccessMappings,
+  getDepartmentLocation,
   type Building,
   type Floor,
   type Department,
@@ -78,7 +79,6 @@ export default function LocationsSettingsPage() {
   const [deptList, setDeptList] = useState<Department[]>(departments);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [searchDept, setSearchDept] = useState("");
-  const [filterFloor, setFilterFloor] = useState<string>("all");
   const [drawer, setDrawer] = useState<{
     mode: "add" | "edit";
     type: "building" | "floor" | "department";
@@ -103,10 +103,9 @@ export default function LocationsSettingsPage() {
         const q = searchDept.toLowerCase();
         if (!d.name.toLowerCase().includes(q) && !d.nameEn.toLowerCase().includes(q) && !String(d.id).includes(q)) return false;
       }
-      if (filterFloor !== "all" && d.floor !== filterFloor) return false;
       return true;
     });
-  }, [deptList, searchDept, filterFloor]);
+  }, [deptList, searchDept]);
 
   /* toggle active */
   const toggleBuildingActive = (id: number) => {
@@ -115,9 +114,6 @@ export default function LocationsSettingsPage() {
   const toggleDeptActive = (id: number) => {
     setDeptList((prev) => prev.map((d) => (d.id === id ? { ...d, isActive: !d.isActive } : d)));
   };
-
-  /* unique floors for filter */
-  const uniqueFloors = [...new Set(departments.map((d) => d.floor))].sort();
 
   return (
     <>
@@ -185,8 +181,8 @@ export default function LocationsSettingsPage() {
         <div className="flex gap-1 bg-gray-100 p-1 rounded-xl w-fit">
           {([
             { key: "buildings" as const, label: "อาคาร", icon: <Building2 size={14} /> },
-            { key: "floors" as const, label: "ชั้น", icon: <Layers size={14} /> },
             { key: "departments" as const, label: "แผนก / หน่วยงาน", icon: <Landmark size={14} /> },
+            { key: "floors" as const, label: "ชั้น", icon: <Layers size={14} /> },
           ]).map((tab) => (
             <button
               key={tab.key}
@@ -469,20 +465,6 @@ export default function LocationsSettingsPage() {
                 placeholder="ค้นหาแผนก / หน่วยงาน..."
                 className="w-72"
               />
-              <div className="w-px h-8 bg-border" />
-              <span className="text-sm font-medium text-text-secondary">ชั้น:</span>
-              <select
-                value={filterFloor}
-                onChange={(e) => setFilterFloor(e.target.value)}
-                className="rounded-lg border border-border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 bg-white"
-              >
-                <option value="all">ทุกชั้น</option>
-                {uniqueFloors.map((fl) => (
-                  <option key={fl} value={fl}>
-                    {fl}
-                  </option>
-                ))}
-              </select>
               <span className="text-xs text-text-muted ml-auto">
                 แสดง {filteredDepts.length} จาก {deptList.length} แผนก
               </span>
@@ -543,13 +525,20 @@ export default function LocationsSettingsPage() {
                             </div>
                           </td>
                           <td className="px-5 py-3">
-                            <div className="flex items-center gap-1.5 text-text-secondary text-xs">
-                              <Building2 size={13} className="text-text-muted" />
-                              <span>{dept.building}</span>
-                              <span className="text-text-muted">·</span>
-                              <MapPin size={13} className="text-text-muted" />
-                              <span className="font-medium">{dept.floor}</span>
-                            </div>
+                            {(() => {
+                              const loc = getDepartmentLocation(dept.id);
+                              return loc ? (
+                                <div className="flex items-center gap-1.5 text-text-secondary text-xs">
+                                  <Building2 size={13} className="text-text-muted" />
+                                  <span>{loc.building}</span>
+                                  <span className="text-text-muted">·</span>
+                                  <MapPin size={13} className="text-text-muted" />
+                                  <span className="font-medium">{loc.floor}</span>
+                                </div>
+                              ) : (
+                                <span className="text-xs text-text-muted italic">ยังไม่กำหนดชั้น</span>
+                              );
+                            })()}
                           </td>
                           <td className="px-5 py-3 text-center">
                             <span className={cn("text-sm font-bold", deptStaff > 0 ? "text-text-primary" : "text-text-muted")}>
@@ -723,7 +712,7 @@ function BuildingForm({
               <Landmark size={12} /> แผนก: <strong className="text-text-primary">{new Set(floors.filter((f) => f.buildingId === initial.id).flatMap((f) => f.departmentIds)).size}</strong>
             </div>
             <div className="flex items-center gap-1">
-              <Users size={12} /> บุคลากร: <strong className="text-text-primary">{staffMembers.filter((s) => s.department.building === initial.name).length}</strong>
+              <Users size={12} /> บุคลากร: <strong className="text-text-primary">{staffMembers.filter((s) => getDepartmentLocation(s.department.id)?.building === initial.name).length}</strong>
             </div>
           </div>
         </div>
@@ -814,7 +803,6 @@ function FloorForm({
                 {selectedDepts.includes(dept.id) && <span className="text-[10px]">✓</span>}
               </div>
               <span className="flex-1 font-medium text-xs">{dept.name}</span>
-              <span className="text-[10px] text-text-muted">{dept.floor}</span>
             </button>
           ))}
         </div>
@@ -866,36 +854,6 @@ function DepartmentForm({
       <Input label="ชื่อแผนก (อังกฤษ)" defaultValue={initial?.nameEn} placeholder="e.g. Tourism Affairs Division" />
 
       <div>
-        <label className="text-sm font-semibold text-text-primary mb-2 block">อาคาร</label>
-        <select
-          defaultValue={initial?.building ?? ""}
-          className="w-full rounded-lg border border-border px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 bg-white"
-        >
-          <option value="">เลือกอาคาร</option>
-          {buildings.map((b) => (
-            <option key={b.id} value={b.name}>
-              {b.name}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div>
-        <label className="text-sm font-semibold text-text-primary mb-2 block">ชั้น</label>
-        <select
-          defaultValue={initial?.floor ?? ""}
-          className="w-full rounded-lg border border-border px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 bg-white"
-        >
-          <option value="">เลือกชั้น</option>
-          {floors.map((f) => (
-            <option key={f.id} value={`ชั้น ${f.floorNumber}`}>
-              ชั้น {f.floorNumber} — {f.nameEn}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      <div>
         <label className="text-sm font-semibold text-text-primary mb-2 block">Default Access Group</label>
         <select
           defaultValue={mapping?.defaultAccessGroupId ?? ""}
@@ -930,6 +888,17 @@ function DepartmentForm({
               <strong className="text-text-primary">
                 {mapping ? 1 + mapping.additionalGroupIds.length : 0}
               </strong>
+            </div>
+            <div className="flex items-center gap-1 col-span-2">
+              <MapPin size={12} /> สถานที่:{" "}
+              {(() => {
+                const loc = getDepartmentLocation(initial.id);
+                return loc ? (
+                  <strong className="text-text-primary">{loc.building} · {loc.floor}</strong>
+                ) : (
+                  <span className="italic">ยังไม่กำหนดชั้น (กำหนดได้ที่แท็บ "ชั้น")</span>
+                );
+              })()}
             </div>
           </div>
         </div>
