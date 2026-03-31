@@ -10,13 +10,13 @@ export default function Home() {
   const apps = [
     {
       title: "LINE OA",
-      subtitle: "ผู้มาติดต่อ / เจ้าหน้าที่",
-      description: "จองนัดหมาย, ดู QR Code, ตรวจสอบสถานะ, อนุมัติคำขอ",
-      href: "/mobile",
+      subtitle: "Visitor & Officer Full Journey",
+      description: "จำลอง Flow ทั้งหมด: ลงทะเบียน → จองนัดหมาย → อนุมัติ → Check-in → WiFi → Slip → Check-out พร้อม DB Schema, API Doc, Dev Panel",
+      href: "/line-oa",
       icon: <Smartphone className="h-8 w-8" />,
-      status: "กำลังออกแบบ" as string | undefined,
-      badge: undefined as string | undefined,
-      screens: ["ลงทะเบียน LINE", "Dashboard", "จองนัดหมาย 4 ขั้นตอน", "QR Code", "ประวัติ", "โปรไฟล์", "Officer: อนุมัติ/ต้อนรับ"],
+      status: "NEW" as string | undefined,
+      badge: "Interactive" as string | undefined,
+      screens: ["New Friend", "Register (2 ประเภท)", "Booking → QR Code", "Approval / Auto-Cancel", "Kiosk Check-in", "WiFi via LINE", "Digital Slip", "Check-out", "Officer Flow", "Dev Panel: DB + API + Flow"],
     },
     {
       title: "Web App",

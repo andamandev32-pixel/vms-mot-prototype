@@ -1899,7 +1899,7 @@ export const businessHoursRules: BusinessHoursRule[] = [
 // ===== NOTIFICATION TEMPLATES =====
 
 export type NotificationChannel = "line" | "email" | "sms";
-export type NotificationTrigger = "booking-confirmed" | "booking-approved" | "booking-rejected" | "reminder-1day" | "reminder-1hour" | "checkin-welcome" | "checkout-thankyou" | "overstay-alert" | "wifi-credentials";
+export type NotificationTrigger = "booking-confirmed" | "booking-approved" | "booking-rejected" | "booking-auto-cancelled" | "reminder-1day" | "reminder-1hour" | "checkin-welcome" | "checkout-thankyou" | "overstay-alert" | "wifi-credentials";
 
 export interface NotificationTemplate {
   id: number;
@@ -1918,6 +1918,7 @@ export const notificationTriggerLabels: Record<NotificationTrigger, { label: str
   "booking-confirmed": { label: "ยืนยันการจอง", labelEn: "Booking Confirmed" },
   "booking-approved": { label: "อนุมัติแล้ว", labelEn: "Booking Approved" },
   "booking-rejected": { label: "ไม่อนุมัติ", labelEn: "Booking Rejected" },
+  "booking-auto-cancelled": { label: "ยกเลิกอัตโนมัติ", labelEn: "Auto-Cancelled (Timeout)" },
   "reminder-1day": { label: "เตือนล่วงหน้า 1 วัน", labelEn: "1-Day Reminder" },
   "reminder-1hour": { label: "เตือนล่วงหน้า 1 ชม.", labelEn: "1-Hour Reminder" },
   "checkin-welcome": { label: "ต้อนรับเข้าพื้นที่", labelEn: "Check-in Welcome" },

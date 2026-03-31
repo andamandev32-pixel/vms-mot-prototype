@@ -2666,6 +2666,82 @@ const myProfileFlow: PageFlowData = {
 // EXPORT & LOOKUP
 // ════════════════════════════════════════════════════
 
+// ════════════════════════════════════════════════════
+// LINE Message Templates + System Settings Flow
+// ════════════════════════════════════════════════════
+
+const lineMessageTemplatesFlow: PageFlowData = {
+  pageId: "line-message-templates",
+  menuName: "LINE OA & การแจ้งเตือน",
+  menuNameEn: "LINE OA & Notifications",
+  path: "/web/settings/line-message-templates",
+  summary: "ตั้งค่า LINE OA, Flex Message Templates, Email Templates และ Approval Timeout",
+  flowcharts: [
+    {
+      id: "lmt-flex-edit",
+      title: "การแก้ไข Flex Message Template",
+      titleEn: "Edit Flex Message Template",
+      steps: [
+        { id: "s1", label: "Admin เลือก State\n(Visitor/Officer Flow)", type: "start" },
+        { id: "s2", label: "แก้ไข Header\n(title, color, variant)", type: "process" },
+        { id: "s3", label: "แก้ไข Body Rows\n(เปิด/ปิด, เรียงลำดับ)", type: "process" },
+        { id: "s4", label: "แก้ไข Buttons\n(label, variant, เปิด/ปิด)", type: "process" },
+        { id: "s5", label: "แก้ไข Info Box & QR\n(ข้อความ, สี)", type: "process" },
+        { id: "s6", label: "ดู Live Preview", type: "subprocess" },
+        { id: "s7", label: "กดบันทึก", type: "end" },
+      ],
+      connections: [
+        { from: "s1", to: "s2" },
+        { from: "s2", to: "s3" },
+        { from: "s3", to: "s4" },
+        { from: "s4", to: "s5" },
+        { from: "s5", to: "s6" },
+        { from: "s6", to: "s7" },
+      ],
+    },
+    {
+      id: "lmt-auto-cancel",
+      title: "Auto-Cancel Flow (Approval Timeout)",
+      titleEn: "Automatic Cancellation Flow",
+      description: "นัดหมายที่รอ approval เกิน X ชั่วโมง → ยกเลิกอัตโนมัติ + แจ้ง visitor ทาง LINE",
+      steps: [
+        { id: "a1", label: "Cron Job ทำงาน\n(ทุก 1 ชั่วโมง)", type: "start" },
+        { id: "a2", label: "ดึง appointments\nstatus = pending", type: "process" },
+        { id: "a3", label: "pending > timeout?", type: "decision" },
+        { id: "a4", label: "PATCH status\n→ auto-cancelled", type: "process" },
+        { id: "a5", label: "ดึง Flex Template\n(visitor-auto-cancelled)", type: "process" },
+        { id: "a6", label: "แทนที่ {{variables}}\nส่ง LINE Push Message", type: "io" },
+        { id: "a7", label: "ส่ง Email\n(ถ้าเปิดใช้งาน)", type: "io" },
+        { id: "a8", label: "Log notification", type: "end" },
+        { id: "a9", label: "ข้ามรายการนี้", type: "end" },
+      ],
+      connections: [
+        { from: "a1", to: "a2" },
+        { from: "a2", to: "a3" },
+        { from: "a3", to: "a4", label: "ใช่" },
+        { from: "a3", to: "a9", label: "ไม่" },
+        { from: "a4", to: "a5" },
+        { from: "a5", to: "a6" },
+        { from: "a6", to: "a7" },
+        { from: "a7", to: "a8" },
+      ],
+    },
+  ],
+  validationRules: [
+    { field: "approval_timeout_hours", rules: ["ต้อง > 0 และ ≤ 168 (7 วัน)", "เป็นจำนวนเต็ม"] },
+    { field: "header_title", rules: ["ต้องไม่ว่าง (สำหรับ flex type)"] },
+    { field: "email subject", rules: ["ต้องไม่ว่าง", "รองรับ {{variables}}"] },
+    { field: "email body_th", rules: ["ต้องไม่ว่าง"] },
+    { field: "LINE OA Config", rules: ["Channel ID, Secret, Access Token ต้องกรอกก่อนเปิดใช้งาน"] },
+  ],
+  businessConditions: [
+    { title: "Flex Message Delivery", description: "Flex Message จะส่งเฉพาะเมื่อ template.is_active = true", conditions: ["template.is_active = true", "visitor.line_user_id IS NOT NULL"] },
+    { title: "Auto-Cancel Logic", description: "ยกเลิกอัตโนมัติเมื่อรออนุมัติเกินกำหนด", conditions: ["pending_hours > approval_timeout_hours", "OR (auto_cancel_on_date_passed AND date < TODAY)"] },
+    { title: "Email Delivery", description: "Email จะส่งเมื่อระบบเปิดและ template active", conditions: ["email_active = true", "template.is_active = true", "visitor.email IS NOT NULL"] },
+    { title: "Fallback Channel", description: "ถ้า visitor ไม่ได้ผูก LINE → ส่ง Email แทน", conditions: ["visitor.line_user_id IS NULL", "visitor.email IS NOT NULL"] },
+  ],
+};
+
 export const allFlowData: PageFlowData[] = [
   visitPurposesFlow,
   documentTypesFlow,
@@ -2684,6 +2760,7 @@ export const allFlowData: PageFlowData[] = [
   reportsFlow,
   userManagementFlow,
   myProfileFlow,
+  lineMessageTemplatesFlow,
 ];
 
 export function getFlowByPageId(pageId: string): PageFlowData | undefined {

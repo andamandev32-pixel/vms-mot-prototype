@@ -2054,6 +2054,143 @@ const lineOaConfigApi: PageApiDoc = {
 };
 
 // ════════════════════════════════════════════════════
+// LINE Message Templates + System Settings API
+// ════════════════════════════════════════════════════
+
+const lineMessageTemplatesApi: PageApiDoc = {
+  pageId: "line-message-templates",
+  menuName: "LINE OA & การแจ้งเตือน",
+  menuNameEn: "LINE OA & Notifications",
+  baseUrl: "/api",
+  endpoints: [
+    {
+      method: "GET",
+      path: "/api/settings/line-flex-templates",
+      summary: "ดึง Flex Message template ทั้งหมด",
+      summaryEn: "List all LINE Flex Message templates",
+      auth: "admin",
+      responseExample: `{
+  "data": [
+    {
+      "id": 1,
+      "state_id": "visitor-registered",
+      "name": "ลงทะเบียนสำเร็จ",
+      "type": "flex",
+      "is_active": true,
+      "header_title": "Registration Complete",
+      "header_color": "green",
+      "header_variant": "standard",
+      "rows": [
+        { "id": "r1", "label": "ชื่อ", "variable": "visitorName", "enabled": true }
+      ],
+      "buttons": [
+        { "id": "b1", "label": "สร้างนัดหมาย", "variant": "green", "enabled": true }
+      ]
+    }
+  ],
+  "total": 17
+}`,
+    },
+    {
+      method: "PUT",
+      path: "/api/settings/line-flex-templates/:stateId",
+      summary: "แก้ไข Flex Message template ตาม state",
+      summaryEn: "Update LINE Flex Message template by state ID",
+      auth: "admin",
+      pathParams: [
+        { name: "stateId", type: "string", required: true, description: "LINE flow state ID (e.g. visitor-registered)" },
+      ],
+      requestBody: [
+        { name: "header_title", type: "string", required: false, description: "ข้อความหัวข้อ" },
+        { name: "header_color", type: "string", required: false, description: "สี: primary|green|orange|red|blue" },
+        { name: "header_variant", type: "string", required: false, description: "รูปแบบ header" },
+        { name: "is_active", type: "boolean", required: false, description: "เปิด/ปิดใช้งาน" },
+        { name: "rows", type: "object[]", required: false, description: "Body rows array" },
+        { name: "buttons", type: "object[]", required: false, description: "Buttons array" },
+        { name: "info_box", type: "object", required: false, description: "Info box config" },
+        { name: "show_qr_code", type: "boolean", required: false, description: "แสดง QR Code" },
+      ],
+      responseExample: `{ "status": "updated", "state_id": "visitor-registered", "updated_at": "2026-03-30T12:00:00Z" }`,
+    },
+    {
+      method: "GET",
+      path: "/api/settings/system",
+      summary: "ดึง System Settings (approval timeout, auto-cancel)",
+      summaryEn: "Get system settings",
+      auth: "admin",
+      responseExample: `{
+  "data": {
+    "approval_timeout_hours": 24,
+    "auto_cancel_on_date_passed": true
+  }
+}`,
+    },
+    {
+      method: "PUT",
+      path: "/api/settings/system",
+      summary: "แก้ไข System Settings",
+      summaryEn: "Update system settings",
+      auth: "admin",
+      requestBody: [
+        { name: "approval_timeout_hours", type: "number", required: false, description: "ชั่วโมงรออนุมัติ (1-168)" },
+        { name: "auto_cancel_on_date_passed", type: "boolean", required: false, description: "ยกเลิกเมื่อวันนัดผ่าน" },
+      ],
+      responseExample: `{ "status": "updated", "updated_at": "2026-03-30T12:00:00Z" }`,
+    },
+    {
+      method: "GET",
+      path: "/api/settings/email-templates",
+      summary: "ดึง Email notification templates ทั้งหมด",
+      summaryEn: "List all email notification templates",
+      auth: "admin",
+      responseExample: `{
+  "data": [
+    {
+      "id": 1,
+      "trigger_event": "booking-confirmed",
+      "name": "ยืนยันการจอง",
+      "is_active": true,
+      "subject": "ยืนยันการจอง — {{bookingCode}}",
+      "body_th": "เรียน คุณ{{visitorName}}...",
+      "variables": ["visitorName", "bookingCode", "date", "time"]
+    }
+  ],
+  "total": 7
+}`,
+    },
+    {
+      method: "PUT",
+      path: "/api/settings/email-templates/:id",
+      summary: "แก้ไข Email template",
+      summaryEn: "Update email notification template",
+      auth: "admin",
+      pathParams: [
+        { name: "id", type: "number", required: true, description: "Template ID" },
+      ],
+      requestBody: [
+        { name: "subject", type: "string", required: false, description: "หัวข้ออีเมล" },
+        { name: "body_th", type: "string", required: false, description: "เนื้อหาภาษาไทย" },
+        { name: "body_en", type: "string", required: false, description: "เนื้อหาภาษาอังกฤษ" },
+        { name: "is_active", type: "boolean", required: false, description: "เปิด/ปิดใช้งาน" },
+      ],
+      responseExample: `{ "status": "updated", "id": 1, "updated_at": "2026-03-30T12:00:00Z" }`,
+    },
+    {
+      method: "POST",
+      path: "/api/settings/email-templates/test",
+      summary: "ทดสอบส่ง Email template",
+      summaryEn: "Send test email",
+      auth: "admin",
+      requestBody: [
+        { name: "template_id", type: "number", required: true, description: "Template ID ที่ต้องการทดสอบ" },
+        { name: "to_email", type: "string", required: true, description: "อีเมลปลายทาง" },
+      ],
+      responseExample: `{ "status": "sent", "to": "test@example.com", "sent_at": "2026-03-30T12:00:00Z" }`,
+    },
+  ],
+};
+
+// ════════════════════════════════════════════════════
 // EXPORT & LOOKUP
 // ════════════════════════════════════════════════════
 
@@ -2079,6 +2216,7 @@ export const allApiDocs: PageApiDoc[] = [
   dashboardApi,
   emailSystemApi,
   lineOaConfigApi,
+  lineMessageTemplatesApi,
 ];
 
 export function getApiDocByPageId(pageId: string): PageApiDoc | undefined {

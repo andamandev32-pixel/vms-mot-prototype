@@ -1965,6 +1965,126 @@ const myProfileSchema: PageSchema = {
 };
 
 // ════════════════════════════════════════════════════
+// 23. LINE Message Templates + System Settings
+// ════════════════════════════════════════════════════
+
+const lineMessageTemplatesSchema: PageSchema = {
+  pageId: "line-message-templates",
+  menuName: "LINE OA & การแจ้งเตือน",
+  menuNameEn: "LINE OA & Notifications",
+  path: "/web/settings/line-message-templates",
+  description: "ตั้งค่า LINE OA, Flex Message Templates, Email Templates และ System Settings (Approval Timeout)",
+  tables: [
+    {
+      name: "system_settings",
+      comment: "ตั้งค่าระบบ (key-value) เช่น ระยะเวลารออนุมัติ",
+      columns: [
+        { name: "id", type: "SERIAL", nullable: false, comment: "PK", isPrimaryKey: true },
+        { name: "key", type: "VARCHAR(50)", nullable: false, comment: "ชื่อ setting key", isUnique: true },
+        { name: "value", type: "TEXT", nullable: false, comment: "ค่าของ setting" },
+        { name: "description", type: "VARCHAR(200)", nullable: true, comment: "คำอธิบายภาษาไทย" },
+        { name: "updated_by", type: "INT", nullable: true, comment: "ผู้แก้ไขล่าสุด", isForeignKey: true, references: "user_accounts.id" },
+        { name: "updated_at", type: "TIMESTAMP", nullable: false, comment: "แก้ไขล่าสุด", defaultValue: "CURRENT_TIMESTAMP" },
+      ],
+      seedData: [
+        { id: 1, key: "approval_timeout_hours", value: "24", description: "ชั่วโมงที่รอการอนุมัติก่อนยกเลิกอัตโนมัติ" },
+        { id: 2, key: "auto_cancel_on_date_passed", value: "true", description: "ยกเลิกอัตโนมัติเมื่อวันนัดผ่านไปแล้ว" },
+      ],
+    },
+    {
+      name: "line_flex_templates",
+      comment: "Flex Message template สำหรับแต่ละ state ของ LINE OA flow",
+      columns: [
+        { name: "id", type: "SERIAL", nullable: false, comment: "PK", isPrimaryKey: true },
+        { name: "state_id", type: "VARCHAR(50)", nullable: false, comment: "LINE flow state ID (e.g. visitor-registered)", isUnique: true },
+        { name: "name", type: "VARCHAR(100)", nullable: false, comment: "ชื่อ template ภาษาไทย" },
+        { name: "name_en", type: "VARCHAR(100)", nullable: false, comment: "ชื่อ template ภาษาอังกฤษ" },
+        { name: "type", type: "ENUM('flex','text','liff')", nullable: false, comment: "ประเภท: flex=Flex Message, text=ข้อความธรรมดา, liff=LIFF App" },
+        { name: "is_active", type: "BOOLEAN", nullable: false, comment: "เปิด/ปิดใช้งาน", defaultValue: "true" },
+        { name: "header_title", type: "VARCHAR(200)", nullable: true, comment: "ข้อความหัวข้อ" },
+        { name: "header_subtitle", type: "VARCHAR(200)", nullable: true, comment: "ข้อความรอง" },
+        { name: "header_color", type: "ENUM('primary','green','orange','red','blue')", nullable: false, comment: "สี header", defaultValue: "'primary'" },
+        { name: "header_variant", type: "VARCHAR(30)", nullable: false, comment: "รูปแบบ header (standard, reminder, checkin, ...)", defaultValue: "'standard'" },
+        { name: "show_status_badge", type: "BOOLEAN", nullable: false, comment: "แสดง status badge", defaultValue: "false" },
+        { name: "status_badge_text", type: "VARCHAR(50)", nullable: true, comment: "ข้อความบน badge" },
+        { name: "show_qr_code", type: "BOOLEAN", nullable: false, comment: "แสดง QR Code", defaultValue: "false" },
+        { name: "qr_label", type: "VARCHAR(100)", nullable: true, comment: "ข้อความใต้ QR Code" },
+        { name: "info_box_text", type: "TEXT", nullable: true, comment: "ข้อความใน Info Box" },
+        { name: "info_box_color", type: "VARCHAR(10)", nullable: true, comment: "สี Info Box" },
+        { name: "info_box_enabled", type: "BOOLEAN", nullable: false, comment: "แสดง Info Box", defaultValue: "false" },
+        { name: "updated_by", type: "INT", nullable: true, comment: "ผู้แก้ไข", isForeignKey: true, references: "user_accounts.id" },
+        { name: "updated_at", type: "TIMESTAMP", nullable: false, comment: "แก้ไขล่าสุด", defaultValue: "CURRENT_TIMESTAMP" },
+      ],
+      seedData: [
+        { id: 1, state_id: "visitor-registered", name: "ลงทะเบียนสำเร็จ", type: "flex", header_title: "Registration Complete", header_color: "green" },
+        { id: 2, state_id: "visitor-booking-confirmed", name: "ยืนยันการจอง", type: "flex", header_title: "นัดหมายใหม่", header_color: "primary" },
+        { id: 3, state_id: "visitor-auto-cancelled", name: "ยกเลิกอัตโนมัติ", type: "flex", header_title: "นัดหมายถูกยกเลิกอัตโนมัติ", header_color: "orange" },
+      ],
+    },
+    {
+      name: "line_flex_template_rows",
+      comment: "รายการ Body Row ของ Flex Message template",
+      columns: [
+        { name: "id", type: "SERIAL", nullable: false, comment: "PK", isPrimaryKey: true },
+        { name: "template_id", type: "INT", nullable: false, comment: "FK → line_flex_templates.id", isForeignKey: true, references: "line_flex_templates.id" },
+        { name: "label", type: "VARCHAR(100)", nullable: false, comment: "ข้อความ label (ภาษาไทย)" },
+        { name: "variable", type: "VARCHAR(50)", nullable: false, comment: "ชื่อ variable ที่ใช้ (e.g. visitorName)" },
+        { name: "preview_value", type: "VARCHAR(200)", nullable: true, comment: "ค่าตัวอย่างสำหรับ preview" },
+        { name: "enabled", type: "BOOLEAN", nullable: false, comment: "เปิด/ปิดแสดง row นี้", defaultValue: "true" },
+        { name: "sort_order", type: "INT", nullable: false, comment: "ลำดับการแสดงผล" },
+      ],
+      seedData: [
+        { id: 1, template_id: 1, label: "ประเภท", variable: "userType", preview_value: "Visitor", sort_order: 1 },
+        { id: 2, template_id: 1, label: "ชื่อ", variable: "visitorName", preview_value: "พุทธิพงษ์ คาดสนิท", sort_order: 2 },
+      ],
+    },
+    {
+      name: "line_flex_template_buttons",
+      comment: "ปุ่มกดของ Flex Message template",
+      columns: [
+        { name: "id", type: "SERIAL", nullable: false, comment: "PK", isPrimaryKey: true },
+        { name: "template_id", type: "INT", nullable: false, comment: "FK → line_flex_templates.id", isForeignKey: true, references: "line_flex_templates.id" },
+        { name: "label", type: "VARCHAR(100)", nullable: false, comment: "ข้อความบนปุ่ม" },
+        { name: "variant", type: "ENUM('green','primary','outline','red')", nullable: false, comment: "รูปแบบปุ่ม", defaultValue: "'primary'" },
+        { name: "action_url", type: "VARCHAR(500)", nullable: true, comment: "URL เมื่อกดปุ่ม (LIFF URL หรือ postback)" },
+        { name: "enabled", type: "BOOLEAN", nullable: false, comment: "เปิด/ปิดปุ่มนี้", defaultValue: "true" },
+        { name: "sort_order", type: "INT", nullable: false, comment: "ลำดับ" },
+      ],
+      seedData: [
+        { id: 1, template_id: 1, label: "สร้างรายการนัดหมาย", variant: "green", sort_order: 1 },
+        { id: 2, template_id: 1, label: "ข้อมูลส่วนบุคคล", variant: "outline", sort_order: 2 },
+      ],
+    },
+    {
+      name: "email_notification_templates",
+      comment: "เทมเพลตอีเมลแจ้งเตือนสำหรับแต่ละ event",
+      columns: [
+        { name: "id", type: "SERIAL", nullable: false, comment: "PK", isPrimaryKey: true },
+        { name: "trigger_event", type: "VARCHAR(50)", nullable: false, comment: "ชื่อ event trigger" },
+        { name: "name", type: "VARCHAR(100)", nullable: false, comment: "ชื่อ template ภาษาไทย" },
+        { name: "is_active", type: "BOOLEAN", nullable: false, comment: "เปิด/ปิดใช้งาน", defaultValue: "true" },
+        { name: "subject", type: "VARCHAR(200)", nullable: false, comment: "หัวข้ออีเมล (รองรับ {{variables}})" },
+        { name: "body_th", type: "TEXT", nullable: false, comment: "เนื้อหาภาษาไทย" },
+        { name: "body_en", type: "TEXT", nullable: true, comment: "เนื้อหาภาษาอังกฤษ" },
+        { name: "variables", type: "TEXT[]", nullable: true, comment: "รายการ variables ที่ใช้ได้" },
+        { name: "updated_at", type: "TIMESTAMP", nullable: false, comment: "แก้ไขล่าสุด", defaultValue: "CURRENT_TIMESTAMP" },
+      ],
+      seedData: [
+        { id: 1, trigger_event: "booking-confirmed", name: "ยืนยันการจอง", subject: "ยืนยันการจอง — {{bookingCode}}", is_active: true },
+        { id: 2, trigger_event: "booking-approved", name: "อนุมัติแล้ว", subject: "คำขอ {{bookingCode}} อนุมัติแล้ว", is_active: true },
+        { id: 3, trigger_event: "booking-auto-cancelled", name: "ยกเลิกอัตโนมัติ", subject: "นัดหมาย {{bookingCode}} ถูกยกเลิก", is_active: true },
+      ],
+    },
+  ],
+  relationships: [
+    "line_flex_template_rows.template_id → line_flex_templates.id",
+    "line_flex_template_buttons.template_id → line_flex_templates.id",
+    "system_settings.updated_by → user_accounts.id",
+    "line_flex_templates.state_id — maps to LineFlowStateId in application code",
+  ],
+};
+
+// ════════════════════════════════════════════════════
 // EXPORT: รวมทุก schema
 // ════════════════════════════════════════════════════
 
@@ -1990,6 +2110,7 @@ export const allPageSchemas: PageSchema[] = [
   emailSystemSchema,
   lineOaConfigSchema,
   myProfileSchema,
+  lineMessageTemplatesSchema,
 ];
 
 /** ค้น schema ตาม pageId */

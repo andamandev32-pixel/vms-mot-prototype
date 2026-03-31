@@ -30,11 +30,9 @@ export default function Sidebar() {
         { href: "/web/settings/service-points", label: "จุดให้บริการ Kiosk/Counter", icon: <Monitor size={20} />, resource: "settings" },
         { href: "/web/settings/document-types", label: "ประเภทเอกสาร", icon: <FileCheck size={20} />, resource: "settings" },
         { href: "/web/settings/business-hours", label: "เวลาทำการ", icon: <Clock size={20} />, resource: "settings" },
-        { href: "/web/settings/notification-templates", label: "เทมเพลตแจ้งเตือน", icon: <Bell size={20} />, resource: "settings" },
+        { href: "/web/settings/line-message-templates", label: "LINE OA & แจ้งเตือน", icon: <MessageCircle size={20} />, resource: "settings" },
         { href: "/web/settings/visit-slips", label: "แบบฟอร์ม Visit Slip", icon: <Printer size={20} />, resource: "settings" },
         { href: "/web/settings/pdpa-consent", label: "PDPA / ข้อมูลส่วนบุคคล", icon: <ShieldCheck size={20} />, resource: "settings" },
-        { href: "/web/settings/email-system", label: "ตั้งค่าอีเมลระบบ", icon: <Mail size={20} />, resource: "settings" },
-        { href: "/web/settings/line-oa-config", label: "ตั้งค่า LINE OA", icon: <MessageCircle size={20} />, resource: "settings" },
     ];
 
     // Filter menu items by role permissions
