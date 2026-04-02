@@ -16,46 +16,29 @@ import {
   CalendarClock, CheckCircle2, XCircle, Timer, UserCheck, LogOut, Bookmark,
   ChevronLeft, ChevronRight, Search, X, Database, Code2
 } from "lucide-react";
+import { useDashboardKPIs, useDashboardToday } from "@/lib/hooks";
 import {
-  appointments,
   visitTypes,
   statusConfig,
-  dashboardStats,
   type VisitType,
   type VisitStatus,
-  type Appointment,
+  type AppointmentStatus,
+  type EntryStatus,
 } from "@/lib/mock-data";
 
-// ===== Computed Stats =====
-
-const today = "2569-03-08";
-const todayAppts = appointments.filter((a) => a.date === today);
-
-// Count by status (today)
-function countByStatus(status: VisitStatus) {
-  return todayAppts.filter((a) => a.status === status).length;
+// Format time value from DB (Date or string) to "HH:MM"
+function fmtTime(v: unknown): string {
+  if (!v) return "—";
+  if (typeof v === "string") {
+    // Already "HH:MM" or ISO string
+    if (/^\d{2}:\d{2}/.test(v)) return v.slice(0, 5);
+    const d = new Date(v);
+    if (!isNaN(d.getTime())) return d.toISOString().slice(11, 16);
+    return v;
+  }
+  if (v instanceof Date) return v.toISOString().slice(11, 16);
+  return String(v);
 }
-
-// Count by visit type (today)
-function countByType(type: VisitType) {
-  return todayAppts.filter((a) => a.type === type).length;
-}
-
-// Breakdown: for a given type, count each status
-function typeStatusBreakdown(type: VisitType) {
-  const ofType = todayAppts.filter((a) => a.type === type);
-  return {
-    total: ofType.length,
-    pending: ofType.filter((a) => a.status === "pending").length,
-    approved: ofType.filter((a) => a.status === "approved").length,
-    checkedIn: ofType.filter((a) => a.status === "checked-in").length,
-    checkedOut: ofType.filter((a) => a.status === "checked-out" || a.status === "auto-checkout").length,
-    overstay: ofType.filter((a) => a.status === "overstay").length,
-    other: ofType.filter((a) => ["rejected", "cancelled", "blocked"].includes(a.status)).length,
-  };
-}
-
-const pendingAppts = todayAppts.filter((a) => a.status === "pending");
 
 const visitTypeIcons: Record<VisitType, React.ReactNode> = {
   official: <Briefcase size={22} />,
@@ -75,22 +58,26 @@ const visitTypeColors: Record<VisitType, { bg: string; icon: string; border: str
   other: { bg: "bg-gray-50", icon: "text-gray-600", border: "border-gray-200" },
 };
 
-// All statuses that have at least 1 appointment today
-const statusKeys: VisitStatus[] = [
-  "pending", "approved", "confirmed", "checked-in", "checked-out",
-  "auto-checkout", "overstay", "rejected", "cancelled", "blocked",
+// All statuses for overview — appointment + entry statuses
+const appointmentStatusKeys: AppointmentStatus[] = [
+  "pending", "approved", "confirmed", "cancelled", "expired", "rejected",
 ];
+const entryStatusKeys: EntryStatus[] = [
+  "checked-in", "checked-out", "auto-checkout", "overstay",
+];
+const statusKeys: VisitStatus[] = [...appointmentStatusKeys, ...entryStatusKeys, "blocked"];
 
 const statusIcons: Record<string, React.ReactNode> = {
   pending: <Clock size={16} />,
   approved: <CheckCircle2 size={16} />,
   confirmed: <UserCheck size={16} />,
+  cancelled: <Ban size={16} />,
+  expired: <Timer size={16} />,
+  rejected: <XCircle size={16} />,
   "checked-in": <ArrowUpRight size={16} />,
   "checked-out": <LogOut size={16} />,
   "auto-checkout": <Timer size={16} />,
   overstay: <AlertTriangle size={16} />,
-  rejected: <XCircle size={16} />,
-  cancelled: <Ban size={16} />,
   blocked: <Ban size={16} />,
 };
 
@@ -136,12 +123,59 @@ function ApiDbTag({ api, tables, query }: { api: string; tables: string; query?:
 }
 
 export default function WebDashboard() {
+  const { data: kpisRaw, isLoading: kpisLoading } = useDashboardKPIs();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const kpis = kpisRaw as any;
+  const { data: todayData, isLoading: todayLoading } = useDashboardToday();
+
   const [showSchema, setShowSchema] = useState(false);
   const [showFlow, setShowFlow] = useState(false);
   const [showApiDoc, setShowApiDoc] = useState(false);
   const schema = getSchemaByPageId("dashboard");
   const flowData = getFlowByPageId("dashboard");
   const apiDoc = getApiDocByPageId("dashboard");
+
+  // Data from API (with fallback)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const td = todayData as any;
+  const todayAppts: any[] = td?.appointments ?? [];
+  const todayEntries: any[] = td?.entries ?? [];
+  const pendingAppts = todayAppts.filter((a) => a.status === "pending");
+
+  function countByStatus(status: VisitStatus) {
+    const entryStatuses: string[] = ["checked-in", "checked-out", "auto-checkout", "overstay"];
+    if (entryStatuses.includes(status)) {
+      return todayEntries.filter((e: any) => e.status === status).length;
+    }
+    return todayAppts.filter((a) => a.status === status).length;
+  }
+
+  function typeStatusBreakdown(type: VisitType) {
+    const ofType = todayAppts.filter((a) => a.type === type);
+    const apptIds = new Set(ofType.map((a) => a.id));
+    const linkedEntries = todayEntries.filter((e: any) => e.appointmentId && apptIds.has(e.appointmentId));
+    const walkInEntries = todayEntries.filter((e: any) => e.appointmentId === null && e.visitType === type);
+    const allEntries = [...linkedEntries, ...walkInEntries];
+    return {
+      total: ofType.length + walkInEntries.length,
+      pending: ofType.filter((a) => a.status === "pending").length,
+      approved: ofType.filter((a) => a.status === "approved" || a.status === "confirmed").length,
+      checkedIn: allEntries.filter((e: any) => e.status === "checked-in").length,
+      checkedOut: allEntries.filter((e: any) => e.status === "checked-out" || e.status === "auto-checkout").length,
+      overstay: allEntries.filter((e: any) => e.status === "overstay").length,
+      other: ofType.filter((a) => ["rejected", "cancelled", "expired"].includes(a.status)).length,
+    };
+  }
+
+  const isLoading = kpisLoading || todayLoading;
+  if (isLoading) {
+    return (
+      <div>
+        <Topbar title="ภาพรวม" />
+        <div className="p-8 text-center text-text-muted">กำลังโหลดข้อมูล...</div>
+      </div>
+    );
+  }
 
   return (
     <div>
@@ -168,60 +202,58 @@ export default function WebDashboard() {
         </div>
 
         {/* ===== Section 1: Hero KPI Strip ===== */}
-        <div className="flex items-center gap-2 -mb-3">
+        <div className="flex items-center gap-2">
           <span className="text-xs font-semibold text-text-muted uppercase tracking-wider">Section 1: KPI Strip</span>
           <ApiDbTag
             api="GET /api/dashboard/stats"
-            tables="appointments → COUNT(*) GROUP BY status WHERE date_start = CURDATE()"
-            query={`SELECT\n  COUNT(*) AS total_visitors,\n  SUM(status='checked-in') AS in_building,\n  SUM(status='pending') AS pending,\n  SUM(status='overstay') AS overstay\nFROM appointments\nWHERE date_start = CURDATE()`}
+            tables="appointments, visit_entries"
+            query={`-- Appointment counts\nSELECT status, COUNT(*) FROM appointments WHERE date_start = CURDATE() GROUP BY status;\n-- Entry counts (in building, overstay)\nSELECT status, COUNT(*) FROM visit_entries WHERE DATE(checkin_at) = CURDATE() GROUP BY status;`}
           />
         </div>
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
           <KPICard
             title="ผู้มาติดต่อวันนี้"
             titleEn="Today's Visitors"
-            value={dashboardStats.today.totalVisitors}
+            value={kpis?.totalVisitorsToday ?? 0}
             icon={<Users size={22} />}
             color="primary"
-            change={`+${dashboardStats.today.deltaVisitors}% vs เมื่อวาน`}
-            up
           />
           <KPICard
             title="อยู่ในอาคาร"
             titleEn="Currently In Building"
-            value={dashboardStats.currentInBuilding}
+            value={kpis?.currentlyInBuilding ?? 0}
             icon={<Building2 size={22} />}
             color="info"
           />
           <KPICard
             title="รออนุมัติ"
             titleEn="Pending Approval"
-            value={countByStatus("pending")}
+            value={kpis?.pendingApprovals ?? 0}
             icon={<Clock size={22} />}
             color="warning"
-            highlight={countByStatus("pending") > 0}
+            highlight={(kpis?.pendingApprovals ?? 0) > 0}
           />
           <KPICard
             title="Check-in แล้ว"
             titleEn="Checked-In"
-            value={dashboardStats.today.checkedIn}
+            value={kpis?.currentlyInBuilding ?? 0}
             icon={<ArrowUpRight size={22} />}
             color="success"
           />
           <KPICard
             title="ออกแล้ว"
             titleEn="Checked-Out"
-            value={dashboardStats.today.checkedOut}
+            value={kpis?.checkedOutToday ?? 0}
             icon={<ArrowDown size={22} />}
             color="neutral"
           />
           <KPICard
             title="เกินเวลา"
             titleEn="Overstay"
-            value={dashboardStats.overstayCount}
+            value={kpis?.overstayCount ?? 0}
             icon={<AlertTriangle size={22} />}
             color="error"
-            highlight={dashboardStats.overstayCount > 0}
+            highlight={(kpis?.overstayCount ?? 0) > 0}
           />
         </div>
 
@@ -354,17 +386,17 @@ export default function WebDashboard() {
                         </div>
                       </td>
                       <td className="py-3.5 px-4">
-                        <span className="text-xs font-medium">{visitTypes[a.type].label}</span>
+                        <span className="text-xs font-medium">{visitTypes[a.type as VisitType]?.label}</span>
                       </td>
                       <td className="py-3.5 px-4 text-text-secondary font-mono text-xs">
-                        {a.timeStart}–{a.timeEnd} น.
+                        {fmtTime(a.timeStart)}–{fmtTime(a.timeEnd)} น.
                       </td>
                       <td className="py-3.5 px-4">
-                        <span className="text-text-secondary text-xs">{a.host.name}</span>
+                        <span className="text-text-secondary text-xs">{a.hostStaff?.name ?? "—"}</span>
                       </td>
                       <td className="py-3.5 px-4 text-center">
                         <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 text-xs font-bold text-text-secondary">
-                          {a.companions}
+                          {a.companionsCount}
                         </span>
                       </td>
                       <td className="py-3.5 px-4">
@@ -454,7 +486,7 @@ function MiniStat({ label, count, color, bg }: { label: string; count: number; c
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50];
 
-function AllVisitorsTodayTable({ appointments: appts }: { appointments: Appointment[] }) {
+function AllVisitorsTodayTable({ appointments: appts }: { appointments: any[] }) {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
   const [search, setSearch] = useState("");
@@ -471,8 +503,8 @@ function AllVisitorsTodayTable({ appointments: appts }: { appointments: Appointm
         a.visitor.name.toLowerCase().includes(q) ||
         (a.visitor.nameEn?.toLowerCase().includes(q)) ||
         a.visitor.company.toLowerCase().includes(q) ||
-        a.host.name.toLowerCase().includes(q) ||
-        a.code.toLowerCase().includes(q);
+        (a.hostStaff?.name ?? "").toLowerCase().includes(q) ||
+        (a.bookingCode ?? "").toLowerCase().includes(q);
       if (!match) return false;
     }
     return true;
@@ -547,7 +579,7 @@ function AllVisitorsTodayTable({ appointments: appts }: { appointments: Appointm
           >
             <option value="all">ประเภท: ทั้งหมด</option>
             {availableTypes.map((t) => (
-              <option key={t} value={t}>{visitTypes[t].label}</option>
+              <option key={t} value={t}>{visitTypes[t as VisitType]?.label}</option>
             ))}
           </select>
 
@@ -559,7 +591,7 @@ function AllVisitorsTodayTable({ appointments: appts }: { appointments: Appointm
           >
             <option value="all">สถานะ: ทั้งหมด</option>
             {availableStatuses.map((s) => (
-              <option key={s} value={s}>{statusConfig[s].label} ({statusConfig[s].labelEn})</option>
+              <option key={s} value={s}>{statusConfig[s as VisitStatus]?.label} ({statusConfig[s as VisitStatus]?.labelEn})</option>
             ))}
           </select>
 
@@ -622,23 +654,23 @@ function AllVisitorsTodayTable({ appointments: appts }: { appointments: Appointm
                 </td>
                 <td className="py-3.5 px-4">
                   <div className="flex items-center gap-1.5">
-                    <span className={`${visitTypeColors[a.type].icon}`}>
-                      {visitTypeIcons[a.type]}
+                    <span className={`${visitTypeColors[a.type as VisitType]?.icon}`}>
+                      {visitTypeIcons[a.type as VisitType]}
                     </span>
-                    <span className="text-xs font-medium text-text-secondary">{visitTypes[a.type].label}</span>
+                    <span className="text-xs font-medium text-text-secondary">{visitTypes[a.type as VisitType]?.label}</span>
                   </div>
                 </td>
                 <td className="py-3.5 px-4 text-text-secondary font-mono text-xs">
-                  {a.timeStart}–{a.timeEnd}
+                  {fmtTime(a.timeStart)}–{fmtTime(a.timeEnd)}
                 </td>
                 <td className="py-3.5 px-4">
-                  <span className="text-text-secondary text-sm">{a.host.name}</span>
-                  <span className="block text-xs text-text-muted">{a.host.department.name}</span>
+                  <span className="text-text-secondary text-sm">{a.hostStaff?.name ?? "—"}</span>
+                  <span className="block text-xs text-text-muted">{a.department?.name ?? "—"}</span>
                 </td>
                 <td className="py-3.5 px-4 text-center">
-                  {a.companions > 0 ? (
+                  {a.companionsCount > 0 ? (
                     <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary-50 text-xs font-bold text-primary">
-                      +{a.companions}
+                      +{a.companionsCount}
                     </span>
                   ) : (
                     <span className="text-text-muted text-xs">—</span>
