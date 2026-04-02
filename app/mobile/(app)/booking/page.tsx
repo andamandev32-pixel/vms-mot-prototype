@@ -9,7 +9,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useRichMenu } from "@/components/mobile/RichMenuContext";
-import { staffMembers, visitPurposeConfigs, getDepartmentLocation } from "@/lib/mock-data";
+import { staffMembers, visitPurposeConfigs, departments, getDepartmentLocation } from "@/lib/mock-data";
 
 // Visit types rendered from visitPurposeConfigs — filter showOnLine (LINE OA channel)
 const visitTypes = visitPurposeConfigs
@@ -37,11 +37,29 @@ export default function BookingPage() {
     // Step 1
     const [selectedType, setSelectedType] = useState<string | null>(null);
     // Step 2
+    const [selectedDeptId, setSelectedDeptId] = useState<number | null>(null);
     const [selectedDate, setSelectedDate] = useState<number | null>(null);
     const [timeStart, setTimeStart] = useState("10:00");
     const [timeEnd, setTimeEnd] = useState("11:00");
     const [hostSearch, setHostSearch] = useState("");
     const [selectedHost, setSelectedHost] = useState<typeof staffMembers[0] | null>(null);
+
+    // ═══════ Dynamic Rule Resolution ═══════
+    const selectedPurposeConfig = visitPurposeConfigs.find(p => String(p.id) === selectedType);
+    const deptOptions = selectedPurposeConfig
+        ? selectedPurposeConfig.departmentRules
+            .filter(r => r.isActive && r.acceptFromLine)
+            .map(r => {
+                const dept = departments.find(d => d.id === r.departmentId);
+                return dept ? { id: dept.id, name: dept.name, floor: getDepartmentLocation(dept.id)?.floor ?? "" } : null;
+            }).filter(Boolean) as { id: number; name: string; floor: string }[]
+        : [];
+
+    const selectedRule = selectedPurposeConfig && selectedDeptId
+        ? selectedPurposeConfig.departmentRules.find(r => r.departmentId === selectedDeptId && r.isActive)
+        : null;
+    const requirePersonName = selectedRule?.requirePersonName ?? true;
+    const requireApproval = selectedRule?.requireApproval ?? true;
     // Step 3
     const [companions, setCompanions] = useState(0);
     const [phone, setPhone] = useState("081-302-5678");
@@ -60,10 +78,15 @@ export default function BookingPage() {
         else setStep((prev) => Math.max(prev - 1, 1));
     };
 
-    // Can proceed logic
+    // Can proceed logic — dynamic based on rules
     const canProceed = () => {
         if (step === 1) return !!selectedType;
-        if (step === 2) return !!selectedDate && !!selectedHost;
+        if (step === 2) {
+            if (!selectedDate) return false;
+            if (!selectedDeptId) return false;
+            if (requirePersonName && !selectedHost) return false;
+            return true;
+        }
         if (step === 3) return true;
         if (step === 4) return agreed;
         return false;
@@ -117,20 +140,60 @@ export default function BookingPage() {
                     <Step1SelectType selected={selectedType} onSelect={setSelectedType} />
                 )}
                 {step === 2 && (
-                    <Step2DateTime
-                        selectedDate={selectedDate}
-                        onSelectDate={setSelectedDate}
-                        timeStart={timeStart}
-                        onTimeStartChange={setTimeStart}
-                        timeEnd={timeEnd}
-                        onTimeEndChange={setTimeEnd}
-                        hostSearch={hostSearch}
-                        onHostSearchChange={setHostSearch}
-                        filteredHosts={filteredHosts}
-                        selectedHost={selectedHost}
-                        onSelectHost={(h) => { setSelectedHost(h); setHostSearch(""); }}
-                        onClearHost={() => setSelectedHost(null)}
-                    />
+                    <>
+                        {/* Department Selection (dynamic) */}
+                        {deptOptions.length > 0 && (
+                            <div className="mb-4">
+                                <label className="block text-sm font-semibold text-text-primary mb-2">หน่วยงานที่ต้องการติดต่อ</label>
+                                <select
+                                    value={selectedDeptId ?? ""}
+                                    onChange={(e) => { setSelectedDeptId(e.target.value ? Number(e.target.value) : null); setSelectedHost(null); }}
+                                    className="w-full h-11 rounded-xl border border-border bg-white px-3 text-sm"
+                                >
+                                    <option value="">-- เลือกหน่วยงาน --</option>
+                                    {deptOptions.map(d => (
+                                        <option key={d.id} value={d.id}>{d.name} ({d.floor})</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
+
+                        {/* Approval Status Badge */}
+                        {selectedRule && (
+                            <div className="mb-4 flex gap-2">
+                                {requireApproval ? (
+                                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                                        <Clock size={12} /> ต้องรออนุมัติ
+                                    </span>
+                                ) : (
+                                    <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-bold bg-green-50 text-green-700 border border-green-200">
+                                        <Check size={12} /> อนุมัติอัตโนมัติ
+                                    </span>
+                                )}
+                                {!requirePersonName && (
+                                    <span className="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                                        ไม่ต้องระบุผู้ที่จะพบ
+                                    </span>
+                                )}
+                            </div>
+                        )}
+
+                        <Step2DateTime
+                            selectedDate={selectedDate}
+                            onSelectDate={setSelectedDate}
+                            timeStart={timeStart}
+                            onTimeStartChange={setTimeStart}
+                            timeEnd={timeEnd}
+                            onTimeEndChange={setTimeEnd}
+                            hostSearch={hostSearch}
+                            onHostSearchChange={setHostSearch}
+                            filteredHosts={filteredHosts}
+                            selectedHost={selectedHost}
+                            onSelectHost={(h) => { setSelectedHost(h); setHostSearch(""); }}
+                            onClearHost={() => setSelectedHost(null)}
+                            showHostField={requirePersonName}
+                        />
+                    </>
                 )}
                 {step === 3 && (
                     <Step3Details
@@ -234,6 +297,7 @@ function Step2DateTime({
     hostSearch, onHostSearchChange,
     filteredHosts, selectedHost,
     onSelectHost, onClearHost,
+    showHostField = true,
 }: {
     selectedDate: number | null; onSelectDate: (d: number) => void;
     timeStart: string; onTimeStartChange: (v: string) => void;
@@ -243,6 +307,7 @@ function Step2DateTime({
     selectedHost: typeof staffMembers[0] | null;
     onSelectHost: (h: typeof staffMembers[0]) => void;
     onClearHost: () => void;
+    showHostField?: boolean;
 }) {
     const emptySlots = MARCH_2026_OFFSET; // Sunday = 0 slots before day 1
     const dayHeaders = ["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"];
@@ -327,8 +392,9 @@ function Step2DateTime({
             </div>
 
             {/* Host Search */}
+            {showHostField && (
             <div className="space-y-2">
-                <label className="text-xs font-bold text-text-secondary">เจ้าหน้าที่ผู้รับพบ</label>
+                <label className="text-xs font-bold text-text-secondary">เจ้าหน้าที่ผู้รับพบ {showHostField && <span className="text-error">*</span>}</label>
                 {selectedHost ? (
                     <div className="bg-primary-50 border border-primary-200 rounded-xl p-3 flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
@@ -378,6 +444,7 @@ function Step2DateTime({
                     </div>
                 )}
             </div>
+            )}
         </div>
     );
 }

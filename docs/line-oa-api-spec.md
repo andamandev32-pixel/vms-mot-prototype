@@ -52,6 +52,32 @@ Authorization: Bearer <user_jwt_token>
 
 ---
 
+## Implemented API Stubs
+
+> ⚠️ ระบบปัจจุบันมี stub endpoints สำหรับ LINE integration — ยังไม่เชื่อม LINE SDK จริง
+
+### POST /api/line/webhook (Stub)
+- **File:** `app/api/line/webhook/route.ts`
+- **สถานะ:** Stub — รับ webhook events แล้ว log ไว้ ไม่ process จริง
+- **TODO Production:** Validate X-Line-Signature, parse events, route to handlers
+
+### POST /api/line/push-message (Stub)
+- **File:** `app/api/line/push-message/route.ts`
+- **Auth:** ต้อง login (evms_session cookie)
+- **สถานะ:** Stub — log intent แล้ว return queued status ไม่ส่ง LINE message จริง
+- **Request:** `{ to: "LINE_USER_ID", templateId: "...", variables: {...} }`
+- **TODO Production:** ใช้ @line/bot-sdk client.pushMessage()
+
+### Mobile Booking Integration
+- **File:** `app/mobile/(app)/booking/page.tsx`
+- **การเปลี่ยนแปลง:** 
+  - เพิ่ม department selection dropdown (dynamic ตาม acceptFromLine)
+  - เพิ่ม approval badge (อนุมัติอัตโนมัติ / รออนุมัติ)
+  - `canProceed` ปรับ: ถ้า requirePersonName=false → ไม่ต้องเลือก host
+  - Submit ส่ง `channel: "line"` ไป POST /api/appointments
+
+---
+
 ## สรุป API ตาม LINE Flow State
 
 | # | State | UserType | Method | Endpoint | สรุป |

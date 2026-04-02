@@ -25,6 +25,28 @@ Token ได้จาก Device Registration ครั้งแรก (ผูก
 
 ---
 
+## API Reuse Strategy — การใช้ API ร่วมกับ Web App
+
+> **หมายเหตุ:** Kiosk ไม่ได้สร้าง API routes เฉพาะ (`/api/kiosk/*`) แต่ reuse existing endpoints ของ Web App
+> โดยใช้ React hooks จาก `lib/hooks/use-kiosk.ts` เป็น abstraction layer
+
+| Kiosk State | Hook | Existing API Endpoint |
+|------------|------|----------------------|
+| WELCOME | `useKioskConfig(servicePointId)` | GET /api/service-points/:id |
+| SELECT_PURPOSE | `useKioskPurposes()` | GET /api/visit-purposes |
+| ID_VERIFICATION | `useSearchVisitor()` | GET /api/search/visitors |
+| ID_VERIFICATION | `useKioskBlocklistCheck()` | POST /api/blocklist/check |
+| PENDING_APPROVAL | `useCreatePendingAppointment()` | POST /api/appointments |
+| PENDING_APPROVAL | `usePollAppointmentStatus(id)` | GET /api/appointments/:id (poll 10s) |
+| SUCCESS | `useKioskCheckin()` | POST /api/entries |
+| QR_SCAN | `useAppointmentLookup()` | GET /api/search/appointments |
+| PDPA_CONSENT | `useRecordPdpaConsent()` | POST /api/pdpa/accept |
+
+**Hooks file:** `lib/hooks/use-kiosk.ts`
+**Component ใหม่:** `components/kiosk/PendingApprovalScreen.tsx` — Polling UI สำหรับ PENDING_APPROVAL state
+
+---
+
 ## สรุป API ตาม Kiosk State
 
 | # | State | Method | Endpoint | สรุป |
