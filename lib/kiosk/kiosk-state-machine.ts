@@ -231,6 +231,18 @@ export function kioskReducer(state: KioskState, event: KioskEvent): KioskState {
       if (event.type === "TIMEOUT") return { type: "TIMEOUT" };
       break;
 
+    // ───────────── PENDING_APPROVAL (Walk-in ที่ต้อง approve) ─────────────
+    case "PENDING_APPROVAL":
+      if (event.type === "APPOINTMENT_APPROVED")
+        return { ...state, type: "FACE_CAPTURE" };
+      if (event.type === "APPOINTMENT_REJECTED")
+        return { ...state, type: "ERROR", errorMessage: "คำขอถูกปฏิเสธ กรุณาติดต่อเคาน์เตอร์" };
+      if (event.type === "GO_BACK")
+        return { ...state, type: "SELECT_PURPOSE" };
+      if (event.type === "TIMEOUT")
+        return { ...state, type: "ERROR", errorMessage: "หมดเวลารออนุมัติ กรุณาติดต่อเคาน์เตอร์" };
+      break;
+
     // ───────────── ERROR ─────────────
     case "ERROR":
       if (event.type === "GO_BACK" && state.retryState)

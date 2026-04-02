@@ -38,12 +38,17 @@ Token ได้จาก Device Registration ครั้งแรก (ผูก
 | 6 | SELECT_PURPOSE | GET | `/kiosk/purposes` | ดึงวัตถุประสงค์ที่แสดงบน Kiosk |
 | 7 | FACE_CAPTURE | POST | `/kiosk/face-photo` | อัปโหลดภาพถ่ายใบหน้า |
 | 8 | WIFI_OFFER | POST | `/kiosk/wifi/generate` | สร้าง WiFi Credentials |
-| 9 | SUCCESS | POST | `/kiosk/checkin` | สร้าง visit_record + ออก QR/Slip |
+| 9 | SUCCESS | POST | `/kiosk/checkin` | สร้าง visit_entry + ออก QR/Slip |
 | 9b | SUCCESS | POST | `/kiosk/slip/print` | บันทึกว่าพิมพ์ slip แล้ว |
 | 10 | QR_SCAN | POST | `/kiosk/appointment/lookup-qr` | ค้นหานัดหมายจาก QR Code |
 | 11 | APPOINTMENT_PREVIEW | — | *(ใช้ข้อมูลจาก lookup, ไม่ต้องเรียก API)* | |
 | 12 | APPOINTMENT_VERIFY_ID | POST | `/kiosk/appointment/verify` | ยืนยันตัวตนกับนัดหมาย |
+| 13 | Appointment No-QR | POST | `/kiosk/appointment/lookup-id` | ค้นหานัดหมายจากบัตรประชาชน |
+| 14 | PENDING_APPROVAL | POST | `/api/appointments` | สร้าง appointment (status=pending) สำหรับ walk-in ที่ต้องอนุมัติ |
+| 14b | PENDING_APPROVAL | GET | `/api/appointments/:id` | poll ทุก 10 วินาทีเพื่อเช็คสถานะอนุมัติ |
 | — | ERROR | POST | `/kiosk/error-log` | รายงาน error ไป backend (optional) |
+
+> **Total States: 15** (รวม PENDING_APPROVAL ที่เพิ่มใหม่สำหรับ walk-in approval flow)
 
 ---
 
@@ -207,7 +212,7 @@ Token ได้จาก Device Registration ครั้งแรก (ผูก
 
 ### `POST /kiosk/verify-identity`
 
-**Tables ที่ใช้:** `visitors` (upsert), `blocklist` (check), `visit_records` (check existing)
+**Tables ที่ใช้:** `visitors` (upsert), `blocklist` (check), `visit_entries` (check existing)
 
 **Request:**
 
@@ -376,13 +381,141 @@ Token ได้จาก Device Registration ครั้งแรก (ผูก
 }
 ```
 
+### Transition Logic หลังเลือกวัตถุประสงค์ + แผนก
+
+เมื่อผู้เยี่ยม walk-in เลือก purpose + department แล้ว ระบบจะ fetch `visit_purpose_department_rules` เพื่อตรวจสอบ:
+
+1. **`requireApproval`**:
+   - ถ้า `true` → transition ไป **PENDING_APPROVAL** (ไม่ไป FACE_CAPTURE โดยตรง) — ระบบสร้าง appointment (status=pending) แล้วรอการอนุมัติ
+   - ถ้า `false` → transition ไป **FACE_CAPTURE** / **ID_VERIFICATION** ตามปกติ (auto-approve, check-in ได้เลย)
+
+2. **`requirePersonName`**:
+   - ถ้า `true` → แสดงหน้าเลือก host staff (ผู้ที่จะไปพบ) ก่อน transition ถัดไป
+   - ถ้า `false` → ข้ามขั้นตอนเลือก host staff
+
+---
+
+## 6b. PENDING_APPROVAL — รอการอนุมัติ (Walk-in ที่ต้องอนุมัติ)
+
+State นี้ใช้สำหรับ walk-in visitor ที่เลือก purpose + department ที่มี `requireApproval = true` ใน `visit_purpose_department_rules`
+
+### Trigger
+
+หลังจาก **SELECT_PURPOSE** เมื่อ rule.requireApproval = true:
+1. ระบบสร้าง appointment ใหม่ (`POST /api/appointments` status=pending)
+2. ส่ง notification ไปยังกลุ่มผู้อนุมัติ (approver group) ผ่าน LINE / Email / Web-app
+3. เข้าสู่ state PENDING_APPROVAL
+
+### `POST /api/appointments`
+
+สร้าง appointment แบบ pending สำหรับ walk-in ที่ต้องรอการอนุมัติ
+
+**Tables ที่ใช้:** `appointments` (INSERT), `notification_templates`, `staff` (approver group lookup)
+
+**Request:**
+
+```json
+{
+  "visitorId": 15,
+  "visitPurposeId": 1,
+  "departmentId": 1,
+  "hostStaffId": null,
+  "servicePointId": 1,
+  "source": "kiosk-walkin",
+  "status": "pending",
+  "date": "2026-03-15",
+  "notes": "Walk-in visitor — รอการอนุมัติจาก Kiosk"
+}
+```
+
+**Response:**
+
+```json
+{
+  "id": 99,
+  "bookingCode": "eVMS-20260315-0099",
+  "status": "pending",
+  "createdAt": "2026-03-15T09:02:00+07:00",
+  "notificationSent": true,
+  "approverGroup": "สำนักงานปลัดกระทรวง — ผู้อนุมัติ",
+  "estimatedWaitMinutes": 5
+}
+```
+
+### `GET /api/appointments/:id` (Poll)
+
+Kiosk poll ทุก 10 วินาทีเพื่อเช็คว่าผู้อนุมัติ approve/reject แล้วหรือยัง
+
+**Response — ยังรออนุมัติ:**
+
+```json
+{
+  "id": 99,
+  "status": "pending",
+  "elapsedSeconds": 30
+}
+```
+
+**Response — อนุมัติแล้ว:**
+
+```json
+{
+  "id": 99,
+  "status": "approved",
+  "approvedAt": "2026-03-15T09:04:30+07:00",
+  "approvedBy": {
+    "staffId": 5,
+    "name": "นางสาวพิมพา เกษมศรี",
+    "department": "สำนักงานปลัดกระทรวง"
+  }
+}
+```
+
+**Response — ปฏิเสธ:**
+
+```json
+{
+  "id": 99,
+  "status": "rejected",
+  "rejectedAt": "2026-03-15T09:04:30+07:00",
+  "rejectedBy": {
+    "staffId": 5,
+    "name": "นางสาวพิมพา เกษมศรี"
+  },
+  "rejectReason": "ไม่มีนัดหมายล่วงหน้า กรุณาติดต่อนัดหมายก่อน"
+}
+```
+
+### State Transitions
+
+| Event | Next State | เงื่อนไข |
+|-------|-----------|---------|
+| APPOINTMENT_APPROVED | FACE_CAPTURE | status เปลี่ยนเป็น `approved` จาก poll |
+| APPOINTMENT_REJECTED | ERROR | status เปลี่ยนเป็น `rejected` จาก poll |
+| GO_BACK | SELECT_PURPOSE | ผู้เยี่ยมกดย้อนกลับ |
+| TIMEOUT | ERROR | รอเกิน 5 นาที (300 วินาที) ไม่มีการ approve/reject |
+
+### Notification
+
+เมื่อสร้าง appointment (status=pending) ระบบส่ง notification ไปยัง:
+- **Approver group** ของ department ที่เลือก (ผ่าน LINE / Email / Web-app)
+- ข้อความ: "ผู้เยี่ยม {visitorName} ขอเข้าพบ {departmentName} — กรุณาอนุมัติหรือปฏิเสธ"
+
+### UI Display
+
+แสดงข้อความ:
+```
+รายการของท่านถูกส่งไปยังผู้อนุมัติแล้ว กรุณารอ...
+```
+พร้อม spinner animation และแสดงเวลาที่รอ (elapsed time)
+
 ---
 
 ## 7. FACE_CAPTURE — อัปโหลดภาพถ่ายใบหน้า
 
 ### `POST /kiosk/face-photo`
 
-**Tables ที่ใช้:** *(file storage)*, `visit_records.face_photo_path`
+**Tables ที่ใช้:** *(file storage)*, `visit_entries.face_photo_path`
 
 **Request:** `multipart/form-data`
 
@@ -409,7 +542,7 @@ servicePointId: 1
 
 ### `POST /kiosk/wifi/generate`
 
-**Tables ที่ใช้:** `service_points` (wifi config), `visit_records` (update wifi fields)
+**Tables ที่ใช้:** `service_points` (wifi config), `visit_entries` (update wifi fields)
 
 **Request:**
 
@@ -435,13 +568,28 @@ servicePointId: 1
 
 ---
 
-## 9. SUCCESS — สร้าง Visit Record + ออก QR/Slip
+## 9. SUCCESS — สร้าง Visit Entry + ออก QR/Slip
 
 ### `POST /kiosk/checkin`
 
-**นี่คือ API หลัก** — รวม transaction: สร้าง `visit_record`, assign `access_group`, generate QR Code, resolve slip template
+**นี่คือ API หลัก** — รวม transaction: สร้าง `visit_entry`, assign `access_group`, generate QR Code, resolve slip template
 
-**Tables ที่ใช้:** `visit_records` (INSERT/UPDATE), `access_groups`, `access_group_zones`, `department_access_mappings`, `visit_slip_templates`, `visit_slip_sections`, `visit_slip_fields`, `purpose_slip_mappings`
+- **Walk-in**: สร้าง `visit_entry` ที่มี `appointment_id: null` (หรือ `appointment_id: <id>` ถ้าผ่าน PENDING_APPROVAL flow)
+- **Appointment**: สร้าง `visit_entry` ที่มี `appointment_id: <id>` (ไม่ได้ update appointment status เป็น checked-in — appointment status คงเดิม)
+
+### Period Validation
+
+| entryMode | Validation | Error |
+|-----------|-----------|-------|
+| `single` | อนุญาตแค่ 1 entry เท่านั้น — ถ้ามี entry อยู่แล้วจะ reject | `409 ENTRY_ALREADY_ACTIVE` |
+| `period` | ตรวจว่า TODAY อยู่ในช่วง dateStart-dateEnd + ไม่มี entry ของวันเดียวกันที่ status=checked-in | `409 ENTRY_ALREADY_ACTIVE` (ถ้า check-in วันนี้แล้ว) หรือ `410 APPOINTMENT_EXPIRED` (ถ้าเลยช่วง) |
+
+### notifyOnCheckin Flag
+
+- ถ้า `notifyOnCheckin = true` ระบบจะส่ง notification ไปยัง `appointment.createdByStaff` + `hostStaff` (ถ้ามี) ผ่านช่องทางที่ตั้งค่าไว้ (LINE/Email)
+- ถ้า appointment ถูก auto-approve (จาก rule ที่ `requireApproval = false`) ค่า `approvedAt` จะถูก set ไว้แล้วตั้งแต่ตอนสร้าง
+
+**Tables ที่ใช้:** `visit_entries` (INSERT), `appointments` (lookup), `access_groups`, `access_group_zones`, `department_access_mappings`, `visit_slip_templates`, `visit_slip_sections`, `visit_slip_fields`, `purpose_slip_mappings`
 
 ### Walk-in Check-in
 
@@ -485,9 +633,10 @@ servicePointId: 1
 
 ```json
 {
-  "visitRecord": {
+  "entry": {
     "id": 42,
-    "bookingCode": "eVMS-20260315-0099",
+    "entryCode": "eVMS-20260315-0099",
+    "appointmentId": null,
     "status": "checked-in",
     "checkinAt": "2026-03-15T09:05:00+07:00"
   },
@@ -551,7 +700,7 @@ servicePointId: 1
 
 ```json
 {
-  "visitRecordId": 42,
+  "entryId": 42,
   "printed": true
 }
 ```
@@ -571,7 +720,7 @@ servicePointId: 1
 
 ### `POST /kiosk/appointment/lookup-qr`
 
-**Tables ที่ใช้:** `visit_records`, `visitors`, `staff`, `departments`, `visit_purposes`, `floor_departments`, `floors`
+**Tables ที่ใช้:** `appointments`, `visitors`, `staff`, `departments`, `visit_purposes`, `floor_departments`, `floors`
 
 **Request:**
 
@@ -641,6 +790,27 @@ servicePointId: 1
 
 **ไม่ต้องเรียก API** — ใช้ข้อมูลจาก response ของ `POST /kiosk/appointment/lookup-qr` แสดงบนหน้าจอ
 
+### Period Mode Handling (entryMode = "period")
+
+สำหรับนัดหมายแบบหลายวัน (`entryMode: "period"`):
+
+**UI Display:**
+```
+นัดหมายแบบหลายวัน: {dateStart} - {dateEnd}
+วันนี้: วันที่ X/Y
+```
+
+**Validation Logic (ฝั่ง Kiosk):**
+
+| เงื่อนไข | ผลลัพธ์ | ข้อความแสดง |
+|----------|---------|------------|
+| TODAY < dateStart | ไม่อนุญาต check-in | "ยังไม่ถึงวันนัดหมาย" |
+| TODAY > dateEnd | ไม่อนุญาต check-in | "นัดหมายหมดอายุแล้ว" |
+| TODAY อยู่ในช่วง dateStart-dateEnd | อนุญาต check-in | แสดง "วันที่ X/Y" |
+| มี entry วันนี้ที่ status=checked-in อยู่แล้ว | ไม่อนุญาต check-in ซ้ำ | "วันนี้ check-in แล้ว" |
+
+> **หมายเหตุ**: ข้อมูล `dateEnd` และ `entryMode` ได้จาก response ของ `POST /kiosk/appointment/lookup-qr` — Kiosk ตรวจสอบ logic ฝั่ง client ก่อนแสดงปุ่มยืนยัน และ backend จะ validate ซ้ำอีกครั้งตอน `POST /kiosk/checkin`
+
 ---
 
 ## 12. APPOINTMENT_VERIFY_ID — ยืนยันตัวตนกับนัดหมาย
@@ -649,7 +819,7 @@ servicePointId: 1
 
 เช่นเดียวกับ `POST /kiosk/verify-identity` แต่เพิ่มการตรวจสอบว่าข้อมูลตรงกับนัดหมายหรือไม่
 
-**Tables ที่ใช้:** `visitors`, `visit_records`, `blocklist`
+**Tables ที่ใช้:** `visitors`, `appointments`, `blocklist`
 
 **Request:**
 
@@ -704,7 +874,7 @@ servicePointId: 1
 
 ### `POST /kiosk/appointment/lookup-id`
 
-**Tables ที่ใช้:** `visit_records`, `visitors`
+**Tables ที่ใช้:** `appointments`, `visitors`
 
 **Request:**
 
@@ -795,7 +965,20 @@ servicePointId: 1
 │    ▼                                                                 │
 │  SELECT_PURPOSE ───── GET /kiosk/purposes                            │
 │    │                                                                 │
-│    ▼                                                                 │
+│    ├─ [requireApproval = true] ──────────────────┐                   │
+│    │                                             ▼                   │
+│    │                        PENDING_APPROVAL                         │
+│    │                          POST /api/appointments (pending)       │
+│    │                          GET /api/appointments/:id (poll 10s)   │
+│    │                          │                                      │
+│    │                          ├─ [approved] ──┐                      │
+│    │                          │               ▼                      │
+│    │                          │         FACE_CAPTURE                 │
+│    │                          ├─ [rejected] → ERROR                  │
+│    │                          └─ [timeout 5m] → ERROR                │
+│    │                                                                 │
+│    └─ [requireApproval = false] ─────────────────┐                   │
+│                                                  ▼                   │
 │  FACE_CAPTURE ─────── POST /kiosk/face-photo                         │
 │    │                                                                 │
 │    ▼                                                                 │
@@ -804,7 +987,7 @@ servicePointId: 1
 │    ▼                                                                 │
 │  SUCCESS ──────────── POST /kiosk/checkin                             │
 │                       POST /kiosk/slip/print                         │
-│                       → visit_record created                         │
+│                       → visit_entry created                          │
 │                       → QR code generated                            │
 │                       → Hikvision synced                             │
 │                       → slip printed                                 │
@@ -878,7 +1061,8 @@ servicePointId: 1
 | `departments` | `GET /kiosk/purposes` |
 | `floors` | `GET /kiosk/purposes` (join) |
 | `floor_departments` | `GET /kiosk/purposes` (join) |
-| `visit_records` | `POST /kiosk/checkin` (INSERT/UPDATE), lookup APIs |
+| `visit_entries` | `POST /kiosk/checkin` (INSERT), lookup APIs |
+| `appointments` | `POST /kiosk/checkin` (lookup), appointment lookup APIs |
 | `access_groups` | `POST /kiosk/checkin` (resolve) |
 | `access_group_zones` | `POST /kiosk/checkin` (resolve) |
 | `access_zones` | `POST /kiosk/checkin` (resolve) |
@@ -917,7 +1101,7 @@ servicePointId: 1
 | `APPOINTMENT_NOT_FOUND` | 404 | ไม่พบนัดหมาย |
 | `APPOINTMENT_EXPIRED` | 410 | นัดหมายหมดอายุ |
 | `APPOINTMENT_PENDING` | 409 | นัดหมายยังรออนุมัติ |
-| `APPOINTMENT_ALREADY_CHECKEDIN` | 409 | Check-in แล้ว |
+| `ENTRY_ALREADY_ACTIVE` | 409 | ผู้เยี่ยมยังมี entry ที่ checked-in อยู่ |
 | `ID_MISMATCH` | 422 | ข้อมูลบัตรไม่ตรงกับนัดหมาย |
 | `DEVICE_ERROR` | 502 | อุปกรณ์ฮาร์ดแวร์ขัดข้อง |
 | `HIKVISION_SYNC_FAILED` | 502 | ส่งสิทธิ์ไป Hikvision ไม่สำเร็จ |
@@ -962,7 +1146,7 @@ Kiosk App                Backend API                     Database               
    │── POST /wifi/generate ─▶│── GENERATE credentials ─────▶│                         │
    │◀── wifi creds ──────────│◀── creds ───────────────────│                         │
    │                         │                              │                         │
-   │── POST /kiosk/checkin ─▶│── INSERT visit_records ─────▶│                         │
+   │── POST /kiosk/checkin ─▶│── INSERT visit_entries ─────▶│                         │
    │                         │── RESOLVE access_group ─────▶│                         │
    │                         │── GENERATE QR code ──────────│                         │
    │                         │── RESOLVE slip template ────▶│                         │
@@ -971,9 +1155,21 @@ Kiosk App                Backend API                     Database               
    │◀── visit + QR + slip ───│◀── complete ────────────────│◀── ACK ────────────────│
    │                         │                              │                         │
    │ [Print slip]            │                              │                         │
-   │── POST /slip/print ────▶│── UPDATE visit_records ─────▶│                         │
+   │── POST /slip/print ────▶│── UPDATE visit_entries ─────▶│                         │
    │◀── ok ──────────────────│◀── done ────────────────────│                         │
 ```
+
+---
+
+## Status Values
+
+### Entry Status (visit_entries)
+`checked-in`, `checked-out`, `auto-checkout`, `overstay`
+
+### Appointment Status (appointments)
+`pending`, `approved`, `rejected`, `confirmed`, `cancelled`, `expired`
+
+> Appointment จะ **ไม่มี** status `checked-in`, `checked-out`, `overstay`, `auto-checkout` อีกต่อไป — สถานะเหล่านี้อยู่ที่ `visit_entries` เท่านั้น
 
 ---
 

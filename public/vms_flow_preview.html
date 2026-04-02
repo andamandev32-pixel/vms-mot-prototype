@@ -492,6 +492,19 @@ hr.div{border:none;border-top:1px dashed #c5d0e0;margin:18px 0}
     </div>
   </div>
 
+  <div class="note note-green mt12" style="max-width:100%">
+    <strong>✨ ฟีเจอร์ใหม่ที่เพิ่มเข้ามา:</strong><br>
+    • <strong>Auto-Approve:</strong> นัดหมายที่ไม่ต้องอนุมัติจะได้รับสถานะ "approved" ทันที<br>
+    • <strong>Dynamic Form:</strong> ฟอร์มปรับอัตโนมัติตาม visit_purpose_department_rules (ซ่อน/แสดง field)<br>
+    • <strong>Batch/Group:</strong> สร้างนัดหมายเป็นชุด + Arrival Dashboard ติดตามการมาถึง<br>
+    • <strong>Period Mode:</strong> นัดหมายหลายวัน — check-in ได้ทุกวันใน date range<br>
+    • <strong>Day Schedule:</strong> กำหนดเวลาแยกรายวัน (เช่น ผู้รับเหมา วันที่ 1: 07:00-22:00, วันที่ 2: 07:00-18:00)<br>
+    • <strong>notifyOnCheckin:</strong> toggle แจ้งเตือนทีละรายการ — ปิดได้สำหรับงานคนเยอะ<br>
+    • <strong>Overstay Detection:</strong> ตรวจจับ visitor ที่อยู่เกินเวลา + แจ้งเตือน staff<br>
+    • <strong>PENDING_APPROVAL:</strong> Kiosk state ใหม่สำหรับ walk-in ที่ต้อง approve<br>
+    • <strong>DB Tables ใหม่:</strong> appointment_groups, appointment_group_day_schedules
+  </div>
+
 </div>
 
 <!-- ===== TAB 1: REGISTRATION ===== -->
@@ -832,6 +845,12 @@ hr.div{border:none;border-top:1px dashed #c5d0e0;margin:18px 0}
       </div>
     </div>
   </div>
+  <div class="note note-green mt8" style="max-width:100%">
+    <strong>✨ Auto-Approve & Dynamic Form:</strong><br>
+    • ถ้า วัตถุประสงค์ + แผนก ที่เลือก มี <strong>require_approval = false</strong> → นัดหมายอนุมัติทันที (ไม่ต้องรอ Tab 3)<br>
+    • ถ้า <strong>require_person_name = false</strong> → ฟอร์มซ่อน field "ผู้ที่จะพบ"<br>
+    • ระบบดึง visit_purpose_department_rules แบบ real-time เมื่อเลือก วัตถุประสงค์ + แผนก
+  </div>
 </div>
 
 <!-- ===== TAB 3: APPROVAL ===== -->
@@ -888,6 +907,12 @@ hr.div{border:none;border-top:1px dashed #c5d0e0;margin:18px 0}
       </div>
     </div>
   </div>
+  <div class="note note-green mt8" style="max-width:100%">
+    <strong>✨ Auto-Approve Logic:</strong><br>
+    • ถ้า visit_purpose_department_rules.require_approval = <strong>false</strong> → Tab นี้ถูกข้าม — นัดหมายเข้าสู่สถานะ "approved" ทันทีเมื่อสร้าง<br>
+    • ถ้า require_approval = <strong>true</strong> → ส่งแจ้งเตือนไป <strong>approver group</strong> (กลุ่มผู้อนุมัติ) ผ่าน LINE / Email / Web-app<br>
+    • Officer ที่มี <strong>canApprove = true</strong> ใน approver group สามารถอนุมัติ/ปฏิเสธได้
+  </div>
 </div>
 
 <!-- ===== TAB 4: STAFF / BATCH ===== -->
@@ -902,6 +927,7 @@ hr.div{border:none;border-top:1px dashed #c5d0e0;margin:18px 0}
   <div class="path-toggle" style="margin-top:4px">
     <button class="path-btn active" onclick="showPath('p5','p5d',this)">👔 สร้างนัดหมายแทน Visitor</button>
     <button class="path-btn" onclick="showPath('p5','p5c',this)">📊 Batch Import Excel</button>
+    <button class="path-btn" onclick="showPath('p5','p5e',this)">📊 Arrival Dashboard</button>
   </div>
 
 
@@ -965,6 +991,13 @@ hr.div{border:none;border-top:1px dashed #c5d0e0;margin:18px 0}
         </div>
       </div>
     </div>
+    <div class="note note-green mt8" style="max-width:100%">
+      <strong>✨ ฟีเจอร์ใหม่ (Batch + Period + DaySchedule):</strong><br>
+      • <strong>Period Mode:</strong> Batch รองรับ entryMode = "period" — visitor check-in ได้หลายวันตาม dateStart-dateEnd<br>
+      • <strong>Day Schedule:</strong> กำหนดเวลาแยกรายวันได้ เช่น วันที่ 10: 07:00-22:00, วันที่ 11: 07:00-18:00<br>
+      • <strong>Auto-Approve:</strong> ถ้า visit_purpose_department_rules.require_approval = false → ทุก appointment อนุมัติอัตโนมัติ<br>
+      • <strong>notifyOnCheckin:</strong> ปิดแจ้งเตือนได้ทั้ง group หรือทีละรายการ — เหมาะสำหรับงานที่มีคนเยอะ
+    </div>
   </div>
 
   <!-- ===== STAFF สร้างนัดหมายแทน ===== -->
@@ -1012,6 +1045,32 @@ hr.div{border:none;border-top:1px dashed #c5d0e0;margin:18px 0}
             </div>
           </div>
         </div>
+      </div>
+    </div>
+    <div class="note note-green mt8" style="max-width:100%">
+      <strong>✨ Dynamic Form Rules:</strong><br>
+      • <strong>require_person_name = false:</strong> ซ่อน field "ผู้ที่จะพบ" — ไม่ต้องเลือก host<br>
+      • <strong>require_approval = false:</strong> แสดง badge "อนุมัติอัตโนมัติ" — ไม่ต้องรอ<br>
+      • <strong>Period Mode:</strong> เลือก entryMode = "period" + กำหนด dateEnd ได้ถ้า purpose อนุญาต<br>
+      • <strong>notifyOnCheckin toggle:</strong> checkbox "แจ้งเตือนเมื่อ Visitor Check-in"
+    </div>
+  </div>
+
+  <!-- ===== ARRIVAL DASHBOARD ===== -->
+  <div id="p5e" style="display:none">
+    <div class="card">
+      <h3>📊 Arrival Dashboard — ติดตามการมาถึง</h3>
+      <ul class="steps">
+        <li><span class="n">1</span><span><strong>Progress Bar:</strong> แสดงจำนวน visitor ที่ check-in แล้ว / ทั้งหมดใน group (เช่น 12/50)</span></li>
+        <li><span class="n">2</span><span><strong>Date Selector:</strong> เลือกดูตามวันที่ สำหรับ period groups ที่มีหลายวัน</span></li>
+        <li><span class="n">3</span><span><strong>Toggle Notification:</strong> เปิด/ปิดแจ้งเตือนได้ทั้งระดับ group (cascade ทุกรายการ) และทีละ appointment</span></li>
+        <li><span class="n">4</span><span><strong>Auto-Refresh:</strong> หน้า dashboard refresh อัตโนมัติทุก 30 วินาที</span></li>
+      </ul>
+      <div class="note note-blue mt8" style="max-width:100%">
+        <strong>📌 ข้อมูลที่เกี่ยวข้อง:</strong><br>
+        • <strong>appointment_groups:</strong> เก็บข้อมูล batch/group (groupName, entryMode, dateStart, dateEnd, notifyOnCheckin)<br>
+        • <strong>appointment_group_day_schedules:</strong> เก็บเวลาแยกรายวัน (scheduleDate, timeStart, timeEnd)<br>
+        • <strong>appointments:</strong> แต่ละรายการใน group มี groupId, notifyOnCheckin flag แยก
       </div>
     </div>
   </div>
@@ -1177,6 +1236,20 @@ hr.div{border:none;border-top:1px dashed #c5d0e0;margin:18px 0}
         <td>ถ้าไม่ผูก LINE → <strong>พิมพ์อัตโนมัติ</strong> (10 วิ กลับหน้าแรก) · ถ้าผูก LINE → <strong>ถามเลือก</strong>: พิมพ์ Pass / ส่งผ่าน LINE (30 วิ auto กลับ)</td>
       </tr>
     </table>
+    <div class="note note-yellow mt8" style="max-width:100%">
+      <strong>⚡ PENDING_APPROVAL State (ใหม่):</strong><br>
+      • Walk-in ที่เลือกวัตถุประสงค์ + แผนก ที่มี <strong>require_approval = true</strong> → สร้าง appointment pending → เข้า state <strong>PENDING_APPROVAL</strong><br>
+      • แสดง "รายการของท่านถูกส่งไปยังผู้อนุมัติแล้ว กรุณารอ..." พร้อม spinner<br>
+      • ระบบ poll GET /api/appointments/:id ทุก 10 วินาที<br>
+      • ถ้าอนุมัติ → FACE_CAPTURE / ถ้าปฏิเสธ → ERROR / ถ้า timeout 5 นาที → ERROR
+    </div>
+    <div class="note note-blue mt8" style="max-width:100%">
+      <strong>📅 Period Mode (นัดหมายหลายวัน):</strong><br>
+      • Appointment ที่ entryMode = "period" → แสดง "นัดหมายหลายวัน: dateStart - dateEnd"<br>
+      • แสดง "วันนี้: วันที่ X/Y"<br>
+      • ตรวจ: วันนี้อยู่ใน range? / มี entry วันนี้แล้ว?<br>
+      • Single mode: check-in ได้ครั้งเดียวเท่านั้น
+    </div>
   </div>
 
   <!-- ===== PATH B: APPOINTMENT VIA QR ===== -->
@@ -1628,6 +1701,18 @@ hr.div{border:none;border-top:1px dashed #c5d0e0;margin:18px 0}
         <tr style="background:#f8faff"><td style="padding:6px 10px">📶 FortiGate WiFi</td><td style="padding:6px 10px;text-align:center;color:#34A853;font-weight:700">ออก WiFi Password อัตโนมัติ</td><td style="padding:6px 10px;text-align:center;color:#607D8B;font-weight:700">ไม่แสดง Option WiFi</td><td style="padding:6px 10px">Toggle ตามการตั้งค่า</td></tr>
       </table>
     </div>
+    <div class="note note-yellow mt8" style="max-width:100%">
+      <strong>⚡ Rule Enforcement (ใหม่):</strong><br>
+      • ก่อน check-in → ดึง visit_purpose_department_rules<br>
+      • ถ้า <strong>requireApproval = true</strong> → สร้าง appointment pending + officer ที่มีสิทธิ์อนุมัติได้เลย (inline approve)<br>
+      • ถ้า <strong>requirePersonName = false</strong> → ข้ามขั้นตอนระบุผู้ติดต่อได้
+    </div>
+    <div class="note note-blue mt8" style="max-width:100%">
+      <strong>📅 Period Mode:</strong><br>
+      • นัดหมายหลายวัน → แสดง history วันก่อนหน้า<br>
+      • ตรวจ: อยู่ใน date range? ซ้ำวันเดียวกัน?<br>
+      • Period appointment ค้นหาได้ทุกวันใน range (ไม่ใช่แค่ dateStart = today)
+    </div>
   </div>
 
   <!-- ===== APPOINTMENT (รปภ) ===== -->
@@ -1777,6 +1862,24 @@ hr.div{border:none;border-top:1px dashed #c5d0e0;margin:18px 0}
         </ul>
       </div>
     </div>
+  </div>
+  <div class="note note-yellow mt8" style="max-width:100%">
+    <strong>⚡ Overstay Detection (ใหม่):</strong><br>
+    • Cron ทุก 15 นาที ตรวจ entry ที่ checked-in อยู่<br>
+    • หา timeEnd จาก: <strong>DaySchedule → Group default → Appointment → Business Hours</strong> (ตามลำดับ priority)<br>
+    • ถ้า NOW > timeEnd → update status = "overstay" + แจ้งเตือน staff ผู้สร้างรายการ + host
+  </div>
+  <div class="note note-green mt8" style="max-width:100%">
+    <strong>🔔 notifyOnCheckin Toggle:</strong><br>
+    • แต่ละ appointment มี flag <strong>notifyOnCheckin</strong> (default: true, batch default: false)<br>
+    • ถ้า true → แจ้ง staff เมื่อ visitor check-in / ถ้า false → ไม่แจ้ง (ดูจาก Arrival Dashboard แทน)<br>
+    • Toggle ได้ทั้งระดับ group (cascade ทุกรายการ) และทีละรายการ
+  </div>
+  <div class="note note-blue mt8" style="max-width:100%">
+    <strong>⏰ Auto-Expire:</strong><br>
+    • Single: dateStart < today → status = expired<br>
+    • Period: dateEnd < today → status = expired<br>
+    • Group: ทุก appointment expired/cancelled → group.status = completed
   </div>
 </div>
 
@@ -2531,7 +2634,7 @@ function showTab(id,el){
   el.classList.add('active');
 }
 function showPath(group,id,el){
-  var all = ['p2a','p2b','p5a','p5b','p5c','p6a','p6b','ps0','ps1','ps2','ps3','ps4'];
+  var all = ['p2a','p2b','p5a','p5b','p5c','p5d','p5e','p6a','p6b','ps0','ps1','ps2','ps3','ps4'];
   all.filter(x=>x.startsWith(group)).forEach(x=>{
     var e=document.getElementById(x); if(e) e.style.display='none';
   });

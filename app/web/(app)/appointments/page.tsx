@@ -14,18 +14,26 @@ import { Input } from "@/components/ui/Input";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { Drawer } from "@/components/ui/Drawer";
 import {
-  Search, Plus, Check, X, Eye, Download, Upload, Trash2, AlertTriangle,
-  Users, UserPlus, Building2, Wifi, WifiOff, FileSpreadsheet, ChevronDown, Calendar
+  Search, Plus, Check, X, Eye, Pencil, Download, Upload, Trash2, AlertTriangle,
+  Users, UserPlus, Building2, Wifi, WifiOff, FileSpreadsheet, ChevronDown, ChevronLeft, ChevronRight, Calendar,
+  Clock, CheckCircle, Bell
 } from "lucide-react";
+
+const PAGE_SIZE_OPTIONS = [5, 10, 20, 50];
 import { cn } from "@/lib/utils";
+import { useAppointments, useCreateAppointment, useUpdateAppointment, useApproveAppointment, useRejectAppointment, useCancelAppointment } from "@/lib/hooks";
 import {
-  appointments as mockAppointments,
   staffMembers,
   departments,
   blocklist,
   visitPurposeConfigs,
   type Appointment,
+  type VisitEntry,
+  type AppointmentStatus,
+  type EntryStatus,
   type EntryMode,
+  entryStatusConfig,
+  appointmentStatusConfig,
   visitTypes,
   getDepartmentLocation,
 } from "@/lib/mock-data";
@@ -49,6 +57,25 @@ interface CompanionEntry {
 }
 
 export default function AppointmentsPage() {
+  const { data: apptRaw, isLoading: apptLoading } = useAppointments();
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const apptData = apptRaw as any;
+  const rawAppointments: any[] = Array.isArray(apptData) ? apptData : apptData?.appointments ?? [];
+
+  // Map API (Prisma) field names → frontend Appointment shape
+  const mockAppointments: Appointment[] = rawAppointments.map((a: any) => ({
+    ...a,
+    code: a.bookingCode ?? a.code,
+    host: a.hostStaff ?? a.host ?? { name: "-" },
+    date: a.dateStart ? new Date(a.dateStart).toISOString().slice(0, 10) : a.date,
+    dateEnd: a.dateEnd ? new Date(a.dateEnd).toISOString().slice(0, 10) : a.dateEnd,
+    timeStart: a.timeStart ? (typeof a.timeStart === "string" ? a.timeStart : new Date(a.timeStart).toISOString().slice(11, 16)) : "",
+    timeEnd: a.timeEnd ? (typeof a.timeEnd === "string" ? a.timeEnd : new Date(a.timeEnd).toISOString().slice(11, 16)) : "",
+    companions: a.companionsCount ?? a._count?.companions ?? a.companions ?? 0,
+    visitor: a.visitor ?? { name: "-", company: "-", phone: "-" },
+  }));
+  const visitEntries: VisitEntry[] = []; // TODO: fetch from useEntries when viewing detail
+
   const [showSchema, setShowSchema] = useState(false);
   const [showFlow, setShowFlow] = useState(false);
   const [showApiDoc, setShowApiDoc] = useState(false);
@@ -62,6 +89,9 @@ export default function AppointmentsPage() {
   const [dateFilter, setDateFilter] = useState("");
   const [showModal, setShowModal] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState<Appointment | null>(null);
+  const [editAppointment, setEditAppointment] = useState<Appointment | null>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
 
   // Filter appointments
   const filteredAppointments = useMemo(() => {
@@ -81,21 +111,32 @@ export default function AppointmentsPage() {
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       result = result.filter(a =>
-        a.visitor.name.toLowerCase().includes(q) ||
-        a.visitor.company.toLowerCase().includes(q) ||
-        a.code.toLowerCase().includes(q) ||
-        a.host.name.toLowerCase().includes(q) ||
-        a.purpose.toLowerCase().includes(q)
+        a.visitor?.name?.toLowerCase().includes(q) ||
+        a.visitor?.company?.toLowerCase().includes(q) ||
+        a.code?.toLowerCase().includes(q) ||
+        a.host?.name?.toLowerCase().includes(q) ||
+        a.purpose?.toLowerCase().includes(q)
       );
     }
 
     return result;
   }, [activeTab, statusFilter, dateFilter, searchQuery]);
 
+  // Pagination
+  const totalCount = filteredAppointments.length;
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+  const safeCurrentPage = Math.min(page, totalPages);
+  const startIdx = (safeCurrentPage - 1) * pageSize;
+  const pagedAppointments = filteredAppointments.slice(startIdx, startIdx + pageSize);
+  const startRow = totalCount > 0 ? startIdx + 1 : 0;
+  const endRow = Math.min(startIdx + pageSize, totalCount);
+  const goTo = (p: number) => setPage(Math.max(1, Math.min(p, totalPages)));
+
   const clearFilters = () => {
     setSearchQuery("");
     setStatusFilter("all");
     setDateFilter("");
+    setPage(1);
   };
 
   return (
@@ -156,28 +197,29 @@ export default function AppointmentsPage() {
                 leftIcon={<Search size={18} />}
                 className="h-10"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
               />
             </div>
             <div className="w-full md:w-48">
               <select
                 value={statusFilter}
-                onChange={(e) => setStatusFilter(e.target.value)}
+                onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
                 className="flex h-10 w-full rounded-md border border-border bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-primary"
               >
                 <option value="all">สถานะทั้งหมด</option>
                 <option value="pending">รอดำเนินการ</option>
                 <option value="approved">อนุมัติแล้ว</option>
                 <option value="rejected">ไม่อนุมัติ</option>
-                <option value="checked-in">เข้าพื้นที่แล้ว</option>
-                <option value="checked-out">ออกแล้ว</option>
+                <option value="confirmed">ยืนยันแล้ว</option>
+                <option value="cancelled">ยกเลิก</option>
+                <option value="expired">หมดอายุ</option>
               </select>
             </div>
             <div className="w-full md:w-48">
               <input
                 type="date"
                 value={dateFilter}
-                onChange={(e) => setDateFilter(e.target.value)}
+                onChange={(e) => { setDateFilter(e.target.value); setPage(1); }}
                 className="flex h-10 w-full rounded-md border border-border bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-primary text-text-muted"
               />
             </div>
@@ -211,8 +253,8 @@ export default function AppointmentsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border">
-                {filteredAppointments.map((apt) => (
-                  <AppointmentRow key={apt.id} apt={apt} onView={() => setShowDetailModal(apt)} />
+                {pagedAppointments.map((apt) => (
+                  <AppointmentRow key={apt.id} apt={apt} onView={() => setShowDetailModal(apt)} onEdit={() => setEditAppointment(apt)} />
                 ))}
                 {filteredAppointments.length === 0 && (
                   <tr>
@@ -223,11 +265,39 @@ export default function AppointmentsPage() {
                 )}
               </tbody>
             </table>
-            <div className="p-4 border-t border-border flex items-center justify-between">
-              <span className="text-xs text-text-muted">แสดง {filteredAppointments.length} จากทั้งหมด {mockAppointments.length} รายการ</span>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" disabled>ก่อนหน้า</Button>
-                <Button variant="outline" size="sm">ถัดไป</Button>
+            <div className="flex items-center justify-between px-6 py-3 border-t border-gray-100 bg-gray-50/50">
+              <div className="flex items-center gap-2 text-xs text-text-muted">
+                <span>แสดง</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
+                  className="border border-gray-200 rounded-lg px-2 py-1 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-primary/30"
+                >
+                  {PAGE_SIZE_OPTIONS.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+                <span>รายการ / หน้า</span>
+              </div>
+              <span className="text-xs text-text-muted">
+                {startRow}–{endRow} จาก {totalCount} รายการ
+              </span>
+              <div className="flex items-center gap-1">
+                <button onClick={() => goTo(safeCurrentPage - 1)} disabled={safeCurrentPage <= 1} className="p-1.5 rounded-lg hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-text-muted">
+                  <ChevronLeft size={16} />
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => goTo(p)}
+                    className={`min-w-[28px] h-7 rounded-lg text-xs font-semibold transition-colors ${p === safeCurrentPage ? "bg-primary text-white shadow-sm" : "text-text-muted hover:bg-gray-200"}`}
+                  >
+                    {p}
+                  </button>
+                ))}
+                <button onClick={() => goTo(safeCurrentPage + 1)} disabled={safeCurrentPage >= totalPages} className="p-1.5 rounded-lg hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-text-muted">
+                  <ChevronRight size={16} />
+                </button>
               </div>
             </div>
           </CardContent>
@@ -236,6 +306,15 @@ export default function AppointmentsPage() {
 
       {/* Create Appointment Drawer */}
       <CreateAppointmentDrawer open={showModal} onClose={() => setShowModal(false)} />
+
+      {/* Edit Appointment Drawer */}
+      {editAppointment && (
+        <EditAppointmentDrawer
+          open={!!editAppointment}
+          onClose={() => setEditAppointment(null)}
+          appointment={editAppointment}
+        />
+      )}
 
       {/* Appointment Detail Modal */}
       {showDetailModal && (
@@ -246,7 +325,10 @@ export default function AppointmentsPage() {
 }
 
 // ===== Appointment Row =====
-function AppointmentRow({ apt, onView }: { apt: Appointment; onView: () => void }) {
+function AppointmentRow({ apt, onView, onEdit }: { apt: Appointment; onView: () => void; onEdit: () => void }) {
+  const approveMut = useApproveAppointment();
+  const rejectMut = useRejectAppointment();
+
   const purposeConfig = visitPurposeConfigs.find(p => {
     const typeMap: Record<string, number> = {
       official: 1, meeting: 2, document: 3, contractor: 4, delivery: 7, other: 8
@@ -298,7 +380,7 @@ function AppointmentRow({ apt, onView }: { apt: Appointment; onView: () => void 
         )}
       </td>
       <td className="px-6 py-4">
-        <p className="text-text-primary">{apt.host.name}</p>
+        <p className="text-text-primary">{apt.host?.name ?? "-"}</p>
         <p className="text-xs text-text-muted">{apt.area} • {apt.floor}</p>
       </td>
       <td className="px-6 py-4">
@@ -328,17 +410,20 @@ function AppointmentRow({ apt, onView }: { apt: Appointment; onView: () => void 
         {apt.approvedBy && <p className="text-[10px] text-text-muted mt-1">โดย: {apt.approvedBy}</p>}
       </td>
       <td className="px-6 py-4 text-right">
-        <div className="flex items-center justify-end gap-2 opacity-100 sm:opacity-0 group-hover:opacity-100 transition-opacity">
+        <div className="flex items-center justify-end gap-2">
           {apt.status === "pending" && (
             <>
-              <button className="h-8 w-8 rounded-full bg-green-50 text-success hover:bg-success hover:text-white flex items-center justify-center transition-colors border border-green-200" title="อนุมัติ">
+              <button onClick={() => approveMut.mutate({ id: apt.id } as any)} className="h-8 w-8 rounded-full bg-green-50 text-success hover:bg-success hover:text-white flex items-center justify-center transition-colors border border-green-200" title="อนุมัติ">
                 <Check size={16} />
               </button>
-              <button className="h-8 w-8 rounded-full bg-red-50 text-error hover:bg-error hover:text-white flex items-center justify-center transition-colors border border-red-200" title="ปฏิเสธ">
+              <button onClick={() => rejectMut.mutate({ id: apt.id, reason: "" } as any)} className="h-8 w-8 rounded-full bg-red-50 text-error hover:bg-error hover:text-white flex items-center justify-center transition-colors border border-red-200" title="ปฏิเสธ">
                 <X size={16} />
               </button>
             </>
           )}
+          <button onClick={onEdit} className="h-8 w-8 rounded-full bg-amber-50 text-amber-600 hover:bg-amber-500 hover:text-white flex items-center justify-center transition-colors border border-amber-200" title="แก้ไข">
+            <Pencil size={16} />
+          </button>
           <button onClick={onView} className="h-8 w-8 rounded-full bg-gray-50 text-text-muted hover:bg-white hover:text-primary hover:shadow-sm flex items-center justify-center transition-colors border border-gray-200" title="ดูรายละเอียด">
             <Eye size={16} />
           </button>
@@ -394,7 +479,7 @@ function AppointmentDetailModal({ appointment, onClose }: { appointment: Appoint
                 <DetailRow label="เวลา" value={`${appointment.timeStart} - ${appointment.timeEnd}`} />
               </>
             )}
-            <DetailRow label="ผู้พบ" value={appointment.host.name} />
+            <DetailRow label="ผู้พบ" value={appointment.host?.name ?? "-"} />
             <DetailRow label="สถานที่" value={`${appointment.area} ${appointment.floor}`} />
           </DetailSection>
 
@@ -418,12 +503,6 @@ function AppointmentDetailModal({ appointment, onClose }: { appointment: Appoint
                 <Wifi size={14} className="text-primary" />
                 <span className="text-primary font-medium">เสนอ WiFi ให้ผู้มาติดต่อ</span>
               </div>
-              {appointment.wifiUsername && (
-                <>
-                  <DetailRow label="Username" value={appointment.wifiUsername} />
-                  <DetailRow label="Password" value={appointment.wifiPassword ?? "-"} />
-                </>
-              )}
             </DetailSection>
           )}
 
@@ -440,6 +519,9 @@ function AppointmentDetailModal({ appointment, onClose }: { appointment: Appoint
             {appointment.approvedBy && <DetailRow label="อนุมัติโดย" value={appointment.approvedBy} />}
             {appointment.rejectedReason && <DetailRow label="เหตุผลปฏิเสธ" value={appointment.rejectedReason} />}
           </DetailSection>
+
+          {/* Entry History */}
+          <EntryHistorySection appointmentId={appointment.id} />
         </div>
 
         <div className="mt-6 flex justify-end">
@@ -479,12 +561,24 @@ function CreateAppointmentDrawer({ open, onClose }: { open: boolean; onClose: ()
   // File upload ref
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // WiFi eligibility
+  // Notify on check-in toggle
+  const [notifyOnCheckin, setNotifyOnCheckin] = useState(true);
+
+  // WiFi eligibility + Rule resolution
   const selectedPurpose = visitPurposeConfigs.find(p => p.id === selectedPurposeId);
   const allowedModes = selectedPurpose?.allowedEntryModes ?? ["single"];
-  const wifiEligible = selectedPurpose?.departmentRules.some(r =>
-    (selectedDeptId ? r.departmentId === selectedDeptId : true) && r.offerWifi
-  ) ?? false;
+
+  // ═══════ Dynamic Rule: resolve from purpose + department ═══════
+  const selectedRule = selectedPurpose && selectedDeptId
+    ? selectedPurpose.departmentRules.find(r => r.departmentId === selectedDeptId && r.isActive)
+    : null;
+  const requirePersonName = selectedRule?.requirePersonName ?? true;
+  const requireApproval = selectedRule?.requireApproval ?? true;
+
+  const wifiEligible = selectedRule?.offerWifi
+    ?? (selectedPurpose?.departmentRules.some(r =>
+      (selectedDeptId ? r.departmentId === selectedDeptId : true) && r.offerWifi
+    ) ?? false);
 
   // Host search
   const filteredHosts = useMemo(() => {
@@ -603,9 +697,25 @@ function CreateAppointmentDrawer({ open, onClose }: { open: boolean; onClose: ()
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
-  // Save handler (prototype: just close)
-  const handleSave = () => {
+  // Mutation hook
+  const createApptMut = useCreateAppointment();
+
+  // Save handler
+  const handleSave = async () => {
     checkPrimaryBlacklist();
+    const appointmentData = {
+      firstName, lastName, company, phone,
+      purposeId: selectedPurposeId,
+      departmentId: selectedDeptId,
+      hostId: requirePersonName ? selectedHost?.id : null,
+      entryMode, date, dateEnd, timeStart, timeEnd,
+      offerWifi: offerWifiChecked,
+      notifyOnCheckin,
+      companionMode, companionCount,
+      companions: companionList,
+      channel: "web",
+    };
+    await createApptMut.mutateAsync(appointmentData as any);
     onClose();
   };
 
@@ -620,10 +730,12 @@ function CreateAppointmentDrawer({ open, onClose }: { open: boolean; onClose: ()
     }).filter(Boolean)
     : [];
 
-  // Handle purpose change — auto-select entry mode
+  // Handle purpose change — auto-select entry mode + clear host
   const handlePurposeChange = (purposeId: number | null) => {
     setSelectedPurposeId(purposeId);
     setSelectedDeptId(null);
+    setSelectedHost(null);
+    setHostSearch("");
     const purpose = visitPurposeConfigs.find(p => p.id === purposeId);
     const modes = purpose?.allowedEntryModes ?? ["single"];
     if (modes.length === 1) {
@@ -736,9 +848,30 @@ function CreateAppointmentDrawer({ open, onClose }: { open: boolean; onClose: ()
               </div>
             </div>
 
-            {/* Host search */}
+            {/* Approval & Rule Status Badges */}
+            {selectedRule && (
+              <div className="flex items-center gap-2 flex-wrap">
+                {requireApproval ? (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                    <Clock size={12} /> ต้องรออนุมัติ
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-green-50 text-green-700 border border-green-200">
+                    <CheckCircle size={12} /> อนุมัติอัตโนมัติ
+                  </span>
+                )}
+                {!requirePersonName && (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                    ไม่ต้องระบุบุคคลที่ต้องการพบ
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Host search — conditional on requirePersonName */}
+            {requirePersonName && (
             <div>
-              <label className="block text-xs font-medium uppercase text-text-secondary mb-1">ผู้ติดต่อ (เจ้าหน้าที่ผู้รับพบ)</label>
+              <label className="block text-xs font-medium uppercase text-text-secondary mb-1">ผู้ติดต่อ (เจ้าหน้าที่ผู้รับพบ) {requirePersonName && <span className="text-error">*</span>}</label>
               {selectedHost ? (
                 <div className="bg-primary-50 border border-primary/20 rounded-lg p-3 flex items-center gap-3">
                   <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
@@ -782,6 +915,30 @@ function CreateAppointmentDrawer({ open, onClose }: { open: boolean; onClose: ()
                 </div>
               )}
             </div>
+            )}
+
+            {/* Notify on Check-in toggle */}
+            {selectedRule && (
+              <div className="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-lg p-3">
+                <Bell size={18} className="text-gray-500" />
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-text-primary">แจ้งเตือนเมื่อ Visitor Check-in</p>
+                  <p className="text-[11px] text-text-muted">รับแจ้งเตือนทาง LINE / Email เมื่อผู้มาติดต่อ check-in</p>
+                </div>
+                <button
+                  onClick={() => setNotifyOnCheckin(!notifyOnCheckin)}
+                  className={cn(
+                    "relative w-11 h-6 rounded-full transition-colors",
+                    notifyOnCheckin ? "bg-primary" : "bg-gray-300"
+                  )}
+                >
+                  <div className={cn(
+                    "absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-md transition-transform",
+                    notifyOnCheckin ? "translate-x-5.5" : "translate-x-0.5"
+                  )} />
+                </button>
+              </div>
+            )}
 
             {/* Entry Mode Selection */}
             {selectedPurposeId && (
@@ -1120,6 +1277,644 @@ function CreateAppointmentDrawer({ open, onClose }: { open: boolean; onClose: ()
         </div>
       </div>
     </Drawer>
+  );
+}
+
+// ===== Edit Appointment Drawer =====
+function EditAppointmentDrawer({ open, onClose, appointment }: { open: boolean; onClose: () => void; appointment: Appointment }) {
+  // Pre-fill from appointment data
+  const [firstName, setFirstName] = useState(appointment.visitor?.firstName ?? appointment.visitor?.name?.split(" ")[0] ?? "");
+  const [lastName, setLastName] = useState(appointment.visitor?.lastName ?? appointment.visitor?.name?.split(" ").slice(1).join(" ") ?? "");
+  const [company, setCompany] = useState(appointment.visitor?.company ?? "");
+  const [phone, setPhone] = useState(appointment.visitor?.phone ?? "");
+  const [selectedPurposeId, setSelectedPurposeId] = useState<number | null>(
+    (appointment as any).visitPurposeId ?? (appointment as any).visitPurpose?.id ?? null
+  );
+  const [selectedDeptId, setSelectedDeptId] = useState<number | null>(
+    (appointment as any).departmentId ?? (appointment as any).department?.id ?? null
+  );
+  const [hostSearch, setHostSearch] = useState("");
+  const [selectedHost, setSelectedHost] = useState<typeof staffMembers[0] | null>(() => {
+    const host = appointment.host;
+    if (!host) return null;
+    const found = staffMembers.find(s => s.id === host.id);
+    return found ?? null;
+  });
+  const [entryMode, setEntryMode] = useState<EntryMode>(appointment.entryMode ?? "single");
+  const [date, setDate] = useState(appointment.date ?? "");
+  const [dateEnd, setDateEnd] = useState(appointment.dateEnd ?? "");
+  const [timeStart, setTimeStart] = useState(appointment.timeStart ?? "09:00");
+  const [timeEnd, setTimeEnd] = useState(appointment.timeEnd ?? "10:00");
+  const [purpose, setPurpose] = useState(appointment.purpose ?? "");
+  const [offerWifiChecked, setOfferWifiChecked] = useState(appointment.offerWifi ?? false);
+
+  // Companion mode
+  const [companionMode, setCompanionMode] = useState<"count" | "names">(
+    appointment.companionNames && appointment.companionNames.length > 0 ? "names" : "count"
+  );
+  const [companionCount, setCompanionCount] = useState(appointment.companions ?? 0);
+  const [companionList, setCompanionList] = useState<CompanionEntry[]>(() => {
+    if (appointment.companionNames && appointment.companionNames.length > 0) {
+      return appointment.companionNames.map((name, i) => ({
+        id: `existing-${i}`,
+        firstName: typeof name === "string" ? name.split(" ")[0] : (name as any).firstName ?? "",
+        lastName: typeof name === "string" ? name.split(" ").slice(1).join(" ") : (name as any).lastName ?? "",
+        company: (name as any).company ?? "",
+        phone: (name as any).phone ?? "",
+      }));
+    }
+    return [];
+  });
+
+  const [blacklistAlerts, setBlacklistAlerts] = useState<string[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // WiFi eligibility
+  const selectedPurpose = visitPurposeConfigs.find(p => p.id === selectedPurposeId);
+  const allowedModes = selectedPurpose?.allowedEntryModes ?? ["single"];
+  const wifiEligible = selectedPurpose?.departmentRules.some(r =>
+    (selectedDeptId ? r.departmentId === selectedDeptId : true) && r.offerWifi
+  ) ?? false;
+
+  // Host search
+  const filteredHosts = useMemo(() => {
+    if (hostSearch.length < 1) return [];
+    return staffMembers.filter(s =>
+      s.role !== "security" && (
+        s.name.includes(hostSearch) ||
+        s.nameEn.toLowerCase().includes(hostSearch.toLowerCase()) ||
+        s.department.name.includes(hostSearch)
+      )
+    ).slice(0, 5);
+  }, [hostSearch]);
+
+  // Blacklist check function
+  const checkBlacklist = useCallback((name: string): boolean => {
+    const nameLower = name.toLowerCase().trim();
+    return blocklist.some(entry => {
+      const blockedName = entry.visitor.name.toLowerCase();
+      return blockedName.includes(nameLower) || nameLower.includes(blockedName);
+    });
+  }, []);
+
+  const checkPrimaryBlacklist = useCallback(() => {
+    const fullName = `${firstName} ${lastName}`.trim();
+    if (!fullName || fullName === " ") return;
+    const alerts: string[] = [];
+    if (checkBlacklist(fullName)) {
+      alerts.push(`⚠️ "${fullName}" อยู่ในรายชื่อ Blacklist!`);
+    }
+    companionList.forEach(c => {
+      const cName = `${c.firstName} ${c.lastName}`.trim();
+      if (cName && checkBlacklist(cName)) {
+        alerts.push(`⚠️ ผู้ติดตาม "${cName}" อยู่ในรายชื่อ Blacklist!`);
+      }
+    });
+    setBlacklistAlerts(alerts);
+  }, [firstName, lastName, companionList, checkBlacklist]);
+
+  const addCompanion = () => {
+    setCompanionList(prev => [...prev, { id: Date.now().toString(), firstName: "", lastName: "" }]);
+  };
+
+  const removeCompanion = (id: string) => {
+    setCompanionList(prev => prev.filter(c => c.id !== id));
+  };
+
+  const updateCompanion = (id: string, field: keyof CompanionEntry, value: string) => {
+    setCompanionList(prev => prev.map(c => {
+      if (c.id !== id) return c;
+      const updated = { ...c, [field]: value };
+      if (field === "firstName" || field === "lastName") {
+        const cName = `${field === "firstName" ? value : c.firstName} ${field === "lastName" ? value : c.lastName}`.trim();
+        updated.isBlacklisted = cName.length > 2 ? checkBlacklist(cName) : false;
+      }
+      return updated;
+    }));
+  };
+
+  const downloadTemplate = () => {
+    const BOM = "\uFEFF";
+    const headers = "ชื่อ,นามสกุล,บริษัท/หน่วยงาน,เบอร์โทร";
+    const sample1 = "สมศักดิ์,จริงใจ,บริษัท ABC จำกัด,081-234-5678";
+    const csv = BOM + [headers, sample1].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "companion_template.csv"; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      const text = evt.target?.result as string;
+      if (!text) return;
+      const lines = text.split(/\r?\n/).filter(l => l.trim());
+      const dataLines = lines.slice(1);
+      const newCompanions: CompanionEntry[] = dataLines.map((line, idx) => {
+        const cols = line.split(",").map(c => c.trim());
+        const cFirstName = cols[0] || "";
+        const cLastName = cols[1] || "";
+        const fullName = `${cFirstName} ${cLastName}`.trim();
+        return {
+          id: `import-${Date.now()}-${idx}`,
+          firstName: cFirstName, lastName: cLastName,
+          company: cols[2] || "", phone: cols[3] || "",
+          isBlacklisted: fullName.length > 2 ? checkBlacklist(fullName) : false,
+        };
+      }).filter(c => c.firstName || c.lastName);
+      setCompanionList(prev => [...prev, ...newCompanions]);
+      setCompanionMode("names");
+    };
+    reader.readAsText(file);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const updateApptMut = useUpdateAppointment();
+
+  const handleSave = async () => {
+    checkPrimaryBlacklist();
+    const data: any = {
+      id: appointment.id,
+      purpose,
+      entryMode, date, dateEnd, timeStart, timeEnd,
+      offerWifi: offerWifiChecked,
+      hostStaffId: selectedHost?.id,
+      visitPurposeId: selectedPurposeId,
+      departmentId: selectedDeptId,
+      companionsCount: companionMode === "names" ? companionList.length : companionCount,
+    };
+    if (companionMode === "names" && companionList.length > 0) {
+      data.companionNames = companionList.map(c => ({
+        firstName: c.firstName, lastName: c.lastName, company: c.company, phone: c.phone,
+      }));
+    }
+    await updateApptMut.mutateAsync(data);
+    onClose();
+  };
+
+  const activePurposes = visitPurposeConfigs.filter(p => p.isActive);
+  const deptOptions = selectedPurpose
+    ? selectedPurpose.departmentRules.filter(r => r.isActive).map(r => {
+      const dept = departments.find(d => d.id === r.departmentId);
+      return dept ? { id: dept.id, name: dept.name, floor: getDepartmentLocation(dept.id)?.floor ?? "" } : null;
+    }).filter(Boolean)
+    : [];
+
+  const handlePurposeChange = (purposeId: number | null) => {
+    setSelectedPurposeId(purposeId);
+    setSelectedDeptId(null);
+    const p = visitPurposeConfigs.find(v => v.id === purposeId);
+    const modes = p?.allowedEntryModes ?? ["single"];
+    if (modes.length === 1) setEntryMode(modes[0]);
+    else if (!modes.includes(entryMode)) setEntryMode(modes[0]);
+  };
+
+  return (
+    <Drawer
+      open={open}
+      onClose={onClose}
+      title="แก้ไขนัดหมาย"
+      subtitle={`รหัส: ${appointment.code ?? (appointment as any).bookingCode ?? "-"}`}
+      width="w-[640px]"
+    >
+      <div className="p-6 space-y-6">
+
+        {/* Blacklist Alerts */}
+        {blacklistAlerts.length > 0 && (
+          <div className="bg-red-50 border border-red-200 rounded-xl p-4 space-y-1">
+            <div className="flex items-center gap-2 text-error font-bold text-sm mb-1">
+              <AlertTriangle size={16} />
+              แจ้งเตือน Blacklist
+            </div>
+            {blacklistAlerts.map((alert, i) => (
+              <p key={i} className="text-sm text-red-700">{alert}</p>
+            ))}
+          </div>
+        )}
+
+        {/* Section 1: Primary Visitor Info */}
+        <div className="space-y-4">
+          <h3 className="text-sm font-bold text-primary flex items-center gap-2">
+            <Users size={16} />
+            ข้อมูลผู้ติดต่อหลัก
+          </h3>
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="ชื่อ" placeholder="ระบุชื่อ" value={firstName} onChange={(e) => setFirstName(e.target.value)} onBlur={checkPrimaryBlacklist} />
+            <Input label="นามสกุล" placeholder="ระบุนามสกุล" value={lastName} onChange={(e) => setLastName(e.target.value)} onBlur={checkPrimaryBlacklist} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <Input label="บริษัท / หน่วยงาน" placeholder="ระบุสังกัด (ถ้ามี)" value={company} onChange={(e) => setCompany(e.target.value)} />
+            <Input label="เบอร์โทรศัพท์" placeholder="0XX-XXX-XXXX" value={phone} onChange={(e) => setPhone(e.target.value)} />
+          </div>
+        </div>
+
+        {/* Section 2: Purpose & Location */}
+        <div className="space-y-4">
+          <h3 className="text-sm font-bold text-primary flex items-center gap-2">
+            <Building2 size={16} />
+            วัตถุประสงค์และสถานที่
+          </h3>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-xs font-medium uppercase text-text-secondary mb-1">วัตถุประสงค์การมา</label>
+              <div className="relative">
+                <select
+                  value={selectedPurposeId ?? ""}
+                  onChange={(e) => handlePurposeChange(e.target.value ? Number(e.target.value) : null)}
+                  className="flex h-10 w-full rounded-md border border-border bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-primary appearance-none pr-8"
+                >
+                  <option value="">-- เลือกวัตถุประสงค์ --</option>
+                  {activePurposes.map(p => (
+                    <option key={p.id} value={p.id}>{p.icon} {p.name}</option>
+                  ))}
+                </select>
+                <ChevronDown size={14} className="absolute right-3 top-3 text-text-muted pointer-events-none" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-medium uppercase text-text-secondary mb-1">หน่วยงาน / สถานที่</label>
+              <div className="relative">
+                <select
+                  value={selectedDeptId ?? ""}
+                  onChange={(e) => setSelectedDeptId(e.target.value ? Number(e.target.value) : null)}
+                  disabled={!selectedPurposeId}
+                  className="flex h-10 w-full rounded-md border border-border bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-primary appearance-none pr-8 disabled:opacity-50"
+                >
+                  <option value="">-- เลือกหน่วยงาน --</option>
+                  {deptOptions.map(d => d && (
+                    <option key={d.id} value={d.id}>{d.name} ({getDepartmentLocation(d.id)?.floor ?? ""})</option>
+                  ))}
+                </select>
+                <ChevronDown size={14} className="absolute right-3 top-3 text-text-muted pointer-events-none" />
+              </div>
+            </div>
+          </div>
+
+          {/* Purpose text */}
+          <div>
+            <label className="block text-xs font-medium uppercase text-text-secondary mb-1">รายละเอียดเพิ่มเติม</label>
+            <textarea
+              value={purpose}
+              onChange={(e) => setPurpose(e.target.value)}
+              rows={2}
+              className="flex w-full rounded-md border border-border bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-primary resize-none"
+              placeholder="ระบุรายละเอียดวัตถุประสงค์"
+            />
+          </div>
+
+          {/* Host search */}
+          <div>
+            <label className="block text-xs font-medium uppercase text-text-secondary mb-1">ผู้ติดต่อ (เจ้าหน้าที่ผู้รับพบ)</label>
+            {selectedHost ? (
+              <div className="bg-primary-50 border border-primary/20 rounded-lg p-3 flex items-center gap-3">
+                <div className="w-9 h-9 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                  <Users size={16} className="text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-text-primary">{selectedHost.name}</p>
+                  <p className="text-[11px] text-text-muted truncate">{selectedHost.position} • {selectedHost.department.name}</p>
+                </div>
+                <button onClick={() => setSelectedHost(null)} className="text-xs text-primary font-bold px-2 py-1 hover:bg-primary/10 rounded-lg">
+                  เปลี่ยน
+                </button>
+              </div>
+            ) : (
+              <div className="relative">
+                <Input
+                  placeholder="ค้นหาชื่อเจ้าหน้าที่ หรือหน่วยงาน"
+                  leftIcon={<Search size={16} />}
+                  value={hostSearch}
+                  onChange={(e) => setHostSearch(e.target.value)}
+                />
+                {filteredHosts.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-border rounded-xl shadow-lg z-30 max-h-[200px] overflow-y-auto">
+                    {filteredHosts.map((s) => (
+                      <button
+                        key={s.id}
+                        onClick={() => { setSelectedHost(s); setHostSearch(""); }}
+                        className="w-full flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors border-b border-border last:border-0 text-left"
+                      >
+                        <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                          <Users size={14} className="text-primary" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-text-primary">{s.name}</p>
+                          <p className="text-[11px] text-text-muted">{s.position} • {s.department.name}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Entry Mode Selection */}
+          {selectedPurposeId && (
+            <div className="space-y-3">
+              <label className="block text-xs font-medium uppercase text-text-secondary">ประเภทการเข้าพื้นที่</label>
+              <div className="flex gap-2">
+                {allowedModes.includes("single") && (
+                  <button
+                    onClick={() => setEntryMode("single")}
+                    className={cn(
+                      "flex-1 px-4 py-3 rounded-lg text-sm font-medium border-2 transition-all text-left",
+                      entryMode === "single" ? "border-primary bg-primary/5 text-primary" : "border-border text-text-secondary hover:border-primary/30"
+                    )}
+                  >
+                    <span className="flex items-center gap-2">🔹 ขออนุญาตแบบ 1 ครั้ง</span>
+                    <p className="text-[10px] mt-0.5 font-normal opacity-70">กำหนดวันที่ เวลาเริ่ม และเวลาสิ้นสุด</p>
+                  </button>
+                )}
+                {allowedModes.includes("period") && (
+                  <button
+                    onClick={() => setEntryMode("period")}
+                    className={cn(
+                      "flex-1 px-4 py-3 rounded-lg text-sm font-medium border-2 transition-all text-left",
+                      entryMode === "period" ? "border-purple-500 bg-purple-50 text-purple-700" : "border-border text-text-secondary hover:border-purple-300"
+                    )}
+                  >
+                    <span className="flex items-center gap-2"><Calendar size={14} /> ขออนุญาตตามช่วงเวลา</span>
+                    <p className="text-[10px] mt-0.5 font-normal opacity-70">กำหนดวันเวลาเริ่ม และวันเวลาสิ้นสุด</p>
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Date & Time — Single mode */}
+          {entryMode === "single" && (
+            <div className="grid grid-cols-3 gap-4">
+              <div>
+                <label className="block text-xs font-medium uppercase text-text-secondary mb-1">วันที่นัดหมาย</label>
+                <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="flex h-10 w-full rounded-md border border-border bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-primary" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium uppercase text-text-secondary mb-1">เวลาเริ่ม</label>
+                <input type="time" value={timeStart} onChange={(e) => setTimeStart(e.target.value)} className="flex h-10 w-full rounded-md border border-border bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-primary" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium uppercase text-text-secondary mb-1">เวลาสิ้นสุด</label>
+                <input type="time" value={timeEnd} onChange={(e) => setTimeEnd(e.target.value)} className="flex h-10 w-full rounded-md border border-border bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:border-primary" />
+              </div>
+            </div>
+          )}
+
+          {/* Date & Time — Period mode */}
+          {entryMode === "period" && (
+            <div className="space-y-3 bg-purple-50/50 border border-purple-200 rounded-lg p-4">
+              <p className="text-xs font-semibold text-purple-700 flex items-center gap-1.5">
+                <Calendar size={14} />
+                กำหนดช่วงเวลาเข้าพื้นที่
+              </p>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium uppercase text-text-secondary mb-1">วันเริ่มต้น</label>
+                  <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="flex h-10 w-full rounded-md border border-border bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:border-purple-500" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium uppercase text-text-secondary mb-1">วันสิ้นสุด</label>
+                  <input type="date" value={dateEnd} onChange={(e) => setDateEnd(e.target.value)} className="flex h-10 w-full rounded-md border border-border bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:border-purple-500" />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium uppercase text-text-secondary mb-1">เวลาเริ่ม</label>
+                  <input type="time" value={timeStart} onChange={(e) => setTimeStart(e.target.value)} className="flex h-10 w-full rounded-md border border-border bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:border-purple-500" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium uppercase text-text-secondary mb-1">เวลาสิ้นสุด</label>
+                  <input type="time" value={timeEnd} onChange={(e) => setTimeEnd(e.target.value)} className="flex h-10 w-full rounded-md border border-border bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:border-purple-500" />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* WiFi Offer */}
+          {wifiEligible && (
+            <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <Wifi size={18} className="text-blue-600" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-blue-800">เสนอ WiFi ให้ผู้มาติดต่อ</p>
+                <p className="text-[11px] text-blue-600">ประเภทการมานี้รองรับการให้ WiFi</p>
+              </div>
+              <button
+                onClick={() => setOfferWifiChecked(!offerWifiChecked)}
+                className={cn(
+                  "relative w-11 h-6 rounded-full transition-colors",
+                  offerWifiChecked ? "bg-primary" : "bg-gray-300"
+                )}
+              >
+                <div className={cn(
+                  "absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-md transition-transform",
+                  offerWifiChecked ? "translate-x-5.5" : "translate-x-0.5"
+                )} />
+              </button>
+            </div>
+          )}
+          {!wifiEligible && selectedPurposeId && (
+            <div className="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-lg p-3">
+              <WifiOff size={18} className="text-gray-400" />
+              <p className="text-sm text-text-muted">ประเภทการมานี้ไม่มีการเสนอ WiFi</p>
+            </div>
+          )}
+        </div>
+
+        {/* Section 3: Companions */}
+        <div className="space-y-4">
+          <h3 className="text-sm font-bold text-primary flex items-center gap-2">
+            <UserPlus size={16} />
+            ผู้ติดตาม
+          </h3>
+
+          <div className="flex gap-2">
+            <button
+              onClick={() => setCompanionMode("count")}
+              className={cn(
+                "flex-1 px-4 py-2.5 rounded-lg text-sm font-medium border-2 transition-all",
+                companionMode === "count" ? "border-primary bg-primary/5 text-primary" : "border-border text-text-secondary hover:border-primary/30"
+              )}
+            >
+              ระบุจำนวนเท่านั้น
+              <p className="text-[10px] mt-0.5 font-normal opacity-70">เฉพาะผู้ติดต่อหลัก check-in ได้</p>
+            </button>
+            <button
+              onClick={() => setCompanionMode("names")}
+              className={cn(
+                "flex-1 px-4 py-2.5 rounded-lg text-sm font-medium border-2 transition-all",
+                companionMode === "names" ? "border-primary bg-primary/5 text-primary" : "border-border text-text-secondary hover:border-primary/30"
+              )}
+            >
+              ระบุรายชื่อผู้ติดตาม
+              <p className="text-[10px] mt-0.5 font-normal opacity-70">ทุกคนที่ระบุ check-in แยกกันได้</p>
+            </button>
+          </div>
+
+          {companionMode === "count" && (
+            <div className="flex items-center gap-4 bg-gray-50 rounded-lg p-4">
+              <label className="text-sm text-text-primary font-medium">จำนวนผู้ติดตาม</label>
+              <div className="flex items-center gap-3 ml-auto">
+                <button onClick={() => setCompanionCount(Math.max(0, companionCount - 1))} className="w-9 h-9 rounded-full border border-border flex items-center justify-center hover:bg-white transition-colors">
+                  <span className="text-lg">−</span>
+                </button>
+                <span className="font-bold text-lg w-8 text-center">{companionCount}</span>
+                <button onClick={() => setCompanionCount(Math.min(50, companionCount + 1))} className="w-9 h-9 rounded-full border border-primary text-primary flex items-center justify-center hover:bg-primary/5 transition-colors">
+                  <span className="text-lg">+</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {companionMode === "names" && (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 flex-wrap">
+                <Button variant="outline" size="sm" onClick={downloadTemplate}>
+                  <Download size={14} className="mr-1.5" />
+                  ดาวน์โหลดแบบฟอร์ม
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()}>
+                  <Upload size={14} className="mr-1.5" />
+                  นำเข้าจากไฟล์ Excel/CSV
+                </Button>
+                <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls" onChange={handleFileUpload} className="hidden" />
+                <Button variant="ghost" size="sm" onClick={addCompanion} className="ml-auto text-primary">
+                  <Plus size={14} className="mr-1" />
+                  เพิ่มรายชื่อ
+                </Button>
+              </div>
+
+              {companionList.length > 0 && (
+                <div className="border border-border rounded-lg overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50 text-xs text-text-secondary">
+                      <tr>
+                        <th className="px-3 py-2 text-left w-8">#</th>
+                        <th className="px-3 py-2 text-left">ชื่อ</th>
+                        <th className="px-3 py-2 text-left">นามสกุล</th>
+                        <th className="px-3 py-2 text-left">บริษัท</th>
+                        <th className="px-3 py-2 text-left">เบอร์โทร</th>
+                        <th className="px-3 py-2 w-16"></th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {companionList.map((c, idx) => (
+                        <tr key={c.id} className={cn(c.isBlacklisted && "bg-red-50")}>
+                          <td className="px-3 py-2 text-text-muted">{idx + 1}</td>
+                          <td className="px-3 py-1.5">
+                            <input type="text" value={c.firstName} onChange={(e) => updateCompanion(c.id, "firstName", e.target.value)} placeholder="ชื่อ" className="w-full h-8 px-2 rounded border border-border text-sm focus:outline-none focus:ring-1 focus:ring-primary" />
+                          </td>
+                          <td className="px-3 py-1.5">
+                            <input type="text" value={c.lastName} onChange={(e) => updateCompanion(c.id, "lastName", e.target.value)} placeholder="นามสกุล" className="w-full h-8 px-2 rounded border border-border text-sm focus:outline-none focus:ring-1 focus:ring-primary" />
+                          </td>
+                          <td className="px-3 py-1.5">
+                            <input type="text" value={c.company || ""} onChange={(e) => updateCompanion(c.id, "company", e.target.value)} placeholder="บริษัท" className="w-full h-8 px-2 rounded border border-border text-sm focus:outline-none focus:ring-1 focus:ring-primary" />
+                          </td>
+                          <td className="px-3 py-1.5">
+                            <input type="text" value={c.phone || ""} onChange={(e) => updateCompanion(c.id, "phone", e.target.value)} placeholder="เบอร์โทร" className="w-full h-8 px-2 rounded border border-border text-sm focus:outline-none focus:ring-1 focus:ring-primary" />
+                          </td>
+                          <td className="px-3 py-1.5 text-center">
+                            <div className="flex items-center gap-1 justify-center">
+                              {c.isBlacklisted && <span title="อยู่ใน Blacklist"><AlertTriangle size={14} className="text-error" /></span>}
+                              <button onClick={() => removeCompanion(c.id)} className="h-7 w-7 rounded-full text-text-muted hover:bg-red-50 hover:text-error flex items-center justify-center transition-colors" title="ลบ">
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+
+              {companionList.length === 0 && (
+                <div className="bg-gray-50 rounded-lg p-6 text-center">
+                  <FileSpreadsheet size={32} className="mx-auto text-text-muted mb-2" />
+                  <p className="text-sm text-text-muted">ยังไม่มีรายชื่อผู้ติดตาม</p>
+                  <p className="text-xs text-text-muted mt-1">เพิ่มด้วยมือ หรือ นำเข้าจากไฟล์ Excel/CSV</p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="sticky bottom-0 px-6 py-4 border-t border-border flex items-center justify-between bg-white">
+          <div className="text-xs text-text-muted">
+            {companionMode === "names" && companionList.length > 0 && (
+              <span>ผู้ติดตาม {companionList.length} คน{companionList.some(c => c.isBlacklisted) && " • ⚠️ พบ Blacklist"}</span>
+            )}
+            {companionMode === "count" && companionCount > 0 && (
+              <span>ผู้ติดตาม {companionCount} คน (ไม่ระบุชื่อ)</span>
+            )}
+          </div>
+          <div className="flex gap-3">
+            <Button variant="outline" onClick={onClose}>ยกเลิก</Button>
+            <Button variant="primary" onClick={handleSave}>
+              <Check size={16} className="mr-1.5" />
+              บันทึกการแก้ไข
+            </Button>
+          </div>
+        </div>
+      </div>
+    </Drawer>
+  );
+}
+
+// ===== Entry History Section =====
+function EntryHistorySection({ appointmentId }: { appointmentId: number }) {
+  // TODO: Replace with useEntries({ appointmentId }) hook when wiring entry detail
+  const entries: VisitEntry[] = [];
+
+  return (
+    <DetailSection title="ประวัติการเข้าพื้นที่">
+      {entries.length === 0 ? (
+        <p className="text-sm text-text-muted text-center py-2">ยังไม่มีรายการเข้าพื้นที่</p>
+      ) : (
+        <div className="space-y-2">
+          {entries.map((entry) => {
+            const cfg = entryStatusConfig[entry.status];
+            return (
+              <div key={entry.id} className="bg-white rounded-lg border border-border p-3 space-y-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="text-xs font-mono text-text-muted">{entry.entryCode}</span>
+                  <span className={cn(
+                    "inline-flex items-center text-[11px] font-medium px-2 py-0.5 rounded-full border",
+                    cfg.bgColor, cfg.color, cfg.borderColor
+                  )}>
+                    {cfg.label}
+                  </span>
+                </div>
+                <div className="flex justify-between gap-3 text-sm">
+                  <span className="text-text-secondary">Check-in</span>
+                  <span className="text-text-primary font-medium text-right">
+                    {entry.checkinAt.replace("T", " ")}
+                  </span>
+                </div>
+                {entry.checkoutAt && (
+                  <div className="flex justify-between gap-3 text-sm">
+                    <span className="text-text-secondary">Check-out</span>
+                    <span className="text-text-primary font-medium text-right">
+                      {entry.checkoutAt.replace("T", " ")}
+                    </span>
+                  </div>
+                )}
+                <div className="flex justify-between gap-3 text-sm">
+                  <span className="text-text-secondary">ช่องทาง</span>
+                  <span className="text-text-primary font-medium text-right">
+                    {entry.checkinChannel === "kiosk" ? "Kiosk" : "Counter"}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </DetailSection>
   );
 }
 

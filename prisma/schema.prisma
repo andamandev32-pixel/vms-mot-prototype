@@ -1,0 +1,1309 @@
+// ===== eVMS (Visitor Management System) Prisma Schema =====
+// Generated from database-schema.ts — 57 tables
+// Provider: MySQL (MariaDB compatible)
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../lib/generated/prisma"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ════════════════════════════════════════════════════
+// Auth & Users
+// ════════════════════════════════════════════════════
+
+model UserAccount {
+  id                Int       @id @default(autoincrement())
+  username          String?   @unique @map("username") @db.VarChar(50)
+  email             String    @unique @db.VarChar(100)
+  passwordHash      String    @map("password_hash") @db.VarChar(255)
+  userType          String    @map("user_type") @db.VarChar(20)
+  role              String    @db.VarChar(20)
+  refId             Int?      @map("ref_id")
+  firstName         String    @map("first_name") @db.VarChar(100)
+  lastName          String    @map("last_name") @db.VarChar(100)
+  phone             String?   @db.VarChar(20)
+  isActive          Boolean   @default(true) @map("is_active")
+  isEmailVerified   Boolean   @default(false) @map("is_email_verified")
+  lineUserId        String?   @unique @map("line_user_id") @db.VarChar(50)
+  lineDisplayName   String?   @map("line_display_name") @db.VarChar(100)
+  lineLinkedAt      DateTime? @map("line_linked_at")
+  resetToken        String?   @map("reset_token") @db.VarChar(255)
+  resetTokenExpires DateTime? @map("reset_token_expires")
+  lastLoginAt       DateTime? @map("last_login_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+  updatedAt         DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  systemSettingsUpdated    SystemSetting[]    @relation("SystemSettingUpdatedBy")
+  lineFlexTemplatesUpdated LineFlexTemplate[] @relation("LineFlexTemplateUpdatedBy")
+
+  @@index([role])
+  @@index([userType])
+  @@index([isActive])
+  @@map("user_accounts")
+}
+
+model RolePermission {
+  id        Int     @id @default(autoincrement())
+  role      String  @db.VarChar(20)
+  resource  String  @db.VarChar(50)
+  action    String  @db.VarChar(20)
+  scope     String  @default("own") @db.VarChar(20)
+  isAllowed Boolean @default(true) @map("is_allowed")
+
+  @@index([role])
+  @@index([resource])
+  @@map("role_permissions")
+}
+
+// ════════════════════════════════════════════════════
+// Core Visitor / Appointment
+// ════════════════════════════════════════════════════
+
+model Visitor {
+  id              Int       @id @default(autoincrement())
+  firstName       String    @map("first_name") @db.VarChar(100)
+  lastName        String    @map("last_name") @db.VarChar(100)
+  firstNameEn     String?   @map("first_name_en") @db.VarChar(100)
+  lastNameEn      String?   @map("last_name_en") @db.VarChar(100)
+  name            String    @db.VarChar(200)
+  nameEn          String?   @map("name_en") @db.VarChar(200)
+  idNumber        String    @map("id_number") @db.VarChar(20)
+  idType          String    @map("id_type") @db.VarChar(30)
+  company         String?   @db.VarChar(150)
+  phone           String    @db.VarChar(20)
+  email           String?   @db.VarChar(100)
+  lineUserId      String?   @unique @map("line_user_id") @db.VarChar(50)
+  lineDisplayName String?   @map("line_display_name") @db.VarChar(100)
+  lineLinkedAt    DateTime? @map("line_linked_at")
+  photo           String?   @db.VarChar(255)
+  nationality     String?   @db.VarChar(50)
+  isBlocked       Boolean   @default(false) @map("is_blocked")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  appointments    Appointment[]
+  visitRecords    VisitRecord[]
+  visitEntries    VisitEntry[]
+  pdpaConsentLogs PdpaConsentLog[]
+  blocklists      Blocklist[]
+
+  @@index([idNumber])
+  @@index([phone])
+  @@index([isBlocked])
+  @@map("visitors")
+}
+
+model Appointment {
+  id               Int       @id @default(autoincrement())
+  bookingCode      String    @unique @map("booking_code") @db.VarChar(30)
+  visitorId        Int       @map("visitor_id")
+  hostStaffId      Int?      @map("host_staff_id")
+  visitPurposeId   Int       @map("visit_purpose_id")
+  departmentId     Int       @map("department_id")
+  type             String    @db.VarChar(30)
+  status           String    @default("pending") @db.VarChar(30)
+  entryMode        String    @default("single") @map("entry_mode") @db.VarChar(20)
+  dateStart        DateTime  @map("date_start") @db.Date
+  dateEnd          DateTime? @map("date_end") @db.Date
+  timeStart        DateTime  @map("time_start") @db.Time(0)
+  timeEnd          DateTime  @map("time_end") @db.Time(0)
+  purpose          String    @db.VarChar(255)
+  companionsCount  Int       @default(0) @map("companions_count")
+  createdBy        String    @map("created_by") @db.VarChar(20)
+  createdByStaffId Int?      @map("created_by_staff_id")
+  offerWifi        Boolean   @default(false) @map("offer_wifi")
+  wifiRequested    Boolean   @default(false) @map("wifi_requested")
+  notifyOnCheckin  Boolean   @default(true) @map("notify_on_checkin")
+  groupId          Int?      @map("group_id")
+  area             String?   @db.VarChar(100)
+  building         String?   @db.VarChar(100)
+  floor            String?   @db.VarChar(20)
+  room             String?   @db.VarChar(50)
+  vehiclePlate     String?   @map("vehicle_plate") @db.VarChar(20)
+  notes            String?   @db.Text
+  approvedBy       Int?      @map("approved_by")
+  approvedAt       DateTime? @map("approved_at")
+  rejectedAt       DateTime? @map("rejected_at")
+  rejectedReason   String?   @map("rejected_reason") @db.Text
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  visitor         Visitor                @relation(fields: [visitorId], references: [id])
+  hostStaff       Staff?                 @relation("AppointmentHost", fields: [hostStaffId], references: [id])
+  visitPurpose    VisitPurpose           @relation(fields: [visitPurposeId], references: [id])
+  department      Department             @relation(fields: [departmentId], references: [id])
+  createdByStaff  Staff?                 @relation("AppointmentCreatedBy", fields: [createdByStaffId], references: [id])
+  approvedByStaff Staff?                 @relation("AppointmentApprovedBy", fields: [approvedBy], references: [id])
+  group           AppointmentGroup?      @relation(fields: [groupId], references: [id])
+  companions      AppointmentCompanion[]
+  equipment       AppointmentEquipment[]
+  statusLogs      AppointmentStatusLog[]
+  visitEntries    VisitEntry[]
+
+  @@index([visitorId])
+  @@index([hostStaffId])
+  @@index([departmentId])
+  @@index([status])
+  @@index([dateStart])
+  @@index([visitPurposeId])
+  @@index([groupId])
+  @@map("appointments")
+}
+
+model VisitEntry {
+  id              Int       @id @default(autoincrement())
+  entryCode       String    @unique @map("entry_code") @db.VarChar(30)
+  appointmentId   Int?      @map("appointment_id")
+  visitorId       Int       @map("visitor_id")
+  status          String    @db.VarChar(30)
+  purpose         String?   @db.VarChar(200)
+  visitType       String?   @map("visit_type") @db.VarChar(30)
+  hostStaffId     Int?      @map("host_staff_id")
+  departmentId    Int?      @map("department_id")
+  checkinAt       DateTime  @map("checkin_at")
+  checkinChannel  String    @map("checkin_channel") @db.VarChar(20)
+  checkoutAt      DateTime? @map("checkout_at")
+  checkoutBy      Int?      @map("checkout_by")
+  area            String    @db.VarChar(100)
+  building        String    @db.VarChar(100)
+  floor           String    @db.VarChar(20)
+  room            String?   @db.VarChar(50)
+  slipPrinted     Boolean?  @map("slip_printed")
+  wifiUsername    String?   @map("wifi_username") @db.VarChar(50)
+  wifiPassword    String?   @map("wifi_password") @db.VarChar(50)
+  idMethod        String?   @map("id_method") @db.VarChar(30)
+  servicePointId  Int?      @map("service_point_id")
+  facePhotoPath   String?   @map("face_photo_path") @db.VarChar(255)
+  companionsCount Int       @default(0) @map("companions_count")
+  notes           String?   @db.Text
+  createdAt       DateTime  @default(now()) @map("created_at")
+
+  // Relations
+  appointment     Appointment?  @relation(fields: [appointmentId], references: [id])
+  visitor         Visitor       @relation(fields: [visitorId], references: [id])
+  hostStaff       Staff?        @relation("VisitEntryHost", fields: [hostStaffId], references: [id])
+  department      Department?   @relation(fields: [departmentId], references: [id])
+  checkoutByStaff Staff?        @relation("VisitEntryCheckoutBy", fields: [checkoutBy], references: [id])
+  servicePoint    ServicePoint? @relation(fields: [servicePointId], references: [id])
+
+  @@index([appointmentId])
+  @@index([visitorId])
+  @@index([status])
+  @@index([checkinAt])
+  @@index([departmentId])
+  @@index([servicePointId])
+  @@map("visit_entries")
+}
+
+model AppointmentCompanion {
+  id            Int       @id @default(autoincrement())
+  appointmentId Int       @map("appointment_id")
+  firstName     String    @map("first_name") @db.VarChar(100)
+  lastName      String    @map("last_name") @db.VarChar(100)
+  company       String?   @db.VarChar(150)
+  phone         String?   @db.VarChar(20)
+  isCheckedIn   Boolean   @default(false) @map("is_checked_in")
+  checkinAt     DateTime? @map("checkin_at")
+  isBlacklisted Boolean   @default(false) @map("is_blacklisted")
+
+  // Relations
+  appointment Appointment @relation(fields: [appointmentId], references: [id])
+
+  @@index([appointmentId])
+  @@map("appointment_companions")
+}
+
+model AppointmentEquipment {
+  id            Int     @id @default(autoincrement())
+  appointmentId Int     @map("appointment_id")
+  name          String  @db.VarChar(100)
+  quantity      Int     @default(1)
+  serialNumber  String? @map("serial_number") @db.VarChar(100)
+  description   String? @db.Text
+
+  // Relations
+  appointment Appointment @relation(fields: [appointmentId], references: [id])
+
+  @@index([appointmentId])
+  @@map("appointment_equipment")
+}
+
+model AppointmentStatusLog {
+  id            Int      @id @default(autoincrement())
+  appointmentId Int      @map("appointment_id")
+  fromStatus    String?  @map("from_status") @db.VarChar(30)
+  toStatus      String   @map("to_status") @db.VarChar(30)
+  changedBy     Int?     @map("changed_by")
+  reason        String?  @db.Text
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  // Relations
+  appointment    Appointment @relation(fields: [appointmentId], references: [id])
+  changedByStaff Staff?      @relation("StatusLogChangedBy", fields: [changedBy], references: [id])
+
+  @@index([appointmentId])
+  @@index([createdAt])
+  @@map("appointment_status_logs")
+}
+
+model VisitRecord {
+  id              Int       @id @default(autoincrement())
+  bookingCode     String    @unique @map("booking_code") @db.VarChar(30)
+  visitorId       Int       @map("visitor_id")
+  hostStaffId     Int?      @map("host_staff_id")
+  visitPurposeId  Int       @map("visit_purpose_id")
+  departmentId    Int       @map("department_id")
+  entryMode       String    @default("single") @map("entry_mode") @db.VarChar(20)
+  dateStart       DateTime  @map("date_start") @db.Date
+  dateEnd         DateTime? @map("date_end") @db.Date
+  timeStart       DateTime  @map("time_start") @db.Time(0)
+  timeEnd         DateTime  @map("time_end") @db.Time(0)
+  status          String    @default("pending") @db.VarChar(30)
+  createdChannel  String    @map("created_channel") @db.VarChar(20)
+  checkinChannel  String?   @map("checkin_channel") @db.VarChar(20)
+  wifiRequested   Boolean   @default(false) @map("wifi_requested")
+  wifiAccepted    Boolean?  @map("wifi_accepted")
+  wifiSsid        String?   @map("wifi_ssid") @db.VarChar(50)
+  wifiPassword    String?   @map("wifi_password") @db.VarChar(50)
+  wifiValidUntil  DateTime? @map("wifi_valid_until")
+  lineLinked      Boolean   @default(false) @map("line_linked")
+  slipPrinted     Boolean?  @map("slip_printed")
+  slipNumber      String?   @map("slip_number") @db.VarChar(30)
+  companionsCount Int       @default(0) @map("companions_count")
+  vehiclePlate    String?   @map("vehicle_plate") @db.VarChar(20)
+  facePhotoPath   String?   @map("face_photo_path") @db.VarChar(255)
+  idMethod        String?   @map("id_method") @db.VarChar(30)
+  servicePointId  Int?      @map("service_point_id")
+  checkinAt       DateTime? @map("checkin_at")
+  checkoutAt      DateTime? @map("checkout_at")
+  checkoutBy      Int?      @map("checkout_by")
+  approvedBy      Int?      @map("approved_by")
+  approvedAt      DateTime? @map("approved_at")
+  rejectedReason  String?   @map("rejected_reason") @db.Text
+  notes           String?   @db.Text
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  visitor         Visitor       @relation(fields: [visitorId], references: [id])
+  hostStaff       Staff?        @relation("VisitRecordHost", fields: [hostStaffId], references: [id])
+  visitPurpose    VisitPurpose  @relation(fields: [visitPurposeId], references: [id])
+  department      Department    @relation(fields: [departmentId], references: [id])
+  servicePoint    ServicePoint? @relation(fields: [servicePointId], references: [id])
+  checkoutByStaff Staff?        @relation("VisitRecordCheckoutBy", fields: [checkoutBy], references: [id])
+  approvedByStaff Staff?        @relation("VisitRecordApprovedBy", fields: [approvedBy], references: [id])
+
+  @@index([visitorId])
+  @@index([status])
+  @@index([dateStart])
+  @@index([departmentId])
+  @@index([servicePointId])
+  @@map("visit_records")
+}
+
+// ════════════════════════════════════════════════════
+// Appointment Groups (Batch / Period)
+// ════════════════════════════════════════════════════
+
+model AppointmentGroup {
+  id               Int       @id @default(autoincrement())
+  name             String    @db.VarChar(200)
+  nameEn           String?   @map("name_en") @db.VarChar(200)
+  description      String?   @db.Text
+  visitPurposeId   Int       @map("visit_purpose_id")
+  departmentId     Int       @map("department_id")
+  hostStaffId      Int?      @map("host_staff_id")
+  entryMode        String    @default("single") @map("entry_mode") @db.VarChar(20)
+  dateStart        DateTime  @map("date_start") @db.Date
+  dateEnd          DateTime? @map("date_end") @db.Date
+  timeStart        DateTime  @map("time_start") @db.Time(0)
+  timeEnd          DateTime  @map("time_end") @db.Time(0)
+  room             String?   @db.VarChar(50)
+  building         String?   @db.VarChar(100)
+  floor            String?   @db.VarChar(20)
+  totalExpected    Int       @default(0) @map("total_expected")
+  notifyOnCheckin  Boolean   @default(false) @map("notify_on_checkin")
+  createdByStaffId Int       @map("created_by_staff_id")
+  status           String    @default("active") @db.VarChar(20)
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  visitPurpose   VisitPurpose                  @relation(fields: [visitPurposeId], references: [id])
+  department     Department                    @relation(fields: [departmentId], references: [id])
+  hostStaff      Staff?                        @relation("GroupHost", fields: [hostStaffId], references: [id])
+  createdByStaff Staff                         @relation("GroupCreatedBy", fields: [createdByStaffId], references: [id])
+  appointments   Appointment[]
+  daySchedules   AppointmentGroupDaySchedule[]
+
+  @@index([createdByStaffId])
+  @@index([dateStart])
+  @@index([status])
+  @@map("appointment_groups")
+}
+
+model AppointmentGroupDaySchedule {
+  id        Int      @id @default(autoincrement())
+  groupId   Int      @map("group_id")
+  date      DateTime @db.Date
+  timeStart DateTime @map("time_start") @db.Time(0)
+  timeEnd   DateTime @map("time_end") @db.Time(0)
+  notes     String?  @db.VarChar(200)
+
+  // Relations
+  group AppointmentGroup @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([groupId, date])
+  @@index([groupId])
+  @@index([date])
+  @@map("appointment_group_day_schedules")
+}
+
+// ════════════════════════════════════════════════════
+// Visit Configuration
+// ════════════════════════════════════════════════════
+
+model VisitPurpose {
+  id                Int      @id @default(autoincrement())
+  name              String   @db.VarChar(100)
+  nameEn            String   @map("name_en") @db.VarChar(100)
+  icon              String?  @db.VarChar(10)
+  isActive          Boolean  @default(true) @map("is_active")
+  showOnLine        Boolean  @default(true) @map("show_on_line")
+  showOnWeb         Boolean  @default(true) @map("show_on_web")
+  showOnKiosk       Boolean  @default(true) @map("show_on_kiosk")
+  showOnCounter     Boolean  @default(true) @map("show_on_counter")
+  allowedEntryModes String   @default("single") @map("allowed_entry_modes") @db.VarChar(50)
+  sortOrder         Int      @map("sort_order")
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  departmentRules       VisitPurposeDepartmentRule[]
+  channelConfigs        VisitPurposeChannelConfig[]
+  appointments          Appointment[]
+  visitRecords          VisitRecord[]
+  approverGroupPurposes ApproverGroupPurpose[]
+  servicePointPurposes  ServicePointPurpose[]
+  purposeSlipMappings   PurposeSlipMapping[]
+  appointmentGroups     AppointmentGroup[]
+
+  @@index([isActive])
+  @@map("visit_purposes")
+}
+
+model VisitPurposeDepartmentRule {
+  id                Int     @id @default(autoincrement())
+  visitPurposeId    Int     @map("visit_purpose_id")
+  departmentId      Int     @map("department_id")
+  requirePersonName Boolean @default(false) @map("require_person_name")
+  requireApproval   Boolean @default(false) @map("require_approval")
+  approverGroupId   Int?    @map("approver_group_id")
+  offerWifi         Boolean @default(false) @map("offer_wifi")
+  acceptFromLine    Boolean @default(true) @map("accept_from_line")
+  acceptFromWeb     Boolean @default(true) @map("accept_from_web")
+  acceptFromKiosk   Boolean @default(true) @map("accept_from_kiosk")
+  acceptFromCounter Boolean @default(true) @map("accept_from_counter")
+  isActive          Boolean @default(true) @map("is_active")
+
+  // Relations
+  visitPurpose  VisitPurpose   @relation(fields: [visitPurposeId], references: [id])
+  department    Department     @relation(fields: [departmentId], references: [id])
+  approverGroup ApproverGroup? @relation(fields: [approverGroupId], references: [id])
+
+  @@index([visitPurposeId])
+  @@index([departmentId])
+  @@index([approverGroupId])
+  @@map("visit_purpose_department_rules")
+}
+
+model VisitPurposeChannelConfig {
+  id             Int     @id @default(autoincrement())
+  visitPurposeId Int     @map("visit_purpose_id")
+  channel        String  @db.VarChar(20)
+  requirePhoto   Boolean @default(false) @map("require_photo")
+
+  // Relations
+  visitPurpose     VisitPurpose                  @relation(fields: [visitPurposeId], references: [id])
+  channelDocuments VisitPurposeChannelDocument[]
+
+  @@index([visitPurposeId])
+  @@map("visit_purpose_channel_configs")
+}
+
+model VisitPurposeChannelDocument {
+  channelConfigId        Int @map("channel_config_id")
+  identityDocumentTypeId Int @map("identity_document_type_id")
+
+  // Relations
+  channelConfig        VisitPurposeChannelConfig @relation(fields: [channelConfigId], references: [id])
+  identityDocumentType IdentityDocumentType      @relation(fields: [identityDocumentTypeId], references: [id])
+
+  @@id([channelConfigId, identityDocumentTypeId])
+  @@index([identityDocumentTypeId])
+  @@map("visit_purpose_channel_documents")
+}
+
+model PurposeSlipMapping {
+  visitPurposeId Int  @id @map("visit_purpose_id")
+  slipTemplateId Int? @map("slip_template_id")
+
+  // Relations
+  visitPurpose VisitPurpose       @relation(fields: [visitPurposeId], references: [id])
+  slipTemplate VisitSlipTemplate? @relation(fields: [slipTemplateId], references: [id])
+
+  @@index([slipTemplateId])
+  @@map("purpose_slip_mappings")
+}
+
+// ════════════════════════════════════════════════════
+// Locations
+// ════════════════════════════════════════════════════
+
+model Building {
+  id          Int      @id @default(autoincrement())
+  name        String   @db.VarChar(100)
+  nameEn      String   @map("name_en") @db.VarChar(100)
+  totalFloors Int      @map("total_floors")
+  description String?  @db.Text
+  isActive    Boolean  @default(true) @map("is_active")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  floors      Floor[]
+  accessZones AccessZone[]
+
+  @@map("buildings")
+}
+
+model Floor {
+  id          Int    @id @default(autoincrement())
+  buildingId  Int    @map("building_id")
+  floorNumber Int    @map("floor_number")
+  name        String @db.VarChar(150)
+  nameEn      String @map("name_en") @db.VarChar(150)
+
+  // Relations
+  building         Building          @relation(fields: [buildingId], references: [id])
+  floorDepartments FloorDepartment[]
+  accessZones      AccessZone[]
+
+  @@index([buildingId])
+  @@map("floors")
+}
+
+model Department {
+  id        Int      @id @default(autoincrement())
+  name      String   @db.VarChar(200)
+  nameEn    String   @map("name_en") @db.VarChar(200)
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  floorDepartments                 FloorDepartment[]
+  staff                            Staff[]
+  appointments                     Appointment[]
+  visitRecords                     VisitRecord[]
+  visitEntries                     VisitEntry[]
+  visitPurposeDepartmentRules      VisitPurposeDepartmentRule[]
+  approverGroups                   ApproverGroup[]
+  departmentAccessMapping          DepartmentAccessMapping?
+  departmentAdditionalAccessGroups DepartmentAdditionalAccessGroup[]
+  reportDepartmentStats            ReportDepartmentStat[]
+  appointmentGroups                AppointmentGroup[]
+
+  @@map("departments")
+}
+
+model FloorDepartment {
+  floorId      Int @map("floor_id")
+  departmentId Int @map("department_id")
+
+  // Relations
+  floor      Floor      @relation(fields: [floorId], references: [id])
+  department Department @relation(fields: [departmentId], references: [id])
+
+  @@id([floorId, departmentId])
+  @@index([departmentId])
+  @@map("floor_departments")
+}
+
+// ════════════════════════════════════════════════════
+// Access Control
+// ════════════════════════════════════════════════════
+
+model AccessZone {
+  id              Int      @id @default(autoincrement())
+  name            String   @db.VarChar(100)
+  nameEn          String   @map("name_en") @db.VarChar(100)
+  floorId         Int      @map("floor_id")
+  buildingId      Int      @map("building_id")
+  type            String   @db.VarChar(30)
+  hikvisionDoorId String   @unique @map("hikvision_door_id") @db.VarChar(50)
+  description     String?  @db.Text
+  isActive        Boolean  @default(true) @map("is_active")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  floor            Floor             @relation(fields: [floorId], references: [id])
+  building         Building          @relation(fields: [buildingId], references: [id])
+  accessGroupZones AccessGroupZone[]
+
+  @@index([floorId])
+  @@index([buildingId])
+  @@index([type])
+  @@map("access_zones")
+}
+
+model AccessGroup {
+  id                 Int      @id @default(autoincrement())
+  name               String   @db.VarChar(100)
+  nameEn             String   @map("name_en") @db.VarChar(100)
+  description        String   @db.Text
+  hikvisionGroupId   String   @unique @map("hikvision_group_id") @db.VarChar(50)
+  qrCodePrefix       String   @map("qr_code_prefix") @db.VarChar(20)
+  validityMode       String   @default("fixed-minutes") @map("validity_mode") @db.VarChar(30)
+  validityMinutes    Int      @map("validity_minutes")
+  scheduleDaysOfWeek Json     @map("schedule_days_of_week")
+  scheduleStartTime  DateTime @map("schedule_start_time") @db.Time(0)
+  scheduleEndTime    DateTime @map("schedule_end_time") @db.Time(0)
+  color              String   @db.VarChar(10)
+  isActive           Boolean  @default(true) @map("is_active")
+  createdAt          DateTime @default(now()) @map("created_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  accessGroupZones                 AccessGroupZone[]
+  accessGroupVisitTypes            AccessGroupVisitType[]
+  departmentAccessMappings         DepartmentAccessMapping[]
+  departmentAdditionalAccessGroups DepartmentAdditionalAccessGroup[]
+
+  @@map("access_groups")
+}
+
+model AccessGroupZone {
+  accessGroupId Int @map("access_group_id")
+  accessZoneId  Int @map("access_zone_id")
+
+  // Relations
+  accessGroup AccessGroup @relation(fields: [accessGroupId], references: [id])
+  accessZone  AccessZone  @relation(fields: [accessZoneId], references: [id])
+
+  @@id([accessGroupId, accessZoneId])
+  @@index([accessZoneId])
+  @@map("access_group_zones")
+}
+
+model AccessGroupVisitType {
+  accessGroupId Int    @map("access_group_id")
+  visitType     String @map("visit_type") @db.VarChar(30)
+
+  // Relations
+  accessGroup AccessGroup @relation(fields: [accessGroupId], references: [id])
+
+  @@id([accessGroupId, visitType])
+  @@map("access_group_visit_types")
+}
+
+model DepartmentAccessMapping {
+  departmentId         Int @id @map("department_id")
+  defaultAccessGroupId Int @map("default_access_group_id")
+
+  // Relations
+  department         Department  @relation(fields: [departmentId], references: [id])
+  defaultAccessGroup AccessGroup @relation(fields: [defaultAccessGroupId], references: [id])
+
+  @@index([defaultAccessGroupId])
+  @@map("department_access_mappings")
+}
+
+model DepartmentAdditionalAccessGroup {
+  departmentId  Int @map("department_id")
+  accessGroupId Int @map("access_group_id")
+
+  // Relations
+  department  Department  @relation(fields: [departmentId], references: [id])
+  accessGroup AccessGroup @relation(fields: [accessGroupId], references: [id])
+
+  @@id([departmentId, accessGroupId])
+  @@index([accessGroupId])
+  @@map("department_additional_access_groups")
+}
+
+// ════════════════════════════════════════════════════
+// Staff & Service
+// ════════════════════════════════════════════════════
+
+model Staff {
+  id              Int       @id @default(autoincrement())
+  employeeId      String    @unique @map("employee_id") @db.VarChar(20)
+  name            String    @db.VarChar(100)
+  nameEn          String    @map("name_en") @db.VarChar(100)
+  position        String    @db.VarChar(150)
+  departmentId    Int       @map("department_id")
+  email           String    @db.VarChar(100)
+  phone           String    @db.VarChar(20)
+  lineUserId      String?   @unique @map("line_user_id") @db.VarChar(50)
+  lineDisplayName String?   @map("line_display_name") @db.VarChar(100)
+  lineLinkedAt    DateTime? @map("line_linked_at")
+  avatarUrl       String?   @map("avatar_url") @db.VarChar(255)
+  role            String    @db.VarChar(30)
+  status          String    @default("active") @db.VarChar(20)
+  shift           String?   @db.VarChar(20)
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  department                 Department               @relation(fields: [departmentId], references: [id])
+  appointmentsAsHost         Appointment[]            @relation("AppointmentHost")
+  appointmentsCreated        Appointment[]            @relation("AppointmentCreatedBy")
+  appointmentsApproved       Appointment[]            @relation("AppointmentApprovedBy")
+  visitRecordsAsHost         VisitRecord[]            @relation("VisitRecordHost")
+  visitRecordsCheckout       VisitRecord[]            @relation("VisitRecordCheckoutBy")
+  visitRecordsApproved       VisitRecord[]            @relation("VisitRecordApprovedBy")
+  visitEntriesAsHost         VisitEntry[]             @relation("VisitEntryHost")
+  visitEntriesCheckout       VisitEntry[]             @relation("VisitEntryCheckoutBy")
+  statusLogsChanged          AppointmentStatusLog[]   @relation("StatusLogChangedBy")
+  approverGroupMembers       ApproverGroupMember[]
+  servicePointsAssigned      ServicePoint[]           @relation("ServicePointAssignedStaff")
+  counterStaffAssignments    CounterStaffAssignment[]
+  blocklistsAdded            Blocklist[]              @relation("BlocklistAddedBy")
+  blocklistCheckLogsChecked  BlocklistCheckLog[]      @relation("BlocklistCheckLogCheckedBy")
+  pdpaConsentConfigsUpdated  PdpaConsentConfig[]      @relation("PdpaConsentConfigUpdatedBy")
+  pdpaConsentVersionsChanged PdpaConsentVersion[]     @relation("PdpaConsentVersionChangedBy")
+  emailConfigUpdated         EmailConfig[]            @relation("EmailConfigUpdatedBy")
+  lineOaConfigUpdated        LineOaConfig[]           @relation("LineOaConfigUpdatedBy")
+  groupsAsHost               AppointmentGroup[]       @relation("GroupHost")
+  groupsCreated              AppointmentGroup[]       @relation("GroupCreatedBy")
+
+  @@index([departmentId])
+  @@index([role])
+  @@index([status])
+  @@map("staff")
+}
+
+model ApproverGroup {
+  id           Int      @id @default(autoincrement())
+  name         String   @db.VarChar(150)
+  nameEn       String   @map("name_en") @db.VarChar(150)
+  description  String   @db.Text
+  departmentId Int      @map("department_id")
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  department                  Department                   @relation(fields: [departmentId], references: [id])
+  members                     ApproverGroupMember[]
+  purposes                    ApproverGroupPurpose[]
+  notifyChannels              ApproverGroupNotifyChannel[]
+  visitPurposeDepartmentRules VisitPurposeDepartmentRule[]
+
+  @@index([departmentId])
+  @@index([isActive])
+  @@map("approver_groups")
+}
+
+model ApproverGroupMember {
+  id                  Int     @id @default(autoincrement())
+  approverGroupId     Int     @map("approver_group_id")
+  staffId             Int     @map("staff_id")
+  canApprove          Boolean @default(false) @map("can_approve")
+  receiveNotification Boolean @default(true) @map("receive_notification")
+
+  // Relations
+  approverGroup ApproverGroup @relation(fields: [approverGroupId], references: [id])
+  staff         Staff         @relation(fields: [staffId], references: [id])
+
+  @@index([approverGroupId])
+  @@index([staffId])
+  @@map("approver_group_members")
+}
+
+model ApproverGroupPurpose {
+  approverGroupId Int @map("approver_group_id")
+  visitPurposeId  Int @map("visit_purpose_id")
+
+  // Relations
+  approverGroup ApproverGroup @relation(fields: [approverGroupId], references: [id])
+  visitPurpose  VisitPurpose  @relation(fields: [visitPurposeId], references: [id])
+
+  @@id([approverGroupId, visitPurposeId])
+  @@index([visitPurposeId])
+  @@map("approver_group_purposes")
+}
+
+model ApproverGroupNotifyChannel {
+  approverGroupId Int    @map("approver_group_id")
+  channel         String @db.VarChar(20)
+
+  // Relations
+  approverGroup ApproverGroup @relation(fields: [approverGroupId], references: [id])
+
+  @@id([approverGroupId, channel])
+  @@map("approver_group_notify_channels")
+}
+
+model ServicePoint {
+  id                   Int       @id @default(autoincrement())
+  name                 String    @db.VarChar(100)
+  nameEn               String    @map("name_en") @db.VarChar(100)
+  type                 String    @db.VarChar(20)
+  status               String    @default("online") @db.VarChar(20)
+  location             String    @db.VarChar(150)
+  locationEn           String    @map("location_en") @db.VarChar(150)
+  building             String    @db.VarChar(100)
+  floor                String    @db.VarChar(20)
+  ipAddress            String    @map("ip_address") @db.VarChar(15)
+  macAddress           String    @map("mac_address") @db.VarChar(17)
+  serialNumber         String    @unique @map("serial_number") @db.VarChar(30)
+  todayTransactions    Int       @default(0) @map("today_transactions")
+  lastOnline           DateTime? @map("last_online")
+  assignedStaffId      Int?      @map("assigned_staff_id")
+  notes                String?   @db.Text
+  isActive             Boolean   @default(true) @map("is_active")
+  wifiSsid             String?   @map("wifi_ssid") @db.VarChar(50)
+  wifiPasswordPattern  String?   @map("wifi_password_pattern") @db.VarChar(50)
+  wifiValidityMode     String?   @map("wifi_validity_mode") @db.VarChar(30)
+  wifiFixedDurationMin Int?      @map("wifi_fixed_duration_min")
+  pdpaRequireScroll    Boolean?  @default(true) @map("pdpa_require_scroll")
+  pdpaRetentionDays    Int?      @default(90) @map("pdpa_retention_days")
+  slipHeaderText       String?   @map("slip_header_text") @db.VarChar(200)
+  slipFooterText       String?   @map("slip_footer_text") @db.VarChar(200)
+  followBusinessHours  Boolean?  @default(true) @map("follow_business_hours")
+  idMaskingPattern     String?   @map("id_masking_pattern") @db.VarChar(30)
+  adminPin             String?   @default("10210") @map("admin_pin") @db.VarChar(5)
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  assignedStaff           Staff?                   @relation("ServicePointAssignedStaff", fields: [assignedStaffId], references: [id])
+  servicePointPurposes    ServicePointPurpose[]
+  servicePointDocuments   ServicePointDocument[]
+  counterStaffAssignments CounterStaffAssignment[]
+  visitRecords            VisitRecord[]
+  visitEntries            VisitEntry[]
+
+  @@index([type])
+  @@index([status])
+  @@index([assignedStaffId])
+  @@map("service_points")
+}
+
+model ServicePointPurpose {
+  servicePointId Int @map("service_point_id")
+  visitPurposeId Int @map("visit_purpose_id")
+
+  // Relations
+  servicePoint ServicePoint @relation(fields: [servicePointId], references: [id])
+  visitPurpose VisitPurpose @relation(fields: [visitPurposeId], references: [id])
+
+  @@id([servicePointId, visitPurposeId])
+  @@index([visitPurposeId])
+  @@map("service_point_purposes")
+}
+
+model ServicePointDocument {
+  servicePointId         Int @map("service_point_id")
+  identityDocumentTypeId Int @map("identity_document_type_id")
+
+  // Relations
+  servicePoint         ServicePoint         @relation(fields: [servicePointId], references: [id])
+  identityDocumentType IdentityDocumentType @relation(fields: [identityDocumentTypeId], references: [id])
+
+  @@id([servicePointId, identityDocumentTypeId])
+  @@index([identityDocumentTypeId])
+  @@map("service_point_documents")
+}
+
+model CounterStaffAssignment {
+  id             Int      @id @default(autoincrement())
+  servicePointId Int      @map("service_point_id")
+  staffId        Int      @map("staff_id")
+  isPrimary      Boolean  @default(false) @map("is_primary")
+  assignedAt     DateTime @default(now()) @map("assigned_at")
+
+  // Relations
+  servicePoint ServicePoint @relation(fields: [servicePointId], references: [id])
+  staff        Staff        @relation(fields: [staffId], references: [id])
+
+  @@index([servicePointId])
+  @@index([staffId])
+  @@map("counter_staff_assignments")
+}
+
+// ════════════════════════════════════════════════════
+// Settings
+// ════════════════════════════════════════════════════
+
+model SystemSetting {
+  id          Int      @id @default(autoincrement())
+  key         String   @unique @db.VarChar(50)
+  value       String   @db.Text
+  description String?  @db.VarChar(200)
+  updatedBy   Int?     @map("updated_by")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  updatedByUser UserAccount? @relation("SystemSettingUpdatedBy", fields: [updatedBy], references: [id])
+
+  @@map("system_settings")
+}
+
+model BusinessHoursRule {
+  id           Int       @id @default(autoincrement())
+  name         String    @db.VarChar(100)
+  nameEn       String    @map("name_en") @db.VarChar(100)
+  type         String    @db.VarChar(20)
+  daysOfWeek   Json?     @map("days_of_week")
+  specificDate DateTime? @map("specific_date") @db.Date
+  openTime     DateTime  @map("open_time") @db.Time(0)
+  closeTime    DateTime  @map("close_time") @db.Time(0)
+  allowWalkin  Boolean   @default(true) @map("allow_walkin")
+  allowKiosk   Boolean   @default(true) @map("allow_kiosk")
+  notes        String?   @db.Text
+  isActive     Boolean   @default(true) @map("is_active")
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  @@index([type])
+  @@index([specificDate])
+  @@map("business_hours_rules")
+}
+
+model IdentityDocumentType {
+  id        Int     @id @default(autoincrement())
+  name      String  @db.VarChar(100)
+  nameEn    String  @map("name_en") @db.VarChar(100)
+  icon      String? @db.VarChar(10)
+  isActive  Boolean @default(true) @map("is_active")
+  sortOrder Int     @map("sort_order")
+
+  // Relations
+  channelDocuments      VisitPurposeChannelDocument[]
+  servicePointDocuments ServicePointDocument[]
+
+  @@map("identity_document_types")
+}
+
+model DocumentType {
+  id           Int      @id @default(autoincrement())
+  name         String   @db.VarChar(100)
+  nameEn       String   @map("name_en") @db.VarChar(100)
+  category     String   @db.VarChar(30)
+  isRequired   Boolean  @default(false) @map("is_required")
+  requirePhoto Boolean  @default(false) @map("require_photo")
+  description  String?  @db.Text
+  isActive     Boolean  @default(true) @map("is_active")
+  sortOrder    Int      @map("sort_order")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  documentTypeVisitTypes DocumentTypeVisitType[]
+
+  @@map("document_types")
+}
+
+model DocumentTypeVisitType {
+  documentTypeId Int    @map("document_type_id")
+  visitType      String @map("visit_type") @db.VarChar(30)
+
+  // Relations
+  documentType DocumentType @relation(fields: [documentTypeId], references: [id])
+
+  @@id([documentTypeId, visitType])
+  @@map("document_type_visit_types")
+}
+
+// ════════════════════════════════════════════════════
+// Notifications & Templates
+// ════════════════════════════════════════════════════
+
+model NotificationTemplate {
+  id           Int      @id @default(autoincrement())
+  name         String   @db.VarChar(100)
+  nameEn       String   @map("name_en") @db.VarChar(100)
+  triggerEvent String   @map("trigger_event") @db.VarChar(50)
+  channel      String   @db.VarChar(20)
+  subject      String?  @db.VarChar(200)
+  bodyTh       String   @map("body_th") @db.Text
+  bodyEn       String   @map("body_en") @db.Text
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  variables NotificationTemplateVariable[]
+
+  @@index([triggerEvent])
+  @@index([channel])
+  @@map("notification_templates")
+}
+
+model NotificationTemplateVariable {
+  templateId   Int    @map("template_id")
+  variableName String @map("variable_name") @db.VarChar(50)
+
+  // Relations
+  template NotificationTemplate @relation(fields: [templateId], references: [id])
+
+  @@id([templateId, variableName])
+  @@map("notification_template_variables")
+}
+
+model EmailNotificationTemplate {
+  id           Int      @id @default(autoincrement())
+  triggerEvent String   @map("trigger_event") @db.VarChar(50)
+  name         String   @db.VarChar(100)
+  isActive     Boolean  @default(true) @map("is_active")
+  subject      String   @db.VarChar(200)
+  bodyTh       String   @map("body_th") @db.Text
+  bodyEn       String?  @map("body_en") @db.Text
+  variables    String?  @db.Text
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  @@index([triggerEvent])
+  @@map("email_notification_templates")
+}
+
+model EmailConfig {
+  id              Int       @id @default(autoincrement())
+  smtpHost        String    @map("smtp_host") @db.VarChar(100)
+  smtpPort        Int       @map("smtp_port")
+  encryption      String    @default("tls") @db.VarChar(10)
+  smtpUsername    String    @map("smtp_username") @db.VarChar(100)
+  smtpPassword    String    @map("smtp_password") @db.VarChar(255)
+  fromEmail       String    @map("from_email") @db.VarChar(100)
+  fromDisplayName String    @map("from_display_name") @db.VarChar(100)
+  replyToEmail    String?   @map("reply_to_email") @db.VarChar(100)
+  isActive        Boolean   @default(true) @map("is_active")
+  lastTestAt      DateTime? @map("last_test_at")
+  lastTestResult  String?   @map("last_test_result") @db.VarChar(255)
+  updatedBy       Int?      @map("updated_by")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  updatedByStaff Staff? @relation("EmailConfigUpdatedBy", fields: [updatedBy], references: [id])
+
+  @@map("email_config")
+}
+
+model LineOaConfig {
+  id                 Int       @id @default(autoincrement())
+  channelId          String    @map("channel_id") @db.VarChar(50)
+  channelSecret      String    @map("channel_secret") @db.VarChar(100)
+  channelAccessToken String    @map("channel_access_token") @db.Text
+  botBasicId         String?   @map("bot_basic_id") @db.VarChar(50)
+  liffAppId          String?   @map("liff_app_id") @db.VarChar(50)
+  liffEndpointUrl    String?   @map("liff_endpoint_url") @db.VarChar(255)
+  webhookUrl         String?   @map("webhook_url") @db.VarChar(255)
+  webhookActive      Boolean   @default(false) @map("webhook_active")
+  richMenuVisitorId  String?   @map("rich_menu_visitor_id") @db.VarChar(50)
+  richMenuOfficerId  String?   @map("rich_menu_officer_id") @db.VarChar(50)
+  isActive           Boolean   @default(true) @map("is_active")
+  lastTestAt         DateTime? @map("last_test_at")
+  lastTestResult     String?   @map("last_test_result") @db.VarChar(255)
+  updatedBy          Int?      @map("updated_by")
+  updatedAt          DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  updatedByStaff Staff? @relation("LineOaConfigUpdatedBy", fields: [updatedBy], references: [id])
+
+  @@map("line_oa_config")
+}
+
+model LineFlexTemplate {
+  id              Int      @id @default(autoincrement())
+  stateId         String   @unique @map("state_id") @db.VarChar(50)
+  name            String   @db.VarChar(100)
+  nameEn          String   @map("name_en") @db.VarChar(100)
+  type            String   @db.VarChar(20)
+  isActive        Boolean  @default(true) @map("is_active")
+  headerTitle     String?  @map("header_title") @db.VarChar(200)
+  headerSubtitle  String?  @map("header_subtitle") @db.VarChar(200)
+  headerColor     String   @default("primary") @map("header_color") @db.VarChar(20)
+  headerVariant   String   @default("standard") @map("header_variant") @db.VarChar(30)
+  showStatusBadge Boolean  @default(false) @map("show_status_badge")
+  statusBadgeText String?  @map("status_badge_text") @db.VarChar(50)
+  showQrCode      Boolean  @default(false) @map("show_qr_code")
+  qrLabel         String?  @map("qr_label") @db.VarChar(100)
+  infoBoxText     String?  @map("info_box_text") @db.Text
+  infoBoxColor    String?  @map("info_box_color") @db.VarChar(10)
+  infoBoxEnabled  Boolean  @default(false) @map("info_box_enabled")
+  updatedBy       Int?     @map("updated_by")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  updatedByUser UserAccount?             @relation("LineFlexTemplateUpdatedBy", fields: [updatedBy], references: [id])
+  rows          LineFlexTemplateRow[]
+  buttons       LineFlexTemplateButton[]
+
+  @@map("line_flex_templates")
+}
+
+model LineFlexTemplateRow {
+  id           Int     @id @default(autoincrement())
+  templateId   Int     @map("template_id")
+  label        String  @db.VarChar(100)
+  variable     String  @db.VarChar(50)
+  previewValue String? @map("preview_value") @db.VarChar(200)
+  enabled      Boolean @default(true)
+  sortOrder    Int     @map("sort_order")
+
+  // Relations
+  template LineFlexTemplate @relation(fields: [templateId], references: [id])
+
+  @@index([templateId])
+  @@map("line_flex_template_rows")
+}
+
+model LineFlexTemplateButton {
+  id         Int     @id @default(autoincrement())
+  templateId Int     @map("template_id")
+  label      String  @db.VarChar(100)
+  variant    String  @default("primary") @db.VarChar(20)
+  actionUrl  String? @map("action_url") @db.VarChar(500)
+  enabled    Boolean @default(true)
+  sortOrder  Int     @map("sort_order")
+
+  // Relations
+  template LineFlexTemplate @relation(fields: [templateId], references: [id])
+
+  @@index([templateId])
+  @@map("line_flex_template_buttons")
+}
+
+// ════════════════════════════════════════════════════
+// Visit Slips
+// ════════════════════════════════════════════════════
+
+model VisitSlipTemplate {
+  id           Int      @id @default(autoincrement())
+  name         String   @db.VarChar(100)
+  nameEn       String   @map("name_en") @db.VarChar(100)
+  description  String?  @db.Text
+  paperSize    String   @default("thermal-80mm") @map("paper_size") @db.VarChar(20)
+  paperWidthPx Int      @default(302) @map("paper_width_px")
+  orgName      String   @default("") @map("org_name") @db.VarChar(200)
+  orgNameEn    String   @default("") @map("org_name_en") @db.VarChar(200)
+  slipTitle    String   @default("VISITOR PASS") @map("slip_title") @db.VarChar(100)
+  footerTextTh String   @default("") @map("footer_text_th") @db.VarChar(200)
+  footerTextEn String   @default("") @map("footer_text_en") @db.VarChar(200)
+  showOrgLogo  Boolean  @default(true) @map("show_org_logo")
+  logoUrl      String?  @map("logo_url") @db.VarChar(500)
+  logoSizePx   Int      @default(40) @map("logo_size_px")
+  isDefault    Boolean  @default(false) @map("is_default")
+  isActive     Boolean  @default(true) @map("is_active")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  sections            VisitSlipSection[]
+  purposeSlipMappings PurposeSlipMapping[]
+
+  @@map("visit_slip_templates")
+}
+
+model VisitSlipSection {
+  id         Int     @id @default(autoincrement())
+  templateId Int     @map("template_id")
+  sectionKey String  @map("section_key") @db.VarChar(30)
+  name       String  @db.VarChar(80)
+  nameEn     String  @map("name_en") @db.VarChar(80)
+  isEnabled  Boolean @default(true) @map("is_enabled")
+  sortOrder  Int     @map("sort_order")
+
+  // Relations
+  template VisitSlipTemplate @relation(fields: [templateId], references: [id])
+  fields   VisitSlipField[]
+
+  @@index([templateId])
+  @@map("visit_slip_sections")
+}
+
+model VisitSlipField {
+  id         Int     @id @default(autoincrement())
+  sectionId  Int     @map("section_id")
+  fieldKey   String  @map("field_key") @db.VarChar(30)
+  label      String  @db.VarChar(100)
+  labelEn    String  @map("label_en") @db.VarChar(100)
+  isEnabled  Boolean @default(true) @map("is_enabled")
+  isEditable Boolean @default(false) @map("is_editable")
+  sortOrder  Int     @map("sort_order")
+
+  // Relations
+  section VisitSlipSection @relation(fields: [sectionId], references: [id])
+
+  @@index([sectionId])
+  @@map("visit_slip_fields")
+}
+
+// ════════════════════════════════════════════════════
+// PDPA
+// ════════════════════════════════════════════════════
+
+model PdpaConsentConfig {
+  id              Int      @id @default(autoincrement())
+  textTh          String   @map("text_th") @db.Text
+  textEn          String   @map("text_en") @db.Text
+  retentionDays   Int      @default(90) @map("retention_days")
+  requireScroll   Boolean  @default(true) @map("require_scroll")
+  displayChannels Json     @map("display_channels")
+  isActive        Boolean  @default(true) @map("is_active")
+  version         Int      @default(1)
+  updatedBy       Int?     @map("updated_by")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  updatedByStaff Staff?               @relation("PdpaConsentConfigUpdatedBy", fields: [updatedBy], references: [id])
+  versions       PdpaConsentVersion[]
+
+  @@map("pdpa_consent_configs")
+}
+
+model PdpaConsentVersion {
+  id              Int      @id @default(autoincrement())
+  configId        Int      @map("config_id")
+  version         Int
+  textTh          String   @map("text_th") @db.Text
+  textEn          String   @map("text_en") @db.Text
+  retentionDays   Int      @map("retention_days")
+  requireScroll   Boolean  @default(true) @map("require_scroll")
+  displayChannels Json     @map("display_channels")
+  isActive        Boolean  @default(false) @map("is_active")
+  effectiveDate   DateTime @map("effective_date") @db.Date
+  changedBy       Int?     @map("changed_by")
+  changeNote      String?  @map("change_note") @db.VarChar(255)
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  // Relations
+  config         PdpaConsentConfig @relation(fields: [configId], references: [id])
+  changedByStaff Staff?            @relation("PdpaConsentVersionChangedBy", fields: [changedBy], references: [id])
+
+  @@index([configId])
+  @@index([version])
+  @@map("pdpa_consent_versions")
+}
+
+model PdpaConsentLog {
+  id             Int      @id @default(autoincrement())
+  visitorId      Int      @map("visitor_id")
+  configVersion  Int      @map("config_version")
+  consentChannel String   @map("consent_channel") @db.VarChar(20)
+  ipAddress      String?  @map("ip_address") @db.VarChar(45)
+  deviceId       String?  @map("device_id") @db.VarChar(100)
+  consentedAt    DateTime @default(now()) @map("consented_at")
+  expiresAt      DateTime @map("expires_at")
+
+  // Relations
+  visitor Visitor @relation(fields: [visitorId], references: [id])
+
+  @@index([visitorId])
+  @@index([consentChannel])
+  @@index([consentedAt])
+  @@map("pdpa_consent_logs")
+}
+
+// ════════════════════════════════════════════════════
+// Reports & Logs
+// ════════════════════════════════════════════════════
+
+model Blocklist {
+  id         Int       @id @default(autoincrement())
+  firstName  String    @map("first_name") @db.VarChar(100)
+  lastName   String    @map("last_name") @db.VarChar(100)
+  company    String?   @db.VarChar(200)
+  visitorId  Int?      @map("visitor_id")
+  reason     String    @db.Text
+  type       String    @db.VarChar(20)
+  expiryDate DateTime? @map("expiry_date") @db.Date
+  addedBy    Int       @map("added_by")
+  addedAt    DateTime  @default(now()) @map("added_at")
+  updatedAt  DateTime  @updatedAt @map("updated_at")
+  isActive   Boolean   @default(true) @map("is_active")
+
+  // Relations
+  visitor      Visitor?            @relation(fields: [visitorId], references: [id])
+  addedByStaff Staff               @relation("BlocklistAddedBy", fields: [addedBy], references: [id])
+  checkLogs    BlocklistCheckLog[]
+
+  @@index([visitorId])
+  @@index([isActive])
+  @@index([type])
+  @@index([firstName, lastName])
+  @@map("blocklist")
+}
+
+model BlocklistCheckLog {
+  id           Int      @id @default(autoincrement())
+  blocklistId  Int      @map("blocklist_id")
+  matchedName  String   @map("matched_name") @db.VarChar(200)
+  checkChannel String   @map("check_channel") @db.VarChar(20)
+  actionTaken  String   @map("action_taken") @db.VarChar(30)
+  checkedAt    DateTime @default(now()) @map("checked_at")
+  checkedBy    Int?     @map("checked_by")
+
+  // Relations
+  blocklist      Blocklist @relation(fields: [blocklistId], references: [id])
+  checkedByStaff Staff?    @relation("BlocklistCheckLogCheckedBy", fields: [checkedBy], references: [id])
+
+  @@index([blocklistId])
+  @@index([checkedAt])
+  @@map("blocklist_check_logs")
+}
+
+model ReportDailySummary {
+  id                  Int      @id @default(autoincrement())
+  date                DateTime @unique @db.Date
+  totalVisitors       Int      @default(0) @map("total_visitors")
+  totalAppointments   Int      @default(0) @map("total_appointments")
+  walkinCount         Int      @default(0) @map("walkin_count")
+  checkedIn           Int      @default(0) @map("checked_in")
+  checkedOut          Int      @default(0) @map("checked_out")
+  overstayCount       Int      @default(0) @map("overstay_count")
+  avgVisitDurationMin Int?     @map("avg_visit_duration_min")
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  @@index([date])
+  @@map("report_daily_summary")
+}
+
+model ReportDepartmentStat {
+  id               Int      @id @default(autoincrement())
+  date             DateTime @db.Date
+  departmentId     Int      @map("department_id")
+  departmentName   String   @map("department_name") @db.VarChar(100)
+  visitorCount     Int      @default(0) @map("visitor_count")
+  appointmentCount Int      @default(0) @map("appointment_count")
+
+  // Relations
+  department Department @relation(fields: [departmentId], references: [id])
+
+  @@index([date])
+  @@index([departmentId])
+  @@map("report_department_stats")
+}
+
+model ReportVisitTypeStat {
+  id           Int      @id @default(autoincrement())
+  date         DateTime @db.Date
+  visitType    String   @map("visit_type") @db.VarChar(30)
+  visitorCount Int      @default(0) @map("visitor_count")
+
+  @@index([date])
+  @@index([visitType])
+  @@map("report_visit_type_stats")
+}

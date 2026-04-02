@@ -1280,7 +1280,7 @@ const accessZonesFlow: PageFlowData = {
         { id: "z2", label: "ระบบรับรหัส QR\nจาก Reader", type: "io" },
         { id: "z3", label: "ตรวจสอบนัดหมาย\n(Appointment)", type: "process" },
         { id: "z4", label: "นัดหมาย Valid?", type: "decision" },
-        { id: "z5", label: "ตรวจสถานะ\n(Approved/Checked-in)", type: "decision" },
+        { id: "z5", label: "ตรวจสถานะ\n(Appointment confirmed\nหรือมี visit_entry checked-in)", type: "decision" },
         { id: "z6", label: "ตรวจ Access Group\nมีสิทธิ์โซนนี้?", type: "decision" },
         { id: "z7", label: "ตรวจเวลา\nอยู่ในกำหนด?", type: "decision" },
         { id: "z8", label: "เปิดประตู ✓", type: "end" },
@@ -1389,8 +1389,8 @@ const accessZonesFlow: PageFlowData = {
       description: "การเชื่อมต่อกับระบบควบคุมประตู Hikvision",
       conditions: [
         "ใช้ Hikvision iVMS-4200 API สำหรับ push QR code",
-        "เมื่อ Visitor check-in → ระบบส่ง QR ไปยัง Hikvision Controller",
-        "เมื่อ Visitor check-out หรือ expired → ระบบลบ QR ออก",
+        "เมื่อ visit_entry สร้าง (check-in) → ระบบส่ง QR ไปยัง Hikvision Controller",
+        "เมื่อ visit_entry check-out หรือ expired → ระบบลบ QR ออก",
         "ถ้า Hikvision offline → ระบบ queue คำสั่งไว้ส่งทีหลัง",
         "Emergency → สามารถสั่งเปิดประตูทุกบานจาก Web Admin",
       ],
@@ -1400,11 +1400,11 @@ const accessZonesFlow: PageFlowData = {
       titleEn: "Access QR Code Rules",
       description: "กฎการใช้ QR Code เข้าพื้นที่",
       conditions: [
-        "QR Code ถูกสร้างเมื่อนัดหมาย Approved / Check-in",
-        "QR มีอายุถึงเวลา check-out ที่กำหนด",
+        "QR Code ถูกสร้างเมื่อนัดหมาย Approved หรือเมื่อสร้าง visit_entry (check-in)",
+        "QR มีอายุถึงเวลา check-out ที่กำหนด (ตาม visit_entry)",
         "QR ใช้ได้เฉพาะ Zone ที่อยู่ใน Access Group ของแผนกที่ไป",
-        "1 นัดหมาย = 1 QR Code (ใช้ซ้ำเข้าออกได้จนหมดอายุ)",
-        "QR ถูก revoke ทันทีเมื่อ check-out หรือ blocklist",
+        "1 visit_entry = 1 QR Code (period appointment อาจมีหลาย entry)",
+        "QR ถูก revoke ทันทีเมื่อ visit_entry check-out หรือ blocklist",
       ],
     },
   ],
@@ -1622,7 +1622,7 @@ const appointmentsFlow: PageFlowData = {
   menuNameEn: "Appointments",
   path: "/web/appointments",
   summary:
-    "จัดการนัดหมายผู้มาติดต่อ — สร้างนัดหมาย, อนุมัติ/ปฏิเสธ, ติดตามสถานะ, จัดการ WiFi และผู้ติดตาม",
+    "จัดการนัดหมายผู้มาติดต่อ — สร้างนัดหมาย, อนุมัติ/ปฏิเสธ, ติดตามสถานะ, จัดการ WiFi และผู้ติดตาม\nAppointment: pending → approved → confirmed → expired/cancelled\nEntry (visit_entries): checked-in → checked-out / auto-checkout / overstay",
   flowcharts: [
     {
       id: "appointment-create",
@@ -1699,9 +1699,9 @@ const appointmentsFlow: PageFlowData = {
     },
     {
       id: "appointment-checkin-checkout",
-      title: "Check-in / Check-out",
-      titleEn: "Visitor Check-in / Check-out",
-      description: "ขั้นตอนการ Check-in และ Check-out ผู้มาติดต่อ",
+      title: "Check-in / Check-out (visit_entry)",
+      titleEn: "Visitor Check-in / Check-out via visit_entries",
+      description: "ขั้นตอนการ Check-in และ Check-out — สร้าง visit_entry แยกจาก appointment (1 appointment → N entries)",
       steps: [
         { id: "aco1", label: "ผู้มาถึง", type: "start" },
         { id: "aco2", label: "ตรวจสอบ QR/บัตร", type: "process" },
@@ -1709,14 +1709,14 @@ const appointmentsFlow: PageFlowData = {
         { id: "aco3b", label: "ปฏิเสธเข้าพื้นที่", type: "end" },
         {
           id: "aco4",
-          label: "อัปเดต status=checked-in\nบันทึก checkin_at",
+          label: "สร้าง visit_entry\n(status=checked-in, บันทึก checkin_at)\nAppointment status ยังคงเป็น confirmed",
           type: "process",
         },
         { id: "aco5", label: "ถึงเวลาออก", type: "process" },
         { id: "aco6", label: "กด Check-out", type: "process" },
         {
           id: "aco7",
-          label: "อัปเดต status=checked-out\nบันทึก checkout_at",
+          label: "อัปเดต visit_entry status=checked-out\nบันทึก checkout_at\nAppointment status ไม่เปลี่ยน",
           type: "process",
         },
         { id: "aco8", label: "สำเร็จ", type: "end" },
@@ -1730,6 +1730,61 @@ const appointmentsFlow: PageFlowData = {
         { from: "aco5", to: "aco6" },
         { from: "aco6", to: "aco7" },
         { from: "aco7", to: "aco8" },
+      ],
+    },
+    {
+      id: "walkin-entry",
+      title: "Walk-in Entry Flow (ไม่มีนัดหมาย)",
+      titleEn: "Walk-in Entry Flow (No Appointment)",
+      description: "ผู้มาติดต่อมาถึงโดยไม่มีนัดหมาย — สร้าง visit_entry โดยตรง (appointment_id = NULL)",
+      steps: [
+        { id: "wi1", label: "ผู้มาติดต่อมาถึง\n(ไม่มีนัดหมาย)", type: "start" },
+        { id: "wi2", label: "Counter/Kiosk\nตรวจสอบตัวตน", type: "process" },
+        { id: "wi3", label: "ตรวจ Blocklist?", type: "decision" },
+        { id: "wi3b", label: "ปฏิเสธเข้าพื้นที่", type: "end" },
+        { id: "wi4", label: "เลือกวัตถุประสงค์\n+ หน่วยงาน + ผู้ที่จะพบ", type: "process" },
+        {
+          id: "wi5",
+          label: "สร้าง visit_entry\n(appointment_id = NULL\nstatus = checked-in)",
+          type: "process",
+        },
+        { id: "wi6", label: "ออก Slip / QR", type: "io" },
+        { id: "wi7", label: "สำเร็จ", type: "end" },
+      ],
+      connections: [
+        { from: "wi1", to: "wi2" },
+        { from: "wi2", to: "wi3" },
+        { from: "wi3", to: "wi3b", label: "อยู่ใน Blocklist", condition: "blocked" },
+        { from: "wi3", to: "wi4", label: "ผ่าน", condition: "clear" },
+        { from: "wi4", to: "wi5" },
+        { from: "wi5", to: "wi6" },
+        { from: "wi6", to: "wi7" },
+      ],
+    },
+    {
+      id: "period-appointment-multi-entry",
+      title: "Period Appointment — Multi Entry",
+      titleEn: "Period Appointment Multi-Entry Flow",
+      description: "นัดหมายแบบ period (date range) สามารถสร้าง visit_entry ได้หลายครั้ง — Appointment status ยังคงเป็น confirmed ตลอด",
+      steps: [
+        { id: "pm1", label: "Period appointment\nได้รับอนุมัติ (date range)", type: "start" },
+        { id: "pm2", label: "วันที่ N: ผู้มาถึง check-in", type: "process" },
+        {
+          id: "pm3",
+          label: "สร้าง visit_entry N\n(status=checked-in)",
+          type: "process",
+        },
+        { id: "pm4", label: "check-out\nอัปเดต visit_entry N\nstatus=checked-out", type: "process" },
+        { id: "pm5", label: "ยังไม่ถึง date_end?", type: "decision" },
+        { id: "pm6", label: "Appointment status\nยังคงเป็น confirmed ตลอด", type: "end" },
+      ],
+      connections: [
+        { from: "pm1", to: "pm2" },
+        { from: "pm2", to: "pm3" },
+        { from: "pm3", to: "pm4" },
+        { from: "pm4", to: "pm5" },
+        { from: "pm5", to: "pm2", label: "ยังไม่ถึง date_end\n(ทำซ้ำ)", condition: "repeat" },
+        { from: "pm5", to: "pm6", label: "ถึง date_end แล้ว", condition: "done" },
       ],
     },
   ],
@@ -1776,12 +1831,13 @@ const appointmentsFlow: PageFlowData = {
       ],
     },
     {
-      title: "Auto Check-out",
-      titleEn: "Automatic Check-out",
-      description: "ระบบ auto checkout เมื่อเกินเวลา",
+      title: "Auto Check-out (visit_entry)",
+      titleEn: "Automatic Check-out via visit_entries",
+      description: "ระบบ auto checkout เมื่อเกินเวลา — อัปเดตที่ visit_entry ไม่ใช่ appointment",
       conditions: [
         "เมื่อเกินเวลานัดหมาย → ระบบ auto checkout",
-        "อัปเดต status=checked-out อัตโนมัติ",
+        "อัปเดต visit_entry.status = auto-checkout อัตโนมัติ",
+        "Appointment status ไม่เปลี่ยน — ยังคงเป็น confirmed",
       ],
     },
     {
@@ -1800,7 +1856,7 @@ const appointmentsFlow: PageFlowData = {
       conditions: [
         "สร้างนัดหมาย → แจ้งผู้อนุมัติ",
         "อนุมัติ/ปฏิเสธ → แจ้งผู้จอง",
-        "Check-in / Check-out → บันทึก log",
+        "Check-in / Check-out → บันทึก log (visit_entry)",
       ],
     },
   ],
@@ -2743,6 +2799,397 @@ const lineMessageTemplatesFlow: PageFlowData = {
   ],
 };
 
+// ════════════════════════════════════════════════════
+// 19. แดชบอร์ด (Dashboard)
+// ════════════════════════════════════════════════════
+
+const dashboardFlow: PageFlowData = {
+  pageId: "dashboard",
+  menuName: "แดชบอร์ด",
+  menuNameEn: "Dashboard",
+  path: "/web/dashboard",
+  summary: "แสดงภาพรวม KPI, นัดหมายวันนี้, การเข้าพื้นที่วันนี้ และกราฟสถิติ",
+  flowcharts: [
+    {
+      id: "dash-load",
+      title: "การโหลดข้อมูล Dashboard",
+      titleEn: "Dashboard Data Loading Flow",
+      steps: [
+        { id: "s1", label: "เข้าหน้า Dashboard", type: "start" },
+        { id: "s2", label: "เรียก GET /api/dashboard/kpis\n(6 ตัวเลข KPI)", type: "process" },
+        { id: "s3", label: "เรียก GET /api/dashboard/today\n(นัดหมาย + entry วันนี้)", type: "process" },
+        { id: "s4", label: "เรียก GET /api/dashboard/charts\n(กราฟรายวัน 7d/30d)", type: "process" },
+        { id: "s5", label: "แสดง KPI Cards\n+ ตารางวันนี้ + กราฟ", type: "end" },
+      ],
+      connections: [
+        { from: "s1", to: "s2" },
+        { from: "s1", to: "s3" },
+        { from: "s1", to: "s4" },
+        { from: "s2", to: "s5" },
+        { from: "s3", to: "s5" },
+        { from: "s4", to: "s5" },
+      ],
+    },
+  ],
+  validationRules: [],
+  businessConditions: [
+    { title: "Role-based visibility", description: "Dashboard แสดงข้อมูลตาม scope ของ role", conditions: ["staff → department scope", "supervisor / admin → all scope"] },
+    { title: "KPI Metrics", description: "ตัวเลข 6 ค่าบน Dashboard", conditions: ["totalVisitorsToday = visit_entries ที่ checkin_at = วันนี้", "pendingApprovals = appointments ที่ status = pending", "currentlyInBuilding = visit_entries ที่ status = checked-in (ทุกวัน)", "overstayCount = visit_entries ที่ status = overstay", "checkedOutToday = visit_entries ที่ checkout_at = วันนี้", "walkInToday = visit_entries วันนี้ที่ appointment_id IS NULL"] },
+  ],
+};
+
+// ════════════════════════════════════════════════════
+// 20. ตั้งค่า Email / SMTP
+// ════════════════════════════════════════════════════
+
+const emailSystemFlow: PageFlowData = {
+  pageId: "email-system",
+  menuName: "ตั้งค่า Email / SMTP",
+  menuNameEn: "Email / SMTP Settings",
+  path: "/web/settings/email-system",
+  summary: "ตั้งค่า SMTP server สำหรับส่งอีเมลแจ้งเตือน ทดสอบการส่ง และดู log",
+  flowcharts: [
+    {
+      id: "email-config",
+      title: "การตั้งค่า SMTP",
+      titleEn: "SMTP Configuration Flow",
+      steps: [
+        { id: "s1", label: "Admin เข้าหน้า Email Settings", type: "start" },
+        { id: "s2", label: "GET /api/settings/email\nดึงค่าปัจจุบัน", type: "process" },
+        { id: "s3", label: "มี config แล้ว?", type: "decision" },
+        { id: "s4", label: "แสดงฟอร์ม (ค่าว่าง)", type: "process" },
+        { id: "s5", label: "แสดงค่าปัจจุบัน", type: "process" },
+        { id: "s6", label: "Admin แก้ไขฟอร์ม\n(host, port, username, password, etc.)", type: "process" },
+        { id: "s7", label: "PUT /api/settings/email\n(upsert)", type: "process" },
+        { id: "s8", label: "บันทึกสำเร็จ", type: "end" },
+      ],
+      connections: [
+        { from: "s1", to: "s2" },
+        { from: "s2", to: "s3" },
+        { from: "s3", to: "s4", label: "ไม่มี" },
+        { from: "s3", to: "s5", label: "มี" },
+        { from: "s4", to: "s6" },
+        { from: "s5", to: "s6" },
+        { from: "s6", to: "s7" },
+        { from: "s7", to: "s8" },
+      ],
+    },
+    {
+      id: "email-test",
+      title: "ทดสอบส่ง Email",
+      titleEn: "Test Email Flow",
+      steps: [
+        { id: "t1", label: "กดปุ่ม \"ทดสอบส่งอีเมล\"", type: "start" },
+        { id: "t2", label: "กรอก email ปลายทาง", type: "process" },
+        { id: "t3", label: "POST /api/settings/email/test", type: "io" },
+        { id: "t4", label: "แสดงผลสำเร็จ/ล้มเหลว", type: "end" },
+      ],
+      connections: [
+        { from: "t1", to: "t2" },
+        { from: "t2", to: "t3" },
+        { from: "t3", to: "t4" },
+      ],
+    },
+  ],
+  validationRules: [
+    { field: "smtpHost", rules: ["ต้องไม่ว่าง (สร้างใหม่)"] },
+    { field: "smtpPort", rules: ["ต้องเป็นตัวเลข", "ค่าทั่วไป: 25, 465, 587"] },
+    { field: "smtpUsername", rules: ["ต้องไม่ว่าง (สร้างใหม่)"] },
+    { field: "smtpPassword", rules: ["ต้องไม่ว่าง (สร้างใหม่)"] },
+    { field: "fromEmail", rules: ["ต้องเป็นรูปแบบ email ที่ถูกต้อง"] },
+    { field: "fromDisplayName", rules: ["ต้องไม่ว่าง (สร้างใหม่)"] },
+  ],
+  businessConditions: [
+    { title: "Admin Only", description: "เฉพาะ admin เท่านั้นที่เข้าถึงหน้านี้ได้", conditions: ["role = admin"] },
+    { title: "Test Email", description: "ปัจจุบันเป็น mock — ยังไม่ส่งจริง", conditions: ["POST /api/settings/email/test คืน mock response"] },
+  ],
+};
+
+// ════════════════════════════════════════════════════
+// 21. ตั้งค่า LINE OA
+// ════════════════════════════════════════════════════
+
+const lineOaConfigFlow: PageFlowData = {
+  pageId: "line-oa-config",
+  menuName: "ตั้งค่า LINE OA",
+  menuNameEn: "LINE OA Configuration",
+  path: "/web/settings/line-oa-config",
+  summary: "ตั้งค่า LINE Official Account (Channel ID, Secret, Access Token, LIFF, Webhook, Rich Menu)",
+  flowcharts: [
+    {
+      id: "line-config",
+      title: "การตั้งค่า LINE OA",
+      titleEn: "LINE OA Configuration Flow",
+      steps: [
+        { id: "s1", label: "Admin เข้าหน้า LINE OA Settings", type: "start" },
+        { id: "s2", label: "GET /api/settings/line-oa\nดึงค่าปัจจุบัน", type: "process" },
+        { id: "s3", label: "มี config แล้ว?", type: "decision" },
+        { id: "s4", label: "แสดงฟอร์ม (ค่าว่าง)\n— ต้องกรอก Channel ID/Secret/Token", type: "process" },
+        { id: "s5", label: "แสดงค่าปัจจุบัน", type: "process" },
+        { id: "s6", label: "Admin แก้ไข\n(channel, LIFF, webhook, rich menu)", type: "process" },
+        { id: "s7", label: "PUT /api/settings/line-oa\n(upsert)", type: "process" },
+        { id: "s8", label: "บันทึกสำเร็จ", type: "end" },
+      ],
+      connections: [
+        { from: "s1", to: "s2" },
+        { from: "s2", to: "s3" },
+        { from: "s3", to: "s4", label: "ไม่มี" },
+        { from: "s3", to: "s5", label: "มี" },
+        { from: "s4", to: "s6" },
+        { from: "s5", to: "s6" },
+        { from: "s6", to: "s7" },
+        { from: "s7", to: "s8" },
+      ],
+    },
+    {
+      id: "line-test",
+      title: "ทดสอบส่งข้อความ + ตรวจ Webhook",
+      titleEn: "Test Message & Verify Webhook",
+      steps: [
+        { id: "t1", label: "กดปุ่ม \"ทดสอบ\" / \"Verify Webhook\"", type: "start" },
+        { id: "t2", label: "POST /api/settings/line-oa/test\nหรือ verify-webhook", type: "io" },
+        { id: "t3", label: "แสดงผลสำเร็จ/ล้มเหลว", type: "end" },
+      ],
+      connections: [
+        { from: "t1", to: "t2" },
+        { from: "t2", to: "t3" },
+      ],
+    },
+  ],
+  validationRules: [
+    { field: "channelId", rules: ["ต้องไม่ว่าง (สร้างใหม่)"] },
+    { field: "channelSecret", rules: ["ต้องไม่ว่าง (สร้างใหม่)"] },
+    { field: "channelAccessToken", rules: ["ต้องไม่ว่าง (สร้างใหม่)"] },
+    { field: "webhookUrl", rules: ["ต้องเป็น URL ที่ถูกต้อง (https)"] },
+    { field: "liffEndpointUrl", rules: ["ต้องเป็น URL ที่ถูกต้อง (https)"] },
+  ],
+  businessConditions: [
+    { title: "Admin Only", description: "เฉพาะ admin เท่านั้นที่เข้าถึงหน้านี้ได้", conditions: ["role = admin"] },
+    { title: "Mock APIs", description: "Test และ Verify Webhook เป็น mock ในตอนนี้", conditions: ["POST /test คืน mock response", "POST /verify-webhook คืน mock verified: true"] },
+  ],
+};
+
+// ════════════════════════════════════════════════════
+// 22. ข้อมูลธุรกรรมการเข้าพื้นที่ (Visit Records)
+// ════════════════════════════════════════════════════
+
+const visitRecordsFlow: PageFlowData = {
+  pageId: "visit-records",
+  menuName: "ข้อมูลธุรกรรมการเข้าพื้นที่",
+  menuNameEn: "Visit Records",
+  path: "/web/appointments",
+  summary: "ธุรกรรมเเต่ละการเข้าพื้นที่แบบครบวงจร (ตั้งแต่จอง จนถึง checkout) เก็บข้อมูล WiFi, Slip, Face Photo",
+  flowcharts: [
+    {
+      id: "vr-lifecycle",
+      title: "Visit Record Lifecycle",
+      titleEn: "Visit Record Lifecycle",
+      description: "วงจรชีวิตของ Visit Record ตั้งแต่สร้างจนจบ",
+      steps: [
+        { id: "s1", label: "สร้าง Visit Record\n(จากช่องทาง: LINE/Web/Kiosk/Counter)", type: "start" },
+        { id: "s2", label: "status = pending", type: "process" },
+        { id: "s3", label: "ต้อง approve?", type: "decision" },
+        { id: "s4", label: "รออนุมัติ\n(notifyApprover)", type: "process" },
+        { id: "s5", label: "Approved/Rejected?", type: "decision" },
+        { id: "s6", label: "status = approved", type: "process" },
+        { id: "s7", label: "status = rejected", type: "end" },
+        { id: "s8", label: "Check-in ที่ Kiosk/Counter", type: "process" },
+        { id: "s9", label: "บันทึก checkinAt, checkinChannel\nออก WiFi + Slip", type: "process" },
+        { id: "s10", label: "status = checked-in", type: "process" },
+        { id: "s11", label: "Check-out\n(manual/auto)", type: "process" },
+        { id: "s12", label: "status = completed", type: "end" },
+      ],
+      connections: [
+        { from: "s1", to: "s2" },
+        { from: "s2", to: "s3" },
+        { from: "s3", to: "s4", label: "ใช่" },
+        { from: "s3", to: "s6", label: "ไม่" },
+        { from: "s4", to: "s5" },
+        { from: "s5", to: "s6", label: "approved" },
+        { from: "s5", to: "s7", label: "rejected" },
+        { from: "s6", to: "s8" },
+        { from: "s8", to: "s9" },
+        { from: "s9", to: "s10" },
+        { from: "s10", to: "s11" },
+        { from: "s11", to: "s12" },
+      ],
+    },
+  ],
+  validationRules: [],
+  businessConditions: [
+    { title: "WiFi Credentials", description: "ออก WiFi ให้เมื่อ wifiRequested = true", conditions: ["wifiRequested = true", "wifiSsid, wifiPassword ถูกกำหนดจาก ServicePoint config", "wifiValidUntil คำนวณจาก wifiValidityMode"] },
+    { title: "Visit Slip", description: "พิมพ์ Visit Slip เมื่อ check-in", conditions: ["slipPrinted = true เมื่อพิมพ์สำเร็จ", "slipNumber ถูกกำหนดอัตโนมัติ"] },
+    { title: "Created Channel", description: "ช่องทางที่สร้าง record", conditions: ["createdChannel ∈ {line, web, kiosk, counter}"] },
+  ],
+};
+
+// ════════════════════════════════════════════════════
+// 23. บันทึกการเข้าพื้นที่ (Visit Entries)
+// ════════════════════════════════════════════════════
+
+const visitEntriesFlow: PageFlowData = {
+  pageId: "visit-entries",
+  menuName: "บันทึกการเข้าพื้นที่",
+  menuNameEn: "Visit Entries",
+  path: "/web/visit-entries",
+  summary: "บันทึก check-in/check-out ของผู้เยี่ยม — สร้างจาก Kiosk, Counter หรือ Web",
+  flowcharts: [
+    {
+      id: "ve-checkin",
+      title: "Check-in Flow",
+      titleEn: "Visitor Check-in Flow",
+      steps: [
+        { id: "s1", label: "ผู้เยี่ยมมาถึง\n(Kiosk/Counter/Web)", type: "start" },
+        { id: "s2", label: "มีนัดหมาย?", type: "decision" },
+        { id: "s3", label: "ค้นหา Appointment\n(booking code / QR)", type: "process" },
+        { id: "s4", label: "Walk-in\n(กรอกข้อมูล + วัตถุประสงค์)", type: "process" },
+        { id: "s5", label: "ตรวจ Blocklist", type: "decision" },
+        { id: "s6", label: "ปฏิเสธการเข้า", type: "end" },
+        { id: "s7", label: "POST /api/entries\nสร้าง visit_entry", type: "process" },
+        { id: "s8", label: "status = checked-in\nออก entryCode", type: "process" },
+        { id: "s9", label: "พิมพ์ Slip / แสดง QR", type: "end" },
+      ],
+      connections: [
+        { from: "s1", to: "s2" },
+        { from: "s2", to: "s3", label: "มี" },
+        { from: "s2", to: "s4", label: "ไม่มี (walk-in)" },
+        { from: "s3", to: "s5" },
+        { from: "s4", to: "s5" },
+        { from: "s5", to: "s6", label: "blocked" },
+        { from: "s5", to: "s7", label: "ผ่าน" },
+        { from: "s7", to: "s8" },
+        { from: "s8", to: "s9" },
+      ],
+    },
+    {
+      id: "ve-checkout",
+      title: "Check-out Flow",
+      titleEn: "Visitor Check-out Flow",
+      steps: [
+        { id: "c1", label: "เจ้าหน้าที่กดปุ่ม Checkout\n(หรือผู้เยี่ยมสแกน QR)", type: "start" },
+        { id: "c2", label: "status = checked-in?", type: "decision" },
+        { id: "c3", label: "แจ้ง Error\n(ไม่มี entry / checkout แล้ว)", type: "end" },
+        { id: "c4", label: "POST /api/entries/:id/checkout", type: "process" },
+        { id: "c5", label: "status → checked-out\ncheckoutAt + checkoutBy", type: "end" },
+      ],
+      connections: [
+        { from: "c1", to: "c2" },
+        { from: "c2", to: "c3", label: "ไม่ใช่" },
+        { from: "c2", to: "c4", label: "ใช่" },
+        { from: "c4", to: "c5" },
+      ],
+    },
+  ],
+  validationRules: [
+    { field: "visitorId", rules: ["ต้องเป็น visitor ที่มีอยู่ในระบบ", "ต้องไม่ถูก block (isBlocked = false)"] },
+    { field: "checkinChannel", rules: ["ต้องระบุ: kiosk | counter | web | line"] },
+    { field: "area, building, floor", rules: ["ต้องไม่ว่าง"] },
+    { field: "purpose", rules: ["จำเป็นสำหรับ walk-in (ไม่มี appointmentId)"] },
+    { field: "appointmentId", rules: ["ถ้าระบุ → ต้องมี appointment และ status = approved หรือ pending"] },
+  ],
+  businessConditions: [
+    { title: "Entry Code", description: "สร้างอัตโนมัติ", conditions: ["format: eVMS-ENTRY-YYYYMMDD-XXXX", "ไม่ซ้ำกัน (unique)"] },
+    { title: "Blocklist Check", description: "ตรวจ visitor ก่อน check-in", conditions: ["visitor.isBlocked = true → ปฏิเสธ"] },
+    { title: "Checkout", description: "เฉพาะ entry ที่ status = checked-in", conditions: ["status ≠ checked-in → 400 error", "บันทึก checkoutBy = current user id"] },
+  ],
+};
+
+// ════════════════════════════════════════════════════
+// 24. กลุ่มนัดหมาย (Appointment Groups)
+// ════════════════════════════════════════════════════
+
+const appointmentGroupsFlow: PageFlowData = {
+  pageId: "appointment-groups",
+  menuName: "กลุ่มนัดหมาย (Batch/Period)",
+  menuNameEn: "Appointment Groups",
+  path: "/web/appointments/groups",
+  summary: "สร้างนัดหมายเป็นชุด (batch), รองรับ period (หลายวัน), กำหนดเวลาแยกรายวัน, ติดตาม Arrival Dashboard",
+  flowcharts: [
+    {
+      id: "ag-batch-create",
+      title: "Batch Create Flow",
+      titleEn: "Batch Appointment Creation",
+      description: "Staff สร้างนัดหมายเป็นชุดสำหรับ สัมมนา/ผู้รับเหมา/VIP",
+      steps: [
+        { id: "b1", label: "Staff เลือก\n\"สร้างรายการเป็นชุด\"", type: "start" },
+        { id: "b2", label: "กรอกชื่อกลุ่ม\nเลือก วัตถุประสงค์ + แผนก", type: "process" },
+        { id: "b3", label: "เลือก entryMode\n(single / period)", type: "decision" },
+        { id: "b4", label: "กำหนด dateStart\ntimeStart, timeEnd", type: "process" },
+        { id: "b5", label: "กำหนด dateStart-dateEnd\ntimeStart, timeEnd\n+ daySchedules (optional)", type: "process" },
+        { id: "b6", label: "กรอกรายชื่อ visitors\n(manual / CSV import)", type: "process" },
+        { id: "b7", label: "POST /api/appointments/batch", type: "io" },
+        { id: "b8", label: "สร้าง Group + N Appointments\n(auto-approve ถ้า rule)", type: "process" },
+        { id: "b9", label: "สำเร็จ: ดู Arrival Dashboard", type: "end" },
+      ],
+      connections: [
+        { from: "b1", to: "b2" },
+        { from: "b2", to: "b3" },
+        { from: "b3", to: "b4", label: "single" },
+        { from: "b3", to: "b5", label: "period" },
+        { from: "b4", to: "b6" },
+        { from: "b5", to: "b6" },
+        { from: "b6", to: "b7" },
+        { from: "b7", to: "b8" },
+        { from: "b8", to: "b9" },
+      ],
+    },
+    {
+      id: "ag-arrival-dashboard",
+      title: "Arrival Dashboard Flow",
+      titleEn: "Arrival Tracking Dashboard",
+      steps: [
+        { id: "a1", label: "Staff เข้าหน้า\nArrival Dashboard", type: "start" },
+        { id: "a2", label: "GET /api/appointments/groups\nดึงรายการ group", type: "process" },
+        { id: "a3", label: "เลือก group", type: "process" },
+        { id: "a4", label: "GET /groups/:id?date=X\nดึง detail + stats รายวัน", type: "process" },
+        { id: "a5", label: "แสดง Progress bar\n+ ตาราง visitor\n+ สถานะ check-in/out", type: "end" },
+        { id: "a6", label: "Toggle แจ้งเตือน\n(group / per-appointment)", type: "subprocess" },
+        { id: "a7", label: "Auto-refresh ทุก 30 วินาที", type: "subprocess" },
+      ],
+      connections: [
+        { from: "a1", to: "a2" },
+        { from: "a2", to: "a3" },
+        { from: "a3", to: "a4" },
+        { from: "a4", to: "a5" },
+        { from: "a5", to: "a6" },
+        { from: "a5", to: "a7" },
+      ],
+    },
+    {
+      id: "ag-overstay",
+      title: "Overstay Detection Flow",
+      titleEn: "Overstay Detection & Alert",
+      steps: [
+        { id: "o1", label: "Cron ทุก 15 นาที", type: "start" },
+        { id: "o2", label: "ดึง entries\nstatus = checked-in", type: "process" },
+        { id: "o3", label: "หา timeEnd:\ndaySchedule > group > appt > business hours", type: "process" },
+        { id: "o4", label: "NOW > timeEnd?", type: "decision" },
+        { id: "o5", label: "Update status = overstay\nส่งแจ้งเตือน staff", type: "io" },
+        { id: "o6", label: "ข้าม (ยังอยู่ในเวลา)", type: "end" },
+      ],
+      connections: [
+        { from: "o1", to: "o2" },
+        { from: "o2", to: "o3" },
+        { from: "o3", to: "o4" },
+        { from: "o4", to: "o5", label: "ใช่ (overstay)" },
+        { from: "o4", to: "o6", label: "ไม่" },
+      ],
+    },
+  ],
+  validationRules: [
+    { field: "group.name", rules: ["ต้องไม่ว่าง"] },
+    { field: "group.visitPurposeId + departmentId", rules: ["ต้องมี rule ใน visit_purpose_department_rules"] },
+    { field: "entryMode=period → dateEnd", rules: ["ต้องระบุ", "dateEnd > dateStart", "visitPurpose ต้อง allowedEntryModes มี period"] },
+    { field: "daySchedules[].date", rules: ["ต้องอยู่ใน dateStart-dateEnd range", "unique per group"] },
+    { field: "visitors", rules: ["ต้องมีอย่างน้อย 1 คน", "firstName ต้องไม่ว่าง"] },
+  ],
+  businessConditions: [
+    { title: "Auto-Approve", description: "ถ้า rule.requireApproval = false → ทุก appointment ใน batch = approved ทันที", conditions: ["visit_purpose_department_rules.require_approval = false"] },
+    { title: "Notification Toggle", description: "Batch default notifyOnCheckin = false (ไม่แจ้งเตือน)", conditions: ["group.notifyOnCheckin = false by default", "toggle ได้ทั้งระดับ group และ per-appointment"] },
+    { title: "Period Overstay", description: "ตรวจ overstay ตาม daySchedule ของวันนั้น", conditions: ["daySchedule > group.timeEnd > appointment.timeEnd > business_hours.closeTime"] },
+  ],
+};
+
 export const allFlowData: PageFlowData[] = [
   visitPurposesFlow,
   documentTypesFlow,
@@ -2762,6 +3209,12 @@ export const allFlowData: PageFlowData[] = [
   userManagementFlow,
   myProfileFlow,
   lineMessageTemplatesFlow,
+  dashboardFlow,
+  emailSystemFlow,
+  lineOaConfigFlow,
+  visitRecordsFlow,
+  visitEntriesFlow,
+  appointmentGroupsFlow,
 ];
 
 export function getFlowByPageId(pageId: string): PageFlowData | undefined {

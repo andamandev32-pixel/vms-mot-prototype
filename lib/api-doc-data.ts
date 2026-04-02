@@ -1393,7 +1393,7 @@ const appointmentsApi: PageApiDoc = {
       queryParams: [
         { name: "page", type: "number", required: false, description: "หน้าที่ต้องการ (default: 1)" },
         { name: "limit", type: "number", required: false, description: "จำนวนต่อหน้า (default: 20)" },
-        { name: "status", type: "string", required: false, description: "กรอง: pending | approved | rejected | checked_in | checked_out | cancelled | expired" },
+        { name: "status", type: "string", required: false, description: "กรอง: pending | approved | rejected | confirmed | cancelled | expired" },
         { name: "date_from", type: "string", required: false, description: "วันที่เริ่มต้น (YYYY-MM-DD)" },
         { name: "date_to", type: "string", required: false, description: "วันที่สิ้นสุด (YYYY-MM-DD)" },
         { name: "host_id", type: "number", required: false, description: "กรองตาม Host (Staff ID)" },
@@ -1417,8 +1417,6 @@ const appointmentsApi: PageApiDoc = {
       "visit_time_end": "12:00",
       "location": "อาคาร กท. ชั้น 3 ห้องประชุม 301",
       "status": "approved",
-      "checked_in_at": null,
-      "checked_out_at": null,
       "qr_code_url": "/api/appointments/1/qr",
       "created_at": "2026-03-20T14:00:00Z"
     }
@@ -1502,6 +1500,113 @@ const appointmentsApi: PageApiDoc = {
         { name: "reason", type: "string", required: false, description: "เหตุผลยกเลิก" },
       ],
       notes: ["host หรือ admin สามารถยกเลิกได้", "เปลี่ยน status → cancelled"],
+    },
+  ],
+};
+
+// ════════════════════════════════════════════════════
+// 15b. Appointment Groups (Batch/Period)
+// ════════════════════════════════════════════════════
+
+const appointmentGroupsApi: PageApiDoc = {
+  pageId: "appointment-groups",
+  menuName: "กลุ่มนัดหมาย (Batch/Period)",
+  menuNameEn: "Appointment Groups",
+  baseUrl: "/api/appointments",
+  endpoints: [
+    {
+      method: "POST",
+      path: "/api/appointments/batch",
+      summary: "สร้างนัดหมายเป็นชุด (batch) พร้อม group + period + day schedules",
+      summaryEn: "Create batch appointments with group, period mode, and day schedules",
+      auth: "user",
+      requestBody: [
+        { name: "group.name", type: "string", required: true, description: "ชื่อกลุ่ม" },
+        { name: "group.visitPurposeId", type: "number", required: true, description: "FK → visit_purposes.id" },
+        { name: "group.departmentId", type: "number", required: true, description: "FK → departments.id" },
+        { name: "group.hostStaffId", type: "number", required: false, description: "FK → staff.id (optional ถ้า require_person_name=false)" },
+        { name: "group.entryMode", type: "string", required: false, description: "single (default) | period" },
+        { name: "group.dateStart", type: "string", required: true, description: "วันเริ่มต้น (YYYY-MM-DD)" },
+        { name: "group.dateEnd", type: "string", required: false, description: "วันสิ้นสุด (required ถ้า period)" },
+        { name: "group.timeStart", type: "string", required: true, description: "เวลาเริ่ม (HH:MM)" },
+        { name: "group.timeEnd", type: "string", required: true, description: "เวลาสิ้นสุด (HH:MM)" },
+        { name: "group.notifyOnCheckin", type: "boolean", required: false, description: "แจ้งเตือน check-in (default: false สำหรับ batch)" },
+        { name: "group.daySchedules", type: "object[]", required: false, description: "เวลาแยกรายวัน [{date, timeStart, timeEnd, notes}]" },
+        { name: "visitors", type: "object[]", required: true, description: "รายชื่อ [{firstName, lastName, company, phone}]" },
+      ],
+      notes: ["ใช้ visit_purpose_department_rules enforce rules", "auto-approve ถ้า requireApproval=false", "สร้าง AppointmentGroup + N Appointments ใน transaction"],
+    },
+    {
+      method: "GET",
+      path: "/api/appointments/groups",
+      summary: "ดึงรายการกลุ่มนัดหมาย",
+      summaryEn: "List appointment groups with arrival stats",
+      auth: "user",
+      queryParams: [
+        { name: "createdBy", type: "string", required: false, description: "me = เฉพาะที่ตัวเองสร้าง" },
+        { name: "status", type: "string", required: false, description: "active | completed | cancelled" },
+        { name: "page", type: "number", required: false, description: "หน้า (default: 1)" },
+        { name: "limit", type: "number", required: false, description: "จำนวนต่อหน้า (default: 20)" },
+      ],
+      notes: ["staff เห็นเฉพาะ group ตัวเอง", "supervisor/admin เห็นทั้งหมด", "แต่ละ group มี stats: arrivedToday, notArrivedToday"],
+    },
+    {
+      method: "GET",
+      path: "/api/appointments/groups/:id",
+      summary: "ดึง group detail + สถานะการมาถึงแยกรายวัน",
+      summaryEn: "Get group detail with per-day arrival stats",
+      auth: "user",
+      pathParams: [
+        { name: "id", type: "number", required: true, description: "Group ID" },
+      ],
+      queryParams: [
+        { name: "date", type: "string", required: false, description: "ดูเฉพาะวันที่ (YYYY-MM-DD) — สำหรับ period group" },
+      ],
+      responseExample: `{
+  "group": { "id": 1, "name": "สัมมนา IT", "entryMode": "period", "dateStart": "2026-04-10", "dateEnd": "2026-04-11" },
+  "dateFilter": "2026-04-10",
+  "availableDates": ["2026-04-10", "2026-04-11"],
+  "stats": { "total": 50, "arrivedToday": 45, "notArrivedToday": 5, "arrivedAllDays": 48, "neverArrived": 2 },
+  "appointments": [
+    {
+      "id": 1,
+      "visitor": { "name": "สมชาย ใจดี" },
+      "todayEntry": { "status": "checked-in", "checkinAt": "2026-04-10T09:15:00Z" },
+      "allEntries": [
+        { "date": "2026-04-10", "status": "checked-in" },
+        { "date": "2026-04-11", "status": null }
+      ]
+    }
+  ]
+}`,
+    },
+    {
+      method: "PATCH",
+      path: "/api/appointments/groups/:id",
+      summary: "แก้ไข group (toggle แจ้งเตือน / ยกเลิก)",
+      summaryEn: "Update group notification toggle or cancel",
+      auth: "user",
+      pathParams: [
+        { name: "id", type: "number", required: true, description: "Group ID" },
+      ],
+      requestBody: [
+        { name: "notifyOnCheckin", type: "boolean", required: false, description: "เปิด/ปิดแจ้งเตือน (cascade ทุก appointment)" },
+        { name: "status", type: "string", required: false, description: "cancelled = ยกเลิกทั้ง group" },
+      ],
+      notes: ["เฉพาะ creator หรือ admin", "cascade notifyOnCheckin ไปทุก appointment ใน group"],
+    },
+    {
+      method: "PATCH",
+      path: "/api/appointments/:id/notify",
+      summary: "Toggle แจ้งเตือน check-in ทีละรายการ",
+      summaryEn: "Toggle per-appointment check-in notification",
+      auth: "user",
+      pathParams: [
+        { name: "id", type: "number", required: true, description: "Appointment ID" },
+      ],
+      requestBody: [
+        { name: "notifyOnCheckin", type: "boolean", required: true, description: "true = แจ้งเตือน / false = ไม่แจ้ง" },
+      ],
     },
   ],
 };
@@ -1733,104 +1838,104 @@ const reportsApi: PageApiDoc = {
     {
       method: "GET",
       path: "/api/reports/visits",
-      summary: "รายงานการเข้าเยี่ยม",
-      summaryEn: "Visit report",
+      summary: "รายงานการเข้าเยี่ยม (paginated)",
+      summaryEn: "Visit entries report with filtering",
       auth: "admin",
       queryParams: [
-        { name: "date_from", type: "string", required: true, description: "วันที่เริ่มต้น (YYYY-MM-DD)" },
-        { name: "date_to", type: "string", required: true, description: "วันที่สิ้นสุด (YYYY-MM-DD)" },
-        { name: "group_by", type: "string", required: false, description: "จัดกลุ่ม: day | week | month" },
-        { name: "purpose_id", type: "number", required: false, description: "กรองตามวัตถุประสงค์" },
-        { name: "building_id", type: "number", required: false, description: "กรองตามอาคาร" },
+        { name: "dateFrom", type: "string", required: false, description: "วันที่เริ่มต้น (YYYY-MM-DD) กรอง checkinAt" },
+        { name: "dateTo", type: "string", required: false, description: "วันที่สิ้นสุด (YYYY-MM-DD) รวมทั้งวัน" },
+        { name: "type", type: "string", required: false, description: "กรอง visitType" },
+        { name: "departmentId", type: "number", required: false, description: "กรองตามแผนก" },
+        { name: "page", type: "number", required: false, description: "หน้า (default: 1)" },
+        { name: "limit", type: "number", required: false, description: "จำนวนต่อหน้า (default: 20, max: 100)" },
       ],
       responseExample: `{
-  "summary": {
-    "total_visits": 245,
-    "total_visitors": 180,
-    "avg_duration_minutes": 95,
-    "peak_hour": "10:00",
-    "approval_rate": 92.5
-  },
-  "by_period": [
-    { "date": "2026-03-01", "visits": 12, "unique_visitors": 10 },
-    { "date": "2026-03-02", "visits": 8, "unique_visitors": 7 }
+  "entries": [
+    {
+      "id": 10,
+      "entryCode": "eVMS-ENTRY-20260401-0001",
+      "status": "checked-out",
+      "checkinAt": "2026-04-01T09:00:00Z",
+      "checkoutAt": "2026-04-01T11:30:00Z",
+      "visitor": { "id": 1, "name": "จิรภัทร์ เยี่ยมชม", "idNumber": "1100XXXXX1234", "nationality": "ไทย" },
+      "hostStaff": { "id": 3, "name": "สมชาย ทำงานดี", "employeeId": "EMP003" },
+      "department": { "id": 1, "name": "สำนักงานปลัดกระทรวง" }
+    }
   ],
-  "by_purpose": [
-    { "purpose": "ประชุม/สัมมนา", "count": 120 },
-    { "purpose": "ติดต่อราชการ", "count": 85 }
-  ]
+  "total": 245,
+  "page": 1,
+  "limit": 20
 }`,
+      notes: ["เฉพาะ admin และ supervisor เท่านั้น"],
     },
     {
       method: "GET",
       path: "/api/reports/visitors",
-      summary: "รายงานผู้เยี่ยมถี่",
-      summaryEn: "Frequent visitors report",
-      auth: "admin",
+      summary: "สถิติผู้เยี่ยม (unique visitors, top frequent, by company, by nationality)",
+      summaryEn: "Unique visitor statistics",
+      auth: "user",
       queryParams: [
-        { name: "date_from", type: "string", required: true, description: "วันที่เริ่มต้น" },
-        { name: "date_to", type: "string", required: true, description: "วันที่สิ้นสุด" },
-        { name: "min_visits", type: "number", required: false, description: "จำนวนครั้งขั้นต่ำ (default: 3)" },
-        { name: "limit", type: "number", required: false, description: "จำนวนผลลัพธ์ (default: 50)" },
+        { name: "dateFrom", type: "string", required: false, description: "วันที่เริ่มต้น (YYYY-MM-DD)" },
+        { name: "dateTo", type: "string", required: false, description: "วันที่สิ้นสุด (YYYY-MM-DD)" },
       ],
       responseExample: `{
-  "data": [
-    {
-      "visitor_name": "จิรภัทร์ เยี่ยมชม",
-      "company": "บริษัท ทดสอบ จำกัด",
-      "total_visits": 15,
-      "last_visit": "2026-03-25",
-      "avg_duration_minutes": 120
-    }
+  "totalUniqueVisitors": 180,
+  "topVisitors": [
+    { "id": 1, "name": "จิรภัทร์ เยี่ยมชม", "company": "บริษัท ทดสอบ จำกัด", "_count": { "visitEntries": 15 } }
+  ],
+  "byCompany": [
+    { "company": "บริษัท ทดสอบ จำกัด", "_count": 25 }
+  ],
+  "byNationality": [
+    { "nationality": "ไทย", "_count": 150 },
+    { "nationality": "ญี่ปุ่น", "_count": 20 }
   ]
 }`,
+      notes: ["topVisitors = 10 อันดับแรก", "byCompany = 20 อันดับแรก"],
     },
     {
       method: "GET",
       path: "/api/reports/export",
-      summary: "ส่งออกรายงาน (Excel/CSV)",
-      summaryEn: "Export report (Excel/CSV)",
+      summary: "ส่งออกรายงาน (CSV UTF-8 with BOM)",
+      summaryEn: "Export report as CSV download",
       auth: "admin",
       queryParams: [
-        { name: "report_type", type: "string", required: true, description: "visits | visitors | appointments | blocklist" },
-        { name: "format", type: "string", required: true, description: "xlsx | csv" },
-        { name: "date_from", type: "string", required: true, description: "วันที่เริ่มต้น (YYYY-MM-DD)" },
-        { name: "date_to", type: "string", required: true, description: "วันที่สิ้นสุด (YYYY-MM-DD)" },
+        { name: "type", type: "string", required: false, description: "visits (default) | visitors" },
+        { name: "dateFrom", type: "string", required: false, description: "วันที่เริ่มต้น (YYYY-MM-DD)" },
+        { name: "dateTo", type: "string", required: false, description: "วันที่สิ้นสุด (YYYY-MM-DD)" },
       ],
-      notes: ["คืน file download (Content-Disposition: attachment)", "จำกัดช่วงวันที่ไม่เกิน 365 วัน"],
+      notes: ["คืน Content-Type: text/csv; charset=utf-8 พร้อม Content-Disposition: attachment", "จำกัด 10,000 rows", "เฉพาะ admin และ supervisor เท่านั้น", "type=visits: Entry Code, Booking Code, Visitor Name, Company, Phone, ID Number, Nationality, Host, Department, Visit Type, Purpose, Check-in, Check-out, Status", "type=visitors: Visitor Name, Company, Phone, Email, ID Number, Nationality, Visit Count, Last Visit"],
     },
     {
       method: "GET",
       path: "/api/reports/audit-log",
-      summary: "ดึง Audit Log",
-      summaryEn: "Get audit log",
+      summary: "ดึง Audit Log (appointment status changes)",
+      summaryEn: "Get appointment status change audit log",
       auth: "admin",
       queryParams: [
-        { name: "page", type: "number", required: false, description: "หน้าที่ต้องการ" },
-        { name: "limit", type: "number", required: false, description: "จำนวนต่อหน้า" },
-        { name: "user_id", type: "number", required: false, description: "กรองตาม User ID" },
-        { name: "action", type: "string", required: false, description: "กรองตาม action เช่น create, update, delete, login" },
-        { name: "date_from", type: "string", required: false, description: "วันที่เริ่มต้น" },
-        { name: "date_to", type: "string", required: false, description: "วันที่สิ้นสุด" },
+        { name: "appointmentId", type: "number", required: false, description: "กรองตาม appointment ID" },
+        { name: "dateFrom", type: "string", required: false, description: "วันที่เริ่มต้น (กรอง createdAt)" },
+        { name: "dateTo", type: "string", required: false, description: "วันที่สิ้นสุด (กรอง createdAt)" },
+        { name: "page", type: "number", required: false, description: "หน้า (default: 1)" },
+        { name: "limit", type: "number", required: false, description: "จำนวนต่อหน้า (default: 20, max: 100)" },
       ],
       responseExample: `{
-  "data": [
+  "logs": [
     {
       "id": 100,
-      "user_id": 1,
-      "user_name": "อนันต์ มั่นคง",
-      "action": "update",
-      "resource": "appointment",
-      "resource_id": 25,
-      "details": "เปลี่ยนสถานะ pending → approved",
-      "ip_address": "192.168.1.50",
-      "created_at": "2026-03-25T09:15:00Z"
+      "fromStatus": "pending",
+      "toStatus": "approved",
+      "reason": null,
+      "createdAt": "2026-04-01T09:15:00Z",
+      "appointment": { "id": 50, "bookingCode": "eVMS-BOOK-20260401-0001" },
+      "changedByStaff": { "id": 3, "name": "สมชาย ทำงานดี", "employeeId": "EMP003" }
     }
   ],
   "total": 500,
   "page": 1,
   "limit": 20
 }`,
+      notes: ["เฉพาะ admin เท่านั้น", "ดึงจาก appointment_status_logs"],
     },
   ],
 };
@@ -1848,91 +1953,208 @@ const dashboardApi: PageApiDoc = {
     {
       method: "GET",
       path: "/api/dashboard/kpis",
-      summary: "ดึง KPI สรุปภาพรวม",
-      summaryEn: "Get dashboard KPIs",
+      summary: "ดึง KPI สรุปภาพรวม (6 ตัวเลข)",
+      summaryEn: "Get dashboard KPIs (6 metrics)",
       auth: "user",
       responseExample: `{
-  "today": {
-    "total_appointments": 18,
-    "checked_in": 12,
-    "checked_out": 5,
-    "pending_approval": 3,
-    "currently_in_building": 7
-  },
-  "this_week": {
-    "total_appointments": 85,
-    "approval_rate": 94.2,
-    "avg_wait_time_minutes": 8
-  },
-  "this_month": {
-    "total_appointments": 245,
-    "total_unique_visitors": 180,
-    "busiest_day": "2026-03-15",
-    "busiest_day_count": 22
-  }
+  "totalVisitorsToday": 12,
+  "pendingApprovals": 3,
+  "currentlyInBuilding": 7,
+  "overstayCount": 1,
+  "checkedOutToday": 5,
+  "walkInToday": 4
 }`,
+      notes: ["นับ totalVisitorsToday จาก visit_entries ที่ checkin_at = วันนี้", "currentlyInBuilding นับทุก entry ที่ status = checked-in (ไม่จำกัดวัน)", "walkInToday = entry ที่ไม่มี appointment_id"],
     },
     {
       method: "GET",
       path: "/api/dashboard/today",
-      summary: "ดึงข้อมูลนัดหมายวันนี้",
-      summaryEn: "Get today's appointments",
+      summary: "ดึงนัดหมาย + entry วันนี้",
+      summaryEn: "Get today's appointments and visit entries",
       auth: "user",
-      queryParams: [
-        { name: "status", type: "string", required: false, description: "กรอง: pending | approved | checked_in" },
-      ],
       responseExample: `{
-  "data": [
+  "appointments": [
     {
       "id": 50,
-      "appointment_code": "VMS-2026-0050",
-      "visitor_name": "จิรภัทร์ เยี่ยมชม",
-      "host_name": "สมชาย ทำงานดี",
-      "purpose": "ประชุม/สัมมนา",
-      "time_start": "10:00",
-      "time_end": "12:00",
-      "status": "approved",
-      "location": "อาคาร กท. ชั้น 3"
+      "bookingCode": "eVMS-BOOK-20260401-0001",
+      "visitor": { "id": 1, "name": "จิรภัทร์ เยี่ยมชม" },
+      "hostStaff": { "id": 3, "name": "สมชาย ทำงานดี" },
+      "department": { "id": 1, "name": "สำนักงานปลัดกระทรวง" },
+      "visitPurpose": { "id": 1, "name": "ติดต่อราชการ" },
+      "timeStart": "10:00:00",
+      "timeEnd": "12:00:00",
+      "status": "approved"
     }
   ],
-  "total": 18
-}`,
-    },
+  "entries": [
     {
-      method: "GET",
-      path: "/api/dashboard/chart/visits-by-hour",
-      summary: "กราฟจำนวนผู้เยี่ยมตามชั่วโมง",
-      summaryEn: "Visits by hour chart data",
-      auth: "user",
-      queryParams: [
-        { name: "date", type: "string", required: false, description: "วันที่ (default: วันนี้)" },
-      ],
-      responseExample: `{
-  "labels": ["08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00"],
-  "datasets": [
-    { "label": "Check-in", "data": [2, 5, 8, 3, 1, 4, 6, 2, 1] },
-    { "label": "Check-out", "data": [0, 1, 2, 4, 3, 1, 2, 5, 3] }
+      "id": 10,
+      "entryCode": "eVMS-ENTRY-20260401-0001",
+      "visitor": { "id": 1, "name": "จิรภัทร์ เยี่ยมชม" },
+      "hostStaff": { "id": 3, "name": "สมชาย ทำงานดี" },
+      "department": { "id": 1, "name": "สำนักงานปลัดกระทรวง" },
+      "status": "checked-in",
+      "checkinAt": "2026-04-01T09:00:00Z"
+    }
   ]
 }`,
+      notes: ["appointments เรียงตาม timeStart ASC", "entries เรียงตาม checkinAt DESC"],
     },
     {
       method: "GET",
-      path: "/api/dashboard/chart/visits-by-purpose",
-      summary: "กราฟสัดส่วนวัตถุประสงค์",
-      summaryEn: "Visits by purpose chart data",
+      path: "/api/dashboard/charts",
+      summary: "กราฟจำนวนผู้เยี่ยมรายวัน (7 หรือ 30 วัน)",
+      summaryEn: "Daily visitor count chart data (7d or 30d)",
       auth: "user",
       queryParams: [
-        { name: "date_from", type: "string", required: false, description: "วันที่เริ่มต้น (default: 7 วันย้อนหลัง)" },
-        { name: "date_to", type: "string", required: false, description: "วันที่สิ้นสุด (default: วันนี้)" },
+        { name: "period", type: "string", required: false, description: "ช่วงเวลา: 7d (default) | 30d" },
+      ],
+      responseExample: `{
+  "period": "7d",
+  "chartData": [
+    { "date": "2026-03-26", "count": 8 },
+    { "date": "2026-03-27", "count": 12 },
+    { "date": "2026-03-28", "count": 5 },
+    { "date": "2026-03-29", "count": 0 },
+    { "date": "2026-03-30", "count": 10 },
+    { "date": "2026-03-31", "count": 15 },
+    { "date": "2026-04-01", "count": 7 }
+  ]
+}`,
+      notes: ["วันที่ไม่มีผู้เยี่ยมจะคืน count: 0", "นับจาก visit_entries.checkin_at"],
+    },
+  ],
+};
+
+// ════════════════════════════════════════════════════
+// 20. Visit Entries
+// ════════════════════════════════════════════════════
+
+const visitEntriesApi: PageApiDoc = {
+  pageId: "visit-entries",
+  menuName: "บันทึกการเข้าพื้นที่",
+  menuNameEn: "Visit Entries",
+  baseUrl: "/api/entries",
+  endpoints: [
+    {
+      method: "GET",
+      path: "/api/entries",
+      summary: "ดึงรายการ Visit Entries ทั้งหมด",
+      summaryEn: "List visit entries with filtering and pagination",
+      auth: "user",
+      queryParams: [
+        { name: "status", type: "string", required: false, description: "กรอง: checked-in | checked-out | overstay" },
+        { name: "date", type: "string", required: false, description: "กรองวันที่ check-in (YYYY-MM-DD)" },
+        { name: "appointmentId", type: "number", required: false, description: "กรองตาม appointment ID" },
+        { name: "visitorId", type: "number", required: false, description: "กรองตาม visitor ID" },
+        { name: "search", type: "string", required: false, description: "ค้นหา entryCode / ชื่อ visitor / เบอร์โทร" },
+        { name: "page", type: "number", required: false, description: "หน้าที่ต้องการ (default: 1)" },
+        { name: "limit", type: "number", required: false, description: "จำนวนต่อหน้า (default: 20, max: 100)" },
       ],
       responseExample: `{
   "data": [
-    { "purpose": "ประชุม/สัมมนา", "count": 45, "percentage": 48.9 },
-    { "purpose": "ติดต่อราชการ", "count": 30, "percentage": 32.6 },
-    { "purpose": "ส่งเอกสาร", "count": 10, "percentage": 10.9 },
-    { "purpose": "อื่นๆ", "count": 7, "percentage": 7.6 }
-  ]
+    {
+      "id": 10,
+      "entryCode": "eVMS-ENTRY-20260401-0001",
+      "status": "checked-in",
+      "checkinAt": "2026-04-01T09:00:00Z",
+      "checkinChannel": "kiosk",
+      "area": "อาคาร กท.",
+      "building": "อาคาร กท.",
+      "floor": "1",
+      "visitor": { "id": 1, "name": "จิรภัทร์ เยี่ยมชม", "phone": "0812345678" },
+      "hostStaff": { "id": 3, "name": "สมชาย ทำงานดี" },
+      "department": { "id": 1, "name": "สำนักงานปลัดกระทรวง" },
+      "appointment": { "id": 50, "bookingCode": "eVMS-BOOK-20260401-0001" }
+    }
+  ],
+  "total": 150,
+  "page": 1,
+  "limit": 20
 }`,
+    },
+    {
+      method: "POST",
+      path: "/api/entries",
+      summary: "สร้าง Visit Entry (Check-in)",
+      summaryEn: "Create visit entry (visitor check-in)",
+      auth: "user",
+      requestBody: [
+        { name: "visitorId", type: "number", required: true, description: "FK → visitors.id" },
+        { name: "checkinChannel", type: "string", required: true, description: "ช่องทาง: kiosk | counter | web | line" },
+        { name: "area", type: "string", required: true, description: "พื้นที่เข้า" },
+        { name: "building", type: "string", required: true, description: "อาคาร" },
+        { name: "floor", type: "string", required: true, description: "ชั้น" },
+        { name: "room", type: "string", required: false, description: "ห้อง" },
+        { name: "purpose", type: "string", required: false, description: "วัตถุประสงค์ (จำเป็นสำหรับ walk-in)" },
+        { name: "visitType", type: "string", required: false, description: "ประเภทการเข้า" },
+        { name: "hostStaffId", type: "number", required: false, description: "FK → staff.id (ผู้ที่ต้องการพบ)" },
+        { name: "departmentId", type: "number", required: false, description: "FK → departments.id" },
+        { name: "companions", type: "number", required: false, description: "จำนวนผู้ติดตาม" },
+        { name: "idMethod", type: "string", required: false, description: "วิธียืนยันตัวตน" },
+        { name: "notes", type: "string", required: false, description: "หมายเหตุ" },
+        { name: "appointmentId", type: "number", required: false, description: "FK → appointments.id (ถ้ามีนัดหมาย)" },
+      ],
+      notes: ["ตรวจว่า visitor ไม่ถูก block", "ถ้ามี appointmentId → status ต้องเป็น approved หรือ pending", "ถ้าไม่มี appointmentId (walk-in) → purpose ต้องระบุ", "สร้าง entryCode อัตโนมัติ: eVMS-ENTRY-YYYYMMDD-XXXX"],
+    },
+    {
+      method: "GET",
+      path: "/api/entries/:id",
+      summary: "ดึง Visit Entry ตาม ID (พร้อมข้อมูลครบ)",
+      summaryEn: "Get visit entry by ID with full details",
+      auth: "user",
+      pathParams: [
+        { name: "id", type: "number", required: true, description: "Visit Entry ID" },
+      ],
+      responseExample: `{
+  "id": 10,
+  "entryCode": "eVMS-ENTRY-20260401-0001",
+  "status": "checked-in",
+  "visitor": { "id": 1, "name": "จิรภัทร์ เยี่ยมชม" },
+  "appointment": {
+    "id": 50,
+    "bookingCode": "eVMS-BOOK-20260401-0001",
+    "visitPurpose": { "name": "ติดต่อราชการ" },
+    "companions": [],
+    "equipment": []
+  },
+  "hostStaff": { "id": 3, "name": "สมชาย ทำงานดี" },
+  "department": { "id": 1, "name": "สำนักงานปลัดกระทรวง" },
+  "servicePoint": { "id": 1, "name": "Kiosk 1 (ชั้น 1)" },
+  "checkinAt": "2026-04-01T09:00:00Z",
+  "checkinChannel": "kiosk"
+}`,
+    },
+    {
+      method: "POST",
+      path: "/api/entries/:id/checkout",
+      summary: "Check-out ผู้เยี่ยม",
+      summaryEn: "Checkout visitor (mark as left)",
+      auth: "user",
+      pathParams: [
+        { name: "id", type: "number", required: true, description: "Visit Entry ID" },
+      ],
+      notes: ["ต้อง status = checked-in เท่านั้น", "บันทึก checkoutAt + checkoutBy (user ปัจจุบัน)"],
+    },
+    {
+      method: "GET",
+      path: "/api/entries/today",
+      summary: "ดึง Visit Entries วันนี้ + สรุปจำนวน",
+      summaryEn: "Get today's visit entries with summary counts",
+      auth: "user",
+      queryParams: [
+        { name: "status", type: "string", required: false, description: "กรอง: checked-in | checked-out" },
+        { name: "search", type: "string", required: false, description: "ค้นหา entryCode / ชื่อ / เบอร์โทร" },
+      ],
+      responseExample: `{
+  "data": [...],
+  "summary": {
+    "total": 25,
+    "checkedIn": 15,
+    "checkedOut": 10
+  }
+}`,
+      notes: ["ไม่มี pagination — คืนทั้งหมดของวันนี้"],
     },
   ],
 };
@@ -1945,94 +2167,80 @@ const emailSystemApi: PageApiDoc = {
   pageId: "email-system",
   menuName: "ตั้งค่า Email / SMTP",
   menuNameEn: "Email / SMTP Settings",
-  baseUrl: "/api/email-system",
+  baseUrl: "/api/settings/email",
   endpoints: [
     {
       method: "GET",
-      path: "/api/email-system/config",
+      path: "/api/settings/email",
       summary: "ดึงการตั้งค่า SMTP ปัจจุบัน",
       summaryEn: "Get SMTP configuration",
       auth: "admin",
       responseExample: `{
-  "smtp_host": "smtp.office365.com",
-  "smtp_port": 587,
-  "smtp_secure": true,
-  "smtp_user": "vms-noreply@mots.go.th",
-  "smtp_password_set": true,
-  "from_name": "VMS กระทรวงการท่องเที่ยวและกีฬา",
-  "from_email": "vms-noreply@mots.go.th",
-  "reply_to": "admin@mots.go.th",
-  "is_active": true,
-  "last_test_at": "2026-03-20T10:00:00Z",
-  "last_test_status": "success"
+  "id": 1,
+  "smtpHost": "smtp.office365.com",
+  "smtpPort": 587,
+  "encryption": "tls",
+  "smtpUsername": "vms-noreply@mots.go.th",
+  "smtpPassword": "****",
+  "fromEmail": "vms-noreply@mots.go.th",
+  "fromDisplayName": "VMS กระทรวงการท่องเที่ยวและกีฬา",
+  "replyToEmail": "admin@mots.go.th",
+  "isActive": true,
+  "lastTestAt": "2026-03-20T10:00:00Z",
+  "lastTestResult": "success",
+  "updatedAt": "2026-03-20T10:00:00Z"
 }`,
-      notes: ["ไม่ส่ง smtp_password จริง — ส่ง smtp_password_set: true/false แทน"],
+      notes: ["คืน null ถ้ายังไม่มีการตั้งค่า"],
     },
     {
       method: "PUT",
-      path: "/api/email-system/config",
-      summary: "อัปเดตการตั้งค่า SMTP",
-      summaryEn: "Update SMTP configuration",
+      path: "/api/settings/email",
+      summary: "สร้างหรืออัปเดตการตั้งค่า SMTP",
+      summaryEn: "Create or update SMTP configuration",
       auth: "admin",
       requestBody: [
-        { name: "smtp_host", type: "string", required: false, description: "SMTP server host" },
-        { name: "smtp_port", type: "number", required: false, description: "SMTP port (587, 465, 25)" },
-        { name: "smtp_secure", type: "boolean", required: false, description: "ใช้ TLS/SSL" },
-        { name: "smtp_user", type: "string", required: false, description: "SMTP username" },
-        { name: "smtp_password", type: "string", required: false, description: "SMTP password (เข้ารหัสก่อนบันทึก)" },
-        { name: "from_name", type: "string", required: false, description: "ชื่อผู้ส่ง" },
-        { name: "from_email", type: "string", required: false, description: "อีเมลผู้ส่ง" },
-        { name: "reply_to", type: "string", required: false, description: "Reply-To email" },
-        { name: "is_active", type: "boolean", required: false, description: "เปิด/ปิดระบบส่งอีเมล" },
+        { name: "smtpHost", type: "string", required: false, description: "SMTP server host (จำเป็นเมื่อสร้างใหม่)" },
+        { name: "smtpPort", type: "number", required: false, description: "SMTP port (จำเป็นเมื่อสร้างใหม่)" },
+        { name: "encryption", type: "string", required: false, description: "tls | ssl | none" },
+        { name: "smtpUsername", type: "string", required: false, description: "SMTP username (จำเป็นเมื่อสร้างใหม่)" },
+        { name: "smtpPassword", type: "string", required: false, description: "SMTP password (จำเป็นเมื่อสร้างใหม่)" },
+        { name: "fromEmail", type: "string", required: false, description: "อีเมลผู้ส่ง (จำเป็นเมื่อสร้างใหม่)" },
+        { name: "fromDisplayName", type: "string", required: false, description: "ชื่อผู้ส่ง (จำเป็นเมื่อสร้างใหม่)" },
+        { name: "replyToEmail", type: "string", required: false, description: "Reply-To email" },
+        { name: "isActive", type: "boolean", required: false, description: "เปิด/ปิดระบบส่งอีเมล" },
       ],
-      notes: ["smtp_password เข้ารหัส AES-256 ก่อนบันทึก", "บันทึก audit_log"],
+      notes: ["ใช้ upsert pattern — สร้างใหม่ถ้ายังไม่มี / อัปเดตถ้ามีแล้ว", "บันทึก updatedBy = user ปัจจุบัน"],
     },
     {
       method: "POST",
-      path: "/api/email-system/test",
-      summary: "ส่งอีเมลทดสอบ",
-      summaryEn: "Send test email",
+      path: "/api/settings/email/test",
+      summary: "ส่งอีเมลทดสอบ (mock)",
+      summaryEn: "Send test email (mock)",
       auth: "admin",
       requestBody: [
-        { name: "to_email", type: "string", required: true, description: "อีเมลปลายทาง" },
+        { name: "to", type: "string", required: true, description: "อีเมลปลายทาง" },
       ],
       responseExample: `{
-  "success": true,
-  "message": "ส่งอีเมลทดสอบสำเร็จ",
-  "sent_at": "2026-03-25T10:00:00Z",
-  "message_id": "<abc123@smtp.office365.com>"
+  "message": "Test email sent successfully",
+  "sentTo": "test@example.com",
+  "sentAt": "2026-04-01T10:00:00Z"
 }`,
-      notes: ["ใช้การตั้งค่าปัจจุบัน", "timeout 30 วินาที", "บันทึก last_test_at + last_test_status"],
+      notes: ["ปัจจุบันเป็น mock — ยังไม่ส่ง email จริง"],
     },
     {
       method: "GET",
-      path: "/api/email-system/logs",
-      summary: "ดึง log การส่งอีเมล",
-      summaryEn: "Get email send logs",
+      path: "/api/settings/email/logs",
+      summary: "ดึง log การส่งอีเมล (placeholder)",
+      summaryEn: "Get email send logs (placeholder)",
       auth: "admin",
-      queryParams: [
-        { name: "page", type: "number", required: false, description: "หน้าที่ต้องการ" },
-        { name: "limit", type: "number", required: false, description: "จำนวนต่อหน้า" },
-        { name: "status", type: "string", required: false, description: "กรอง: success | failed" },
-        { name: "date_from", type: "string", required: false, description: "วันที่เริ่มต้น" },
-        { name: "date_to", type: "string", required: false, description: "วันที่สิ้นสุด" },
-      ],
       responseExample: `{
-  "data": [
-    {
-      "id": 1,
-      "to_email": "jiraphat@example.com",
-      "subject": "นัดหมายของท่านได้รับอนุมัติ - VMS-2026-0001",
-      "template_name": "appointment_approved",
-      "status": "success",
-      "sent_at": "2026-03-25T09:30:00Z",
-      "error_message": null
-    }
-  ],
-  "total": 120,
+  "logs": [],
   "page": 1,
-  "limit": 20
+  "limit": 20,
+  "total": 0,
+  "totalPages": 0
 }`,
+      notes: ["ปัจจุบันเป็น placeholder — คืน array ว่างเสมอ", "ยังไม่มี email_log table"],
     },
   ],
 };
@@ -2045,77 +2253,78 @@ const lineOaConfigApi: PageApiDoc = {
   pageId: "line-oa-config",
   menuName: "ตั้งค่า LINE OA",
   menuNameEn: "LINE OA Configuration",
-  baseUrl: "/api/line-oa-config",
+  baseUrl: "/api/settings/line-oa",
   endpoints: [
     {
       method: "GET",
-      path: "/api/line-oa-config",
+      path: "/api/settings/line-oa",
       summary: "ดึงการตั้งค่า LINE OA ปัจจุบัน",
       summaryEn: "Get LINE OA configuration",
       auth: "admin",
       responseExample: `{
-  "channel_id": "1234567890",
-  "channel_secret_set": true,
-  "channel_access_token_set": true,
-  "liff_id": "1234567890-abcdefgh",
-  "webhook_url": "https://vms.mots.go.th/api/line/webhook",
-  "bot_basic_id": "@motsvms",
-  "bot_display_name": "VMS กท.",
-  "is_active": true,
-  "rich_menu_id": "richmenu-abc123",
-  "greeting_message": "สวัสดีครับ ยินดีต้อนรับสู่ระบบนัดหมาย กระทรวงการท่องเที่ยวและกีฬา",
-  "last_webhook_at": "2026-03-25T09:00:00Z",
-  "updated_at": "2026-02-01T10:00:00Z"
+  "id": 1,
+  "channelId": "1234567890",
+  "channelSecret": "****",
+  "channelAccessToken": "****",
+  "botBasicId": "@motsvms",
+  "liffAppId": "1234567890-abcdefgh",
+  "liffEndpointUrl": "https://vms.mots.go.th/mobile",
+  "webhookUrl": "https://vms.mots.go.th/api/line/webhook",
+  "webhookActive": true,
+  "richMenuVisitorId": "richmenu-visitor-abc",
+  "richMenuOfficerId": "richmenu-officer-xyz",
+  "isActive": true,
+  "lastTestAt": "2026-03-25T09:00:00Z",
+  "lastTestResult": "success",
+  "updatedAt": "2026-03-20T10:00:00Z"
 }`,
-      notes: ["ไม่ส่ง channel_secret / channel_access_token จริง — ส่ง _set: true/false แทน"],
+      notes: ["คืน null ถ้ายังไม่มีการตั้งค่า"],
     },
     {
       method: "PUT",
-      path: "/api/line-oa-config",
-      summary: "อัปเดตการตั้งค่า LINE OA",
-      summaryEn: "Update LINE OA configuration",
+      path: "/api/settings/line-oa",
+      summary: "สร้างหรืออัปเดตการตั้งค่า LINE OA",
+      summaryEn: "Create or update LINE OA configuration",
       auth: "admin",
       requestBody: [
-        { name: "channel_id", type: "string", required: false, description: "LINE Channel ID" },
-        { name: "channel_secret", type: "string", required: false, description: "LINE Channel Secret (เข้ารหัสก่อนบันทึก)" },
-        { name: "channel_access_token", type: "string", required: false, description: "LINE Channel Access Token (เข้ารหัสก่อนบันทึก)" },
-        { name: "liff_id", type: "string", required: false, description: "LIFF App ID" },
-        { name: "greeting_message", type: "string", required: false, description: "ข้อความต้อนรับ" },
-        { name: "rich_menu_id", type: "string", required: false, description: "Rich Menu ID" },
-        { name: "is_active", type: "boolean", required: false, description: "เปิด/ปิดระบบ LINE OA" },
+        { name: "channelId", type: "string", required: false, description: "LINE Channel ID (จำเป็นเมื่อสร้างใหม่)" },
+        { name: "channelSecret", type: "string", required: false, description: "LINE Channel Secret (จำเป็นเมื่อสร้างใหม่)" },
+        { name: "channelAccessToken", type: "string", required: false, description: "LINE Channel Access Token (จำเป็นเมื่อสร้างใหม่)" },
+        { name: "botBasicId", type: "string", required: false, description: "Bot Basic ID (@xxxxx)" },
+        { name: "liffAppId", type: "string", required: false, description: "LIFF App ID" },
+        { name: "liffEndpointUrl", type: "string", required: false, description: "LIFF Endpoint URL" },
+        { name: "webhookUrl", type: "string", required: false, description: "Webhook URL" },
+        { name: "webhookActive", type: "boolean", required: false, description: "เปิด/ปิด webhook" },
+        { name: "richMenuVisitorId", type: "string", required: false, description: "Rich Menu ID สำหรับ visitor" },
+        { name: "richMenuOfficerId", type: "string", required: false, description: "Rich Menu ID สำหรับ officer" },
+        { name: "isActive", type: "boolean", required: false, description: "เปิด/ปิดระบบ LINE OA" },
       ],
-      notes: ["channel_secret, channel_access_token เข้ารหัส AES-256 ก่อนบันทึก", "บันทึก audit_log"],
+      notes: ["ใช้ upsert pattern — สร้างใหม่ถ้ายังไม่มี / อัปเดตถ้ามีแล้ว", "บันทึก updatedBy = user ปัจจุบัน"],
     },
     {
       method: "POST",
-      path: "/api/line-oa-config/test",
-      summary: "ทดสอบส่งข้อความ LINE",
-      summaryEn: "Send test LINE message",
+      path: "/api/settings/line-oa/test",
+      summary: "ทดสอบส่งข้อความ LINE (mock)",
+      summaryEn: "Send test LINE message (mock)",
       auth: "admin",
-      requestBody: [
-        { name: "to_user_id", type: "string", required: true, description: "LINE User ID ปลายทาง" },
-        { name: "message", type: "string", required: false, description: "ข้อความทดสอบ (default: ข้อความทดสอบระบบ)" },
-      ],
       responseExample: `{
-  "success": true,
-  "message": "ส่งข้อความทดสอบสำเร็จ",
-  "sent_at": "2026-03-25T10:05:00Z"
+  "message": "Test LINE message sent successfully",
+  "sentAt": "2026-04-01T10:05:00Z"
 }`,
-      notes: ["ใช้ Push Message API", "ตรวจว่า to_user_id ได้ follow bot แล้ว"],
+      notes: ["ปัจจุบันเป็น mock — ยังไม่ส่ง LINE message จริง"],
     },
     {
       method: "POST",
-      path: "/api/line-oa-config/verify-webhook",
-      summary: "ตรวจสอบ Webhook URL",
-      summaryEn: "Verify webhook URL",
+      path: "/api/settings/line-oa/verify-webhook",
+      summary: "ตรวจสอบ Webhook URL (mock)",
+      summaryEn: "Verify webhook URL (mock)",
       auth: "admin",
       responseExample: `{
-  "success": true,
-  "webhook_url": "https://vms.mots.go.th/api/line/webhook",
-  "is_valid": true,
-  "verified_at": "2026-03-25T10:06:00Z"
+  "verified": true,
+  "message": "Webhook URL verified successfully",
+  "verifiedAt": "2026-04-01T10:06:00Z"
 }`,
-      notes: ["เรียก LINE API verify webhook endpoint", "ตรวจว่า webhook URL ถูกต้องและรับ request ได้"],
+      notes: ["ปัจจุบันเป็น mock — ยังไม่เรียก LINE Verify Webhook API จริง"],
     },
   ],
 };
@@ -2277,10 +2486,12 @@ export const allApiDocs: PageApiDoc[] = [
   visitSlipsApi,
   pdpaConsentApi,
   appointmentsApi,
+  appointmentGroupsApi,
   searchApi,
   blocklistApi,
   reportsApi,
   dashboardApi,
+  visitEntriesApi,
   emailSystemApi,
   lineOaConfigApi,
   lineMessageTemplatesApi,

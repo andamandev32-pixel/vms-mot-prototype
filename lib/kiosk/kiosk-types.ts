@@ -125,6 +125,8 @@ export type KioskStateType =
   | "QR_SCAN"
   | "APPOINTMENT_PREVIEW"
   | "APPOINTMENT_VERIFY_ID"
+  // Approval (walk-in ที่ต้อง approve)
+  | "PENDING_APPROVAL"
   // System
   | "ERROR"
   | "TIMEOUT";
@@ -189,6 +191,9 @@ export type KioskEventType =
   | "APPOINTMENT_FOUND"
   | "APPOINTMENT_NOT_FOUND"
   | "CONFIRM_CHECKIN"
+  // Approval (walk-in ที่ต้อง approve)
+  | "APPOINTMENT_APPROVED"
+  | "APPOINTMENT_REJECTED"
   // System
   | "TIMEOUT";
 

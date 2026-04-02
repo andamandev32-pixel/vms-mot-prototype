@@ -1361,11 +1361,11 @@ const appointmentsSchema: PageSchema = {
         { name: "id", type: "INT", nullable: false, comment: "รหัสนัดหมาย (PK, running number เริ่มจาก 1 — generate ฝั่ง app: SELECT COALESCE(MAX(id),0)+1)", isPrimaryKey: true },
         { name: "booking_code", type: "VARCHAR(30)", nullable: false, comment: "รหัสนัดหมาย format: eVMS-YYYYMMDD-XXXX (running 4 หลัก reset ทุกวัน)", isUnique: true },
         { name: "visitor_id", type: "INT", nullable: false, comment: "FK → visitors.id ผู้มาติดต่อ", isForeignKey: true, references: "visitors.id" },
-        { name: "host_staff_id", type: "INT", nullable: false, comment: "FK → staff.id ผู้ที่ต้องการพบ", isForeignKey: true, references: "staff.id" },
+        { name: "host_staff_id", type: "INT", nullable: true, comment: "FK → staff.id ผู้ที่ต้องการพบ (null ถ้า require_person_name=false)", isForeignKey: true, references: "staff.id" },
         { name: "visit_purpose_id", type: "INT", nullable: false, comment: "FK → visit_purposes.id วัตถุประสงค์", isForeignKey: true, references: "visit_purposes.id" },
         { name: "department_id", type: "INT", nullable: false, comment: "FK → departments.id แผนกที่ไป", isForeignKey: true, references: "departments.id" },
         { name: "type", type: "ENUM('official','meeting','document','contractor','delivery','other')", nullable: false, comment: "ประเภทการนัดหมาย (VisitType)" },
-        { name: "status", type: "ENUM('pending','approved','rejected','confirmed','checked-in','checked-out','auto-checkout','overstay','blocked','cancelled')", nullable: false, comment: "สถานะนัดหมาย (VisitStatus)", defaultValue: "pending" },
+        { name: "status", type: "ENUM('pending','approved','rejected','confirmed','cancelled','expired')", nullable: false, comment: "สถานะนัดหมาย (VisitStatus)", defaultValue: "pending" },
         { name: "entry_mode", type: "ENUM('single','period')", nullable: false, comment: "ครั้งเดียว / ช่วงเวลา", defaultValue: "single" },
         { name: "date_start", type: "DATE", nullable: false, comment: "วันเริ่มต้นนัดหมาย" },
         { name: "date_end", type: "DATE", nullable: true, comment: "วันสิ้นสุด (เฉพาะ period mode)" },
@@ -1377,9 +1377,8 @@ const appointmentsSchema: PageSchema = {
         { name: "created_by_staff_id", type: "INT", nullable: true, comment: "FK → staff.id ถ้าสร้างโดยเจ้าหน้าที่", isForeignKey: true, references: "staff.id" },
         { name: "offer_wifi", type: "BOOLEAN", nullable: false, comment: "เสนอ WiFi ให้ผู้มาติดต่อ", defaultValue: "false" },
         { name: "wifi_requested", type: "BOOLEAN", nullable: false, comment: "ผู้มาติดต่อขอรับ WiFi", defaultValue: "false" },
-        { name: "wifi_username", type: "VARCHAR(50)", nullable: true, comment: "ชื่อผู้ใช้ WiFi ที่แจก" },
-        { name: "wifi_password", type: "VARCHAR(50)", nullable: true, comment: "รหัส WiFi ที่แจก" },
-        { name: "slip_printed", type: "BOOLEAN", nullable: true, comment: "พิมพ์ slip หรือไม่ (null=ยังไม่ถึงขั้นตอน)" },
+        { name: "notify_on_checkin", type: "BOOLEAN", nullable: false, comment: "แจ้งเตือนเมื่อ visitor check-in (ปิดได้ทีละรายการ)", defaultValue: "true" },
+        { name: "group_id", type: "INT", nullable: true, comment: "FK → appointment_groups.id (null = ไม่ได้อยู่ใน group)", isForeignKey: true, references: "appointment_groups.id" },
         { name: "area", type: "VARCHAR(100)", nullable: true, comment: "พื้นที่" },
         { name: "building", type: "VARCHAR(100)", nullable: true, comment: "อาคาร" },
         { name: "floor", type: "VARCHAR(20)", nullable: true, comment: "ชั้น" },
@@ -1390,19 +1389,15 @@ const appointmentsSchema: PageSchema = {
         { name: "approved_at", type: "TIMESTAMP", nullable: true, comment: "วันเวลาที่อนุมัติ" },
         { name: "rejected_at", type: "TIMESTAMP", nullable: true, comment: "วันเวลาที่ปฏิเสธ" },
         { name: "rejected_reason", type: "TEXT", nullable: true, comment: "เหตุผลที่ปฏิเสธ" },
-        { name: "checkin_at", type: "TIMESTAMP", nullable: true, comment: "วันเวลาที่ Check-in" },
-        { name: "checkin_channel", type: "ENUM('kiosk','counter')", nullable: true, comment: "ช่องทางที่ Check-in" },
-        { name: "checkout_at", type: "TIMESTAMP", nullable: true, comment: "วันเวลาที่ Check-out" },
-        { name: "checkout_by", type: "INT", nullable: true, comment: "FK → staff.id ผู้ทำ Check-out (null = auto)", isForeignKey: true, references: "staff.id" },
         { name: "created_at", type: "TIMESTAMP", nullable: false, comment: "วันเวลาที่สร้าง", defaultValue: "CURRENT_TIMESTAMP" },
         { name: "updated_at", type: "TIMESTAMP", nullable: false, comment: "วันเวลาที่แก้ไขล่าสุด", defaultValue: "CURRENT_TIMESTAMP" },
       ],
       seedData: [
         { id: 1, code: "eVMS-20260320-0001", visitor_id: 1, host_id: 2, visit_purpose_id: 1, department_id: 2, type: "official", status: "approved", entry_mode: "single", date_start: "2026-03-20", time_start: "10:00", time_end: "11:30", purpose: "ประชุมโครงการจัดงาน", companions_count: 0, created_by: "visitor", offer_wifi: true, wifi_requested: true, area: "กองกลาง", building: "ศูนย์ราชการ อาคาร C", floor: "ชั้น 2", room: "ห้องประชุม 201", created_at: "2026-03-19 14:00:00", approved_by: 2, approved_at: "2026-03-19 15:30:00" },
-        { id: 2, code: "eVMS-20260320-0002", visitor_id: 2, host_id: 3, visit_purpose_id: 3, department_id: 8, type: "document", status: "checked-in", entry_mode: "single", date_start: "2026-03-20", time_start: "14:00", time_end: "15:00", purpose: "ส่งเอกสารโครงการ", companions_count: 1, created_by: "staff", created_by_staff_id: 4, offer_wifi: false, wifi_requested: false, slip_printed: true, area: "สำนักนโยบาย", building: "ศูนย์ราชการ อาคาร C", floor: "ชั้น 4", checkin_at: "2026-03-20 13:55:00", checkin_channel: "kiosk", created_at: "2026-03-18 09:00:00", approved_by: 3, approved_at: "2026-03-18 10:00:00" },
+        { id: 2, code: "eVMS-20260320-0002", visitor_id: 2, host_id: 3, visit_purpose_id: 3, department_id: 8, type: "document", status: "confirmed", entry_mode: "single", date_start: "2026-03-20", time_start: "14:00", time_end: "15:00", purpose: "ส่งเอกสารโครงการ", companions_count: 1, created_by: "staff", created_by_staff_id: 4, offer_wifi: false, wifi_requested: false, area: "สำนักนโยบาย", building: "ศูนย์ราชการ อาคาร C", floor: "ชั้น 4", created_at: "2026-03-18 09:00:00", approved_by: 3, approved_at: "2026-03-18 10:00:00" },
         { id: 3, code: "eVMS-20260321-0001", visitor_id: 3, host_id: 5, visit_purpose_id: 2, department_id: 3, type: "meeting", status: "pending", entry_mode: "single", date_start: "2026-03-21", time_start: "09:00", time_end: "10:30", purpose: "ประชุมความร่วมมือด้านการท่องเที่ยวระหว่างประเทศ", companions_count: 2, created_by: "staff", created_by_staff_id: 5, offer_wifi: true, wifi_requested: false, area: "กองการต่างประเทศ", building: "ศูนย์ราชการ อาคาร C", floor: "ชั้น 5", room: "ห้องประชุม 501", created_at: "2026-03-17 11:00:00" },
         { id: 4, code: "eVMS-20260321-0002", visitor_id: 4, host_id: 1, visit_purpose_id: 4, department_id: 4, type: "contractor", status: "approved", entry_mode: "period", date_start: "2026-03-21", date_end: "2026-03-25", time_start: "08:00", time_end: "17:00", purpose: "ซ่อมบำรุงระบบแอร์ ชั้น 4", companions_count: 3, created_by: "staff", created_by_staff_id: 1, offer_wifi: false, area: "กองกิจการท่องเที่ยว", building: "ศูนย์ราชการ อาคาร C", floor: "ชั้น 4", vehicle_plate: "กข-1234", created_at: "2026-03-16 08:30:00", approved_by: 1, approved_at: "2026-03-16 09:00:00" },
-        { id: 5, code: "eVMS-20260320-0003", visitor_id: 5, host_id: 3, visit_purpose_id: 1, department_id: 8, type: "official", status: "checked-out", entry_mode: "single", date_start: "2026-03-20", time_start: "09:00", time_end: "11:00", purpose: "สัมภาษณ์ข่าวนโยบายท่องเที่ยว", companions_count: 0, created_by: "visitor", offer_wifi: true, wifi_requested: true, wifi_username: "guest-0320-05", wifi_password: "Mots@2026", area: "สำนักนโยบาย", building: "ศูนย์ราชการ อาคาร C", floor: "ชั้น 4", checkin_at: "2026-03-20 08:50:00", checkin_channel: "counter", checkout_at: "2026-03-20 10:45:00", checkout_by: 4, created_at: "2026-03-19 16:00:00", approved_by: 3, approved_at: "2026-03-19 17:00:00" },
+        { id: 5, code: "eVMS-20260320-0003", visitor_id: 5, host_id: 3, visit_purpose_id: 1, department_id: 8, type: "official", status: "expired", entry_mode: "single", date_start: "2026-03-20", time_start: "09:00", time_end: "11:00", purpose: "สัมภาษณ์ข่าวนโยบายท่องเที่ยว", companions_count: 0, created_by: "visitor", offer_wifi: true, wifi_requested: true, area: "สำนักนโยบาย", building: "ศูนย์ราชการ อาคาร C", floor: "ชั้น 4", created_at: "2026-03-19 16:00:00", approved_by: 3, approved_at: "2026-03-19 17:00:00" },
       ],
     },
     {
@@ -1472,13 +1467,83 @@ const appointmentsSchema: PageSchema = {
     "appointments.visit_purpose_id ──→ visit_purposes.id (วัตถุประสงค์)",
     "appointments.department_id ──→ departments.id (แผนกปลายทาง)",
     "appointments.approved_by ──→ staff.id (ผู้อนุมัติ)",
-    "appointments.checkout_by ──→ staff.id (ผู้ทำ Check-out)",
     "appointments.created_by_staff_id ──→ staff.id (เจ้าหน้าที่ผู้สร้างนัดหมาย)",
     "appointment_companions.appointment_id ──→ appointments.id (ผู้ติดตาม — check-in แยกรายคน)",
     "appointment_equipment.appointment_id ──→ appointments.id (อุปกรณ์ที่นำเข้า)",
     "appointment_status_logs.appointment_id ──→ appointments.id (ประวัติเปลี่ยนสถานะ — audit trail)",
     "ID Generation: appointments.id ใช้ INT running number — app generate ด้วย SELECT COALESCE(MAX(id),0)+1 (ไม่ใช้ SERIAL/AUTO_INCREMENT)",
     "Code Format: eVMS-YYYYMMDD-XXXX — running 4 หลัก reset ทุกวัน",
+  ],
+};
+
+// ════════════════════════════════════════════════════
+// 13.5 บันทึกการเข้าพื้นที่ (Visit Entries)
+// ════════════════════════════════════════════════════
+
+const visitEntriesSchema: PageSchema = {
+  pageId: "visit-entries",
+  menuName: "บันทึกการเข้าพื้นที่",
+  menuNameEn: "Visit Entries",
+  path: "/web/visit-entries",
+  description: "บันทึกการเข้าพื้นที่ — แยกจาก appointments เพื่อรองรับทั้ง walk-in และ appointment-linked entries รวมถึง period appointment ที่มีหลาย entries",
+  tables: [
+    {
+      name: "visit_entries",
+      comment: "ตารางบันทึกการเข้าพื้นที่ — แยก entry records จาก appointments (รองรับ walk-in และ appointment-linked)",
+      columns: [
+        { name: "id", type: "INT", nullable: false, comment: "รหัสการเข้าพื้นที่ (PK, auto-increment)", isPrimaryKey: true },
+        { name: "entry_code", type: "VARCHAR(30)", nullable: false, comment: "รหัสเข้าพื้นที่ format: eVMS-ENTRY-YYYYMMDD-XXXX", isUnique: true },
+        { name: "appointment_id", type: "INT", nullable: true, comment: "FK → appointments.id (NULL = walk-in)", isForeignKey: true, references: "appointments.id" },
+        { name: "visitor_id", type: "INT", nullable: false, comment: "FK → visitors.id", isForeignKey: true, references: "visitors.id" },
+        { name: "status", type: "ENUM('checked-in','checked-out','auto-checkout','overstay')", nullable: false, comment: "สถานะการเข้าพื้นที่" },
+        { name: "purpose", type: "VARCHAR(200)", nullable: true, comment: "Walk-in only: วัตถุประสงค์" },
+        { name: "visit_type", type: "ENUM('official','meeting','document','contractor','delivery','other')", nullable: true, comment: "Walk-in only: ประเภทการเข้าพื้นที่" },
+        { name: "host_staff_id", type: "INT", nullable: true, comment: "Walk-in only: FK → staff.id", isForeignKey: true, references: "staff.id" },
+        { name: "department_id", type: "INT", nullable: true, comment: "Walk-in only: FK → departments.id", isForeignKey: true, references: "departments.id" },
+        { name: "checkin_at", type: "TIMESTAMP", nullable: false, comment: "เวลาเข้าจริง" },
+        { name: "checkin_channel", type: "ENUM('kiosk','counter')", nullable: false, comment: "ช่องทาง check-in" },
+        { name: "checkout_at", type: "TIMESTAMP", nullable: true, comment: "เวลาออก" },
+        { name: "checkout_by", type: "INT", nullable: true, comment: "FK → staff.id (เจ้าหน้าที่ทำ checkout)", isForeignKey: true, references: "staff.id" },
+        { name: "area", type: "VARCHAR(100)", nullable: false, comment: "พื้นที่" },
+        { name: "building", type: "VARCHAR(100)", nullable: false, comment: "อาคาร" },
+        { name: "floor", type: "VARCHAR(20)", nullable: false, comment: "ชั้น" },
+        { name: "room", type: "VARCHAR(50)", nullable: true, comment: "ห้อง" },
+        { name: "slip_printed", type: "BOOLEAN", nullable: true, comment: "พิมพ์ slip แล้วหรือไม่" },
+        { name: "wifi_username", type: "VARCHAR(50)", nullable: true, comment: "WiFi username" },
+        { name: "wifi_password", type: "VARCHAR(50)", nullable: true, comment: "WiFi password" },
+        { name: "id_method", type: "ENUM('thai-id-card','passport','thai-id-app')", nullable: true, comment: "วิธียืนยันตัวตน" },
+        { name: "service_point_id", type: "INT", nullable: true, comment: "FK → service_points.id", isForeignKey: true, references: "service_points.id" },
+        { name: "face_photo_path", type: "VARCHAR(255)", nullable: true, comment: "รูปถ่ายหน้า" },
+        { name: "companions_count", type: "INT", nullable: false, comment: "จำนวนผู้ติดตาม", defaultValue: "0" },
+        { name: "notes", type: "TEXT", nullable: true, comment: "หมายเหตุ" },
+        { name: "created_at", type: "TIMESTAMP", nullable: false, comment: "เวลาสร้าง", defaultValue: "CURRENT_TIMESTAMP" },
+      ],
+      seedData: [
+        // Walk-in entries (no appointment)
+        { id: 1, entry_code: "eVMS-ENTRY-20260320-0001", appointment_id: null, visitor_id: 1, status: "checked-out", purpose: "ส่งเอกสารด่วน", visit_type: "document", host_staff_id: 2, department_id: 2, checkin_at: "2026-03-20 09:15:00", checkin_channel: "counter", checkout_at: "2026-03-20 09:45:00", checkout_by: 4, area: "กองกลาง", building: "ศูนย์ราชการ อาคาร C", floor: "ชั้น 2", room: null, slip_printed: true, wifi_username: null, wifi_password: null, id_method: "thai-id-card", service_point_id: 1, face_photo_path: null, companions_count: 0, notes: null },
+        { id: 2, entry_code: "eVMS-ENTRY-20260320-0002", appointment_id: null, visitor_id: 4, status: "checked-in", purpose: "ซ่อมแอร์ ชั้น 3", visit_type: "contractor", host_staff_id: 1, department_id: 4, checkin_at: "2026-03-20 10:30:00", checkin_channel: "kiosk", checkout_at: null, checkout_by: null, area: "กองกิจการท่องเที่ยว", building: "ศูนย์ราชการ อาคาร C", floor: "ชั้น 3", room: null, slip_printed: true, wifi_username: null, wifi_password: null, id_method: "thai-id-card", service_point_id: 2, face_photo_path: "/photos/entry-2.jpg", companions_count: 1, notes: "ผู้รับเหมา walk-in" },
+        // Appointment-linked entries
+        { id: 3, entry_code: "eVMS-ENTRY-20260320-0003", appointment_id: 2, visitor_id: 2, status: "checked-out", purpose: null, visit_type: null, host_staff_id: null, department_id: null, checkin_at: "2026-03-20 13:55:00", checkin_channel: "kiosk", checkout_at: "2026-03-20 14:50:00", checkout_by: 4, area: "สำนักนโยบาย", building: "ศูนย์ราชการ อาคาร C", floor: "ชั้น 4", room: null, slip_printed: true, wifi_username: null, wifi_password: null, id_method: "thai-id-card", service_point_id: 1, face_photo_path: null, companions_count: 1, notes: null },
+        { id: 4, entry_code: "eVMS-ENTRY-20260320-0004", appointment_id: 5, visitor_id: 5, status: "checked-out", purpose: null, visit_type: null, host_staff_id: null, department_id: null, checkin_at: "2026-03-20 08:50:00", checkin_channel: "counter", checkout_at: "2026-03-20 10:45:00", checkout_by: 4, area: "สำนักนโยบาย", building: "ศูนย์ราชการ อาคาร C", floor: "ชั้น 4", room: null, slip_printed: false, wifi_username: "guest-0320-05", wifi_password: "Mots@2026", id_method: "thai-id-card", service_point_id: 1, face_photo_path: null, companions_count: 0, notes: null },
+        // Period appointment with multiple entries (appointment_id: 4 = contractor period 2026-03-21 to 2026-03-25)
+        { id: 5, entry_code: "eVMS-ENTRY-20260321-0001", appointment_id: 4, visitor_id: 4, status: "checked-out", purpose: null, visit_type: null, host_staff_id: null, department_id: null, checkin_at: "2026-03-21 08:10:00", checkin_channel: "kiosk", checkout_at: "2026-03-21 17:05:00", checkout_by: 4, area: "กองกิจการท่องเที่ยว", building: "ศูนย์ราชการ อาคาร C", floor: "ชั้น 4", room: null, slip_printed: true, wifi_username: null, wifi_password: null, id_method: "thai-id-card", service_point_id: 2, face_photo_path: "/photos/entry-5.jpg", companions_count: 3, notes: "ซ่อมบำรุงระบบแอร์ วันที่ 1" },
+        { id: 6, entry_code: "eVMS-ENTRY-20260322-0001", appointment_id: 4, visitor_id: 4, status: "checked-out", purpose: null, visit_type: null, host_staff_id: null, department_id: null, checkin_at: "2026-03-22 08:05:00", checkin_channel: "kiosk", checkout_at: "2026-03-22 16:50:00", checkout_by: 4, area: "กองกิจการท่องเที่ยว", building: "ศูนย์ราชการ อาคาร C", floor: "ชั้น 4", room: null, slip_printed: true, wifi_username: null, wifi_password: null, id_method: "thai-id-card", service_point_id: 2, face_photo_path: "/photos/entry-6.jpg", companions_count: 3, notes: "ซ่อมบำรุงระบบแอร์ วันที่ 2" },
+        { id: 7, entry_code: "eVMS-ENTRY-20260323-0001", appointment_id: 4, visitor_id: 4, status: "checked-in", purpose: null, visit_type: null, host_staff_id: null, department_id: null, checkin_at: "2026-03-23 08:15:00", checkin_channel: "kiosk", checkout_at: null, checkout_by: null, area: "กองกิจการท่องเที่ยว", building: "ศูนย์ราชการ อาคาร C", floor: "ชั้น 4", room: null, slip_printed: true, wifi_username: null, wifi_password: null, id_method: "thai-id-card", service_point_id: 2, face_photo_path: "/photos/entry-7.jpg", companions_count: 3, notes: "ซ่อมบำรุงระบบแอร์ วันที่ 3" },
+        // Walk-in overstay
+        { id: 8, entry_code: "eVMS-ENTRY-20260320-0005", appointment_id: null, visitor_id: 3, status: "overstay", purpose: "ประสานงานโครงการ", visit_type: "official", host_staff_id: 5, department_id: 3, checkin_at: "2026-03-20 14:00:00", checkin_channel: "counter", checkout_at: null, checkout_by: null, area: "กองการต่างประเทศ", building: "ศูนย์ราชการ อาคาร C", floor: "ชั้น 5", room: "ห้อง 502", slip_printed: true, wifi_username: "guest-0320-08", wifi_password: "Mots@2026", id_method: "passport", service_point_id: 1, face_photo_path: "/photos/entry-8.jpg", companions_count: 0, notes: "ประสานงานล่วงเวลา" },
+      ],
+    },
+  ],
+  relationships: [
+    "visit_entries.appointment_id ──→ appointments.id (นัดหมายที่เกี่ยวข้อง, NULL = walk-in)",
+    "visit_entries.visitor_id ──→ visitors.id (ผู้มาติดต่อ)",
+    "visit_entries.host_staff_id ──→ staff.id (Walk-in: ผู้ที่ต้องการพบ)",
+    "visit_entries.department_id ──→ departments.id (Walk-in: แผนกปลายทาง)",
+    "visit_entries.checkout_by ──→ staff.id (เจ้าหน้าที่ทำ checkout)",
+    "visit_entries.service_point_id ──→ service_points.id (จุดบริการที่ check-in)",
+    "appointments (1) ──→ (N) visit_entries (via appointment_id — period appointment มีหลาย entries)",
+    "visitors (1) ──→ (N) visit_entries (via visitor_id)",
+    "Entry Code Format: eVMS-ENTRY-YYYYMMDD-XXXX — running 4 หลัก reset ทุกวัน",
   ],
 };
 
@@ -2089,6 +2154,76 @@ const lineMessageTemplatesSchema: PageSchema = {
 };
 
 // ════════════════════════════════════════════════════
+// 24. กลุ่มนัดหมาย (Appointment Groups — Batch/Period)
+// ════════════════════════════════════════════════════
+
+const appointmentGroupsSchema: PageSchema = {
+  pageId: "appointment-groups",
+  menuName: "กลุ่มนัดหมาย (Batch/Period)",
+  menuNameEn: "Appointment Groups",
+  path: "/web/appointments/groups",
+  description: "จัดการกลุ่มนัดหมาย — สร้างเป็นชุด (batch) สำหรับสัมมนา/ผู้รับเหมา, รองรับ period (หลายวัน), กำหนดเวลาแยกรายวัน, ติดตามการมาถึง (Arrival Dashboard)",
+  tables: [
+    {
+      name: "appointment_groups",
+      comment: "กลุ่มนัดหมาย — เก็บข้อมูลกลุ่มสำหรับ batch appointment + period mode",
+      columns: [
+        { name: "id", type: "SERIAL", nullable: false, comment: "รหัสกลุ่ม (PK)", isPrimaryKey: true },
+        { name: "name", type: "VARCHAR(200)", nullable: false, comment: "ชื่อกลุ่ม เช่น 'สัมมนา IT วันที่ 10-11 เม.ย.'" },
+        { name: "name_en", type: "VARCHAR(200)", nullable: true, comment: "ชื่อกลุ่ม (English)" },
+        { name: "description", type: "TEXT", nullable: true, comment: "รายละเอียดเพิ่มเติม" },
+        { name: "visit_purpose_id", type: "INT", nullable: false, comment: "FK → visit_purposes.id", isForeignKey: true, references: "visit_purposes.id" },
+        { name: "department_id", type: "INT", nullable: false, comment: "FK → departments.id", isForeignKey: true, references: "departments.id" },
+        { name: "host_staff_id", type: "INT", nullable: true, comment: "FK → staff.id (null ถ้าไม่ต้องระบุ)", isForeignKey: true, references: "staff.id" },
+        { name: "entry_mode", type: "ENUM('single','period')", nullable: false, comment: "โหมดการเข้า", defaultValue: "single" },
+        { name: "date_start", type: "DATE", nullable: false, comment: "วันเริ่มต้น" },
+        { name: "date_end", type: "DATE", nullable: true, comment: "วันสิ้นสุด (เฉพาะ period)" },
+        { name: "time_start", type: "TIME", nullable: false, comment: "เวลาเริ่ม (default ทุกวัน)" },
+        { name: "time_end", type: "TIME", nullable: false, comment: "เวลาสิ้นสุด (default ทุกวัน)" },
+        { name: "room", type: "VARCHAR(50)", nullable: true, comment: "ห้อง" },
+        { name: "building", type: "VARCHAR(100)", nullable: true, comment: "อาคาร" },
+        { name: "floor", type: "VARCHAR(20)", nullable: true, comment: "ชั้น" },
+        { name: "total_expected", type: "INT", nullable: false, comment: "จำนวนผู้เข้าร่วมที่คาดหวัง", defaultValue: "0" },
+        { name: "notify_on_checkin", type: "BOOLEAN", nullable: false, comment: "แจ้งเตือนเมื่อ check-in (ระดับกลุ่ม)", defaultValue: "false" },
+        { name: "created_by_staff_id", type: "INT", nullable: false, comment: "FK → staff.id ผู้สร้างกลุ่ม", isForeignKey: true, references: "staff.id" },
+        { name: "status", type: "ENUM('active','completed','cancelled')", nullable: false, comment: "สถานะกลุ่ม", defaultValue: "active" },
+        { name: "created_at", type: "TIMESTAMP", nullable: false, comment: "วันที่สร้าง", defaultValue: "CURRENT_TIMESTAMP" },
+        { name: "updated_at", type: "TIMESTAMP", nullable: false, comment: "วันที่แก้ไขล่าสุด", defaultValue: "CURRENT_TIMESTAMP" },
+      ],
+      seedData: [
+        { id: 1, name: "สัมมนา IT วันที่ 10-11 เม.ย.", visit_purpose_id: 2, department_id: 1, entry_mode: "period", date_start: "2026-04-10", date_end: "2026-04-11", time_start: "09:00", time_end: "16:00", room: "ห้องประชุม 601", building: "อาคาร กท.", floor: "6", total_expected: 50, notify_on_checkin: false, created_by_staff_id: 1, status: "active" },
+        { id: 2, name: "ผู้รับเหมาซ่อมแอร์ ชั้น 3", visit_purpose_id: 4, department_id: 2, host_staff_id: 2, entry_mode: "period", date_start: "2026-04-10", date_end: "2026-04-11", time_start: "07:00", time_end: "22:00", building: "อาคาร กท.", floor: "3", total_expected: 5, notify_on_checkin: true, created_by_staff_id: 2, status: "active" },
+      ],
+    },
+    {
+      name: "appointment_group_day_schedules",
+      comment: "ตารางเวลาแยกรายวัน — ใช้เมื่อแต่ละวันมีเวลาต่างกัน (ถ้าไม่มี ใช้ default จาก group)",
+      columns: [
+        { name: "id", type: "SERIAL", nullable: false, comment: "PK", isPrimaryKey: true },
+        { name: "group_id", type: "INT", nullable: false, comment: "FK → appointment_groups.id", isForeignKey: true, references: "appointment_groups.id" },
+        { name: "date", type: "DATE", nullable: false, comment: "วันที่ (ต้อง unique ร่วมกับ group_id)" },
+        { name: "time_start", type: "TIME", nullable: false, comment: "เวลาเริ่มของวันนี้" },
+        { name: "time_end", type: "TIME", nullable: false, comment: "เวลาสิ้นสุดของวันนี้" },
+        { name: "notes", type: "VARCHAR(200)", nullable: true, comment: "หมายเหตุ เช่น 'วันสุดท้าย เลิกเร็ว'" },
+      ],
+      seedData: [
+        { id: 1, group_id: 2, date: "2026-04-10", time_start: "07:00", time_end: "22:00", notes: null },
+        { id: 2, group_id: 2, date: "2026-04-11", time_start: "07:00", time_end: "18:00", notes: "วันสุดท้าย เลิกเร็ว" },
+      ],
+    },
+  ],
+  relationships: [
+    "appointment_groups.visit_purpose_id ──→ visit_purposes.id",
+    "appointment_groups.department_id ──→ departments.id",
+    "appointment_groups.host_staff_id ──→ staff.id (ผู้ที่ต้องการพบ — optional)",
+    "appointment_groups.created_by_staff_id ──→ staff.id (ผู้สร้างกลุ่ม)",
+    "appointment_groups 1 ──→ N appointments (แต่ละ appointment ใน group)",
+    "appointment_groups 1 ──→ N appointment_group_day_schedules (เวลาแยกรายวัน)",
+    "appointment_group_day_schedules.group_id ──→ appointment_groups.id (onDelete: CASCADE)",
+  ],
+};
+
+// ════════════════════════════════════════════════════
 // EXPORT: รวมทุก schema
 // ════════════════════════════════════════════════════
 
@@ -2106,6 +2241,7 @@ export const allPageSchemas: PageSchema[] = [
   pdpaConsentSchema,
   visitRecordsSchema,
   appointmentsSchema,
+  visitEntriesSchema,
   dashboardSchema,
   searchSchema,
   blocklistSchema,
@@ -2115,6 +2251,7 @@ export const allPageSchemas: PageSchema[] = [
   lineOaConfigSchema,
   myProfileSchema,
   lineMessageTemplatesSchema,
+  appointmentGroupsSchema,
 ];
 
 /** ค้น schema ตาม pageId */
