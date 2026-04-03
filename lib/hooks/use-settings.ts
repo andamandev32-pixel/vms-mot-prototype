@@ -69,7 +69,7 @@ export function useUpdateDepartmentRule() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ purposeId, ruleId, ...data }: { purposeId: number; ruleId: number; [key: string]: unknown }) =>
-      apiPatch(`/api/visit-purposes/${purposeId}/department-rules/${ruleId}`, data),
+      apiPut(`/api/visit-purposes/${purposeId}/department-rules/${ruleId}`, data),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["visit-purposes"] }),
   });
 }
@@ -431,6 +431,13 @@ export function useUpdateApproverGroupMembers() {
     mutationFn: ({ id, members }: { id: number; members: unknown[] }) =>
       apiPut(`/api/approver-groups/${id}/members`, { members }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["approver-groups"] }),
+  });
+}
+
+export function useMyApproverGroups() {
+  return useQuery({
+    queryKey: ["approver-groups", "my-groups"],
+    queryFn: () => apiFetch(`/api/approver-groups/my-groups`),
   });
 }
 

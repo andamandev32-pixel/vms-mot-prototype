@@ -74,7 +74,11 @@ export function useApproveAppointment() {
   return useMutation({
     mutationFn: ({ id, ...data }: { id: number; [key: string]: unknown }) =>
       apiPost(`/api/appointments/${id}/approve`, data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["appointments"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["appointments"] });
+      qc.invalidateQueries({ queryKey: ["approval-queue"] });
+      qc.invalidateQueries({ queryKey: ["approval-stats"] });
+    },
   });
 }
 
@@ -83,7 +87,11 @@ export function useRejectAppointment() {
   return useMutation({
     mutationFn: ({ id, ...data }: { id: number; reason?: string }) =>
       apiPost(`/api/appointments/${id}/reject`, data),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["appointments"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["appointments"] });
+      qc.invalidateQueries({ queryKey: ["approval-queue"] });
+      qc.invalidateQueries({ queryKey: ["approval-stats"] });
+    },
   });
 }
 
@@ -96,6 +104,43 @@ export function useCancelAppointment() {
   });
 }
 
+// ---------------------------------------------------------------------------
+// Approval Queue
+// ---------------------------------------------------------------------------
+
+export interface ApprovalQueueParams {
+  approverGroupId?: number;
+  status?: string;
+  dateFrom?: string;
+  dateTo?: string;
+  search?: string;
+  page?: number;
+  limit?: number;
+}
+
+export function useApprovalQueue(params?: ApprovalQueueParams) {
+  const sp = toSearchParams(params as Record<string, unknown>);
+  return useQuery({
+    queryKey: ["approval-queue", params],
+    queryFn: () => apiFetch(`/api/approvals?${sp}`),
+    refetchInterval: 15000,
+  });
+}
+
+export function useApprovalStats(approverGroupId?: number) {
+  const params = approverGroupId ? { approverGroupId, limit: 1 } : { limit: 1 };
+  const sp = toSearchParams(params as Record<string, unknown>);
+  return useQuery({
+    queryKey: ["approval-stats", approverGroupId],
+    queryFn: () => apiFetch(`/api/approvals?${sp}`),
+    refetchInterval: 30000,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Companions
+// ---------------------------------------------------------------------------
+
 export function useAddCompanions() {
   const qc = useQueryClient();
   return useMutation({
@@ -107,5 +152,27 @@ export function useAddCompanions() {
       companions: unknown[];
     }) => apiPost(`/api/appointments/${appointmentId}/companions`, { companions }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["appointments"] }),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Batch / Group Appointments
+// ---------------------------------------------------------------------------
+
+export function useCreateBatchAppointment() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (data: unknown) => apiPost("/api/appointments/batch", data),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["appointments"] });
+      qc.invalidateQueries({ queryKey: ["appointment-groups"] });
+    },
+  });
+}
+
+export function useSendGroupEmail() {
+  return useMutation({
+    mutationFn: ({ groupId, visitorIds }: { groupId: number; visitorIds?: number[] }) =>
+      apiPost(`/api/appointments/groups/${groupId}/send-email`, { visitorIds }),
   });
 }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyToken } from "@/lib/auth";
+import { getStaffOrKiosk } from "@/lib/kiosk-auth";
 import { prisma } from "@/lib/prisma";
 
 const ok = (data: unknown) =>
@@ -7,18 +7,13 @@ const ok = (data: unknown) =>
 const err = (code: string, msg: string, status = 400) =>
   NextResponse.json({ success: false, error: { code, message: msg } }, { status });
 
-async function getAuthUser(request: NextRequest) {
-  const token = request.cookies.get("evms_session")?.value;
-  return token ? await verifyToken(token) : null;
-}
-
 // ─────────────────────────────────────────────────────
 // GET /api/search/appointments — ค้นหาการนัดหมาย
 // ─────────────────────────────────────────────────────
 export async function GET(request: NextRequest) {
   try {
-    const user = await getAuthUser(request);
-    if (!user) {
+    const auth = await getStaffOrKiosk(request);
+    if (!auth) {
       return err("UNAUTHORIZED", "กรุณาเข้าสู่ระบบ", 401);
     }
 

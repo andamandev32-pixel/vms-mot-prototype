@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { Lock, User, Eye, EyeOff, Globe } from "lucide-react";
+import { Lock, User, Eye, EyeOff, Globe, ChevronDown } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
@@ -41,6 +41,7 @@ export default function WebLoginPage() {
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
     const [lang, setLang] = useState<Lang>("th");
+    const [demoOpen, setDemoOpen] = useState(false);
 
     useEffect(() => {
         const saved = localStorage.getItem("vms-lang");
@@ -71,7 +72,8 @@ export default function WebLoginPage() {
             });
             const json = await res.json();
             if (json.success) {
-                router.push("/web/dashboard");
+                const role = json.data?.user?.role;
+                router.push(role === "visitor" ? "/web/appointments" : "/web/dashboard");
             } else {
                 setError(json.error?.message || t("errFailed"));
             }
@@ -189,10 +191,22 @@ export default function WebLoginPage() {
                         </Button>
                     </div>
 
-                    {/* Demo accounts */}
-                    <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
-                        <p className="text-xs font-bold text-text-secondary mb-2.5 uppercase tracking-wider">{t("demoTitle")}</p>
-                        <div className="space-y-2">
+                    {/* Demo accounts — collapsible */}
+                    <div className="bg-gray-50 rounded-xl border border-gray-100 overflow-hidden">
+                        <button
+                            type="button"
+                            onClick={() => setDemoOpen(!demoOpen)}
+                            className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-100 transition-colors"
+                        >
+                            <p className="text-xs font-bold text-text-secondary uppercase tracking-wider">{t("demoTitle")}</p>
+                            <ChevronDown size={16} className={`text-text-muted transition-transform duration-200 ${demoOpen ? "rotate-180" : ""}`} />
+                        </button>
+                        <div
+                            className="grid transition-[grid-template-rows] duration-200 ease-in-out"
+                            style={{ gridTemplateRows: demoOpen ? "1fr" : "0fr" }}
+                        >
+                            <div className="overflow-hidden">
+                                <div className="px-4 pb-3 space-y-1.5">
                             {[
                                 { username: "admin", email: "admin@mots.go.th", password: "admin1234", role: "Admin", color: "text-red-600 bg-red-50" },
                                 { username: "prawit.s", email: "prawit.s@mots.go.th", password: "pass1234", role: "Supervisor", color: "text-purple-600 bg-purple-50" },
@@ -203,7 +217,7 @@ export default function WebLoginPage() {
                                 <button
                                     key={acc.username}
                                     type="button"
-                                    onClick={() => { setUsernameOrEmail(acc.username); setPassword(acc.password); }}
+                                    onClick={() => { setUsernameOrEmail(acc.username); setPassword(acc.password); setDemoOpen(false); }}
                                     className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-white hover:shadow-sm border border-transparent hover:border-gray-200 transition-all text-left group"
                                 >
                                     <div className="min-w-0">
@@ -216,6 +230,8 @@ export default function WebLoginPage() {
                                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${acc.color}`}>{acc.role}</span>
                                 </button>
                             ))}
+                                </div>
+                            </div>
                         </div>
                     </div>
 

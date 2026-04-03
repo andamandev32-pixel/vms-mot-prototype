@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyToken } from "@/lib/auth";
-import { verifyVisitorToken, VISITOR_COOKIE_NAME } from "@/lib/visitor-auth";
+import { getAuthUserOrKiosk } from "@/lib/kiosk-auth";
 import { prisma } from "@/lib/prisma";
 
 // ===== Inline response helpers =====
@@ -9,36 +9,19 @@ const ok = (data: unknown) =>
 const err = (code: string, msg: string, status = 400) =>
   NextResponse.json({ success: false, error: { code, message: msg } }, { status });
 
-// ===== Helper: ดึง authenticated user จาก cookie (staff หรือ visitor) =====
+// ===== Helper: ดึง authenticated user จาก cookie (staff only — สำหรับ POST) =====
 async function getAuthUser(request: NextRequest) {
-  const staffToken = request.cookies.get("evms_session")?.value;
-  if (staffToken) return await verifyToken(staffToken);
-  const visitorToken = request.cookies.get(VISITOR_COOKIE_NAME)?.value;
-  if (visitorToken) {
-    const v = await verifyVisitorToken(visitorToken);
-    if (v) {
-      return {
-        id: v.id,
-        username: v.email,
-        email: v.email,
-        name: `${v.firstName} ${v.lastName}`,
-        nameEn: `${v.firstName} ${v.lastName}`,
-        role: "visitor" as const,
-        departmentId: null,
-        departmentName: null,
-      };
-    }
-  }
-  return null;
+  const token = request.cookies.get("evms_session")?.value;
+  return token ? await verifyToken(token) : null;
 }
 
 // ─────────────────────────────────────────────────────
-// GET /api/visit-purposes — รายการวัตถุประสงค์การเข้าเยี่ยม (any authenticated user)
+// GET /api/visit-purposes — รายการวัตถุประสงค์การเข้าเยี่ยม (staff, visitor, kiosk)
 // ─────────────────────────────────────────────────────
 export async function GET(request: NextRequest) {
   try {
-    const user = await getAuthUser(request);
-    if (!user) {
+    const auth = await getAuthUserOrKiosk(request);
+    if (!auth) {
       return err("UNAUTHORIZED", "กรุณาเข้าสู่ระบบ", 401);
     }
 

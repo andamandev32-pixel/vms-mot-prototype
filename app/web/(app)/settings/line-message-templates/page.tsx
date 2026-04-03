@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import {
@@ -332,7 +332,6 @@ function LineFlexTemplatesTab() {
   const [activeTab, setActiveTab] = useState<"visitor" | "officer">("visitor");
   const [selectedStateId, setSelectedStateId] = useState<string>("visitor-registered");
   const [expandedSection, setExpandedSection] = useState<string | null>("header");
-  const editorRef = useRef<HTMLDivElement>(null);
   const [editingField, setEditingField] = useState<string | null>(null);
   const [approvalTimeout, setApprovalTimeout] = useState(24);
   const [autoCancelOnDate, setAutoCancelOnDate] = useState(true);
@@ -410,167 +409,181 @@ function LineFlexTemplatesTab() {
             </button>
           </div>
 
-          {/* State List */}
-          <Card>
-            <div className="divide-y divide-border">
-              {displayedTemplates.map((t, i) => (
-                <button key={t.stateId} onClick={() => { setSelectedStateId(t.stateId); setTimeout(() => editorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 100); }}
-                  className={cn("w-full flex items-center gap-3 px-4 py-3 text-left transition-colors",
-                    selectedStateId === t.stateId ? "bg-[#06C755]/5 border-l-4 border-l-[#06C755]" : "hover:bg-gray-50 border-l-4 border-l-transparent")}>
-                  <span className={cn("w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0",
-                    selectedStateId === t.stateId ? "bg-[#06C755] text-white" : "bg-gray-200 text-gray-500")}>{i + 1}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className={cn("text-sm font-medium truncate", selectedStateId === t.stateId ? "text-[#06C755]" : "text-text-primary")}>{t.name}</p>
-                    <p className="text-[10px] text-text-muted truncate">{t.nameEn}</p>
-                  </div>
-                  {t.type === "liff" && <span className="px-2 py-0.5 bg-purple-100 text-purple-600 text-[9px] font-bold rounded-full">LIFF</span>}
-                  {t.type === "text" && <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-[9px] font-bold rounded-full">Text</span>}
-                  {t.type === "flex" && <span className={cn("w-2 h-2 rounded-full", t.isActive ? "bg-[#06C755]" : "bg-gray-300")} />}
-                </button>
-              ))}
-            </div>
-          </Card>
-
-          {/* Section Editor */}
-          <div ref={editorRef} />
-          {currentTemplate && currentTemplate.type === "flex" && (
-            <Card>
-              <div className="px-4 py-3 border-b border-border bg-gray-50 flex items-center justify-between">
-                <h3 className="text-sm font-bold">{currentTemplate.name}</h3>
-                <button onClick={() => updateTemplate(currentTemplate.stateId, t => ({ ...t, isActive: !t.isActive }))} className="flex items-center gap-1 text-xs font-medium">
-                  {currentTemplate.isActive ? <ToggleRight size={18} className="text-[#06C755]" /> : <ToggleLeft size={18} className="text-gray-400" />}
-                  <span className={currentTemplate.isActive ? "text-[#06C755]" : "text-gray-400"}>{currentTemplate.isActive ? "Active" : "Off"}</span>
-                </button>
-              </div>
-
-              <EditorSection title="Header" id="header" expanded={expandedSection === "header"} onToggle={setExpandedSection}>
-                <div className="space-y-3">
-                  <InputField label="Title" value={currentTemplate.headerTitle} onChange={(v) => updateTemplate(currentTemplate.stateId, t => ({ ...t, headerTitle: v }))} />
-                  <InputField label="Subtitle" value={currentTemplate.headerSubtitle || ""} onChange={(v) => updateTemplate(currentTemplate.stateId, t => ({ ...t, headerSubtitle: v || undefined }))} placeholder="(optional)" />
-                  <div>
-                    <label className="text-xs font-medium text-text-secondary mb-1 block">Color</label>
-                    <div className="flex gap-2">
-                      {headerColors.map(c => (
-                        <button key={c.value} onClick={() => updateTemplate(currentTemplate.stateId, t => ({ ...t, headerColor: c.value }))}
-                          className={cn("w-8 h-8 rounded-lg border-2", c.bg,
-                            currentTemplate.headerColor === c.value ? "border-gray-900 scale-110 shadow-md" : "border-transparent opacity-60 hover:opacity-100")} />
-                      ))}
+          {/* State List — Accordion */}
+          <div className="space-y-2">
+            {displayedTemplates.map((t, i) => {
+              const isSelected = selectedStateId === t.stateId;
+              const tpl = templates.find(x => x.stateId === t.stateId)!;
+              return (
+                <Card key={t.stateId} className="overflow-hidden">
+                  {/* Accordion Header */}
+                  <div className={cn("w-full flex items-center gap-3 px-4 py-3 transition-colors",
+                      isSelected ? "bg-[#06C755]/5 border-l-4 border-l-[#06C755]" : "hover:bg-gray-50 border-l-4 border-l-transparent")}>
+                    <div className="flex-1 flex items-center gap-3 min-w-0 cursor-pointer" onClick={() => setSelectedStateId(isSelected ? "" : t.stateId)}>
+                      <span className={cn("w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0",
+                        isSelected ? "bg-[#06C755] text-white" : "bg-gray-200 text-gray-500")}>{i + 1}</span>
+                      <div className="flex-1 min-w-0">
+                        <p className={cn("text-sm font-medium truncate", isSelected ? "text-[#06C755]" : "text-text-primary")}>{t.name}</p>
+                        <p className="text-[10px] text-text-muted truncate">{t.nameEn}</p>
+                      </div>
+                      {t.type === "liff" && <span className="px-2 py-0.5 bg-purple-100 text-purple-600 text-[9px] font-bold rounded-full">LIFF</span>}
+                      {t.type === "text" && <span className="px-2 py-0.5 bg-gray-100 text-gray-600 text-[9px] font-bold rounded-full">Text</span>}
+                      {t.type === "flex" && <span className={cn("w-2 h-2 rounded-full", t.isActive ? "bg-[#06C755]" : "bg-gray-300")} />}
+                      {isSelected ? <ChevronDown size={16} className="text-gray-400 shrink-0" /> : <ChevronRight size={16} className="text-gray-400 shrink-0" />}
                     </div>
-                  </div>
-                  <div>
-                    <label className="text-xs font-medium text-text-secondary mb-1 block">Style</label>
-                    <select value={currentTemplate.headerVariant} onChange={(e) => updateTemplate(currentTemplate.stateId, t => ({ ...t, headerVariant: e.target.value as HeaderVariant }))}
-                      className="w-full h-9 px-3 rounded-lg border border-border text-sm">
-                      {headerVariants.map(v => <option key={v.value} value={v.value}>{v.label}</option>)}
-                    </select>
-                  </div>
-                </div>
-              </EditorSection>
-
-              <EditorSection title="Status Badge" id="badge" expanded={expandedSection === "badge"} onToggle={setExpandedSection}
-                enabled={currentTemplate.showStatusBadge} onEnableToggle={() => updateTemplate(currentTemplate.stateId, t => ({ ...t, showStatusBadge: !t.showStatusBadge }))}>
-                <div className="space-y-2">
-                  <InputField label="Badge Text" value={currentTemplate.statusBadgeText || ""} onChange={(v) => updateTemplate(currentTemplate.stateId, t => ({ ...t, statusBadgeText: v }))} />
-                  <div><label className="text-xs font-medium text-text-secondary mb-1 block">Type</label>
-                    <select value={currentTemplate.statusBadgeType || "pending"} onChange={(e) => updateTemplate(currentTemplate.stateId, t => ({ ...t, statusBadgeType: e.target.value as any }))}
-                      className="w-full h-9 px-3 rounded-lg border border-border text-sm">
-                      {(entryRelatedStates.has(currentTemplate.stateId) ? entryStatusOptions : appointmentStatusOptions).map(v => <option key={v} value={v}>{v}</option>)}
-                    </select></div>
-                </div>
-              </EditorSection>
-
-              <EditorSection title={`Body Rows (${currentTemplate.rows.filter(r => r.enabled).length}/${currentTemplate.rows.length})`} id="rows" expanded={expandedSection === "rows"} onToggle={setExpandedSection}>
-                <div className="space-y-1.5">
-                  {currentTemplate.rows.sort((a, b) => a.sortOrder - b.sortOrder).map((row) => (
-                    <div key={row.id} className={cn("flex items-center gap-2 px-2 py-1.5 rounded-lg", row.enabled ? "bg-white" : "bg-gray-50 opacity-50")}>
-                      <GripVertical size={12} className="text-gray-300 shrink-0" />
-                      <button onClick={() => updateTemplate(currentTemplate.stateId, t => ({ ...t, rows: t.rows.map(r => r.id === row.id ? { ...r, enabled: !r.enabled } : r) }))}>
-                        {row.enabled ? <Check size={14} className="text-[#06C755]" /> : <div className="w-3.5 h-3.5 rounded border border-gray-300" />}
+                    {isSelected && (
+                      <button onClick={(e) => { e.stopPropagation(); if (confirm("คืนค่า Template นี้กลับเป็นค่าเริ่มต้น?")) { const def = defaultFlexTemplates.find(d => d.stateId === tpl.stateId); if (def) updateTemplate(tpl.stateId, () => JSON.parse(JSON.stringify(def))); } }}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-orange-500 hover:bg-orange-50 border border-orange-200 transition-colors shrink-0"
+                        title="คืนค่าเริ่มต้น">
+                        <RefreshCw size={13} />
+                        <span>ค่าเริ่มต้น</span>
                       </button>
-                      {editingField === row.id ? (
-                        <input type="text" value={row.label} autoFocus
-                          onChange={(e) => updateTemplate(currentTemplate.stateId, t => ({ ...t, rows: t.rows.map(r => r.id === row.id ? { ...r, label: e.target.value } : r) }))}
-                          onBlur={() => setEditingField(null)} onKeyDown={(e) => e.key === "Enter" && setEditingField(null)}
-                          className="flex-1 h-7 px-2 rounded border border-[#06C755] text-xs bg-[#06C755]/5 focus:outline-none" />
-                      ) : (
-                        <span className="flex-1 text-xs">{row.label}</span>
-                      )}
-                      <code className="text-[9px] text-violet-500 bg-violet-50 px-1.5 py-0.5 rounded shrink-0">{`{{${row.variable}}}`}</code>
-                      <button onClick={() => setEditingField(row.id)} className="p-0.5 hover:bg-gray-100 rounded"><Pencil size={11} className="text-gray-400" /></button>
-                    </div>
-                  ))}
-                </div>
-              </EditorSection>
-
-              <EditorSection title="Info Box" id="infobox" expanded={expandedSection === "infobox"} onToggle={setExpandedSection}
-                enabled={currentTemplate.infoBox?.enabled}
-                onEnableToggle={() => updateTemplate(currentTemplate.stateId, t => ({ ...t, infoBox: t.infoBox ? { ...t.infoBox, enabled: !t.infoBox.enabled } : { text: "", color: "blue", enabled: true } }))}>
-                {currentTemplate.infoBox && (
-                  <div className="space-y-2">
-                    <textarea value={currentTemplate.infoBox.text} onChange={(e) => updateTemplate(currentTemplate.stateId, t => ({ ...t, infoBox: t.infoBox ? { ...t.infoBox, text: e.target.value } : undefined }))}
-                      className="w-full rounded-lg border border-border p-2 text-xs h-16 resize-none focus:outline-none focus:ring-2 focus:ring-[#06C755]/30" />
-                    <div className="flex gap-1.5">
-                      {(["green","orange","blue","red","gray"] as const).map(c => (
-                        <button key={c} onClick={() => updateTemplate(currentTemplate.stateId, t => ({ ...t, infoBox: t.infoBox ? { ...t.infoBox, color: c } : undefined }))}
-                          className={cn("px-3 py-1 rounded-lg text-[10px] font-bold border",
-                            currentTemplate.infoBox?.color === c ? "border-gray-900 shadow-sm" : "border-transparent opacity-60",
-                            c === "green" && "bg-green-100 text-green-700", c === "orange" && "bg-orange-100 text-orange-700",
-                            c === "blue" && "bg-blue-100 text-blue-700", c === "red" && "bg-red-100 text-red-700", c === "gray" && "bg-gray-100 text-gray-700")}>{c}</button>
-                      ))}
-                    </div>
+                    )}
                   </div>
-                )}
-              </EditorSection>
 
-              <EditorSection title="QR Code" id="qr" expanded={expandedSection === "qr"} onToggle={setExpandedSection}
-                enabled={currentTemplate.showQrCode} onEnableToggle={() => updateTemplate(currentTemplate.stateId, t => ({ ...t, showQrCode: !t.showQrCode }))}>
-                <InputField label="QR Label" value={currentTemplate.qrLabel || ""} onChange={(v) => updateTemplate(currentTemplate.stateId, t => ({ ...t, qrLabel: v }))} placeholder="QR Check-in" />
-              </EditorSection>
+                  {/* Accordion Content — Editor inline */}
+                  {isSelected && tpl.type === "flex" && (
+                    <div className="border-t border-border">
+                      <div className="px-4 py-2.5 bg-gray-50 flex items-center justify-between">
+                        <span className="text-xs font-bold text-text-secondary">แก้ไข Template</span>
+                        <button onClick={() => updateTemplate(tpl.stateId, tt => ({ ...tt, isActive: !tt.isActive }))} className="flex items-center gap-1 text-xs font-medium">
+                          {tpl.isActive ? <ToggleRight size={18} className="text-[#06C755]" /> : <ToggleLeft size={18} className="text-gray-400" />}
+                          <span className={tpl.isActive ? "text-[#06C755]" : "text-gray-400"}>{tpl.isActive ? "Active" : "Off"}</span>
+                        </button>
+                      </div>
 
-              <EditorSection title={`Buttons (${currentTemplate.buttons.filter(b => b.enabled).length}/${currentTemplate.buttons.length})`} id="buttons" expanded={expandedSection === "buttons"} onToggle={setExpandedSection}>
-                <div className="space-y-1.5">
-                  {currentTemplate.buttons.sort((a, b) => a.sortOrder - b.sortOrder).map((btn) => (
-                    <div key={btn.id} className={cn("flex items-center gap-2 px-2 py-1.5 rounded-lg", btn.enabled ? "bg-white" : "bg-gray-50 opacity-50")}>
-                      <GripVertical size={12} className="text-gray-300 shrink-0" />
-                      <button onClick={() => updateTemplate(currentTemplate.stateId, t => ({ ...t, buttons: t.buttons.map(b => b.id === btn.id ? { ...b, enabled: !b.enabled } : b) }))}>
-                        {btn.enabled ? <Check size={14} className="text-[#06C755]" /> : <div className="w-3.5 h-3.5 rounded border border-gray-300" />}
-                      </button>
-                      {editingField === btn.id ? (
-                        <input type="text" value={btn.label} autoFocus
-                          onChange={(e) => updateTemplate(currentTemplate.stateId, t => ({ ...t, buttons: t.buttons.map(b => b.id === btn.id ? { ...b, label: e.target.value } : b) }))}
-                          onBlur={() => setEditingField(null)} onKeyDown={(e) => e.key === "Enter" && setEditingField(null)}
-                          className="flex-1 h-7 px-2 rounded border border-[#06C755] text-xs bg-[#06C755]/5 focus:outline-none" />
-                      ) : (
-                        <span className="flex-1 text-xs">{btn.label}</span>
-                      )}
-                      <select value={btn.variant} onChange={(e) => updateTemplate(currentTemplate.stateId, t => ({ ...t, buttons: t.buttons.map(b => b.id === btn.id ? { ...b, variant: e.target.value as ButtonVariant } : b) }))}
-                        className="text-[10px] h-7 px-1.5 rounded border border-border bg-gray-50">
-                        <option value="green">Green</option><option value="primary">Primary</option><option value="outline">Outline</option><option value="red">Red</option>
-                      </select>
-                      <button onClick={() => setEditingField(btn.id)} className="p-0.5 hover:bg-gray-100 rounded"><Pencil size={11} className="text-gray-400" /></button>
+                      <EditorSection title="Header" id="header" expanded={expandedSection === "header"} onToggle={setExpandedSection}>
+                        <div className="space-y-3">
+                          <InputField label="Title" value={tpl.headerTitle} onChange={(v) => updateTemplate(tpl.stateId, tt => ({ ...tt, headerTitle: v }))} />
+                          <InputField label="Subtitle" value={tpl.headerSubtitle || ""} onChange={(v) => updateTemplate(tpl.stateId, tt => ({ ...tt, headerSubtitle: v || undefined }))} placeholder="(optional)" />
+                          <div>
+                            <label className="text-xs font-medium text-text-secondary mb-1 block">Color</label>
+                            <div className="flex gap-2">
+                              {headerColors.map(c => (
+                                <button key={c.value} onClick={() => updateTemplate(tpl.stateId, tt => ({ ...tt, headerColor: c.value }))}
+                                  className={cn("w-8 h-8 rounded-lg border-2", c.bg,
+                                    tpl.headerColor === c.value ? "border-gray-900 scale-110 shadow-md" : "border-transparent opacity-60 hover:opacity-100")} />
+                              ))}
+                            </div>
+                          </div>
+                          <div>
+                            <label className="text-xs font-medium text-text-secondary mb-1 block">Style</label>
+                            <select value={tpl.headerVariant} onChange={(e) => updateTemplate(tpl.stateId, tt => ({ ...tt, headerVariant: e.target.value as HeaderVariant }))}
+                              className="w-full h-9 px-3 rounded-lg border border-border text-sm">
+                              {headerVariants.map(v => <option key={v.value} value={v.value}>{v.label}</option>)}
+                            </select>
+                          </div>
+                        </div>
+                      </EditorSection>
+
+                      <EditorSection title="Status Badge" id="badge" expanded={expandedSection === "badge"} onToggle={setExpandedSection}
+                        enabled={tpl.showStatusBadge} onEnableToggle={() => updateTemplate(tpl.stateId, tt => ({ ...tt, showStatusBadge: !tt.showStatusBadge }))}>
+                        <div className="space-y-2">
+                          <InputField label="Badge Text" value={tpl.statusBadgeText || ""} onChange={(v) => updateTemplate(tpl.stateId, tt => ({ ...tt, statusBadgeText: v }))} />
+                          <div><label className="text-xs font-medium text-text-secondary mb-1 block">Type</label>
+                            <select value={tpl.statusBadgeType || "pending"} onChange={(e) => updateTemplate(tpl.stateId, tt => ({ ...tt, statusBadgeType: e.target.value as any }))}
+                              className="w-full h-9 px-3 rounded-lg border border-border text-sm">
+                              {(entryRelatedStates.has(tpl.stateId) ? entryStatusOptions : appointmentStatusOptions).map(v => <option key={v} value={v}>{v}</option>)}
+                            </select></div>
+                        </div>
+                      </EditorSection>
+
+                      <EditorSection title={`Body Rows (${tpl.rows.filter(r => r.enabled).length}/${tpl.rows.length})`} id="rows" expanded={expandedSection === "rows"} onToggle={setExpandedSection}>
+                        <div className="space-y-1.5">
+                          {tpl.rows.sort((a, b) => a.sortOrder - b.sortOrder).map((row) => (
+                            <div key={row.id} className={cn("flex items-center gap-2 px-2 py-1.5 rounded-lg", row.enabled ? "bg-white" : "bg-gray-50 opacity-50")}>
+                              <GripVertical size={12} className="text-gray-300 shrink-0" />
+                              <button onClick={() => updateTemplate(tpl.stateId, tt => ({ ...tt, rows: tt.rows.map(r => r.id === row.id ? { ...r, enabled: !r.enabled } : r) }))}>
+                                {row.enabled ? <Check size={14} className="text-[#06C755]" /> : <div className="w-3.5 h-3.5 rounded border border-gray-300" />}
+                              </button>
+                              {editingField === row.id ? (
+                                <input type="text" value={row.label} autoFocus
+                                  onChange={(e) => updateTemplate(tpl.stateId, tt => ({ ...tt, rows: tt.rows.map(r => r.id === row.id ? { ...r, label: e.target.value } : r) }))}
+                                  onBlur={() => setEditingField(null)} onKeyDown={(e) => e.key === "Enter" && setEditingField(null)}
+                                  className="flex-1 h-7 px-2 rounded border border-[#06C755] text-xs bg-[#06C755]/5 focus:outline-none" />
+                              ) : (
+                                <span className="flex-1 text-xs">{row.label}</span>
+                              )}
+                              <code className="text-[9px] text-violet-500 bg-violet-50 px-1.5 py-0.5 rounded shrink-0">{`{{${row.variable}}}`}</code>
+                              <button onClick={() => setEditingField(row.id)} className="p-0.5 hover:bg-gray-100 rounded"><Pencil size={11} className="text-gray-400" /></button>
+                            </div>
+                          ))}
+                        </div>
+                      </EditorSection>
+
+                      <EditorSection title="Info Box" id="infobox" expanded={expandedSection === "infobox"} onToggle={setExpandedSection}
+                        enabled={tpl.infoBox?.enabled}
+                        onEnableToggle={() => updateTemplate(tpl.stateId, tt => ({ ...tt, infoBox: tt.infoBox ? { ...tt.infoBox, enabled: !tt.infoBox.enabled } : { text: "", color: "blue", enabled: true } }))}>
+                        {tpl.infoBox && (
+                          <div className="space-y-2">
+                            <textarea value={tpl.infoBox.text} onChange={(e) => updateTemplate(tpl.stateId, tt => ({ ...tt, infoBox: tt.infoBox ? { ...tt.infoBox, text: e.target.value } : undefined }))}
+                              className="w-full rounded-lg border border-border p-2 text-xs h-16 resize-none focus:outline-none focus:ring-2 focus:ring-[#06C755]/30" />
+                            <div className="flex gap-1.5">
+                              {(["green","orange","blue","red","gray"] as const).map(c => (
+                                <button key={c} onClick={() => updateTemplate(tpl.stateId, tt => ({ ...tt, infoBox: tt.infoBox ? { ...tt.infoBox, color: c } : undefined }))}
+                                  className={cn("px-3 py-1 rounded-lg text-[10px] font-bold border",
+                                    tpl.infoBox?.color === c ? "border-gray-900 shadow-sm" : "border-transparent opacity-60",
+                                    c === "green" && "bg-green-100 text-green-700", c === "orange" && "bg-orange-100 text-orange-700",
+                                    c === "blue" && "bg-blue-100 text-blue-700", c === "red" && "bg-red-100 text-red-700", c === "gray" && "bg-gray-100 text-gray-700")}>{c}</button>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+                      </EditorSection>
+
+                      <EditorSection title="QR Code" id="qr" expanded={expandedSection === "qr"} onToggle={setExpandedSection}
+                        enabled={tpl.showQrCode} onEnableToggle={() => updateTemplate(tpl.stateId, tt => ({ ...tt, showQrCode: !tt.showQrCode }))}>
+                        <InputField label="QR Label" value={tpl.qrLabel || ""} onChange={(v) => updateTemplate(tpl.stateId, tt => ({ ...tt, qrLabel: v }))} placeholder="QR Check-in" />
+                      </EditorSection>
+
+                      <EditorSection title={`Buttons (${tpl.buttons.filter(b => b.enabled).length}/${tpl.buttons.length})`} id="buttons" expanded={expandedSection === "buttons"} onToggle={setExpandedSection}>
+                        <div className="space-y-1.5">
+                          {tpl.buttons.sort((a, b) => a.sortOrder - b.sortOrder).map((btn) => (
+                            <div key={btn.id} className={cn("flex items-center gap-2 px-2 py-1.5 rounded-lg", btn.enabled ? "bg-white" : "bg-gray-50 opacity-50")}>
+                              <GripVertical size={12} className="text-gray-300 shrink-0" />
+                              <button onClick={() => updateTemplate(tpl.stateId, tt => ({ ...tt, buttons: tt.buttons.map(b => b.id === btn.id ? { ...b, enabled: !b.enabled } : b) }))}>
+                                {btn.enabled ? <Check size={14} className="text-[#06C755]" /> : <div className="w-3.5 h-3.5 rounded border border-gray-300" />}
+                              </button>
+                              {editingField === btn.id ? (
+                                <input type="text" value={btn.label} autoFocus
+                                  onChange={(e) => updateTemplate(tpl.stateId, tt => ({ ...tt, buttons: tt.buttons.map(b => b.id === btn.id ? { ...b, label: e.target.value } : b) }))}
+                                  onBlur={() => setEditingField(null)} onKeyDown={(e) => e.key === "Enter" && setEditingField(null)}
+                                  className="flex-1 h-7 px-2 rounded border border-[#06C755] text-xs bg-[#06C755]/5 focus:outline-none" />
+                              ) : (
+                                <span className="flex-1 text-xs">{btn.label}</span>
+                              )}
+                              <select value={btn.variant} onChange={(e) => updateTemplate(tpl.stateId, tt => ({ ...tt, buttons: tt.buttons.map(b => b.id === btn.id ? { ...b, variant: e.target.value as ButtonVariant } : b) }))}
+                                className="text-[10px] h-7 px-1.5 rounded border border-border bg-gray-50">
+                                <option value="green">Green</option><option value="primary">Primary</option><option value="outline">Outline</option><option value="red">Red</option>
+                              </select>
+                              <button onClick={() => setEditingField(btn.id)} className="p-0.5 hover:bg-gray-100 rounded"><Pencil size={11} className="text-gray-400" /></button>
+                            </div>
+                          ))}
+                        </div>
+                      </EditorSection>
+
+                      <div className="px-4 py-3 bg-gray-50 border-t border-border">
+                        <p className="text-[10px] font-bold text-text-secondary uppercase tracking-wider mb-1.5">Available Variables</p>
+                        <div className="flex flex-wrap gap-1">
+                          {tpl.availableVariables.map(v => (
+                            <code key={v} className="text-[9px] font-mono text-violet-600 bg-violet-50 px-1.5 py-0.5 rounded border border-violet-100">{`{{${v}}}`}</code>
+                          ))}
+                        </div>
+                      </div>
                     </div>
-                  ))}
-                </div>
-              </EditorSection>
+                  )}
 
-              <div className="px-4 py-3 bg-gray-50 border-t border-border">
-                <p className="text-[10px] font-bold text-text-secondary uppercase tracking-wider mb-1.5">Available Variables</p>
-                <div className="flex flex-wrap gap-1">
-                  {currentTemplate.availableVariables.map(v => (
-                    <code key={v} className="text-[9px] font-mono text-violet-600 bg-violet-50 px-1.5 py-0.5 rounded border border-violet-100">{`{{${v}}}`}</code>
-                  ))}
-                </div>
-              </div>
-            </Card>
-          )}
-
-          {currentTemplate && currentTemplate.type !== "flex" && (
-            <Card><CardContent className="p-6 text-center">
-              <span className="text-2xl mb-2 block">{currentTemplate.type === "liff" ? "📱" : "💬"}</span>
-              <h3 className="font-bold">{currentTemplate.name}</h3>
-              <p className="text-xs text-text-muted mt-1">{currentTemplate.type === "liff" ? "State นี้เปิด LIFF App — ไม่มี Flex Message" : "ส่งข้อความ Text ธรรมดา"}</p>
-            </CardContent></Card>
-          )}
+                  {isSelected && tpl.type !== "flex" && (
+                    <div className="border-t border-border p-6 text-center">
+                      <span className="text-2xl mb-2 block">{tpl.type === "liff" ? "📱" : "💬"}</span>
+                      <h3 className="font-bold">{tpl.name}</h3>
+                      <p className="text-xs text-text-muted mt-1">{tpl.type === "liff" ? "State นี้เปิด LIFF App — ไม่มี Flex Message" : "ส่งข้อความ Text ธรรมดา"}</p>
+                    </div>
+                  )}
+                </Card>
+              );
+            })}
+          </div>
         </div>
 
         {/* Live Preview */}

@@ -167,9 +167,16 @@ export default function AppointmentGroupsPage() {
             <Link href="/web/appointments" className="flex items-center gap-2 text-sm text-primary hover:underline">
               <ArrowLeft size={16} /> กลับหน้านัดหมาย
             </Link>
-            <Button variant="outline" size="sm" onClick={() => fetchGroups().then(setGroups)}>
-              <RefreshCw size={14} className="mr-1.5" /> รีเฟรช
-            </Button>
+            <div className="flex items-center gap-2">
+              <Link href="/web/appointments/groups/create">
+                <Button size="sm">
+                  <Users size={14} className="mr-1.5" /> สร้างกิจกรรม
+                </Button>
+              </Link>
+              <Button variant="outline" size="sm" onClick={() => fetchGroups().then(setGroups)}>
+                <RefreshCw size={14} className="mr-1.5" /> รีเฟรช
+              </Button>
+            </div>
           </div>
 
           {groups.length === 0 ? (

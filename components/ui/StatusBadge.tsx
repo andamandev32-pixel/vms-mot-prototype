@@ -43,8 +43,8 @@ export function StatusBadge({
   className,
   ...props
 }: StatusBadgeProps) {
-  const config = statusConfig[status];
-  const variant = statusToBadgeVariant[status] as
+  const config = statusConfig[status] ?? { label: status ?? "–", labelEn: status ?? "–", color: "text-gray-500", bgColor: "bg-gray-50", borderColor: "border-gray-300" };
+  const variant = (statusToBadgeVariant[status] ?? "outline") as
     | "pending"
     | "approved"
     | "rejected"
@@ -54,9 +54,9 @@ export function StatusBadge({
     | "outline";
 
   const sizeClasses = {
-    sm: "text-[10px] px-1.5 py-0",
-    md: "text-xs px-2.5 py-0.5",
-    lg: "text-sm px-3 py-1",
+    sm: "text-[10px] px-2 py-0.5 whitespace-nowrap",
+    md: "text-xs px-3 py-1 whitespace-nowrap",
+    lg: "text-sm px-4 py-1.5 whitespace-nowrap",
   };
 
   // For statuses that don't have a built-in badge variant, use custom styling

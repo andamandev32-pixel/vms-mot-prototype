@@ -68,6 +68,7 @@ export async function POST(request: NextRequest) {
           role: user.role,
           departmentId: user.departmentId,
           departmentName: user.departmentName,
+          refId: user.refId ?? null,
         },
       },
     });

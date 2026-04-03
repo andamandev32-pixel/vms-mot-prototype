@@ -7,6 +7,7 @@ export type AppRole = "visitor" | "staff" | "supervisor" | "security" | "admin";
 export type Resource =
   | "dashboard"
   | "appointments"
+  | "approvals"
   | "appointment-groups"
   | "search"
   | "blocklist"
@@ -98,6 +99,10 @@ const permissionMatrix: Record<AppRole, Record<string, Permission[]>> = {
       { action: "edit", scope: "department" },
       { action: "approve", scope: "department" }, // ต้องอยู่ใน approver group ด้วย
     ],
+    approvals: [
+      { action: "view", scope: "department" },
+      { action: "approve", scope: "department" },
+    ],
     "appointment-groups": [
       { action: "view", scope: "own" },
       { action: "create", scope: "department" },
@@ -112,6 +117,10 @@ const permissionMatrix: Record<AppRole, Record<string, Permission[]>> = {
       { action: "view", scope: "all" },
       { action: "create", scope: "all" },
       { action: "edit", scope: "all" },
+      { action: "approve", scope: "all" },
+    ],
+    approvals: [
+      { action: "view", scope: "all" },
       { action: "approve", scope: "all" },
     ],
     "appointment-groups": [
@@ -141,6 +150,10 @@ const permissionMatrix: Record<AppRole, Record<string, Permission[]>> = {
       { action: "create", scope: "all" },
       { action: "edit", scope: "all" },
       { action: "delete", scope: "all" },
+      { action: "approve", scope: "all" },
+    ],
+    approvals: [
+      { action: "view", scope: "all" },
       { action: "approve", scope: "all" },
     ],
     "appointment-groups": [

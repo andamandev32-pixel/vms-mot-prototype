@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyToken } from "@/lib/auth";
+import { getStaffOrKiosk } from "@/lib/kiosk-auth";
 import { prisma } from "@/lib/prisma";
 import { sendCheckinNotification } from "@/lib/notification-service";
 
@@ -36,6 +37,14 @@ export async function GET(request: NextRequest) {
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const where: any = {};
+
+    // RBAC scoping — staff sees only their department's entries
+    if (user.role === "visitor") {
+      return err("FORBIDDEN", "ไม่มีสิทธิ์เข้าถึง", 403);
+    } else if (user.role === "staff" && user.departmentId) {
+      where.departmentId = user.departmentId;
+    }
+    // admin / supervisor / security — sees all entries
 
     if (status) {
       where.status = status;
@@ -118,8 +127,8 @@ export async function GET(request: NextRequest) {
 // ─────────────────────────────────────────────────────
 export async function POST(request: NextRequest) {
   try {
-    const user = await getAuthUser(request);
-    if (!user) {
+    const auth = await getStaffOrKiosk(request);
+    if (!auth) {
       return err("UNAUTHORIZED", "กรุณาเข้าสู่ระบบ", 401);
     }
 

@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyToken } from "@/lib/auth";
+import { getAuthUserOrKiosk } from "@/lib/kiosk-auth";
+import { verifyVisitorToken, VISITOR_COOKIE_NAME } from "@/lib/visitor-auth";
 import { prisma } from "@/lib/prisma";
 
 // ===== Inline response helpers =====
@@ -9,8 +11,14 @@ const err = (code: string, msg: string, status = 400) =>
   NextResponse.json({ success: false, error: { code, message: msg } }, { status });
 
 async function getAuthUser(request: NextRequest) {
-  const token = request.cookies.get("evms_session")?.value;
-  return token ? await verifyToken(token) : null;
+  const staffToken = request.cookies.get("evms_session")?.value;
+  if (staffToken) return await verifyToken(staffToken);
+  const visitorToken = request.cookies.get(VISITOR_COOKIE_NAME)?.value;
+  if (visitorToken) {
+    const v = await verifyVisitorToken(visitorToken);
+    if (v) return { id: v.id, username: v.email, email: v.email, name: `${v.firstName} ${v.lastName}`, nameEn: `${v.firstName} ${v.lastName}`, role: "visitor" as const, departmentId: null, departmentName: null };
+  }
+  return null;
 }
 
 // ─────────────────────────────────────────────────────
@@ -21,8 +29,8 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await getAuthUser(request);
-    if (!user) {
+    const auth = await getAuthUserOrKiosk(request);
+    if (!auth) {
       return err("UNAUTHORIZED", "กรุณาเข้าสู่ระบบ", 401);
     }
 
@@ -52,7 +60,11 @@ export async function GET(
         visitEntries: {
           include: {
             visitor: { select: { id: true, name: true } },
+            hostStaff: { select: { id: true, name: true, nameEn: true } },
+            department: { select: { id: true, name: true, nameEn: true } },
+            checkoutByStaff: { select: { id: true, name: true, nameEn: true } },
           },
+          orderBy: { checkinAt: "desc" },
         },
         companions: true,
         equipment: true,
@@ -70,15 +82,18 @@ export async function GET(
       return err("NOT_FOUND", "ไม่พบการนัดหมาย", 404);
     }
 
-    // RBAC check
-    if (user.role === "visitor") {
-      const visitor = await prisma.visitor.findFirst({ where: { email: user.email } });
-      if (!visitor || appointment.visitorId !== visitor.id) {
-        return err("FORBIDDEN", "คุณไม่มีสิทธิ์ดูการนัดหมายนี้", 403);
-      }
-    } else if (user.role === "staff") {
-      if (user.departmentId && appointment.departmentId !== user.departmentId) {
-        return err("FORBIDDEN", "คุณไม่มีสิทธิ์ดูการนัดหมายนี้", 403);
+    // RBAC check — kiosk สามารถดูได้ทุก appointment
+    if (auth.authType !== "kiosk" && auth.user) {
+      const user = auth.user;
+      if (user.role === "visitor") {
+        const visitorId = user.refId ?? (await prisma.visitor.findFirst({ where: { email: user.email } }))?.id;
+        if (!visitorId || appointment.visitorId !== visitorId) {
+          return err("FORBIDDEN", "คุณไม่มีสิทธิ์ดูการนัดหมายนี้", 403);
+        }
+      } else if (user.role === "staff") {
+        if (user.departmentId && appointment.departmentId !== user.departmentId) {
+          return err("FORBIDDEN", "คุณไม่มีสิทธิ์ดูการนัดหมายนี้", 403);
+        }
       }
     }
 
@@ -115,9 +130,13 @@ export async function PATCH(
 
     // Permission check: owner (visitor who created) or admin/supervisor
     if (user.role === "visitor") {
-      const visitor = await prisma.visitor.findFirst({ where: { email: user.email } });
-      if (!visitor || existing.visitorId !== visitor.id) {
+      const visitorId = user.refId ?? (await prisma.visitor.findFirst({ where: { email: user.email } }))?.id;
+      if (!visitorId || existing.visitorId !== visitorId) {
         return err("FORBIDDEN", "คุณไม่มีสิทธิ์แก้ไขการนัดหมายนี้", 403);
+      }
+      // Visitor can only edit pending appointments
+      if (existing.status !== "pending") {
+        return err("INVALID_STATUS", "ไม่สามารถแก้ไขการนัดหมายที่ได้รับการอนุมัติแล้วได้", 403);
       }
     } else if (user.role === "staff") {
       // Staff can edit if they are the host or in the same department

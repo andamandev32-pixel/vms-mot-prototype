@@ -1,11 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiFetch, apiPost } from "./use-api";
+import { kioskApiFetch, kioskApiPost } from "../kiosk/kiosk-auth-context";
+import { apiPost } from "./use-api";
 
 // Load kiosk service point config
 export function useKioskConfig(servicePointId: number | null) {
   return useQuery({
     queryKey: ["kiosk-config", servicePointId],
-    queryFn: () => apiFetch(`/api/service-points/${servicePointId}`),
+    queryFn: () => kioskApiFetch(`/api/service-points/${servicePointId}`),
     enabled: !!servicePointId,
   });
 }
@@ -14,7 +15,7 @@ export function useKioskConfig(servicePointId: number | null) {
 export function useKioskPurposes() {
   return useQuery({
     queryKey: ["kiosk-purposes"],
-    queryFn: () => apiFetch("/api/visit-purposes"),
+    queryFn: () => kioskApiFetch("/api/visit-purposes"),
   });
 }
 
@@ -22,7 +23,7 @@ export function useKioskPurposes() {
 export function useSearchVisitor() {
   return useMutation({
     mutationFn: (params: { idNumber: string }) =>
-      apiFetch(`/api/search/visitors?search=${encodeURIComponent(params.idNumber)}`),
+      kioskApiFetch(`/api/search/visitors?search=${encodeURIComponent(params.idNumber)}`),
   });
 }
 
@@ -30,7 +31,7 @@ export function useSearchVisitor() {
 export function useKioskBlocklistCheck() {
   return useMutation({
     mutationFn: (params: { firstName: string; lastName: string }) =>
-      apiPost("/api/blocklist/check", params),
+      kioskApiPost("/api/blocklist/check", params),
   });
 }
 
@@ -51,7 +52,7 @@ export function useKioskCheckin() {
       appointmentId?: number;
       idMethod?: string;
       companions?: number;
-    }) => apiPost("/api/entries", data),
+    }) => kioskApiPost("/api/entries", data),
   });
 }
 
@@ -59,7 +60,7 @@ export function useKioskCheckin() {
 export function useAppointmentLookup() {
   return useMutation({
     mutationFn: (params: { bookingCode: string }) =>
-      apiFetch(`/api/search/appointments?search=${encodeURIComponent(params.bookingCode)}`),
+      kioskApiFetch(`/api/search/appointments?search=${encodeURIComponent(params.bookingCode)}`),
   });
 }
 
@@ -67,7 +68,7 @@ export function useAppointmentLookup() {
 export function useCreatePendingAppointment() {
   return useMutation({
     mutationFn: (data: Record<string, unknown>) =>
-      apiPost("/api/appointments", { ...data, channel: "kiosk" }),
+      kioskApiPost("/api/appointments", { ...data, channel: "kiosk" }),
   });
 }
 
@@ -75,13 +76,13 @@ export function useCreatePendingAppointment() {
 export function usePollAppointmentStatus(appointmentId: number | null, enabled: boolean) {
   return useQuery({
     queryKey: ["appointment-status", appointmentId],
-    queryFn: () => apiFetch(`/api/appointments/${appointmentId}`),
+    queryFn: () => kioskApiFetch(`/api/appointments/${appointmentId}`),
     enabled: !!appointmentId && enabled,
     refetchInterval: 10000, // poll every 10 seconds
   });
 }
 
-// Record PDPA consent
+// Record PDPA consent — ใช้ apiPost ปกติ เพราะ endpoint นี้เป็น public อยู่แล้ว
 export function useRecordPdpaConsent() {
   return useMutation({
     mutationFn: (data: { visitorId: number; configVersion: number; consentChannel: string; deviceId?: string }) =>

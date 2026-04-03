@@ -18,6 +18,7 @@ export default function Sidebar() {
     const allNavItems = [
         { href: "/web/dashboard", label: "ภาพรวม", icon: <LayoutDashboard size={20} />, resource: "dashboard" },
         { href: "/web/appointments", label: "การนัดหมาย", icon: <Calendar size={20} />, resource: "appointments" },
+        { href: "/web/approvals", label: "อนุมัตินัดหมาย", icon: <ShieldCheck size={20} />, resource: "approvals" },
         { href: "/web/search", label: "รายชื่อการติดต่อ", icon: <Search size={20} />, resource: "search" },
         { href: "/web/blocklist", label: "Blocklist", icon: <Shield size={20} />, resource: "blocklist" },
         { href: "/web/reports", label: "รายงาน", icon: <FileText size={20} />, resource: "reports" },

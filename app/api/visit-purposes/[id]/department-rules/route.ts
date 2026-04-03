@@ -74,6 +74,7 @@ export async function POST(
       acceptFromWeb = true,
       acceptFromKiosk = true,
       acceptFromCounter = true,
+      followBusinessHours = false,
       isActive = true,
     } = body;
 
@@ -91,6 +92,7 @@ export async function POST(
         acceptFromWeb,
         acceptFromKiosk,
         acceptFromCounter,
+        followBusinessHours,
         isActive,
       },
     });

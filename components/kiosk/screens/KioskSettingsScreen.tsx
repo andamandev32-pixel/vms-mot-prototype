@@ -1,7 +1,9 @@
 "use client";
 
-import { Settings, X, Monitor, Clock, FileText, Target, Wifi, Printer, Shield, ChevronDown } from "lucide-react";
+import { useState } from "react";
+import { Settings, X, Monitor, Clock, FileText, Target, Wifi, Printer, Shield, ChevronDown, Key } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useKioskAuth } from "@/lib/kiosk/kiosk-auth-context";
 import type { ResolvedKioskConfig } from "@/lib/kiosk/kiosk-config-resolver";
 import type { ServicePoint } from "@/lib/mock-data";
 
@@ -68,6 +70,8 @@ export default function KioskSettingsScreen({
   const sp = config.servicePoint;
   const bh = config.businessHours;
   const th = locale === "th";
+  const { isAuthenticated, deviceToken, setDeviceToken, clearDeviceToken } = useKioskAuth();
+  const [tokenInput, setTokenInput] = useState("");
 
   return (
     <div className="flex flex-col h-full bg-gradient-to-b from-slate-50 to-white overflow-hidden">
@@ -232,6 +236,62 @@ export default function KioskSettingsScreen({
             label={th ? "ระยะเก็บข้อมูล" : "Retention"}
             value={`${config.pdpa.retentionDays} ${th ? "วัน" : "days"}`}
           />
+        </div>
+
+        {/* Device Token Authentication */}
+        <div className="bg-white rounded-xl border border-gray-100 p-2.5 shadow-sm">
+          <SectionTitle icon={<Key size={11} />}>
+            {th ? "Device Token" : "Device Token"}
+          </SectionTitle>
+          {isAuthenticated ? (
+            <>
+              <InfoRow
+                label={th ? "สถานะ" : "Status"}
+                value={
+                  <span className="text-emerald-600 font-bold">
+                    {th ? "✅ เชื่อมต่อแล้ว" : "✅ Connected"}
+                  </span>
+                }
+              />
+              <InfoRow
+                label="Token"
+                value={`${deviceToken?.substring(0, 15)}...`}
+              />
+              <button
+                onClick={clearDeviceToken}
+                className="mt-1.5 w-full py-1.5 rounded-lg bg-red-50 border border-red-200 text-red-600 text-[9px] font-bold hover:bg-red-100 transition-colors"
+              >
+                {th ? "ลบ Token" : "Remove Token"}
+              </button>
+            </>
+          ) : (
+            <>
+              <p className="text-[8px] text-gray-400 mb-1.5">
+                {th
+                  ? "กรุณาใส่ Device Token ที่ได้จาก Admin เพื่อเชื่อมต่อ API"
+                  : "Enter the Device Token from Admin to connect to API"}
+              </p>
+              <input
+                type="text"
+                value={tokenInput}
+                onChange={(e) => setTokenInput(e.target.value)}
+                placeholder="kvms_..."
+                className="w-full px-2 py-1.5 text-[9px] rounded-lg border border-gray-200 bg-gray-50 text-[#1B2B5E] font-mono focus:border-[#2E3192] focus:outline-none"
+              />
+              <button
+                onClick={() => {
+                  if (tokenInput.trim().startsWith("kvms_")) {
+                    setDeviceToken(tokenInput.trim(), selectedKioskId);
+                    setTokenInput("");
+                  }
+                }}
+                disabled={!tokenInput.trim().startsWith("kvms_")}
+                className="mt-1.5 w-full py-1.5 rounded-lg bg-[#2E3192] text-white text-[9px] font-bold hover:bg-[#252880] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+              >
+                {th ? "บันทึก Token" : "Save Token"}
+              </button>
+            </>
+          )}
         </div>
 
         {/* Note */}

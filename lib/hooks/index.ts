@@ -9,3 +9,4 @@ export * from "./use-settings";
 export * from "./use-reports";
 export * from "./use-counter";
 export * from "./use-kiosk";
+export * from "./use-debounce";

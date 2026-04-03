@@ -8,7 +8,7 @@ const STAFF_COOKIE = "evms_session";
 const VISITOR_COOKIE = "evms_visitor_session";
 
 // Routes ที่ต้อง login ก่อนเข้า (staff)
-const PROTECTED_PREFIXES = ["/web/dashboard", "/web/appointments", "/web/search", "/web/blocklist", "/web/reports", "/web/settings", "/web/profile"];
+const PROTECTED_PREFIXES = ["/web/dashboard", "/web/appointments", "/web/approvals", "/web/search", "/web/blocklist", "/web/reports", "/web/settings", "/web/profile"];
 
 // Visitor protected routes (require visitor session)
 const VISITOR_PROTECTED_PREFIXES = ["/visitor/booking", "/visitor/history", "/visitor/profile", "/visitor/booking-status"];

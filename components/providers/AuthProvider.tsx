@@ -14,6 +14,7 @@ export interface SessionUser {
   role: AppRole;
   departmentId: number | null;
   departmentName: string | null;
+  refId?: number | null;
 }
 
 interface AuthContextType {

@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyToken } from "@/lib/auth";
-import { verifyVisitorToken, VISITOR_COOKIE_NAME } from "@/lib/visitor-auth";
+import { getAuthUserOrKiosk, type AuthResult } from "@/lib/kiosk-auth";
 import { prisma } from "@/lib/prisma";
 
 // ===== Inline response helpers =====
@@ -9,38 +8,13 @@ const ok = (data: unknown) =>
 const err = (code: string, msg: string, status = 400) =>
   NextResponse.json({ success: false, error: { code, message: msg } }, { status });
 
-// ===== Helper: ดึง authenticated user จาก cookie (staff หรือ visitor) =====
-async function getAuthUser(request: NextRequest) {
-  // Try staff session first
-  const staffToken = request.cookies.get("evms_session")?.value;
-  if (staffToken) return await verifyToken(staffToken);
-  // Fallback: visitor session
-  const visitorToken = request.cookies.get(VISITOR_COOKIE_NAME)?.value;
-  if (visitorToken) {
-    const v = await verifyVisitorToken(visitorToken);
-    if (v) {
-      return {
-        id: v.id,
-        username: v.email,
-        email: v.email,
-        name: `${v.firstName} ${v.lastName}`,
-        nameEn: `${v.firstName} ${v.lastName}`,
-        role: "visitor" as const,
-        departmentId: null,
-        departmentName: null,
-      };
-    }
-  }
-  return null;
-}
-
 // ─────────────────────────────────────────────────────
 // GET /api/appointments — list appointments (RBAC scoped)
 // ─────────────────────────────────────────────────────
 export async function GET(request: NextRequest) {
   try {
-    const user = await getAuthUser(request);
-    if (!user) {
+    const auth = await getAuthUserOrKiosk(request);
+    if (!auth) {
       return err("UNAUTHORIZED", "กรุณาเข้าสู่ระบบ", 401);
     }
 
@@ -59,22 +33,31 @@ export async function GET(request: NextRequest) {
     const where: any = {};
 
     // RBAC scoping
-    if (user.role === "visitor") {
-      // Visitor sees only their own appointments (match by email)
-      const visitor = await prisma.visitor.findFirst({ where: { email: user.email } });
-      if (visitor) {
-        where.visitorId = visitor.id;
-      } else {
-        // No matching visitor record — return empty
-        return ok({ appointments: [], pagination: { page, limit, total: 0, totalPages: 0 } });
+    if (auth.authType === "kiosk") {
+      // Kiosk — no RBAC filtering (operates within its service point context)
+    } else {
+      const user = auth.user;
+      if (user.role === "visitor") {
+        // Visitor sees only their own appointments (match by refId → visitor.id)
+        if (user.refId) {
+          where.visitorId = user.refId;
+        } else {
+          // Fallback: try email lookup
+          const visitor = await prisma.visitor.findFirst({ where: { email: user.email } });
+          if (visitor) {
+            where.visitorId = visitor.id;
+          } else {
+            return ok({ appointments: [], pagination: { page, limit, total: 0, totalPages: 0 } });
+          }
+        }
+      } else if (user.role === "staff") {
+        // Staff sees appointments for their department
+        if (user.departmentId) {
+          where.departmentId = user.departmentId;
+        }
       }
-    } else if (user.role === "staff") {
-      // Staff sees appointments for their department
-      if (user.departmentId) {
-        where.departmentId = user.departmentId;
-      }
+      // admin / supervisor sees all — no extra filter
     }
-    // admin / supervisor sees all — no extra filter
 
     // Query param filters
     if (status) {
@@ -126,6 +109,15 @@ export async function GET(request: NextRequest) {
           },
           department: { select: { id: true, name: true, nameEn: true } },
           visitPurpose: { select: { id: true, name: true, nameEn: true } },
+          approvedByStaff: { select: { id: true, name: true, nameEn: true } },
+          visitEntries: {
+            select: {
+              id: true, entryCode: true, status: true,
+              checkinAt: true, checkoutAt: true, checkinChannel: true,
+            },
+            orderBy: { checkinAt: "desc" },
+            take: 5,
+          },
           _count: { select: { visitEntries: true, companions: true } },
         },
         orderBy: { createdAt: "desc" },
@@ -153,8 +145,8 @@ export async function GET(request: NextRequest) {
 // ─────────────────────────────────────────────────────
 export async function POST(request: NextRequest) {
   try {
-    const user = await getAuthUser(request);
-    if (!user) {
+    const auth = await getAuthUserOrKiosk(request);
+    if (!auth) {
       return err("UNAUTHORIZED", "กรุณาเข้าสู่ระบบ", 401);
     }
 
@@ -209,8 +201,8 @@ export async function POST(request: NextRequest) {
       return err("RULE_NOT_FOUND", "ไม่อนุญาตสำหรับวัตถุประสงค์และแผนกนี้", 400);
     }
 
-    // Channel validation
-    const requestChannel = channel || "web";
+    // Channel validation — kiosk auth ใช้ channel "kiosk" เป็นค่าเริ่มต้น
+    const requestChannel = channel || (auth.authType === "kiosk" ? "kiosk" : "web");
     if (requestChannel === "line" && !rule.acceptFromLine) {
       return err("CHANNEL_BLOCKED", "ไม่รับการนัดหมายจาก LINE สำหรับวัตถุประสงค์และแผนกนี้", 403);
     }
@@ -240,6 +232,40 @@ export async function POST(request: NextRequest) {
       }
       if (new Date(dateEnd) <= new Date(date)) {
         return err("DATE_END_INVALID", "dateEnd ต้องมากกว่า dateStart", 400);
+      }
+    }
+
+    // ═══════ Business Hours Enforcement ═══════
+    if (rule.followBusinessHours) {
+      const bhRules = await prisma.businessHoursRule.findMany({ where: { isActive: true } });
+      const reqDate = new Date(date);
+      const dow = reqDate.getDay(); // 0=Sun
+      const isoDate = date; // YYYY-MM-DD
+
+      // Check holiday rules first
+      const holiday = bhRules.find(r => r.type === "holiday" && r.specificDate?.toISOString().startsWith(isoDate));
+      if (holiday) {
+        return err("BUSINESS_HOURS_CLOSED", `วันที่เลือกเป็นวันหยุด (${holiday.name}) ไม่สามารถนัดหมายได้`, 400);
+      }
+
+      // Check regular rules
+      const regularRule = bhRules.find(r => r.type === "regular" && Array.isArray(r.daysOfWeek) && (r.daysOfWeek as number[]).includes(dow));
+      if (!regularRule) {
+        return err("BUSINESS_HOURS_CLOSED", "วันที่เลือกไม่อยู่ในวันทำการ", 400);
+      }
+
+      // Check if closed day (openTime === closeTime, e.g. 00:00/00:00)
+      // Use local time (Prisma DateTime from MySQL TIME stores as local)
+      const pad2 = (n: number) => String(n).padStart(2, "0");
+      const openStr = `${pad2(regularRule.openTime.getHours())}:${pad2(regularRule.openTime.getMinutes())}`;
+      const closeStr = `${pad2(regularRule.closeTime.getHours())}:${pad2(regularRule.closeTime.getMinutes())}`;
+      if (openStr === closeStr) {
+        return err("BUSINESS_HOURS_CLOSED", "วันที่เลือกเป็นวันหยุด ไม่สามารถนัดหมายได้", 400);
+      }
+
+      // Check time bounds
+      if (timeStart < openStr || timeEnd > closeStr || timeStart >= timeEnd) {
+        return err("BUSINESS_HOURS_TIME", `เวลาต้องอยู่ภายในเวลาทำการ (${openStr} - ${closeStr})`, 400);
       }
     }
 
@@ -278,7 +304,7 @@ export async function POST(request: NextRequest) {
     const bookingCode = `eVMS-${today}-${String(seq).padStart(4, "0")}`;
 
     // Determine createdBy
-    const createdBy = user.role === "visitor" ? "visitor" : "staff";
+    const createdBy = auth.authType === "kiosk" ? "kiosk" : (auth.user.role === "visitor" ? "visitor" : "staff");
 
     // Parse time fields — Prisma @db.Time expects a Date with time portion
     const parseDateOnly = (d: string) => new Date(d + "T00:00:00.000Z");
@@ -301,7 +327,7 @@ export async function POST(request: NextRequest) {
         purpose: purpose.trim(),
         companionsCount: companions || companionNames?.length || 0,
         createdBy,
-        createdByStaffId: createdBy === "staff" ? user.id : null,
+        createdByStaffId: createdBy === "staff" && auth.user ? auth.user.id : null,
         offerWifi: offerWifi || false,
         notifyOnCheckin: notifyOnCheckin ?? true,
         groupId: groupId || null,
@@ -310,7 +336,7 @@ export async function POST(request: NextRequest) {
         floor: floor || null,
         room: room || null,
         notes: notes || null,
-        approvedBy: autoApprove && createdBy === "staff" ? user.id : null,
+        approvedBy: autoApprove && createdBy === "staff" && auth.user ? auth.user.id : null,
         approvedAt: autoApprove ? new Date() : null,
         // Create companions if provided
         companions: companionNames && companionNames.length > 0
@@ -339,7 +365,7 @@ export async function POST(request: NextRequest) {
           create: {
             fromStatus: null,
             toStatus: initialStatus,
-            changedBy: createdBy === "staff" ? user.id : null,
+            changedBy: createdBy === "staff" && auth.user ? auth.user.id : null,
             reason: autoApprove
               ? "สร้างการนัดหมาย — อนุมัติอัตโนมัติ (ไม่ต้องอนุมัติ)"
               : "สร้างการนัดหมายใหม่ — รอการอนุมัติ",

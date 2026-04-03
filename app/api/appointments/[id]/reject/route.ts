@@ -51,6 +51,36 @@ export async function POST(
       return err("INVALID_STATUS", `ไม่สามารถปฏิเสธการนัดหมายที่มีสถานะ "${existing.status}" ได้`);
     }
 
+    // ═══════ Approver Group Authorization ═══════
+    if (user.role === "staff") {
+      const staffId = user.refId;
+      if (!staffId) {
+        return err("FORBIDDEN", "ไม่พบข้อมูลเจ้าหน้าที่", 403);
+      }
+
+      const rule = await prisma.visitPurposeDepartmentRule.findFirst({
+        where: {
+          visitPurposeId: existing.visitPurposeId,
+          departmentId: existing.departmentId,
+          isActive: true,
+        },
+      });
+
+      if (rule?.requireApproval && rule.approverGroupId) {
+        const membership = await prisma.approverGroupMember.findFirst({
+          where: {
+            approverGroupId: rule.approverGroupId,
+            staffId,
+            canApprove: true,
+          },
+        });
+
+        if (!membership) {
+          return err("FORBIDDEN", "คุณไม่อยู่ในกลุ่มผู้อนุมัติสำหรับการนัดหมายนี้", 403);
+        }
+      }
+    }
+
     const now = new Date();
 
     const appointment = await prisma.appointment.update({

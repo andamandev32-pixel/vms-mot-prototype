@@ -156,6 +156,13 @@ export interface Appointment {
   rejectedAt?: string;
   rejectedReason?: string;
   notes?: string;
+  purposeName?: string;       // วัตถุประสงค์ (ชื่อจาก visitPurpose.name)
+  visitEntryCount?: number;   // จำนวนครั้งที่เข้าพื้นที่
+  // Visit entry tracking data from API
+  visitEntries?: any[];             // latest visit entries (from API include)
+  lastEntryStatus?: string | null;  // status of the latest visit entry
+  visitPurposeId?: number;          // for group-based filtering
+  departmentId?: number;            // for group-based filtering
   // Linked entries (populated for UI display):
   entries?: VisitEntry[];
 }
@@ -196,7 +203,7 @@ export const visitTypes: Record<VisitType, { label: string; labelEn: string; ico
 type StatusStyleConfig = { label: string; labelEn: string; color: string; bgColor: string; borderColor: string };
 
 export const appointmentStatusConfig: Record<AppointmentStatus, StatusStyleConfig> = {
-  pending: { label: "รอดำเนินการ", labelEn: "Pending", color: "text-warning", bgColor: "bg-warning-light", borderColor: "border-warning" },
+  pending: { label: "รออนุมัติ", labelEn: "Pending", color: "text-warning", bgColor: "bg-warning-light", borderColor: "border-warning" },
   approved: { label: "อนุมัติแล้ว", labelEn: "Approved", color: "text-success", bgColor: "bg-success-light", borderColor: "border-success" },
   rejected: { label: "ไม่อนุมัติ", labelEn: "Rejected", color: "text-error", bgColor: "bg-error-light", borderColor: "border-error" },
   confirmed: { label: "ยืนยันแล้ว", labelEn: "Confirmed", color: "text-info", bgColor: "bg-info-light", borderColor: "border-info" },
@@ -1534,6 +1541,7 @@ export interface DepartmentRule {
   acceptFromWeb: boolean;         // แผนกนี้รับจาก Web App
   acceptFromKiosk: boolean;       // แผนกนี้รับจาก Kiosk
   acceptFromCounter: boolean;     // แผนกนี้รับจาก Counter
+  followBusinessHours?: boolean;  // นัดหมายต้องอยู่ภายในเวลาทำการ
   isActive: boolean;
 }
 

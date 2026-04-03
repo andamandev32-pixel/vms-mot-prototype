@@ -39,6 +39,7 @@ import {
   IdCard,
   Calendar,
   CheckCircle2,
+  Clock,
 } from "lucide-react";
 import {
   visitPurposeConfigs,
@@ -136,6 +137,7 @@ export default function VisitPurposeSettingsPage() {
           acceptFromWeb: r.acceptFromWeb,
           acceptFromKiosk: r.acceptFromKiosk,
           acceptFromCounter: r.acceptFromCounter,
+          followBusinessHours: r.followBusinessHours ?? false,
           isActive: r.isActive,
         })),
         isActive: p.isActive,
@@ -212,7 +214,7 @@ export default function VisitPurposeSettingsPage() {
     purposeId: number; ruleId?: number; departmentId: number;
     requirePersonName: boolean; requireApproval: boolean; approverGroupId: number | null;
     offerWifi: boolean; acceptFromLine: boolean; acceptFromWeb: boolean;
-    acceptFromKiosk: boolean; acceptFromCounter: boolean; isActive: boolean;
+    acceptFromKiosk: boolean; acceptFromCounter: boolean; followBusinessHours: boolean; isActive: boolean;
   }) => {
     try {
       if (data.ruleId) {
@@ -223,7 +225,8 @@ export default function VisitPurposeSettingsPage() {
         showToast("success", "เพิ่มแผนกสำเร็จ");
       }
       closeDeptDrawer();
-    } catch {
+    } catch (e) {
+      console.error("handleSaveDeptRule error:", e);
       showToast("error", "เกิดข้อผิดพลาด กรุณาลองใหม่");
     }
   }, [updateDeptRuleMut, createDeptRuleMut, showToast]);
@@ -458,10 +461,12 @@ function PurposeCard({
       )}
     >
       {/* ─── Header row ──────────────────────── */}
-      <button
-        type="button"
-        className="w-full text-left"
+      <div
+        role="button"
+        tabIndex={0}
+        className="w-full text-left cursor-pointer"
         onClick={onToggle}
+        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onToggle(); } }}
       >
         <CardContent className="p-5 flex items-center gap-4">
           {/* icon + name */}
@@ -535,7 +540,7 @@ function PurposeCard({
             {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
           </div>
         </CardContent>
-      </button>
+      </div>
 
       {/* ─── Expanded: entry channel configs + per-department table ─── */}
       {isExpanded && (
@@ -586,6 +591,7 @@ function PurposeCard({
                   <th className="px-5 py-3 text-center">รับจาก Web</th>
                   <th className="px-5 py-3 text-center">รับจาก Kiosk</th>
                   <th className="px-5 py-3 text-center">รับจาก Counter</th>
+                  <th className="px-5 py-3 text-center">เวลาทำการ</th>
                   <th className="px-5 py-3 text-center">สถานะ</th>
                   <th className="px-5 py-3 text-center">Flow</th>
                   <th className="px-5 py-3 text-right">จัดการ</th>
@@ -723,6 +729,15 @@ function DeptRuleRow({ rule, onEdit, onDelete }: { rule: DepartmentRule; onEdit:
           value={rule.acceptFromCounter}
           trueIcon={<Users size={13} />}
           trueClass="bg-amber-50 text-amber-600"
+        />
+      </td>
+
+      {/* followBusinessHours */}
+      <td className="px-5 py-3.5 text-center">
+        <BoolIcon
+          value={rule.followBusinessHours ?? false}
+          trueIcon={<Clock size={13} />}
+          trueClass="bg-cyan-50 text-cyan-600"
         />
       </td>
 
@@ -1158,7 +1173,7 @@ function DeptRuleDrawer({
     purposeId: number; ruleId?: number; departmentId: number;
     requirePersonName: boolean; requireApproval: boolean; approverGroupId: number | null;
     offerWifi: boolean; acceptFromLine: boolean; acceptFromWeb: boolean;
-    acceptFromKiosk: boolean; acceptFromCounter: boolean; isActive: boolean;
+    acceptFromKiosk: boolean; acceptFromCounter: boolean; followBusinessHours: boolean; isActive: boolean;
   }) => void;
 }) {
   const isEditing = !!data?.rule;
@@ -1173,6 +1188,7 @@ function DeptRuleDrawer({
   const [acceptFromWeb, setAcceptFromWeb] = useState(rule?.acceptFromWeb ?? true);
   const [acceptFromKiosk, setAcceptFromKiosk] = useState(rule?.acceptFromKiosk ?? true);
   const [acceptFromCounter, setAcceptFromCounter] = useState(rule?.acceptFromCounter ?? true);
+  const [followBusinessHours, setFollowBusinessHours] = useState(rule?.followBusinessHours ?? false);
   const [isActive, setIsActive] = useState(rule?.isActive ?? true);
 
   /* reset when drawer data changes */
@@ -1188,6 +1204,7 @@ function DeptRuleDrawer({
       setAcceptFromWeb(r.acceptFromWeb);
       setAcceptFromKiosk(r.acceptFromKiosk);
       setAcceptFromCounter(r.acceptFromCounter);
+      setFollowBusinessHours(r.followBusinessHours ?? false);
       setIsActive(r.isActive);
     } else if (data && !data.rule) {
       setDeptId(0);
@@ -1199,6 +1216,7 @@ function DeptRuleDrawer({
       setAcceptFromWeb(true);
       setAcceptFromKiosk(true);
       setAcceptFromCounter(true);
+      setFollowBusinessHours(false);
       setIsActive(true);
     }
   }, [data]);
@@ -1278,6 +1296,14 @@ function DeptRuleDrawer({
             description="เสนอ WiFi Voucher ให้ผู้เข้าเยี่ยม"
             value={offerWifi}
             onChange={setOfferWifi}
+          />
+
+          <ToggleOption
+            icon={<Clock size={16} className="text-cyan-600" />}
+            label="อิงเวลาทำการ"
+            description="นัดหมายจากผู้เยี่ยมชมต้องอยู่ภายในเวลาทำการ"
+            value={followBusinessHours}
+            onChange={setFollowBusinessHours}
           />
         </div>
 
@@ -1368,6 +1394,7 @@ function DeptRuleDrawer({
             acceptFromWeb,
             acceptFromKiosk,
             acceptFromCounter,
+            followBusinessHours,
             isActive,
           });
         }}>
@@ -1406,13 +1433,13 @@ function ToggleOption({
         type="button"
         onClick={() => onChange(!value)}
         className={cn(
-          "w-11 h-6 rounded-full transition-colors relative shrink-0",
+          "w-12 h-7 rounded-full transition-colors relative shrink-0",
           value ? "bg-primary" : "bg-gray-300"
         )}
       >
         <span className={cn(
-          "absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform",
-          value ? "translate-x-5" : "translate-x-0.5"
+          "absolute top-1 left-1 w-5 h-5 bg-white rounded-full shadow transition-transform",
+          value ? "translate-x-5" : "translate-x-0"
         )} />
       </button>
     </div>

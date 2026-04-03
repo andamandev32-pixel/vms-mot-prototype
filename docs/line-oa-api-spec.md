@@ -64,6 +64,197 @@ Authorization: Bearer <user_jwt_token>
 
 ---
 
+## สรุปการเปลี่ยนแปลงระบบ Web ที่กระทบ LINE OA (อัปเดตล่าสุด 2026-04-03)
+
+> ส่วนนี้สรุปการเปลี่ยนแปลงจากระบบ Web App ที่มีผลต่อ LINE OA flow โดยตรง
+> DEV ควรอ่านก่อนทำงานต่อ
+
+### 1. Appointment Creation — รองรับทั้ง Visitor + Staff สร้าง
+
+ระบบรองรับการสร้างนัดหมาย 2 ช่องทาง:
+- **Visitor สร้างเอง**: ผ่าน LINE LIFF, Mobile App, Web Visitor
+- **Staff สร้างให้ Visitor**: ผ่าน Web App → `POST /api/appointments` ด้วย `createdBy: "staff"`
+
+**API Endpoint:** `POST /api/appointments`
+
+**Required Fields (อัปเดต):**
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| visitorId | number | Yes | ID ผู้เยี่ยมชม |
+| visitPurposeId | number | Yes | ID วัตถุประสงค์ |
+| departmentId | number | Yes | ID แผนกที่จะเข้าพบ |
+| hostStaffId | number | Conditional | ID เจ้าหน้าที่ผู้พบ (required ถ้า `requirePersonName=true`) |
+| type | string | Yes | `official` / `meeting` / `document` / `contractor` / `delivery` / `other` |
+| entryMode | string | No | `single` (default) / `period` |
+| date | string | Yes | วันเริ่ม (YYYY-MM-DD) |
+| dateEnd | string | No | วันสิ้นสุด (เฉพาะ `period` mode) |
+| timeStart | string | Yes | เวลาเริ่ม (HH:mm) |
+| timeEnd | string | Yes | เวลาสิ้นสุด (HH:mm) |
+| purpose | string | Yes | รายละเอียดวัตถุประสงค์ |
+| channel | string | Yes | `line` / `web` / `kiosk` / `counter` |
+| companions | number | No | จำนวนผู้ติดตาม |
+| offerWifi | boolean | No | เสนอ WiFi ให้ผู้เยี่ยม |
+| equipment | object[] | No | อุปกรณ์นำเข้า `[{name, quantity, serialNumber}]` |
+| notes | string | No | หมายเหตุ |
+
+### 2. VisitPurposeDepartmentRule — กฎอนุมัติตามแผนก (สำคัญมาก)
+
+เมื่อสร้างนัดหมาย ระบบค้นหากฎจาก `visit_purpose_department_rules` ด้วย `(visitPurposeId, departmentId)`:
+
+```
+// Logic ใน POST /api/appointments (line 218-295)
+1. ดึง rule = VisitPurposeDepartmentRule.findFirst({ visitPurposeId, departmentId })
+2. ตรวจ rule.acceptFromLine → ถ้า false → return CHANNEL_BLOCKED error
+3. ตรวจ rule.requirePersonName → ถ้า true → ต้องมี hostStaffId
+4. ตรวจ rule.requireApproval:
+   - true  → status = "pending"  (ต้องรออนุมัติ)
+   - false → status = "approved" (อนุมัติอัตโนมัติ)
+5. ถ้า pending → ควร trigger sendApprovalNotification()
+```
+
+**ตาราง visit_purpose_department_rules:**
+
+| Column | Type | สำคัญสำหรับ LINE |
+|--------|------|------------------|
+| visitPurposeId | int | FK → visit_purposes |
+| departmentId | int | FK → departments |
+| requireApproval | boolean | กำหนดว่าต้องขออนุมัติหรือไม่ |
+| approverGroupId | int? | กลุ่มผู้อนุมัติที่รับผิดชอบ |
+| requirePersonName | boolean | ต้องระบุชื่อผู้พบหรือไม่ |
+| acceptFromLine | boolean | **อนุญาตจอง LINE ได้หรือไม่** |
+| acceptFromWeb | boolean | อนุญาตจอง Web |
+| acceptFromKiosk | boolean | อนุญาตจอง Kiosk |
+| acceptFromCounter | boolean | อนุญาตจอง Counter |
+| offerWifi | boolean | เสนอ WiFi |
+| followBusinessHours | boolean | ต้องจองในเวลาทำการ |
+
+### 3. ApproverGroup — กลุ่มผู้อนุมัติ (1 กลุ่ม : หลายวัตถุประสงค์)
+
+กลุ่มผู้อนุมัติจัดการอนุมัติหลายประเภทการมาของแผนกเดียวกัน เช่น กลุ่ม "Admin กองกลาง" อนุมัติทั้ง `official`, `meeting`, `document` ของแผนกกองกลาง
+
+**ตาราง approver_groups:**
+
+| Column | Description |
+|--------|-------------|
+| id | Primary key |
+| name | ชื่อกลุ่ม (เช่น "Admin กองกลาง") |
+| departmentId | แผนกที่รับผิดชอบ |
+| isActive | เปิด/ปิดใช้งาน |
+
+**ตาราง approver_group_members:**
+
+| Column | Description |
+|--------|-------------|
+| approverGroupId | FK → approver_groups |
+| staffId | FK → staff |
+| canApprove | **true = มีสิทธิ์อนุมัติ** |
+| receiveNotification | **true = รับแจ้งเตือน (LINE/Email)** |
+
+**ตาราง approver_group_notify_channels:**
+
+| Column | Description |
+|--------|-------------|
+| approverGroupId | FK → approver_groups |
+| channel | `"line"` / `"email"` / `"web-app"` |
+
+> **สำหรับ LINE OA:** เมื่อ appointment ต้องอนุมัติ → ระบบส่ง notification ไปยังสมาชิก group ที่มี `receiveNotification=true` ผ่าน channel ที่ตั้งค่าไว้ (ถ้ามี "line" → ส่ง Flex Message)
+
+### 4. Approve/Reject — มีการตรวจ ApproverGroup Membership
+
+**API Endpoints (Implemented):**
+- `POST /api/appointments/:id/approve` — อนุมัตินัดหมาย
+- `POST /api/appointments/:id/reject` — ปฏิเสธนัดหมาย (`{ reason: "..." }`)
+
+**Authorization Logic:**
+```
+1. visitor → 403 Forbidden
+2. admin/supervisor → อนุมัติได้ทุกรายการ
+3. staff → ตรวจสอบว่า:
+   a. ดึง rule = VisitPurposeDepartmentRule ตาม appointment
+   b. ถ้า rule.requireApproval && rule.approverGroupId:
+      - ต้องมี ApproverGroupMember ที่ staffId = user.refId, canApprove = true
+      - ถ้าไม่มี → 403 "คุณไม่อยู่ในกลุ่มผู้อนุมัติ"
+```
+
+**เมื่ออนุมัติ/ปฏิเสธ สำเร็จ:**
+- อัปเดต `appointments.status`, `approvedBy`, `approvedAt`
+- สร้าง `AppointmentStatusLog` record
+- **ควร trigger notification ไปยัง visitor ทาง LINE** (TODO: implement)
+
+### 5. หน้า /web/approvals — สำหรับผู้อนุมัติ
+
+**URL:** `/web/approvals`
+**API:** `GET /api/approvals`
+
+หน้าจอสำหรับ staff/supervisor/admin ดูรายการรออนุมัติ:
+- **Group selector** — เลือกกลุ่มผู้อนุมัติ
+- **4 Status tabs:** รออนุมัติ / อนุมัติแล้ว / ปฏิเสธ / อยู่ในพื้นที่
+- **Stats cards:** จำนวนแต่ละสถานะ
+- **Approve/Reject** ได้จากหน้านี้
+- **ดูรายละเอียด + แก้ไข** เวลา/หมายเหตุก่อนอนุมัติ
+- **Auto-refresh** ทุก 15 วินาที
+- **สิทธิ์:** Staff เห็นเฉพาะ group ที่ตัวเองเป็นสมาชิก / Admin เห็นทุก group
+
+> **สำหรับ LINE OA:** เมื่อ officer กด approve/reject บน LINE (postback) ให้เรียก API เดียวกัน
+
+### 6. หน้า /web/search — ค้นหาผู้มาติดต่อ (เชื่อม API จริง)
+
+- ใช้ server-side filtering ผ่าน `GET /api/appointments` + `GET /api/entries`
+- แสดงข้อมูลตามสิทธิ์ (staff เห็นเฉพาะแผนกตัวเอง)
+- RBAC ใน entries API: `GET /api/entries` → staff เห็นเฉพาะ `departmentId` ของตัวเอง
+
+### 7. Role & Permission Matrix (สำหรับ LINE OA)
+
+| Role | จอง | ดูข้อมูล | อนุมัติ | ตั้งค่า LINE OA |
+|------|-----|----------|---------|----------------|
+| visitor | own | own | ❌ | ❌ |
+| staff | department | department | ✅ ถ้าอยู่ใน ApproverGroup | ❌ |
+| supervisor | all | all | ✅ ทุกรายการ | ❌ |
+| security | ❌ ใช้ Counter | ❌ | ❌ | ❌ |
+| admin | all | all | ✅ ทุกรายการ | ✅ |
+
+### 8. Notification Flow สำหรับ LINE OA
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ Visitor สร้างนัดหมายผ่าน LINE LIFF                               │
+│ POST /api/appointments { channel: "line" }                      │
+└──────────────────────┬──────────────────────────────────────────┘
+                       ▼
+        ┌──────────────────────────────┐
+        │ ตรวจ VisitPurposeDepartmentRule │
+        │ acceptFromLine = true?         │
+        └──────────┬───────────────────┘
+                   ▼
+        ┌──────────────────────────────┐
+        │ requireApproval?              │
+        ├─── false ─▶ status="approved" ─▶ ส่ง Flex ยืนยัน + QR ไปยัง visitor
+        └─── true  ─▶ status="pending"  ─▶ ส่ง Flex แจ้ง approver group
+                                            │
+                                            ▼
+                          ┌─────────────────────────────────┐
+                          │ ApproverGroup.members             │
+                          │ where receiveNotification=true    │
+                          │ + notifyChannels includes "line"  │
+                          └──────────┬──────────────────────┘
+                                     ▼
+                          ┌─────────────────────────────────┐
+                          │ Officer กด Approve/Reject         │
+                          │ (LINE Postback หรือ Web App)      │
+                          └──────────┬──────────────────────┘
+                                     ▼
+                          ┌─────────────────────────────────┐
+                          │ POST /api/appointments/:id/approve│
+                          │ หรือ /reject { reason }           │
+                          └──────────┬──────────────────────┘
+                                     ▼
+                          ส่ง Flex แจ้งผล visitor ทาง LINE
+                          (approved → QR / rejected → เหตุผล)
+```
+
+---
+
 ## Implemented API Stubs
 
 > ⚠️ ระบบปัจจุบันมี stub endpoints สำหรับ LINE integration — ยังไม่เชื่อม LINE SDK จริง
@@ -372,41 +563,66 @@ const res = await fetch('/api/auth/register', {
 
 สร้างนัดหมายใหม่ (จาก LINE LIFF หรือ Web)
 
+> **อัปเดต:** เพิ่ม `departmentId`, `entryMode`, `type` เป็น required
+> `hostStaffId` เป็น conditional (required เฉพาะเมื่อ `requirePersonName=true`)
+> ระบบตรวจ `visit_purpose_department_rules` เพื่อกำหนด auto-approve/pending
+
 | Parameter | Type | Required | Description |
 |-----------|------|----------|-------------|
-| visit_purpose_id | number | Yes | รหัสวัตถุประสงค์ |
-| host_staff_id | number | Yes | รหัสเจ้าหน้าที่ผู้รับพบ |
+| visitorId | number | Yes | ID ผู้เยี่ยมชม (จาก LIFF profile) |
+| visitPurposeId | number | Yes | รหัสวัตถุประสงค์ |
+| departmentId | number | Yes | **รหัสแผนก** (ใหม่ — ใช้คู่กับ visitPurposeId ตรวจ rule) |
+| hostStaffId | number | Conditional | รหัสเจ้าหน้าที่ผู้พบ (required ถ้า rule.requirePersonName=true) |
+| type | string | Yes | `official` / `meeting` / `document` / `contractor` / `delivery` / `other` |
+| entryMode | string | No | `single` (default) / `period` |
 | date | string | Yes | วันนัดหมาย (YYYY-MM-DD) |
-| time_start | string | Yes | เวลาเริ่ม (HH:mm) |
-| time_end | string | Yes | เวลาสิ้นสุด (HH:mm) |
+| dateEnd | string | No | วันสิ้นสุด (เฉพาะ period mode) |
+| timeStart | string | Yes | เวลาเริ่ม (HH:mm) |
+| timeEnd | string | Yes | เวลาสิ้นสุด (HH:mm) |
+| purpose | string | Yes | รายละเอียดวัตถุประสงค์ |
 | companions | number | No | จำนวนผู้ติดตาม |
-| purpose_note | string | No | หมายเหตุวัตถุประสงค์ |
-| equipment | object[] | No | รายการอุปกรณ์นำเข้า |
-| channel | string | Yes | `'line'` \| `'web'` \| `'counter'` |
+| equipment | object[] | No | `[{name, quantity, serialNumber}]` |
+| offerWifi | boolean | No | เสนอ WiFi ให้ผู้เยี่ยม |
+| channel | string | Yes | `'line'` \| `'web'` \| `'kiosk'` \| `'counter'` |
+| notes | string | No | หมายเหตุ |
 
 **Response:**
 
 ```json
 {
-  "status": "created",
-  "appointment": {
-    "id": 1042,
-    "code": "eVMS-20260330-1042",
-    "visit_purpose": "ติดต่อราชการ",
-    "host": { "name": "สมชาย รักชาติ", "department": "สำนักนโยบายและยุทธศาสตร์" },
-    "date": "2026-04-02",
-    "time_start": "10:00",
-    "time_end": "11:00",
-    "status": "pending",
-    "require_approval": true,
-    "qr_code_data": "eVMS-20260402-1042",
-    "created_at": "2026-03-30T09:15:00Z"
-  },
-  "notifications_sent": [
-    { "to": "host_officer", "channel": "line", "template": "new-request" },
-    { "to": "approver_group", "channel": "line", "template": "approval-needed" }
-  ]
+  "success": true,
+  "data": {
+    "appointment": {
+      "id": 1042,
+      "bookingCode": "eVMS-20260402-0001",
+      "visitorId": 42,
+      "visitPurposeId": 1,
+      "departmentId": 2,
+      "type": "official",
+      "entryMode": "single",
+      "status": "pending",
+      "dateStart": "2026-04-02",
+      "timeStart": "10:00",
+      "timeEnd": "11:00",
+      "purpose": "ติดต่อราชการ เรื่องการท่องเที่ยว",
+      "companionsCount": 0,
+      "createdBy": "visitor",
+      "visitor": { "id": 42, "name": "นายวิชัย มั่นคง", "company": "บริษัท ทัวร์ไทย จำกัด" },
+      "hostStaff": { "id": 5, "name": "สมชาย รักชาติ" },
+      "department": { "id": 2, "name": "กองกลาง" },
+      "visitPurpose": { "id": 1, "name": "ติดต่อราชการ" }
+    },
+    "autoApproved": false,
+    "approverGroupId": 1,
+    "approverGroupName": "Admin กองกลาง"
+  }
 }
+```
+
+> **สำคัญสำหรับ LINE OA:**
+> - ถ้า `autoApproved = true` → ส่ง Flex ยืนยันนัดหมาย + QR ให้ visitor เลย
+> - ถ้า `autoApproved = false` → ส่ง Flex "รออนุมัติ" ให้ visitor + ส่ง Flex "คำขอใหม่" ให้ approver group
+> - ถ้า visitor ไม่มี `lineUserId` → ข้ามการส่ง LINE (ส่งเฉพาะ email/web-app)
 ```
 
 #### `POST /api/pdpa-consents`
@@ -513,35 +729,61 @@ await lineClient.pushMessage(visitor.lineUserId, {
 
 **API Endpoints:**
 
-#### `POST /api/appointments/:id/approve` + `POST /api/appointments/:id/reject`
+#### `POST /api/appointments/:id/approve`
 
-> **Status:** ✅ Implemented — approve (empty body), reject (`{ reason }`)
+> **Status:** ✅ Implemented — มีการตรวจ ApproverGroup membership สำหรับ staff role
 
-#### *(Original Design)* `PATCH /api/appointments/:id/status`
-
-อนุมัติ หรือ ปฏิเสธนัดหมาย (combined — ไม่ได้ implement)
-
-| Parameter | Type | Required | Description |
-|-----------|------|----------|-------------|
-| status | string | Yes | `'approved'` \| `'rejected'` |
-| reject_reason | string | No | เหตุผลการปฏิเสธ (required if rejected) |
-| officer_note | string | No | หมายเหตุจากเจ้าหน้าที่ |
+**Authorization:**
+- visitor → 403
+- admin/supervisor → อนุมัติได้ทุกรายการ
+- staff → ต้องมี `ApproverGroupMember` ที่ `canApprove=true` ในกลุ่มที่ตรงกับ appointment
 
 **Response:**
 
 ```json
 {
-  "status": "updated",
-  "appointment": {
-    "id": 1042,
-    "status": "approved",
-    "approved_at": "2026-03-30T10:30:00Z",
-    "approved_by": { "id": 5, "name": "สมศรี รักษ์ดี" }
-  },
-  "notifications_sent": [
-    { "to": "visitor", "channel": "line", "template": "approval-approved" }
-  ]
+  "success": true,
+  "data": {
+    "appointment": {
+      "id": 1042,
+      "status": "approved",
+      "approvedBy": 5,
+      "approvedAt": "2026-04-03T10:30:00Z",
+      "visitor": { "id": 42, "name": "นายวิชัย มั่นคง" },
+      "hostStaff": { "id": 5, "name": "สมชาย รักชาติ" },
+      "department": { "id": 2, "name": "กองกลาง" }
+    }
+  }
 }
+```
+
+#### `POST /api/appointments/:id/reject`
+
+> **Status:** ✅ Implemented — มีการตรวจ ApproverGroup membership เช่นเดียวกับ approve
+
+| Parameter | Type | Required | Description |
+|-----------|------|----------|-------------|
+| reason | string | Yes | เหตุผลการปฏิเสธ |
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "appointment": {
+      "id": 1042,
+      "status": "rejected",
+      "rejectedAt": "2026-04-03T10:30:00Z",
+      "rejectedReason": "เอกสารไม่ครบ"
+    }
+  }
+}
+```
+
+> **สำหรับ LINE Postback:** เมื่อ officer กดปุ่ม "อนุมัติ"/"ปฏิเสธ" บน Flex Message
+> ให้ส่ง postback data เป็น `action=approve&id=1042` หรือ `action=reject&id=1042`
+> Webhook handler แปลง postback → เรียก API ข้างบน → ส่ง Flex แจ้งผล visitor
 ```
 
 #### `POST /api/line/push-message`
@@ -1529,3 +1771,80 @@ visitor-checkin-kiosk ───────────►  officer-checkin-aler
 ---
 
 > อ้างอิง: `lib/line-oa-flow-data.ts` — source of truth สำหรับ states, API endpoints, DB tables ทั้งหมด
+
+---
+
+## TODO สำหรับ DEV — สิ่งที่ต้องทำต่อ
+
+### Priority 1: Webhook Handler (ต้องทำก่อน)
+
+**File:** `app/api/line/webhook/route.ts` (ปัจจุบัน stub)
+
+- [ ] Validate `X-Line-Signature` ด้วย HMAC-SHA256 + `channel_secret` จาก `line_oa_config`
+- [ ] Parse event types: `follow`, `unfollow`, `message`, `postback`
+- [ ] **Follow Event** → ส่ง welcome Flex + assign Rich Menu (new-friend)
+- [ ] **Postback Event** → handle approve/reject actions:
+  - Parse `data`: `action=approve&id=1042` / `action=reject&id=1042`
+  - เรียก `POST /api/appointments/:id/approve` หรือ `/reject`
+  - ส่ง Flex ยืนยันผลให้ officer + Flex แจ้งผลไป visitor
+
+### Priority 2: Push Message Service (LINE SDK Integration)
+
+**File:** `app/api/line/push-message/route.ts` (ปัจจุบัน stub)
+
+- [ ] Install `@line/bot-sdk` package
+- [ ] ดึง `channelAccessToken` จาก `line_oa_config` table
+- [ ] สร้าง `MessagingApiClient` instance
+- [ ] Implement `client.pushMessage(to, messages)` จริง
+- [ ] Fetch `line_flex_templates` → replace variables → build Flex JSON
+- [ ] Log การส่งลง `notification_logs` table
+
+### Priority 3: Notification Integration (เชื่อม Approval → LINE)
+
+**ปัจจุบัน:** `lib/notification-service.ts` มี in-memory queue, ยังไม่ส่ง LINE จริง
+
+- [ ] เมื่อ appointment สร้าง + `status=pending`:
+  - หา `approverGroupId` จาก `visit_purpose_department_rules`
+  - เรียก `sendApprovalNotification({ appointmentId, approverGroupId })`
+  - ส่ง Flex "คำขอใหม่" ไปยัง members ที่ `receiveNotification=true` + channel="line"
+- [ ] เมื่อ approve/reject สำเร็จ:
+  - ส่ง Flex "อนุมัติแล้ว" หรือ "ปฏิเสธ" ไปยัง visitor ที่มี `lineUserId`
+- [ ] เมื่อ check-in:
+  - `sendCheckinNotification()` → ส่ง Flex ไปยัง host staff ที่มี `lineUserId`
+- [ ] Production: เปลี่ยนจาก in-memory queue → Redis/BullMQ
+
+### Priority 4: LIFF App Development
+
+- [ ] สร้าง LIFF app สำหรับ visitor registration
+- [ ] สร้าง LIFF app สำหรับ appointment booking:
+  - ดึง `GET /api/visit-purposes?channel=line` (เฉพาะที่ `acceptFromLine=true`)
+  - ดึง departments → ตรวจ `visit_purpose_department_rules`
+  - แสดง badge "อนุมัติอัตโนมัติ" / "รออนุมัติ" ตาม `requireApproval`
+  - ถ้า `requirePersonName=true` → ต้องเลือก host staff
+  - Submit → `POST /api/appointments { channel: "line" }`
+- [ ] สร้าง LIFF app สำหรับ officer registration (lookup by employeeId)
+
+### Priority 5: Rich Menu & Cron Jobs
+
+- [ ] สร้าง Rich Menu images (visitor / officer / new-friend)
+- [ ] Upload Rich Menu ผ่าน LINE API + save IDs ใน `line_oa_config`
+- [ ] Cron: ตรวจ appointments pending expired → auto-cancel + notify
+- [ ] Cron: ตรวจ upcoming appointments → send reminder 1 วันก่อน + เช้าวันนัด
+- [ ] Cron: ตรวจ overstay entries → send alert ไป officer + security
+
+### ไฟล์สำคัญสำหรับ DEV
+
+| ไฟล์ | Description |
+|------|-------------|
+| `app/api/line/webhook/route.ts` | Webhook handler (stub) |
+| `app/api/line/push-message/route.ts` | Push message sender (stub) |
+| `lib/notification-service.ts` | Notification queue + routing |
+| `lib/line-oa-flow-data.ts` | 18-state flow definitions |
+| `lib/line-flex-template-data.ts` | Flex template configs |
+| `app/api/appointments/route.ts` | Appointment creation (ดู line 218-295 สำหรับ rule logic) |
+| `app/api/appointments/[id]/approve/route.ts` | Approve API (ดู line 48-79 สำหรับ group check) |
+| `app/api/appointments/[id]/reject/route.ts` | Reject API |
+| `app/api/approvals/route.ts` | Approval queue API (ดู line 49-106 สำหรับ membership query) |
+| `app/api/approver-groups/my-groups/route.ts` | ดึงกลุ่มที่ user เป็นสมาชิก |
+| `prisma/schema.prisma` | DB schema (ดู line 407-431 สำหรับ rules, 700-761 สำหรับ groups) |
+| `lib/auth-config.ts` | Role permissions (ดู line 88-196) |

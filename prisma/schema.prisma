@@ -41,6 +41,7 @@ model UserAccount {
   // Relations
   systemSettingsUpdated    SystemSetting[]    @relation("SystemSettingUpdatedBy")
   lineFlexTemplatesUpdated LineFlexTemplate[] @relation("LineFlexTemplateUpdatedBy")
+  kioskDevicesRegistered   KioskDevice[]      @relation("KioskDeviceRegisteredBy")
 
   @@index([role])
   @@index([userType])
@@ -335,6 +336,9 @@ model AppointmentGroup {
   floor            String?   @db.VarChar(20)
   totalExpected    Int       @default(0) @map("total_expected")
   notifyOnCheckin  Boolean   @default(false) @map("notify_on_checkin")
+  approverGroupId  Int?      @map("approver_group_id")
+  sendVisitorEmail Boolean   @default(false) @map("send_visitor_email")
+  staffNotifyConfig String?  @map("staff_notify_config") @db.Text
   createdByStaffId Int       @map("created_by_staff_id")
   status           String    @default("active") @db.VarChar(20)
   createdAt        DateTime  @default(now()) @map("created_at")
@@ -345,12 +349,14 @@ model AppointmentGroup {
   department     Department                    @relation(fields: [departmentId], references: [id])
   hostStaff      Staff?                        @relation("GroupHost", fields: [hostStaffId], references: [id])
   createdByStaff Staff                         @relation("GroupCreatedBy", fields: [createdByStaffId], references: [id])
+  approverGroup  ApproverGroup?                @relation(fields: [approverGroupId], references: [id])
   appointments   Appointment[]
   daySchedules   AppointmentGroupDaySchedule[]
 
   @@index([createdByStaffId])
   @@index([dateStart])
   @@index([status])
+  @@index([approverGroupId])
   @@map("appointment_groups")
 }
 
@@ -416,6 +422,7 @@ model VisitPurposeDepartmentRule {
   acceptFromWeb     Boolean @default(true) @map("accept_from_web")
   acceptFromKiosk   Boolean @default(true) @map("accept_from_kiosk")
   acceptFromCounter Boolean @default(true) @map("accept_from_counter")
+  followBusinessHours Boolean @default(false) @map("follow_business_hours")
   isActive          Boolean @default(true) @map("is_active")
 
   // Relations
@@ -713,6 +720,7 @@ model ApproverGroup {
   purposes                    ApproverGroupPurpose[]
   notifyChannels              ApproverGroupNotifyChannel[]
   visitPurposeDepartmentRules VisitPurposeDepartmentRule[]
+  appointmentGroups           AppointmentGroup[]
 
   @@index([departmentId])
   @@index([isActive])
@@ -798,11 +806,37 @@ model ServicePoint {
   counterStaffAssignments CounterStaffAssignment[]
   visitRecords            VisitRecord[]
   visitEntries            VisitEntry[]
+  kioskDevices            KioskDevice[]
 
   @@index([type])
   @@index([status])
   @@index([assignedStaffId])
   @@map("service_points")
+}
+
+model KioskDevice {
+  id              Int       @id @default(autoincrement())
+  name            String    @db.VarChar(100)
+  serialNumber    String    @unique @map("serial_number") @db.VarChar(50)
+  servicePointId  Int       @map("service_point_id")
+  tokenHash       String    @map("token_hash") @db.VarChar(255)
+  tokenPrefix     String    @map("token_prefix") @db.VarChar(10)
+  status          String    @default("active") @db.VarChar(20) // active | revoked | suspended
+  lastSeenAt      DateTime? @map("last_seen_at")
+  lastIpAddress   String?   @map("last_ip_address") @db.VarChar(45)
+  registeredById  Int       @map("registered_by_id")
+  expiresAt       DateTime? @map("expires_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  servicePoint ServicePoint @relation(fields: [servicePointId], references: [id])
+  registeredBy UserAccount  @relation("KioskDeviceRegisteredBy", fields: [registeredById], references: [id])
+
+  @@index([servicePointId])
+  @@index([status])
+  @@index([tokenPrefix])
+  @@map("kiosk_devices")
 }
 
 model ServicePointPurpose {

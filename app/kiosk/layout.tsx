@@ -1,5 +1,7 @@
 import Link from "next/link";
 import { Home } from "lucide-react";
+import { KioskAuthProvider } from "@/lib/kiosk/kiosk-auth-context";
+import { QueryProvider } from "@/components/providers/QueryProvider";
 
 export default function KioskLayout({
     children,
@@ -7,6 +9,8 @@ export default function KioskLayout({
     children: React.ReactNode;
 }) {
     return (
+        <QueryProvider>
+        <KioskAuthProvider>
         <div className="min-h-screen bg-[#F4F6FA] overflow-hidden select-none text-[#1B2B5E] selection:bg-[#C8A84E]/30">
             <div className="relative z-10 w-full h-full">
                 {children}
@@ -21,5 +25,7 @@ export default function KioskLayout({
                 <span className="text-sm font-medium">Prototype</span>
             </Link>
         </div>
+        </KioskAuthProvider>
+        </QueryProvider>
     );
 }

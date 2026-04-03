@@ -11,16 +11,86 @@
 https://evms.mots.go.th    (Prototype — Next.js App Router)
 ```
 
-## Authentication
+## Authentication — Device Token Auth
 
-Prototype ใช้ cookie-based auth (`evms_session` JWT cookie) — ทุก API call ส่ง cookie อัตโนมัติ
+Kiosk ใช้ **Device Token Authentication** (opaque token) แทน cookie-based auth
 
-> **Production Roadmap:** อาจเปลี่ยนเป็น device token auth สำหรับ standalone kiosk:
-> ```
-> Authorization: Bearer <kiosk_device_token>
-> X-Kiosk-Serial: <serial_number>
-> X-Kiosk-Id: <service_point_id>
-> ```
+```
+Authorization: Bearer <kiosk_device_token>
+X-Kiosk-Id: <service_point_id>
+```
+
+### Token Format
+
+- Prefix: `kvms_` + 64 hex characters (256-bit random)
+- ตัวอย่าง: `kvms_a1b2c3d4e5f6...`
+- เก็บใน DB เป็น SHA-256 hash (ไม่เก็บ raw token)
+
+### การลงทะเบียน Device
+
+1. Admin เรียก `POST /api/kiosk-devices` → ได้ raw token **ครั้งเดียว**
+2. ที่ Kiosk เปิด Settings (ใช้ adminPin) → ใส่ token ใน Device Token section
+3. Token เก็บใน localStorage (`evms_kiosk_device_token`)
+4. ทุก API call จะแนบ `Authorization: Bearer <token>` อัตโนมัติ
+
+### Auth Flow ใน API Routes
+
+ทุก endpoint รองรับ 3 แบบ (เช็คตามลำดับ):
+1. **Staff cookie** (`evms_session`) — สำหรับ Web App / Counter
+2. **Visitor cookie** (`evms_visitor_session`) — สำหรับ Visitor Portal
+3. **Device token** (`Authorization: Bearer kvms_...`) — สำหรับ Kiosk
+
+### Endpoints ที่ Kiosk ใช้
+
+| Endpoint | Auth Required | หมายเหตุ |
+|----------|:------------:|----------|
+| `GET /api/service-points/:id` | ✅ Device Token | โหลด config จุดบริการ |
+| `POST /api/pdpa/accept` | ❌ Public | ไม่ต้อง auth |
+| `GET /api/search/visitors` | ✅ Device Token | ค้นหาผู้เยี่ยม |
+| `POST /api/blocklist/check` | ✅ Device Token | ตรวจ blocklist |
+| `GET /api/visit-purposes` | ✅ Device Token | โหลดวัตถุประสงค์ |
+| `POST /api/appointments` | ✅ Device Token | สร้าง walk-in appointment |
+| `GET /api/appointments/:id` | ✅ Device Token | Poll สถานะอนุมัติ |
+| `GET /api/search/appointments` | ✅ Device Token | ค้นหานัดหมาย (QR) |
+| `POST /api/entries` | ✅ Device Token | Check-in |
+| `GET /api/visit-slips/template` | ❌ Public | ไม่ต้อง auth |
+
+### Admin API สำหรับจัดการ Kiosk Devices
+
+| Method | Endpoint | คำอธิบาย |
+|--------|----------|----------|
+| GET | `/api/kiosk-devices` | รายการ devices ทั้งหมด |
+| POST | `/api/kiosk-devices` | ลงทะเบียน device ใหม่ → return token ครั้งเดียว |
+| GET | `/api/kiosk-devices/:id` | รายละเอียด device |
+| PUT | `/api/kiosk-devices/:id` | แก้ไขข้อมูล device (name, status) |
+| DELETE | `/api/kiosk-devices/:id` | เพิกถอน device (soft delete → status=revoked) |
+| POST | `/api/kiosk-devices/:id/rotate-token` | สร้าง token ใหม่ (token เก่าใช้ไม่ได้ทันที) |
+
+### Database Table: `kiosk_devices`
+
+| Column | Type | คำอธิบาย |
+|--------|------|----------|
+| id | INT AUTO_INCREMENT | PK |
+| name | VARCHAR(100) | ชื่ออุปกรณ์ |
+| serial_number | VARCHAR(50) UNIQUE | S/N ของเครื่อง |
+| service_point_id | INT FK | จุดบริการที่เชื่อมต่อ |
+| token_hash | VARCHAR(255) | SHA-256 hash ของ token |
+| token_prefix | VARCHAR(10) | prefix สำหรับ fast DB lookup |
+| status | VARCHAR(20) | active / revoked / suspended |
+| last_seen_at | DATETIME | เวลาใช้งานล่าสุด |
+| last_ip_address | VARCHAR(45) | IP ล่าสุด |
+| registered_by_id | INT FK | admin ที่ลงทะเบียน |
+| expires_at | DATETIME NULL | วันหมดอายุ (null = ไม่หมดอายุ) |
+| created_at | DATETIME | วันที่สร้าง |
+| updated_at | DATETIME | วันที่แก้ไขล่าสุด |
+
+### Security Notes
+
+- Token แสดงครั้งเดียวตอน register — ไม่สามารถดึงกลับมาได้
+- เก็บเป็น SHA-256 hash ใน DB (ไม่เก็บ raw)
+- รองรับ revoke ทันที (เปลี่ยน status → "revoked")
+- รองรับ token rotation (สร้าง token ใหม่ token เก่าใช้ไม่ได้ทันที)
+- `lastSeenAt` + `lastIpAddress` update ทุกครั้งที่ใช้งาน (fire-and-forget)
 
 ### Response Envelope
 
@@ -40,47 +110,51 @@ Prototype ใช้ cookie-based auth (`evms_session` JWT cookie) — ทุก 
 
 > **หมายเหตุ:** Kiosk ไม่ได้สร้าง API routes เฉพาะ (`/api/kiosk/*`) แต่ reuse existing endpoints ของ Web App
 > โดยใช้ React hooks จาก `lib/hooks/use-kiosk.ts` เป็น abstraction layer
+> ทุก hook ใช้ `kioskApiFetch` / `kioskApiPost` จาก `lib/kiosk/kiosk-auth-context.tsx` ที่ inject `Authorization: Bearer <device_token>` อัตโนมัติ
 
-| Kiosk State | Hook | Existing API Endpoint |
-|------------|------|----------------------|
-| WELCOME | `useKioskConfig(servicePointId)` | GET /api/service-points/:id |
-| SELECT_PURPOSE | `useKioskPurposes()` | GET /api/visit-purposes |
-| ID_VERIFICATION | `useSearchVisitor()` | GET /api/search/visitors |
-| ID_VERIFICATION | `useKioskBlocklistCheck()` | POST /api/blocklist/check |
-| PENDING_APPROVAL | `useCreatePendingAppointment()` | POST /api/appointments |
-| PENDING_APPROVAL | `usePollAppointmentStatus(id)` | GET /api/appointments/:id (poll 10s) |
-| SUCCESS | `useKioskCheckin()` | POST /api/entries |
-| QR_SCAN | `useAppointmentLookup()` | GET /api/search/appointments |
-| PDPA_CONSENT | `useRecordPdpaConsent()` | POST /api/pdpa/accept |
+| Kiosk State | Hook | Existing API Endpoint | Auth |
+|------------|------|----------------------|------|
+| WELCOME | `useKioskConfig(servicePointId)` | GET /api/service-points/:id | Device Token |
+| SELECT_PURPOSE | `useKioskPurposes()` | GET /api/visit-purposes | Device Token |
+| ID_VERIFICATION | `useSearchVisitor()` | GET /api/search/visitors | Device Token |
+| ID_VERIFICATION | `useKioskBlocklistCheck()` | POST /api/blocklist/check | Device Token |
+| PENDING_APPROVAL | `useCreatePendingAppointment()` | POST /api/appointments | Device Token |
+| PENDING_APPROVAL | `usePollAppointmentStatus(id)` | GET /api/appointments/:id (poll 10s) | Device Token |
+| SUCCESS | `useKioskCheckin()` | POST /api/entries | Device Token |
+| QR_SCAN | `useAppointmentLookup()` | GET /api/search/appointments | Device Token |
+| PDPA_CONSENT | `useRecordPdpaConsent()` | POST /api/pdpa/accept | Public (ไม่ต้อง auth) |
 
 **Hooks file:** `lib/hooks/use-kiosk.ts`
+**Auth context:** `lib/kiosk/kiosk-auth-context.tsx` — `KioskAuthProvider` + `kioskApiFetch` / `kioskApiPost`
+**Auth library:** `lib/kiosk-auth.ts` — `generateDeviceToken`, `verifyKioskDeviceToken`, `getAuthUserOrKiosk`, `getStaffOrKiosk`
 **Component ใหม่:** `components/kiosk/PendingApprovalScreen.tsx` — Polling UI สำหรับ PENDING_APPROVAL state
 
 ---
 
 ## สรุป API ตาม Kiosk State
 
-| # | State | Method | Actual Endpoint | Hook | สถานะ |
-|---|-------|--------|----------------|------|-------|
-| 1 | WELCOME | GET | `/api/service-points/:id` | `useKioskConfig` | ✅ Implemented |
-| 2 | PDPA_CONSENT | POST | `/api/pdpa/accept` | `useRecordPdpaConsent` | ✅ Implemented |
-| 3 | SELECT_ID_METHOD | — | *(config จาก service-point, cached)* | — | ✅ Frontend-only |
-| 4 | ID_VERIFICATION | GET | `/api/search/visitors?q=` | `useSearchVisitor` | ✅ Implemented |
-| 4b | ID_VERIFICATION | POST | `/api/blocklist/check` | `useKioskBlocklistCheck` | ✅ Implemented |
-| 5 | DATA_PREVIEW | — | *(ใช้ข้อมูลจาก state)* | — | ✅ Frontend-only |
-| 6 | SELECT_PURPOSE | GET | `/api/visit-purposes` | `useKioskPurposes` | ✅ Implemented |
-| 6b | PENDING_APPROVAL | POST | `/api/appointments` | `useCreatePendingAppointment` | ✅ Implemented |
-| 6c | PENDING_APPROVAL | GET | `/api/appointments/:id` | `usePollAppointmentStatus` | ✅ Implemented (poll 10s) |
-| 7 | FACE_CAPTURE | POST | *(ยังไม่มี endpoint)* | — | 🔲 Planned |
-| 8 | WIFI_OFFER | POST | *(ยังไม่มี endpoint)* | — | 🔲 Planned |
-| 9 | SUCCESS | POST | `/api/entries` | `useKioskCheckin` | ✅ Implemented |
-| 9b | SUCCESS | GET | `/api/visit-slips/template` | `useVisitSlipTemplate` | ✅ Implemented |
-| 10 | QR_SCAN | GET | `/api/search/appointments?q=` | `useAppointmentLookup` | ✅ Implemented |
-| 11 | APPOINTMENT_PREVIEW | — | *(ใช้ข้อมูลจาก lookup)* | — | ✅ Frontend-only |
-| 12 | APPOINTMENT_VERIFY_ID | — | *(ใช้ search/visitors + blocklist/check)* | — | ✅ Reuse existing |
-| — | ERROR | POST | *(ยังไม่มี endpoint)* | — | 🔲 Planned |
+| # | State | Method | Actual Endpoint | Hook | Auth | สถานะ |
+|---|-------|--------|----------------|------|------|-------|
+| 1 | WELCOME | GET | `/api/service-points/:id` | `useKioskConfig` | Device Token | ✅ Implemented |
+| 2 | PDPA_CONSENT | POST | `/api/pdpa/accept` | `useRecordPdpaConsent` | Public | ✅ Implemented |
+| 3 | SELECT_ID_METHOD | — | *(config จาก service-point, cached)* | — | — | ✅ Frontend-only |
+| 4 | ID_VERIFICATION | GET | `/api/search/visitors?q=` | `useSearchVisitor` | Device Token | ✅ Implemented |
+| 4b | ID_VERIFICATION | POST | `/api/blocklist/check` | `useKioskBlocklistCheck` | Device Token | ✅ Implemented |
+| 5 | DATA_PREVIEW | — | *(ใช้ข้อมูลจาก state)* | — | — | ✅ Frontend-only |
+| 6 | SELECT_PURPOSE | GET | `/api/visit-purposes` | `useKioskPurposes` | Device Token | ✅ Implemented |
+| 6b | PENDING_APPROVAL | POST | `/api/appointments` | `useCreatePendingAppointment` | Device Token | ✅ Implemented |
+| 6c | PENDING_APPROVAL | GET | `/api/appointments/:id` | `usePollAppointmentStatus` | Device Token | ✅ Implemented (poll 10s) |
+| 7 | FACE_CAPTURE | POST | *(ยังไม่มี endpoint)* | — | — | 🔲 Planned |
+| 8 | WIFI_OFFER | POST | *(ยังไม่มี endpoint)* | — | — | 🔲 Planned |
+| 9 | SUCCESS | POST | `/api/entries` | `useKioskCheckin` | Device Token | ✅ Implemented |
+| 9b | SUCCESS | GET | `/api/visit-slips/template` | `useVisitSlipTemplate` | Public | ✅ Implemented |
+| 10 | QR_SCAN | GET | `/api/search/appointments?q=` | `useAppointmentLookup` | Device Token | ✅ Implemented |
+| 11 | APPOINTMENT_PREVIEW | — | *(ใช้ข้อมูลจาก lookup)* | — | — | ✅ Frontend-only |
+| 12 | APPOINTMENT_VERIFY_ID | — | *(ใช้ search/visitors + blocklist/check)* | — | Device Token | ✅ Reuse existing |
+| — | ERROR | POST | *(ยังไม่มี endpoint)* | — | — | 🔲 Planned |
 
 > **Total: 9 Implemented API endpoints** — reuse จาก Web App ผ่าน hooks ใน `lib/hooks/use-kiosk.ts`
+> **Auth: 8 endpoints ใช้ Device Token** (`Authorization: Bearer kvms_...`), 2 endpoints เป็น Public (PDPA + visit-slips)
 > **Planned: 3 endpoints** — face-photo, wifi, error-log (ต้องสร้างเพิ่มสำหรับ production)
 
 ---
@@ -1155,6 +1229,7 @@ Kiosk และ Counter จะเรียก endpoint นี้ตอน mount 
 
 | Table | Used by API |
 |-------|------------|
+| `kiosk_devices` | Device Token auth (verify), `GET/POST /api/kiosk-devices` (admin) |
 | `service_points` | `GET /api/service-points/:id` |
 | `service_point_documents` | `GET /api/service-points/:id` |
 | `service_point_purposes` | `GET /api/service-points/:id` |
@@ -1182,6 +1257,7 @@ Kiosk และ Counter จะเรียก endpoint นี้ตอน mount 
 | `purpose_slip_mappings` | `POST /api/entries` (resolve) |
 | `notification_templates` | `POST /api/entries` (trigger — planned) |
 | `staff` | lookup host, approvers |
+| `user_accounts` | `kiosk_devices.registered_by_id` FK |
 
 ---
 
@@ -1276,14 +1352,18 @@ Kiosk App                Backend API                     Database               
 
 ## หมายเหตุสำหรับ Dev
 
-1. **Caching**: `GET /api/service-points/:id`, `POST /api/pdpa/accept`, `GET /api/visit-purposes` สามารถ cache ฝั่ง Kiosk ได้ (refresh ทุก 5 นาที หรือเมื่อ reset)
-2. **Offline Mode**: Kiosk ควรมี cached config เพื่อแสดง "offline" message ได้แม้ไม่มี internet
-3. **Retry Logic**: API ที่เป็น write (POST) ควรมี idempotency key เพื่อป้องกัน duplicate — ใช้ `booking_code` เป็น key
-4. **Photo Upload**: แนะนำ compress JPEG quality 80% ก่อนอัปโหลด เพื่อลด bandwidth
-5. **WiFi Generation**: อาจ generate ฝั่ง Kiosk ได้ตาม pattern จาก config (ไม่ต้องเรียก API) — แต่ถ้าต้องการ central control ใช้ API
-6. **Hikvision Sync**: ทำ async ฝั่ง backend — ไม่ต้องรอ response ก่อนตอบ Kiosk (eventual consistency)
-7. **PDPA Consent**: บันทึกก่อน verify-identity ได้ (ใช้ idNumber จาก card read — หรือบันทึกทีหลังพร้อม checkin)
-8. **Blocklist Check**: ตรวจหลัง DATA_PREVIEW (ก่อน CONFIRM_DATA) — ถ้าพบ permanent block แสดง error ไม่ให้ดำเนินการต่อ
+1. **Device Token Auth**: Kiosk ใช้ `Authorization: Bearer kvms_...` ทุก API call (ยกเว้น PDPA + visit-slips ที่เป็น public) — token เก็บใน localStorage key `evms_kiosk_device_token`
+2. **Token Security**: token แสดงครั้งเดียวตอน register, เก็บเป็น SHA-256 hash ใน DB, รองรับ revoke + rotation ผ่าน admin API
+3. **Auth Library**: `lib/kiosk-auth.ts` — ใช้ `getStaffOrKiosk()` หรือ `getAuthUserOrKiosk()` ใน API routes ที่ kiosk ต้องเข้าถึง
+4. **Kiosk Auth Context**: `lib/kiosk/kiosk-auth-context.tsx` — React context ที่ wrap kiosk layout, provide `kioskApiFetch` / `kioskApiPost` ที่ inject auth headers อัตโนมัติ
+5. **Caching**: `GET /api/service-points/:id`, `POST /api/pdpa/accept`, `GET /api/visit-purposes` สามารถ cache ฝั่ง Kiosk ได้ (refresh ทุก 5 นาที หรือเมื่อ reset)
+6. **Offline Mode**: Kiosk ควรมี cached config เพื่อแสดง "offline" message ได้แม้ไม่มี internet
+7. **Retry Logic**: API ที่เป็น write (POST) ควรมี idempotency key เพื่อป้องกัน duplicate — ใช้ `booking_code` เป็น key
+8. **Photo Upload**: แนะนำ compress JPEG quality 80% ก่อนอัปโหลด เพื่อลด bandwidth
+9. **WiFi Generation**: อาจ generate ฝั่ง Kiosk ได้ตาม pattern จาก config (ไม่ต้องเรียก API) — แต่ถ้าต้องการ central control ใช้ API
+10. **Hikvision Sync**: ทำ async ฝั่ง backend — ไม่ต้องรอ response ก่อนตอบ Kiosk (eventual consistency)
+11. **PDPA Consent**: บันทึกก่อน verify-identity ได้ (ใช้ idNumber จาก card read — หรือบันทึกทีหลังพร้อม checkin)
+12. **Blocklist Check**: ตรวจหลัง DATA_PREVIEW (ก่อน CONFIRM_DATA) — ถ้าพบ permanent block แสดง error ไม่ให้ดำเนินการต่อ
 
 ---
 

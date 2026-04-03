@@ -43,6 +43,7 @@ export async function PUT(
       acceptFromWeb,
       acceptFromKiosk,
       acceptFromCounter,
+      followBusinessHours,
       isActive,
     } = body;
 
@@ -58,6 +59,7 @@ export async function PUT(
         ...(acceptFromWeb !== undefined && { acceptFromWeb }),
         ...(acceptFromKiosk !== undefined && { acceptFromKiosk }),
         ...(acceptFromCounter !== undefined && { acceptFromCounter }),
+        ...(followBusinessHours !== undefined && { followBusinessHours }),
         ...(isActive !== undefined && { isActive }),
       },
     });

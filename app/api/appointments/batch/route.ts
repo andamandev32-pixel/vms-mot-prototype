@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyToken } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { sendBulkEmail } from "@/lib/email-sender";
+import { renderEventInvitationEmail } from "@/lib/email-templates/event-invitation";
+import { sendApprovalNotification } from "@/lib/notification-service";
 
 const ok = (data: unknown) =>
   NextResponse.json({ success: true, data });
@@ -43,6 +46,9 @@ export async function POST(request: NextRequest) {
         building?: string;
         floor?: string;
         notifyOnCheckin?: boolean;
+        approverGroupId?: number | null;
+        sendVisitorEmail?: boolean;
+        staffNotifyConfig?: Record<string, boolean>;
         daySchedules?: Array<{ date: string; timeStart: string; timeEnd: string; notes?: string }>;
       };
       visitors: Array<{
@@ -121,6 +127,9 @@ export async function POST(request: NextRequest) {
           floor: group.floor || null,
           totalExpected: visitors.length,
           notifyOnCheckin: group.notifyOnCheckin ?? false,
+          approverGroupId: group.approverGroupId || null,
+          sendVisitorEmail: group.sendVisitorEmail ?? false,
+          staffNotifyConfig: group.staffNotifyConfig ? JSON.stringify(group.staffNotifyConfig) : null,
           createdByStaffId: user.id,
         },
       });
@@ -229,6 +238,65 @@ export async function POST(request: NextRequest) {
 
       return { group: appointmentGroup, appointments: createdAppointments, skipped };
     });
+
+    // ═══════ Post-transaction: Send emails & notifications (async, non-blocking) ═══════
+
+    // Send visitor invitation emails
+    if (group.sendVisitorEmail && result.appointments.length > 0) {
+      const locationParts = [group.room, group.floor ? `ชั้น ${group.floor}` : null, group.building].filter(Boolean);
+      const location = locationParts.join(", ") || undefined;
+
+      const staffInfo = await prisma.staff.findFirst({ where: { id: user.id }, select: { name: true } });
+      const deptInfo = await prisma.department.findFirst({ where: { id: group.departmentId }, select: { name: true } });
+
+      const formatDate = (d: string) => {
+        const date = new Date(d);
+        return date.toLocaleDateString("th-TH", { year: "numeric", month: "long", day: "numeric" });
+      };
+
+      const recipients = result.appointments
+        .filter((a) => a.visitor && "email" in a.visitor)
+        .map((a) => ({
+          email: (a.visitor as { id: number; name: string; company: string | null; phone: string | null; email?: string | null }).email || "",
+          name: a.visitor.name,
+          bookingCode: a.bookingCode,
+        }))
+        .filter((r) => r.email);
+
+      if (recipients.length > 0) {
+        sendBulkEmail(
+          recipients,
+          `แจ้งเตือนกิจกรรม: ${group.name}`,
+          (recipient) => {
+            const r = recipients.find((r) => r.email === recipient.email);
+            return renderEventInvitationEmail({
+              eventName: group.name,
+              eventNameEn: group.nameEn || undefined,
+              description: group.description || undefined,
+              dateStart: formatDate(group.dateStart),
+              dateEnd: group.dateEnd ? formatDate(group.dateEnd) : undefined,
+              timeStart: group.timeStart,
+              timeEnd: group.timeEnd,
+              location,
+              visitorName: recipient.name,
+              bookingCode: r?.bookingCode || "",
+              organizerName: staffInfo?.name || "เจ้าหน้าที่",
+              departmentName: deptInfo?.name || "",
+            });
+          }
+        ).catch((err) => console.error("[BatchCreate] Email sending error:", err));
+      }
+    }
+
+    // Send approval notifications if required
+    if (!autoApprove && rule.approverGroupId) {
+      for (const appt of result.appointments) {
+        sendApprovalNotification({
+          appointmentId: appt.id,
+          approverGroupId: rule.approverGroupId,
+        }).catch((err) => console.error("[BatchCreate] Approval notification error:", err));
+      }
+    }
 
     return ok({
       group: result.group,

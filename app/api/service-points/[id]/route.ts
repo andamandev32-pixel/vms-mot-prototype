@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyToken } from "@/lib/auth";
+import { getStaffOrKiosk } from "@/lib/kiosk-auth";
 import { prisma } from "@/lib/prisma";
 
 // ===== Inline response helpers =====
@@ -12,6 +13,53 @@ const err = (code: string, msg: string, status = 400) =>
 async function getAuthUser(request: NextRequest) {
   const token = request.cookies.get("evms_session")?.value;
   return token ? await verifyToken(token) : null;
+}
+
+// ─────────────────────────────────────────────────────
+// GET /api/service-points/:id — ดึงข้อมูลจุดบริการ (staff หรือ kiosk)
+// ─────────────────────────────────────────────────────
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const auth = await getStaffOrKiosk(request);
+    if (!auth) {
+      return err("UNAUTHORIZED", "กรุณาเข้าสู่ระบบ", 401);
+    }
+
+    const { id } = await params;
+    const spId = parseInt(id, 10);
+    if (isNaN(spId)) {
+      return err("INVALID_ID", "รหัสจุดบริการไม่ถูกต้อง");
+    }
+
+    const servicePoint = await prisma.servicePoint.findUnique({
+      where: { id: spId },
+      include: {
+        servicePointPurposes: {
+          include: {
+            visitPurpose: { select: { id: true, name: true, nameEn: true, icon: true, isActive: true } },
+          },
+        },
+        servicePointDocuments: {
+          include: {
+            identityDocumentType: { select: { id: true, name: true, nameEn: true } },
+          },
+        },
+        assignedStaff: { select: { id: true, name: true, nameEn: true } },
+      },
+    });
+
+    if (!servicePoint) {
+      return err("NOT_FOUND", "ไม่พบจุดบริการที่ระบุ", 404);
+    }
+
+    return ok({ servicePoint });
+  } catch (error) {
+    console.error("GET /api/service-points/[id] error:", error);
+    return err("SERVER_ERROR", "เกิดข้อผิดพลาด กรุณาลองใหม่", 500);
+  }
 }
 
 // ─────────────────────────────────────────────────────

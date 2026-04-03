@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Topbar from "@/components/web/Topbar";
 import { DatabaseSchemaModal, DbSchemaButton } from "@/components/web/DatabaseSchemaModal";
 import { FlowchartModal, FlowRulesButton } from "@/components/web/FlowchartModal";
@@ -10,12 +10,15 @@ import { getFlowByPageId } from "@/lib/flowchart-data";
 import { getApiDocByPageId } from "@/lib/api-doc-data";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
+import { Drawer } from "@/components/ui/Drawer";
 import {
   Search, X, ChevronLeft, ChevronRight, MoreHorizontal,
   Users, Briefcase, FileText, Wrench, Package, Bookmark,
-  LogIn,
+  LogIn, Eye, Calendar, Clock, MapPin, Building2, UserPlus,
+  Loader2,
 } from "lucide-react";
 import { useAppointments, useEntries } from "@/lib/hooks";
+import { useDebounce } from "@/lib/hooks/use-debounce";
 import {
   visitTypes,
   statusConfig,
@@ -28,7 +31,6 @@ import {
   type Appointment,
   type VisitEntry,
 } from "@/lib/mock-data";
-import { getMockToday } from "@/lib/thai-date";
 
 // ── Tab type ──
 type SearchTab = "all" | "appointments" | "entries";
@@ -71,15 +73,95 @@ function formatDate(dt: string): string {
   return dt.slice(0, 10);
 }
 
+// Helper: format date string to Thai Buddhist Era DD/MM/YYYY+543
+function fmtDateThai(d: string): string {
+  try {
+    const dt = new Date(d);
+    const dd = String(dt.getDate()).padStart(2, "0");
+    const mm = String(dt.getMonth() + 1).padStart(2, "0");
+    const yyyy = dt.getFullYear() + 543;
+    return `${dd}/${mm}/${yyyy}`;
+  } catch { return d; }
+}
+
 export default function WebSearchPage() {
-  const { data: apptRaw, isLoading: apptLoading } = useAppointments();
-  const { data: entryRaw, isLoading: entryLoading } = useEntries();
+  // ── Filter & pagination state ──
+  const [activeTab, setActiveTab] = useState<SearchTab>("all");
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [search, setSearch] = useState("");
+  const [filterType, setFilterType] = useState<VisitType | "all">("all");
+  const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [todayOnly, setTodayOnly] = useState(true);
+
+  const debouncedSearch = useDebounce(search, 300);
+  const todayDate = useMemo(() => new Date().toISOString().slice(0, 10), []);
+
+  // ── Build API params from filter state ──
+  const apptParams = useMemo(() => ({
+    search: debouncedSearch || undefined,
+    type: filterType !== "all" ? filterType : undefined,
+    status: (activeTab !== "entries" && filterStatus !== "all") ? filterStatus : undefined,
+    date: todayOnly ? todayDate : undefined,
+    page: activeTab === "all" ? 1 : page,
+    limit: activeTab === "all" ? 100 : pageSize,
+  }), [debouncedSearch, filterType, filterStatus, todayOnly, todayDate, page, pageSize, activeTab]);
+
+  const entryParams = useMemo(() => ({
+    search: debouncedSearch || undefined,
+    status: (activeTab !== "appointments" && filterStatus !== "all") ? filterStatus : undefined,
+    date: todayOnly ? todayDate : undefined,
+    page: activeTab === "all" ? 1 : page,
+    limit: activeTab === "all" ? 100 : pageSize,
+  }), [debouncedSearch, filterStatus, todayOnly, todayDate, page, pageSize, activeTab]);
+
+  // ── Fetch from API with server-side filtering + RBAC ──
+  const { data: apptRaw, isLoading: apptLoading } = useAppointments(
+    activeTab !== "entries" ? apptParams : undefined
+  );
+  const { data: entryRaw, isLoading: entryLoading } = useEntries(
+    activeTab !== "appointments" ? entryParams : undefined
+  );
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const apptData = apptRaw as any;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const entryData = entryRaw as any;
-  const appointments: Appointment[] = Array.isArray(apptData) ? apptData : apptData?.appointments ?? [];
-  const visitEntries: VisitEntry[] = Array.isArray(entryData) ? entryData : entryData?.entries ?? [];
+  const appointmentsRaw = Array.isArray(apptData) ? apptData : apptData?.appointments ?? [];
+  const apptPagination = apptData?.pagination ?? { page: 1, total: 0, totalPages: 1 };
+
+  // Normalize API shape (Prisma fields) → frontend Appointment shape
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const appointments: Appointment[] = useMemo(() => appointmentsRaw.map((a: any) => ({
+    ...a,
+    code: a.bookingCode ?? a.code,
+    host: a.hostStaff ?? a.host ?? { name: "-" },
+    date: a.dateStart ? new Date(a.dateStart).toISOString().slice(0, 10) : a.date,
+    dateEnd: a.dateEnd ? new Date(a.dateEnd).toISOString().slice(0, 10) : a.dateEnd,
+    timeStart: a.timeStart ? new Date(a.timeStart).toISOString().slice(11, 16) : "",
+    timeEnd: a.timeEnd ? new Date(a.timeEnd).toISOString().slice(11, 16) : "",
+    purposeName: a.visitPurpose?.name ?? a.purpose ?? "-",
+    companions: a.companionsCount ?? a._count?.companions ?? a.companions ?? 0,
+    visitEntryCount: a._count?.visitEntries ?? a.visitEntryCount ?? 0,
+    approvedBy: a.approvedByStaff?.name ?? a.approvedByStaff?.nameEn ?? (a.approvedBy ? `#${a.approvedBy}` : undefined),
+    visitor: a.visitor ?? { name: "-", company: "-", phone: "-" },
+  })), [appointmentsRaw]);
+
+  const entriesRaw = Array.isArray(entryData) ? entryData : entryData?.entries ?? [];
+  const entryPagination = entryData?.pagination ?? { page: 1, total: 0, totalPages: 1 };
+  // Normalize entry shape — API returns hostStaff instead of host
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const visitEntries: VisitEntry[] = useMemo(() => entriesRaw.map((e: any) => ({
+    ...e,
+    host: e.hostStaff ?? e.host,
+    checkinAt: typeof e.checkinAt === "string" ? e.checkinAt : new Date(e.checkinAt).toISOString(),
+    checkoutAt: e.checkoutAt ? (typeof e.checkoutAt === "string" ? e.checkoutAt : new Date(e.checkoutAt).toISOString()) : undefined,
+    companions: e.companionsCount ?? e.companions ?? 0,
+  })), [entriesRaw]);
+
+  // Detail drawer state
+  const [detailAppt, setDetailAppt] = useState<Appointment | null>(null);
+  const [detailEntry, setDetailEntry] = useState<VisitEntry | null>(null);
 
   const [showSchema, setShowSchema] = useState(false);
   const [showFlow, setShowFlow] = useState(false);
@@ -88,17 +170,7 @@ export default function WebSearchPage() {
   const flowData = getFlowByPageId("search");
   const apiDoc = getApiDocByPageId("search");
 
-  const allAppts = appointments;
-  const allEntries = visitEntries;
-
-  const [activeTab, setActiveTab] = useState<SearchTab>("all");
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(5);
-  const [search, setSearch] = useState("");
-  const [filterType, setFilterType] = useState<VisitType | "all">("all");
-  const [filterStatus, setFilterStatus] = useState<string>("all");
-  const [todayOnly, setTodayOnly] = useState(true);
-  const mockToday = getMockToday();
+  const isLoading = (activeTab !== "entries" && apptLoading) || (activeTab !== "appointments" && entryLoading);
 
   // Reset page & status filter when tab changes
   const handleTabChange = (tab: SearchTab) => {
@@ -128,83 +200,53 @@ export default function WebSearchPage() {
     }));
   })();
 
-  // ── Filter appointments ──
-  const filteredAppts = allAppts.filter((a) => {
-    if (todayOnly && a.date !== mockToday) return false;
-    if (filterType !== "all" && a.type !== filterType) return false;
-    if (filterStatus !== "all" && a.status !== filterStatus) return false;
-    if (search.trim()) {
-      const q = search.trim().toLowerCase();
-      const match =
-        a.visitor.name.toLowerCase().includes(q) ||
-        (a.visitor.nameEn?.toLowerCase().includes(q)) ||
-        a.visitor.company.toLowerCase().includes(q) ||
-        a.host.name.toLowerCase().includes(q) ||
-        a.code.toLowerCase().includes(q);
-      if (!match) return false;
-    }
-    return true;
-  });
-
-  // ── Filter entries ──
-  const filteredEntries = allEntries.filter((e) => {
-    if (todayOnly && formatDate(e.checkinAt) !== mockToday) return false;
-    if (filterType !== "all") {
-      // For appointment-linked entries, we can't easily filter by type unless walk-in has visitType
-      if (e.appointmentId === null) {
-        if (e.visitType !== filterType) return false;
-      } else {
-        // Look up the linked appointment to check type
-        const linked = allAppts.find((a) => a.id === e.appointmentId);
-        if (linked && linked.type !== filterType) return false;
-        if (!linked) return false;
-      }
-    }
-    if (filterStatus !== "all" && e.status !== filterStatus) return false;
-    if (search.trim()) {
-      const q = search.trim().toLowerCase();
-      const match =
-        e.visitor.name.toLowerCase().includes(q) ||
-        (e.visitor.nameEn?.toLowerCase().includes(q)) ||
-        e.entryCode.toLowerCase().includes(q) ||
-        (e.host?.name.toLowerCase().includes(q)) ||
-        (e.purpose?.toLowerCase().includes(q));
-      if (!match) return false;
-    }
-    return true;
-  });
-
-  // ── Combined results ──
+  // ── Combined results + pagination ──
+  // For "appointments" / "entries" tabs: use server-side pagination
+  // For "all" tab: merge both arrays and paginate client-side
   type ResultItem =
     | { kind: "appointment"; data: Appointment }
     | { kind: "entry"; data: VisitEntry };
 
-  const results: ResultItem[] = (() => {
-    if (activeTab === "appointments") return filteredAppts.map((a) => ({ kind: "appointment" as const, data: a }));
-    if (activeTab === "entries") return filteredEntries.map((e) => ({ kind: "entry" as const, data: e }));
-    // "all" — merge both
-    return [
-      ...filteredAppts.map((a) => ({ kind: "appointment" as const, data: a })),
-      ...filteredEntries.map((e) => ({ kind: "entry" as const, data: e })),
+  const { paged, totalCount, totalPages, safeCurrentPage, startRow, endRow } = useMemo(() => {
+    if (activeTab === "appointments") {
+      const items = appointments.map((a) => ({ kind: "appointment" as const, data: a }));
+      const total = apptPagination.total || items.length;
+      const pages = apptPagination.totalPages || 1;
+      const current = Math.min(page, pages);
+      const start = total > 0 ? (current - 1) * pageSize + 1 : 0;
+      const end = Math.min(current * pageSize, total);
+      return { paged: items, totalCount: total, totalPages: pages, safeCurrentPage: current, startRow: start, endRow: end };
+    }
+    if (activeTab === "entries") {
+      const items = visitEntries.map((e) => ({ kind: "entry" as const, data: e }));
+      const total = entryPagination.total || items.length;
+      const pages = entryPagination.totalPages || 1;
+      const current = Math.min(page, pages);
+      const start = total > 0 ? (current - 1) * pageSize + 1 : 0;
+      const end = Math.min(current * pageSize, total);
+      return { paged: items, totalCount: total, totalPages: pages, safeCurrentPage: current, startRow: start, endRow: end };
+    }
+    // "all" tab — merge + client-side pagination
+    const merged: ResultItem[] = [
+      ...appointments.map((a) => ({ kind: "appointment" as const, data: a })),
+      ...visitEntries.map((e) => ({ kind: "entry" as const, data: e })),
     ];
-  })();
-
-  const totalCount = results.length;
-  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
-  const safeCurrentPage = Math.min(page, totalPages);
-  const startIdx = (safeCurrentPage - 1) * pageSize;
-  const paged = results.slice(startIdx, startIdx + pageSize);
-  const startRow = totalCount > 0 ? startIdx + 1 : 0;
-  const endRow = Math.min(startIdx + pageSize, totalCount);
+    const total = merged.length;
+    const pages = Math.max(1, Math.ceil(total / pageSize));
+    const current = Math.min(page, pages);
+    const startIdx = (current - 1) * pageSize;
+    const items = merged.slice(startIdx, startIdx + pageSize);
+    const start = total > 0 ? startIdx + 1 : 0;
+    const end = Math.min(startIdx + pageSize, total);
+    return { paged: items, totalCount: total, totalPages: pages, safeCurrentPage: current, startRow: start, endRow: end };
+  }, [activeTab, appointments, visitEntries, apptPagination, entryPagination, page, pageSize]);
 
   const goTo = (p: number) => setPage(Math.max(1, Math.min(p, totalPages)));
-
-  const sourceCount = activeTab === "appointments" ? allAppts.length : activeTab === "entries" ? allEntries.length : allAppts.length + allEntries.length;
 
   const hasFilters = search.trim() !== "" || filterType !== "all" || filterStatus !== "all" || !todayOnly;
   const clearAll = () => { setSearch(""); setFilterType("all"); setFilterStatus("all"); setTodayOnly(true); setPage(1); };
 
-  const availableTypes = Array.from(new Set(allAppts.map((a) => a.type)));
+  const availableTypes = Object.keys(visitTypes) as VisitType[];
 
   // Tab config
   const tabs: { key: SearchTab; label: string }[] = [
@@ -242,8 +284,9 @@ export default function WebSearchPage() {
               <CardTitle className="text-base font-bold text-primary">
                 รายการผู้มาติดต่อ
               </CardTitle>
-              <span className="text-xs text-primary/60 font-medium bg-primary-100 px-3 py-1 rounded-full">
-                {sourceCount} รายการ · อัปเดตอัตโนมัติ
+              <span className="text-xs text-primary/60 font-medium bg-primary-100 px-3 py-1 rounded-full flex items-center gap-1.5">
+                {isLoading && <Loader2 size={12} className="animate-spin" />}
+                {totalCount} รายการ · อัปเดตอัตโนมัติ
               </span>
             </div>
 
@@ -319,7 +362,7 @@ export default function WebSearchPage() {
               )}
               {hasFilters && (
                 <span className="text-xs text-text-muted bg-gray-100 px-2.5 py-1 rounded-full">
-                  พบ {totalCount} จาก {sourceCount} รายการ
+                  พบ {totalCount} รายการ
                 </span>
               )}
             </div>
@@ -366,16 +409,18 @@ export default function WebSearchPage() {
                         </td>
                         <td className="py-3.5 px-4">
                           <div className="flex items-center gap-1.5">
-                            <span className={visitTypeColors[a.type].icon}>{visitTypeIcons[a.type]}</span>
-                            <span className="text-xs font-medium text-text-secondary">{visitTypes[a.type].label}</span>
+                            <span className={visitTypeColors[a.type]?.icon ?? "text-gray-600"}>{visitTypeIcons[a.type] ?? <Bookmark size={18} />}</span>
+                            <span className="text-xs font-medium text-text-secondary">{a.purposeName ?? visitTypes[a.type]?.label ?? a.type}</span>
                           </div>
-                        </td>
-                        <td className="py-3.5 px-4 text-text-secondary font-mono text-xs">
-                          {a.timeStart}–{a.timeEnd}
+                          <span className="text-[10px] text-text-muted truncate max-w-[180px] block">{a.purpose}</span>
                         </td>
                         <td className="py-3.5 px-4">
-                          <span className="text-text-secondary text-sm">{a.host.name}</span>
-                          <span className="block text-xs text-text-muted">{a.host.department.name}</span>
+                          <p className="text-sm font-medium text-text-primary">{fmtDateThai(a.date)}</p>
+                          <p className="text-xs text-text-muted font-mono">{a.timeStart} - {a.timeEnd} น.</p>
+                        </td>
+                        <td className="py-3.5 px-4">
+                          <span className="text-text-secondary text-sm">{a.host?.name ?? '-'}</span>
+                          <span className="block text-xs text-text-muted">{(a as any).department?.name ?? a.host?.department?.name ?? '-'}</span>
                         </td>
                         <td className="py-3.5 px-4 text-center">
                           {a.companions > 0 ? (
@@ -388,10 +433,11 @@ export default function WebSearchPage() {
                         </td>
                         <td className="py-3.5 px-4">
                           <StatusBadge status={a.status} size="sm" showDot />
+                          {a.approvedBy && <p className="text-[10px] text-text-muted mt-0.5">โดย: {a.approvedBy}</p>}
                         </td>
                         <td className="py-3.5 px-4 text-right">
-                          <button className="p-2 rounded-lg hover:bg-gray-100 transition-colors text-text-muted hover:text-primary">
-                            <MoreHorizontal size={18} />
+                          <button onClick={() => setDetailAppt(a)} className="p-2 rounded-lg hover:bg-gray-100 transition-colors text-text-muted hover:text-primary" title="ดูรายละเอียด">
+                            <Eye size={18} />
                           </button>
                         </td>
                       </tr>
@@ -435,7 +481,7 @@ export default function WebSearchPage() {
                     )}
                     {paged.filter((r) => r.kind === "entry").map((r) => {
                       const e = r.data as VisitEntry;
-                      const linkedAppt = e.appointmentId !== null ? allAppts.find((a) => a.id === e.appointmentId) : null;
+                      const linkedAppt = e.appointmentId !== null ? appointments.find((a) => a.id === e.appointmentId) : null;
                       return (
                         <tr key={`entry-${e.id}`} className="hover:bg-primary-50/30 transition-colors">
                           <td className="py-3.5 px-6">
@@ -483,8 +529,8 @@ export default function WebSearchPage() {
                             <StatusBadge status={e.status} size="sm" showDot />
                           </td>
                           <td className="py-3.5 px-4 text-right">
-                            <button className="p-2 rounded-lg hover:bg-gray-100 transition-colors text-text-muted hover:text-primary">
-                              <MoreHorizontal size={18} />
+                            <button onClick={() => setDetailEntry(e)} className="p-2 rounded-lg hover:bg-gray-100 transition-colors text-text-muted hover:text-primary" title="ดูรายละเอียด">
+                              <Eye size={18} />
                             </button>
                           </td>
                         </tr>
@@ -542,6 +588,170 @@ export default function WebSearchPage() {
             </div>
           </CardContent>
         </Card>
+
+        {/* ===== Appointment Detail Drawer ===== */}
+        <Drawer open={!!detailAppt} onClose={() => setDetailAppt(null)} title="รายละเอียดนัดหมาย" width="w-[560px]">
+          {detailAppt && (() => {
+            const a = detailAppt;
+            return (
+              <div className="space-y-5 p-1">
+                {/* Header */}
+                <div className="flex items-center gap-3 pb-4 border-b border-border">
+                  <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-lg">
+                    {a.visitor?.name?.[0] ?? "?"}
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-bold text-text-primary text-lg">{a.visitor?.name}</h3>
+                    <p className="text-sm text-text-muted">{a.visitor?.company}</p>
+                  </div>
+                  <StatusBadge status={a.status} size="sm" showDot />
+                </div>
+
+                {/* Info Grid */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-0.5">
+                    <p className="text-xs text-text-muted flex items-center gap-1"><FileText size={12} /> รหัสนัดหมาย</p>
+                    <p className="text-sm font-medium font-mono text-text-primary">{a.code}</p>
+                  </div>
+                  <div className="space-y-0.5">
+                    <p className="text-xs text-text-muted flex items-center gap-1"><Bookmark size={12} /> วัตถุประสงค์</p>
+                    <p className="text-sm font-medium text-text-primary">{a.purposeName ?? a.purpose}</p>
+                  </div>
+                  <div className="space-y-0.5">
+                    <p className="text-xs text-text-muted flex items-center gap-1"><Calendar size={12} /> วันนัดหมาย</p>
+                    <p className="text-sm font-medium text-text-primary">
+                      {fmtDateThai(a.date)}
+                      {a.entryMode === "period" && a.dateEnd ? ` — ${fmtDateThai(a.dateEnd)}` : ""}
+                    </p>
+                  </div>
+                  <div className="space-y-0.5">
+                    <p className="text-xs text-text-muted flex items-center gap-1"><Clock size={12} /> เวลา</p>
+                    <p className="text-sm font-medium text-text-primary">{a.timeStart} - {a.timeEnd} น.</p>
+                  </div>
+                  <div className="space-y-0.5">
+                    <p className="text-xs text-text-muted flex items-center gap-1"><Users size={12} /> ผู้พบ</p>
+                    <p className="text-sm font-medium text-text-primary">{a.host?.name ?? "-"}</p>
+                  </div>
+                  <div className="space-y-0.5">
+                    <p className="text-xs text-text-muted flex items-center gap-1"><Building2 size={12} /> แผนก</p>
+                    <p className="text-sm font-medium text-text-primary">{(a as any).department?.name ?? a.host?.department?.name ?? "-"}</p>
+                  </div>
+                  <div className="space-y-0.5">
+                    <p className="text-xs text-text-muted flex items-center gap-1"><MapPin size={12} /> สถานที่</p>
+                    <p className="text-sm font-medium text-text-primary">{a.area ?? "-"} • {a.floor ?? "-"}{a.room ? ` • ${a.room}` : ""}</p>
+                  </div>
+                  <div className="space-y-0.5">
+                    <p className="text-xs text-text-muted flex items-center gap-1"><Users size={12} /> ผู้ติดตาม</p>
+                    <p className="text-sm font-medium text-text-primary">{a.companions > 0 ? `${a.companions} คน` : "-"}</p>
+                  </div>
+                  <div className="space-y-0.5">
+                    <p className="text-xs text-text-muted flex items-center gap-1"><UserPlus size={12} /> สร้างโดย</p>
+                    <p className="text-sm font-medium text-text-primary">{a.createdBy === "staff" ? "เจ้าหน้าที่" : "ผู้เยี่ยมชม"}</p>
+                  </div>
+                  <div className="space-y-0.5">
+                    <p className="text-xs text-text-muted flex items-center gap-1"><LogIn size={12} /> เข้าพื้นที่</p>
+                    <p className="text-sm font-medium text-text-primary">{a.visitEntryCount ?? 0} ครั้ง</p>
+                  </div>
+                </div>
+
+                {/* Approval info */}
+                {a.approvedBy && (
+                  <div className="bg-green-50 border border-green-200 rounded-xl px-4 py-3">
+                    <p className="text-xs text-green-700 font-medium">อนุมัติโดย: {a.approvedBy}</p>
+                  </div>
+                )}
+                {a.rejectedReason && (
+                  <div className="bg-red-50 border border-red-200 rounded-xl px-4 py-3">
+                    <p className="text-xs text-red-700 font-medium">เหตุผลที่ปฏิเสธ: {a.rejectedReason}</p>
+                  </div>
+                )}
+
+                {/* Notes */}
+                {a.notes && (
+                  <div className="bg-gray-50 rounded-xl px-4 py-3">
+                    <p className="text-xs text-text-muted mb-1">หมายเหตุ</p>
+                    <p className="text-sm text-text-primary">{a.notes}</p>
+                  </div>
+                )}
+
+                {/* Visitor Contact */}
+                <div className="bg-gray-50 rounded-xl px-4 py-3 space-y-1.5">
+                  <p className="text-xs text-text-muted font-semibold">ข้อมูลติดต่อผู้เยี่ยมชม</p>
+                  {a.visitor?.phone && <p className="text-sm text-text-primary">โทร: {a.visitor.phone}</p>}
+                  {a.visitor?.email && <p className="text-sm text-text-primary">Email: {a.visitor.email}</p>}
+                </div>
+              </div>
+            );
+          })()}
+        </Drawer>
+
+        {/* ===== Entry Detail Drawer ===== */}
+        <Drawer open={!!detailEntry} onClose={() => setDetailEntry(null)} title="รายละเอียดการเข้าพื้นที่" width="w-[560px]">
+          {detailEntry && (() => {
+            const e = detailEntry;
+            const linkedAppt = e.appointmentId != null ? appointments.find((a) => a.id === e.appointmentId) : null;
+            return (
+              <div className="space-y-5 p-1">
+                {/* Header */}
+                <div className="flex items-center gap-3 pb-4 border-b border-border">
+                  <div className="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-bold text-lg">
+                    {e.visitor?.name?.[0] ?? "?"}
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-bold text-text-primary text-lg">{e.visitor?.name}</h3>
+                    {e.appointmentId == null ? (
+                      <span className="text-xs font-semibold bg-amber-100 text-amber-700 border border-amber-300 px-1.5 py-0.5 rounded-full">Walk-in</span>
+                    ) : (
+                      <span className="text-xs text-text-muted">นัดหมาย: {linkedAppt?.code ?? `#${e.appointmentId}`}</span>
+                    )}
+                  </div>
+                  <StatusBadge status={e.status} size="sm" showDot />
+                </div>
+
+                {/* Info Grid */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-0.5">
+                    <p className="text-xs text-text-muted">รหัสเข้าพื้นที่</p>
+                    <p className="text-sm font-medium font-mono text-text-primary">{e.entryCode}</p>
+                  </div>
+                  <div className="space-y-0.5">
+                    <p className="text-xs text-text-muted">ช่องทาง Check-in</p>
+                    <p className="text-sm font-medium text-text-primary">{checkinChannelLabels[e.checkinChannel] ?? e.checkinChannel}</p>
+                  </div>
+                  <div className="space-y-0.5">
+                    <p className="text-xs text-text-muted flex items-center gap-1"><Clock size={12} /> เวลาเข้า</p>
+                    <p className="text-sm font-medium text-text-primary">{fmtDateThai(formatDate(e.checkinAt))} {formatTime(e.checkinAt)}</p>
+                  </div>
+                  <div className="space-y-0.5">
+                    <p className="text-xs text-text-muted flex items-center gap-1"><Clock size={12} /> เวลาออก</p>
+                    <p className="text-sm font-medium text-text-primary">{e.checkoutAt ? `${fmtDateThai(formatDate(e.checkoutAt))} ${formatTime(e.checkoutAt)}` : "ยังไม่ออก"}</p>
+                  </div>
+                  <div className="space-y-0.5">
+                    <p className="text-xs text-text-muted flex items-center gap-1"><MapPin size={12} /> พื้นที่</p>
+                    <p className="text-sm font-medium text-text-primary">{e.area} • {e.floor}{e.room ? ` • ${e.room}` : ""}</p>
+                  </div>
+                  <div className="space-y-0.5">
+                    <p className="text-xs text-text-muted flex items-center gap-1"><Users size={12} /> ผู้พบ</p>
+                    <p className="text-sm font-medium text-text-primary">{e.host?.name ?? "-"}</p>
+                  </div>
+                  {e.purpose && (
+                    <div className="col-span-2 space-y-0.5">
+                      <p className="text-xs text-text-muted">วัตถุประสงค์</p>
+                      <p className="text-sm font-medium text-text-primary">{e.purpose}</p>
+                    </div>
+                  )}
+                </div>
+
+                {e.notes && (
+                  <div className="bg-gray-50 rounded-xl px-4 py-3">
+                    <p className="text-xs text-text-muted mb-1">หมายเหตุ</p>
+                    <p className="text-sm text-text-primary">{e.notes}</p>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+        </Drawer>
       </div>
     </div>
   );

@@ -20,6 +20,7 @@ export interface AuthUser {
   role: AppRole;
   departmentId: number | null;
   departmentName: string | null;
+  refId?: number | null;
   avatar?: string;
 }
 
@@ -81,6 +82,7 @@ export async function findUser(usernameOrEmail: string): Promise<UserRecord | nu
     role: user.role as AppRole,
     departmentId,
     departmentName,
+    refId: user.refId ?? null,
     passwordHash: user.passwordHash,
     status: user.isActive ? "active" : "inactive",
   };
@@ -107,6 +109,7 @@ export async function createToken(user: AuthUser): Promise<string> {
     role: user.role,
     departmentId: user.departmentId,
     departmentName: user.departmentName,
+    refId: user.refId ?? null,
   })
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
@@ -127,6 +130,7 @@ export async function verifyToken(token: string): Promise<AuthUser | null> {
       role: payload.role as AppRole,
       departmentId: (payload.departmentId as number) ?? null,
       departmentName: (payload.departmentName as string) ?? null,
+      refId: (payload.refId as number) ?? null,
     };
   } catch {
     return null;

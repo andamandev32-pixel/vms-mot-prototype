@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyToken } from "@/lib/auth";
+import { verifyVisitorToken, VISITOR_COOKIE_NAME } from "@/lib/visitor-auth";
 import { prisma } from "@/lib/prisma";
 
 const ok = (data: unknown) =>
@@ -8,8 +9,14 @@ const err = (code: string, msg: string, status = 400) =>
   NextResponse.json({ success: false, error: { code, message: msg } }, { status });
 
 async function getAuthUser(request: NextRequest) {
-  const token = request.cookies.get("evms_session")?.value;
-  return token ? await verifyToken(token) : null;
+  const staffToken = request.cookies.get("evms_session")?.value;
+  if (staffToken) return await verifyToken(staffToken);
+  const visitorToken = request.cookies.get(VISITOR_COOKIE_NAME)?.value;
+  if (visitorToken) {
+    const v = await verifyVisitorToken(visitorToken);
+    if (v) return { id: v.id, username: v.email, email: v.email, name: `${v.firstName} ${v.lastName}`, nameEn: `${v.firstName} ${v.lastName}`, role: "visitor" as const, departmentId: null, departmentName: null };
+  }
+  return null;
 }
 
 // ─────────────────────────────────────────────────────
@@ -38,9 +45,14 @@ export async function POST(
 
     // Permission: owner (visitor) or admin/supervisor
     if (user.role === "visitor") {
-      const visitor = await prisma.visitor.findFirst({ where: { email: user.email } });
-      if (!visitor || existing.visitorId !== visitor.id) {
+      const visitorId = user.refId ?? (await prisma.visitor.findFirst({ where: { email: user.email } }))?.id;
+      if (!visitorId || existing.visitorId !== visitorId) {
         return err("FORBIDDEN", "คุณไม่มีสิทธิ์ยกเลิกการนัดหมายนี้", 403);
+      }
+      // Visitor cannot cancel if already has visit entries (entered the area)
+      const entryCount = await prisma.visitEntry.count({ where: { appointmentId } });
+      if (entryCount > 0) {
+        return err("HAS_ENTRIES", "ไม่สามารถยกเลิกได้ เนื่องจากมีการเข้าพื้นที่แล้ว", 403);
       }
     } else if (user.role === "staff") {
       // Staff can cancel if in same department or is the host
@@ -65,7 +77,9 @@ export async function POST(
             fromStatus: existing.status,
             toStatus: "cancelled",
             changedBy: user.role !== "visitor" ? user.id : null,
-            reason: "ยกเลิกการนัดหมาย",
+            reason: existing.status === "approved" && user.role === "visitor"
+              ? "ผู้เยี่ยมชมยกเลิกการนัดหมายที่อนุมัติแล้ว"
+              : "ยกเลิกการนัดหมาย",
           },
         },
       },
