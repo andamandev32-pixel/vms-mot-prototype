@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import Topbar from "@/components/web/Topbar";
 import { DatabaseSchemaModal, DbSchemaButton } from "@/components/web/DatabaseSchemaModal";
 import { FlowchartModal, FlowRulesButton } from "@/components/web/FlowchartModal";
@@ -15,28 +15,19 @@ import {
   Settings, Printer, Pencil, QrCode, Wifi, Scissors,
   ChevronDown, ChevronUp, Info, Save, Eye,
   GripVertical, Check, X, Plus, ToggleRight, ToggleLeft,
-  Upload, ImageIcon, Trash2, ZoomIn,
+  Upload, ImageIcon, Trash2, ZoomIn, RotateCcw,
 } from "lucide-react";
 import ThermalSlipPreview from "@/components/kiosk/ThermalSlipPreview";
-import type { SlipData } from "@/lib/kiosk/kiosk-types";
-
-// ===== TYPES FOR THERMAL TEMPLATE EDITOR =====
-interface ThermalSection {
-  id: string;
-  name: string;
-  nameEn: string;
-  enabled: boolean;
-  fields: ThermalField[];
-}
-
-interface ThermalField {
-  key: string;
-  label: string;
-  labelEn: string;
-  enabled: boolean;
-  editable: boolean; // label text can be changed
-  value?: string; // override display value in preview
-}
+import type { SlipData, ThermalSection } from "@/lib/kiosk/kiosk-types";
+import { useVisitSlipConfig, useUpdateVisitSlipConfig } from "@/lib/hooks";
+import {
+  DndContext, closestCenter, PointerSensor, useSensor, useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  SortableContext, verticalListSortingStrategy, useSortable, arrayMove,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 
 // ===== DEFAULT THERMAL TEMPLATE =====
 const defaultSections: ThermalSection[] = [
@@ -101,10 +92,10 @@ const defaultSections: ThermalSection[] = [
     id: "extras",
     name: "ข้อมูลเพิ่มเติม",
     nameEn: "Additional Info",
-    enabled: false,
+    enabled: true,
     fields: [
-      { key: "companions", label: "ผู้ติดตาม", labelEn: "Companions", enabled: false, editable: true },
-      { key: "vehiclePlate", label: "ทะเบียนรถ", labelEn: "Vehicle Plate", enabled: false, editable: true },
+      { key: "companions", label: "ผู้ติดตาม", labelEn: "Companions", enabled: true, editable: true },
+      { key: "vehiclePlate", label: "ทะเบียนรถ", labelEn: "Vehicle Plate", enabled: true, editable: true },
     ],
   },
   {
@@ -176,6 +167,8 @@ const previewSlipData: SlipData = {
 
 // ===== PAGE =====
 export default function VisitSlipTemplatesSettingsPage() {
+  const { data: slipConfig, isLoading } = useVisitSlipConfig();
+  const updateMut = useUpdateVisitSlipConfig();
   const [showSchema, setShowSchema] = useState(false);
   const [showFlow, setShowFlow] = useState(false);
   const [showApiDoc, setShowApiDoc] = useState(false);
@@ -183,13 +176,57 @@ export default function VisitSlipTemplatesSettingsPage() {
   const flowData = getFlowByPageId("visit-slips")!;
   const apiDoc = getApiDocByPageId("visit-slips");
 
+  // Map DB template to local state shape
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const tpl = (slipConfig as any)?.template;
+
   const [sections, setSections] = useState<ThermalSection[]>(defaultSections);
+  const [dbSectionMap, setDbSectionMap] = useState<Record<string, { sectionDbId: number; fieldDbIds: Record<string, number> }>>({});
+  // Seed from API when available
+  useEffect(() => {
+    if (!tpl?.sections?.length) return;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mapped: ThermalSection[] = tpl.sections.map((s: any) => ({
+      id: s.sectionKey,
+      name: s.name,
+      nameEn: s.nameEn,
+      enabled: s.isEnabled,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      fields: (s.fields ?? []).map((f: any) => ({
+        key: f.fieldKey,
+        label: f.label,
+        labelEn: f.labelEn,
+        enabled: f.isEnabled,
+        editable: f.isEditable,
+      })),
+    }));
+    setSections(mapped);
+    // Build map of sectionKey → DB ids for saving
+    const sMap: Record<string, { sectionDbId: number; fieldDbIds: Record<string, number> }> = {};
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    tpl.sections.forEach((s: any) => {
+      const fieldIds: Record<string, number> = {};
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      (s.fields ?? []).forEach((f: any) => { fieldIds[f.fieldKey] = f.id; });
+      sMap[s.sectionKey] = { sectionDbId: s.id, fieldDbIds: fieldIds };
+    });
+    setDbSectionMap(sMap);
+    // Logo from template
+    if (tpl.logoUrl) setLogoSrc(tpl.logoUrl);
+    if (tpl.logoSizePx) setLogoSize(tpl.logoSizePx);
+  }, [tpl]);
+  const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 3000);
+    return () => clearTimeout(t);
+  }, [toast]);
   const [expandedSection, setExpandedSection] = useState<string | null>("header");
   const [editingField, setEditingField] = useState<string | null>(null);
 
   // Logo settings
   const [logoSrc, setLogoSrc] = useState<string>("/images/mot_logo_slip.png");
-  const [logoSize, setLogoSize] = useState<number>(40);
+  const [logoSize, setLogoSize] = useState<number>(50);
   const [logoFileName, setLogoFileName] = useState<string>("mot_logo_slip.png");
 
   const handleLogoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -207,21 +244,8 @@ export default function VisitSlipTemplatesSettingsPage() {
   const handleLogoRemove = () => {
     setLogoSrc("/images/mot_logo_slip.png");
     setLogoFileName("mot_logo_slip.png");
-    setLogoSize(40);
+    setLogoSize(50);
   };
-
-  // Derive officer sign props from sections state
-  const officerSignSection = useMemo(() => sections.find((s) => s.id === "officerSign"), [sections]);
-  const officerSignProps = useMemo(() => {
-    if (!officerSignSection) return {};
-    const field = (key: string) => officerSignSection.fields.find((f) => f.key === key);
-    return {
-      showOfficerSign: officerSignSection.enabled,
-      officerSignLabelTh: field("officerSignLabel")?.label,
-      officerSignLabelEn: field("stampLabel")?.label,
-      stampLabel: field("stampPlaceholder")?.label,
-    };
-  }, [officerSignSection]);
 
   const enabledSections = useMemo(() => sections.filter((s) => s.enabled), [sections]);
   const totalFields = useMemo(() => sections.flatMap((s) => s.fields).length, [sections]);
@@ -259,6 +283,62 @@ export default function VisitSlipTemplatesSettingsPage() {
     { label: "ฟิลด์ที่เปิด", value: `${enabledFields}/${totalFields}`, sub: "Fields", icon: <Check size={18} /> },
   ];
 
+  const handleSave = useCallback(async () => {
+    try {
+      const apiSections = sections.map((s, index) => {
+        const dbInfo = dbSectionMap[s.id];
+        return {
+          id: dbInfo?.sectionDbId,
+          name: s.name,
+          nameEn: s.nameEn,
+          isEnabled: s.enabled,
+          sortOrder: index,
+          fields: s.fields.map((f, fIndex) => ({
+            id: dbInfo?.fieldDbIds?.[f.key],
+            label: f.label,
+            labelEn: f.labelEn,
+            isEnabled: f.enabled,
+            isEditable: f.editable,
+            sortOrder: fIndex,
+          })),
+        };
+      });
+      await updateMut.mutateAsync({
+        id: tpl?.id,
+        logoUrl: logoSrc,
+        logoSizePx: logoSize,
+        sections: apiSections,
+      } as any);
+      setToast({ type: "success", message: "บันทึกสำเร็จ" });
+    } catch {
+      setToast({ type: "error", message: "บันทึกไม่สำเร็จ กรุณาลองใหม่" });
+    }
+  }, [sections, dbSectionMap, logoSrc, logoSize, tpl, updateMut]);
+
+  const handleResetDefaults = useCallback(() => {
+    setSections(defaultSections);
+    setLogoSrc("/images/mot_logo_slip.png");
+    setLogoSize(50);
+    setLogoFileName("mot_logo_slip.png");
+    setToast({ type: "success", message: "รีเซ็ตเป็นค่าเริ่มต้นแล้ว (ยังไม่ได้บันทึก)" });
+  }, []);
+
+  // Drag-and-drop
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } })
+  );
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    setSections((prev) => {
+      const oldIndex = prev.findIndex((s) => s.id === active.id);
+      const newIndex = prev.findIndex((s) => s.id === over.id);
+      return arrayMove(prev, oldIndex, newIndex);
+    });
+  }, []);
+
+  if (isLoading) return <><Topbar title="แบบฟอร์ม Visit Slip / Thermal Slip Editor" /><div className="p-8 text-center text-text-muted">กำลังโหลด...</div></>;
+
   return (
     <>
       <Topbar title="แบบฟอร์ม Visit Slip / Thermal Slip Editor" />
@@ -266,6 +346,16 @@ export default function VisitSlipTemplatesSettingsPage() {
       <FlowchartModal open={showFlow} onClose={() => setShowFlow(false)} flowData={flowData} />
       {apiDoc && <ApiDocModal open={showApiDoc} onClose={() => setShowApiDoc(false)} apiDoc={apiDoc} />}
       <main className="flex-1 p-6 space-y-5">
+        {/* Toast */}
+        {toast && (
+          <div className={cn(
+            "fixed top-4 right-4 z-50 px-4 py-3 rounded-xl shadow-lg text-sm font-medium flex items-center gap-2 animate-in fade-in slide-in-from-top-2",
+            toast.type === "success" ? "bg-green-50 text-green-700 border border-green-200" : "bg-red-50 text-red-700 border border-red-200"
+          )}>
+            {toast.type === "success" ? <Check size={16} /> : <X size={16} />}
+            {toast.message}
+          </div>
+        )}
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
@@ -278,9 +368,23 @@ export default function VisitSlipTemplatesSettingsPage() {
             </h3>
             <p className="text-sm text-text-muted mt-1">แก้ไขเนื้อหา ส่วนที่แสดง และลำดับฟิลด์ของ Visit Slip ที่พิมพ์จาก Kiosk</p>
           </div>
-          <button className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary-dark shadow-sm transition">
-            <Save size={16} /> บันทึก
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              className="flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 text-text-muted text-sm font-medium hover:bg-gray-50 transition"
+              onClick={handleResetDefaults}
+            >
+              <RotateCcw size={16} />
+              รีเซ็ตค่าเริ่มต้น
+            </button>
+            <button
+              className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-white text-sm font-medium hover:bg-primary-dark shadow-sm transition disabled:opacity-50"
+              disabled={updateMut.isPending}
+              onClick={handleSave}
+            >
+              {updateMut.isPending ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save size={16} />}
+              {updateMut.isPending ? "กำลังบันทึก..." : "บันทึก"}
+            </button>
+          </div>
         </div>
 
         {/* Info */}
@@ -370,16 +474,16 @@ export default function VisitSlipTemplatesSettingsPage() {
                       </div>
                       <input
                         type="range"
-                        min={20}
-                        max={100}
+                        min={50}
+                        max={150}
                         value={logoSize}
                         onChange={(e) => setLogoSize(Number(e.target.value))}
                         className="w-full h-1.5 rounded-full appearance-none bg-gray-200 accent-primary cursor-pointer"
                       />
                       <div className="flex justify-between text-[9px] text-text-muted">
-                        <span>20px</span>
-                        <span>60px</span>
+                        <span>50px</span>
                         <span>100px</span>
+                        <span>150px</span>
                       </div>
                     </div>
 
@@ -389,67 +493,23 @@ export default function VisitSlipTemplatesSettingsPage() {
               </CardContent>
             </Card>
 
-            {sections.map((section) => {
-              const isExpanded = expandedSection === section.id;
-              const enabledCount = section.fields.filter((f) => f.enabled).length;
-              return (
-                <Card key={section.id} className={cn("border shadow-sm transition-all", !section.enabled && "opacity-40")}>
-                  <CardContent className="p-0">
-                    {/* Section header */}
-                    <div className="flex items-center gap-2 px-4 py-3 cursor-pointer hover:bg-gray-50 transition-colors"
-                      onClick={() => setExpandedSection(isExpanded ? null : section.id)}>
-                      <GripVertical size={14} className="text-gray-300 cursor-grab" />
-                      <button onClick={(e) => { e.stopPropagation(); toggleSection(section.id); }}
-                        className={cn("shrink-0", section.enabled ? "text-success" : "text-gray-300")}>
-                        {section.enabled ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
-                      </button>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-semibold text-text-primary">{section.name}</span>
-                          <span className="text-[10px] text-text-muted">({section.nameEn})</span>
-                        </div>
-                        <span className="text-[10px] text-text-muted">{enabledCount}/{section.fields.length} fields</span>
-                      </div>
-                      {isExpanded ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
-                    </div>
-
-                    {/* Expanded: fields */}
-                    {isExpanded && section.enabled && (
-                      <div className="border-t border-border">
-                        {section.fields.map((field) => (
-                          <div key={field.key} className="flex items-center gap-2 px-4 py-2 border-b border-border/50 last:border-0 hover:bg-gray-50/50">
-                            <GripVertical size={12} className="text-gray-200" />
-                            <button onClick={() => toggleField(section.id, field.key)}
-                              className={cn("shrink-0", field.enabled ? "text-success" : "text-gray-300")}>
-                              {field.enabled ? <Check size={14} /> : <X size={14} />}
-                            </button>
-                            {editingField === field.key && field.editable ? (
-                              <input
-                                autoFocus
-                                defaultValue={field.label}
-                                onBlur={(e) => { updateFieldLabel(section.id, field.key, e.target.value); setEditingField(null); }}
-                                onKeyDown={(e) => { if (e.key === "Enter") { updateFieldLabel(section.id, field.key, (e.target as HTMLInputElement).value); setEditingField(null); } }}
-                                className="flex-1 text-xs px-2 py-1 rounded-lg border border-primary/30 focus:outline-none focus:ring-1 focus:ring-primary/30 bg-primary-50"
-                              />
-                            ) : (
-                              <span className={cn("flex-1 text-xs", field.enabled ? "text-text-primary" : "text-gray-400 line-through")}>
-                                {field.label}
-                              </span>
-                            )}
-                            <span className="text-[10px] text-text-muted shrink-0">{field.labelEn}</span>
-                            {field.editable && (
-                              <button onClick={() => setEditingField(field.key)} className="text-gray-300 hover:text-primary transition-colors">
-                                <Pencil size={12} />
-                              </button>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              );
-            })}
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext items={sections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
+                {sections.map((section) => (
+                  <SortableSectionCard
+                    key={section.id}
+                    section={section}
+                    isExpanded={expandedSection === section.id}
+                    onToggleExpand={() => setExpandedSection(expandedSection === section.id ? null : section.id)}
+                    onToggleSection={() => toggleSection(section.id)}
+                    onToggleField={(fieldKey) => toggleField(section.id, fieldKey)}
+                    editingField={editingField}
+                    onEditField={setEditingField}
+                    onUpdateFieldLabel={(fieldKey, label) => updateFieldLabel(section.id, fieldKey, label)}
+                  />
+                ))}
+              </SortableContext>
+            </DndContext>
           </div>
 
           {/* RIGHT: Live thermal preview */}
@@ -462,7 +522,7 @@ export default function VisitSlipTemplatesSettingsPage() {
                 </div>
                 <span className="text-[10px] text-text-muted bg-white px-2 py-0.5 rounded-full border border-gray-200">80mm (302px)</span>
               </div>
-              <ThermalSlipPreview data={previewSlipData} scale={0.9} logoSrc={logoSrc} logoSize={logoSize} {...officerSignProps} />
+              <ThermalSlipPreview data={previewSlipData} scale={0.9} logoSrc={logoSrc} logoSize={logoSize} sections={sections} />
               <p className="text-[10px] text-text-muted text-center mt-3">
                 <Scissors size={10} className="inline mr-1" />
                 ขนาดจริง 80mm — แสดงที่ 90%
@@ -472,5 +532,96 @@ export default function VisitSlipTemplatesSettingsPage() {
         </div>
       </main>
     </>
+  );
+}
+
+// ===== SORTABLE SECTION CARD =====
+function SortableSectionCard({
+  section, isExpanded, onToggleExpand, onToggleSection, onToggleField,
+  editingField, onEditField, onUpdateFieldLabel,
+}: {
+  section: ThermalSection;
+  isExpanded: boolean;
+  onToggleExpand: () => void;
+  onToggleSection: () => void;
+  onToggleField: (fieldKey: string) => void;
+  editingField: string | null;
+  onEditField: (key: string | null) => void;
+  onUpdateFieldLabel: (fieldKey: string, label: string) => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: section.id });
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    position: "relative" as const,
+    zIndex: isDragging ? 50 : undefined,
+  };
+  const enabledCount = section.fields.filter((f) => f.enabled).length;
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      <Card className={cn("border shadow-sm transition-all", !section.enabled && "opacity-40")}>
+        <CardContent className="p-0">
+          {/* Section header */}
+          <div className="flex items-center gap-2 px-4 py-3 cursor-pointer hover:bg-gray-50 transition-colors"
+            onClick={onToggleExpand}>
+            <GripVertical
+              size={14}
+              className="text-gray-300 cursor-grab active:cursor-grabbing"
+              {...attributes}
+              {...listeners}
+              onClick={(e) => e.stopPropagation()}
+            />
+            <button onClick={(e) => { e.stopPropagation(); onToggleSection(); }}
+              className={cn("shrink-0", section.enabled ? "text-success" : "text-gray-300")}>
+              {section.enabled ? <ToggleRight size={20} /> : <ToggleLeft size={20} />}
+            </button>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold text-text-primary">{section.name}</span>
+                <span className="text-[10px] text-text-muted">({section.nameEn})</span>
+              </div>
+              <span className="text-[10px] text-text-muted">{enabledCount}/{section.fields.length} fields</span>
+            </div>
+            {isExpanded ? <ChevronUp size={16} className="text-gray-400" /> : <ChevronDown size={16} className="text-gray-400" />}
+          </div>
+
+          {/* Expanded: fields */}
+          {isExpanded && section.enabled && (
+            <div className="border-t border-border">
+              {section.fields.map((field) => (
+                <div key={field.key} className="flex items-center gap-2 px-4 py-2 border-b border-border/50 last:border-0 hover:bg-gray-50/50">
+                  <GripVertical size={12} className="text-gray-200" />
+                  <button onClick={() => onToggleField(field.key)}
+                    className={cn("shrink-0", field.enabled ? "text-success" : "text-gray-300")}>
+                    {field.enabled ? <Check size={14} /> : <X size={14} />}
+                  </button>
+                  {editingField === field.key && field.editable ? (
+                    <input
+                      autoFocus
+                      defaultValue={field.label}
+                      onBlur={(e) => { onUpdateFieldLabel(field.key, e.target.value); onEditField(null); }}
+                      onKeyDown={(e) => { if (e.key === "Enter") { onUpdateFieldLabel(field.key, (e.target as HTMLInputElement).value); onEditField(null); } }}
+                      className="flex-1 text-xs px-2 py-1 rounded-lg border border-primary/30 focus:outline-none focus:ring-1 focus:ring-primary/30 bg-primary-50"
+                    />
+                  ) : (
+                    <span className={cn("flex-1 text-xs", field.enabled ? "text-text-primary" : "text-gray-400 line-through")}>
+                      {field.label}
+                    </span>
+                  )}
+                  <span className="text-[10px] text-text-muted shrink-0">{field.labelEn}</span>
+                  {field.editable && (
+                    <button onClick={() => onEditField(field.key)} className="text-gray-300 hover:text-primary transition-colors">
+                      <Pencil size={12} />
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 }

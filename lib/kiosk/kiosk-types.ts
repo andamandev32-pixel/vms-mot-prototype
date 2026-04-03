@@ -97,6 +97,25 @@ export interface SlipData {
   vehiclePlate?: string;
 }
 
+/** Field config for thermal slip template editor */
+export interface ThermalField {
+  key: string;
+  label: string;
+  labelEn: string;
+  enabled: boolean;
+  editable: boolean;
+  value?: string;
+}
+
+/** Section config for thermal slip template editor */
+export interface ThermalSection {
+  id: string;
+  name: string;
+  nameEn: string;
+  enabled: boolean;
+  fields: ThermalField[];
+}
+
 /** Audio cue for TTS */
 export interface AudioCue {
   th: string;

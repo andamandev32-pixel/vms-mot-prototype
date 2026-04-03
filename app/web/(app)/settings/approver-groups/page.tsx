@@ -32,7 +32,7 @@ import {
   Save,
 } from "lucide-react";
 import {
-  approverGroups,
+  approverGroups as fallbackApproverGroups,
   departments,
   staffMembers,
   visitPurposeConfigs,
@@ -41,6 +41,13 @@ import {
   type ApproverNotifyChannel,
 } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
+import {
+  useApproverGroups,
+  useCreateApproverGroup,
+  useUpdateApproverGroup,
+  useDeleteApproverGroup,
+  useUpdateApproverGroupMembers,
+} from "@/lib/hooks";
 
 /* ── helpers ───────────────────────────────────── */
 
@@ -85,15 +92,26 @@ const channelConfig: Record<
    PAGE
    ══════════════════════════════════════════════════ */
 export default function ApproverGroupsPage() {
+  /* ── API hooks ── */
+  const { data: rawGroups, isLoading } = useApproverGroups();
+  const createGroup = useCreateApproverGroup();
+  const updateGroup = useUpdateApproverGroup();
+  const deleteGroup = useDeleteApproverGroup();
+  const updateMembers = useUpdateApproverGroupMembers();
+
+  const apiGroups = Array.isArray(rawGroups) ? rawGroups : ((rawGroups as any)?.groups ?? (rawGroups as any)?.data ?? []);
+  const groups: ApproverGroup[] = apiGroups.length > 0 ? apiGroups : fallbackApproverGroups;
+
   const [showSchema, setShowSchema] = useState(false);
   const [showFlow, setShowFlow] = useState(false);
   const [showApiDoc, setShowApiDoc] = useState(false);
   const schema = getSchemaByPageId("approver-groups")!;
   const flowData = getFlowByPageId("approver-groups")!;
   const apiDoc = getApiDocByPageId("approver-groups");
-  const [groups] = useState<ApproverGroup[]>(approverGroups);
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [drawerData, setDrawerData] = useState<{ mode: "add" | "edit"; group?: ApproverGroup } | null>(null);
+
+  if (isLoading) return <div><Topbar title="กลุ่มผู้อนุมัติ" /><div className="p-8 text-center text-text-muted">กำลังโหลด...</div></div>;
 
   const toggle = (id: number) =>
     setExpandedId((prev) => (prev === id ? null : id));
@@ -172,6 +190,7 @@ export default function ApproverGroupsPage() {
               isExpanded={expandedId === group.id}
               onToggle={() => toggle(group.id)}
               onEdit={() => setDrawerData({ mode: "edit", group })}
+              onDelete={() => deleteGroup.mutate(group.id)}
             />
           ))}
         </div>
@@ -202,7 +221,13 @@ export default function ApproverGroupsPage() {
         </div>
 
         {/* Drawer */}
-        <ApproverGroupDrawer data={drawerData} onClose={() => setDrawerData(null)} />
+        <ApproverGroupDrawer
+          data={drawerData}
+          onClose={() => setDrawerData(null)}
+          onCreate={(d) => createGroup.mutate(d)}
+          onUpdate={(d) => updateGroup.mutate(d as any)}
+          onUpdateMembers={(d) => updateMembers.mutate(d)}
+        />
       </main>
     </>
   );
@@ -216,11 +241,13 @@ function GroupCard({
   isExpanded,
   onToggle,
   onEdit,
+  onDelete,
 }: {
   group: ApproverGroup;
   isExpanded: boolean;
   onToggle: () => void;
   onEdit: () => void;
+  onDelete: () => void;
 }) {
   const approvers = group.members.filter((m) => m.canApprove);
   const notifiers = group.members.filter((m) => m.receiveNotification);
@@ -309,7 +336,7 @@ function GroupCard({
             <button className="p-2 hover:bg-primary-50 rounded-lg transition-colors text-text-muted hover:text-primary" onClick={onEdit}>
               <Pencil size={16} />
             </button>
-            <button className="p-2 hover:bg-red-50 rounded-lg transition-colors text-text-muted hover:text-error">
+            <button className="p-2 hover:bg-red-50 rounded-lg transition-colors text-text-muted hover:text-error" onClick={onDelete}>
               <Trash2 size={16} />
             </button>
           </div>
@@ -652,9 +679,15 @@ function SummaryCard({
 function ApproverGroupDrawer({
   data,
   onClose,
+  onCreate,
+  onUpdate,
+  onUpdateMembers,
 }: {
   data: { mode: "add" | "edit"; group?: ApproverGroup } | null;
   onClose: () => void;
+  onCreate?: (data: unknown) => void;
+  onUpdate?: (data: { id: number; [key: string]: unknown }) => void;
+  onUpdateMembers?: (data: { id: number; members: unknown[] }) => void;
 }) {
   const group = data?.group;
   const isEdit = data?.mode === "edit";
@@ -850,7 +883,16 @@ function ApproverGroupDrawer({
 
       <div className="sticky bottom-0 px-6 py-4 bg-white border-t border-border flex items-center justify-end gap-3">
         <Button variant="outline" onClick={onClose}>ยกเลิก</Button>
-        <Button variant="primary" onClick={onClose}>
+        <Button variant="primary" onClick={() => {
+          const payload: any = { name, nameEn, description, departmentId, visitPurposeIds: selectedPurposeIds, notifyChannels, isActive };
+          if (isEdit && group) {
+            onUpdate?.({ id: group.id, ...payload });
+            onUpdateMembers?.({ id: group.id, members: members as unknown[] });
+          } else {
+            onCreate?.({ ...payload, members });
+          }
+          onClose();
+        }}>
           <Save size={16} className="mr-2" />
           {isEdit ? "บันทึกการเปลี่ยนแปลง" : "เพิ่มกลุ่มผู้อนุมัติ"}
         </Button>

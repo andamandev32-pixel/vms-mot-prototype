@@ -99,9 +99,9 @@ const apiSpecs: CounterApiSpec[] = [
       {
         method: "GET",
         path: "/counter/dashboard",
-        summary: "โหลดสรุปสถิติประจำวัน + คิว",
-        summaryEn: "Load daily summary stats + queue",
-        tables: ["visit_records", "visitors", "service_points"],
+        summary: "โหลดสรุปสถิติประจำวัน + คิว (นับจาก visit_entries)",
+        summaryEn: "Load daily summary stats + queue (counts from visit_entries)",
+        tables: ["visit_entries", "appointments", "visitors", "service_points"],
         response: {
           stats: {
             todayTotal: 45,
@@ -118,8 +118,44 @@ const apiSpecs: CounterApiSpec[] = [
             { bookingCode: "eVMS-20260315-0042", visitorName: "นายสมชาย ใจดี", timeSlot: "10:00-11:30", status: "approved" },
           ],
         },
-        notes: ["Refresh ทุกครั้งที่กลับ IDLE", "Polling ทุก 30 วินาที"],
-        notesEn: ["Refresh on every IDLE return", "Poll every 30 seconds"],
+        notes: ["Refresh ทุกครั้งที่กลับ IDLE", "Polling ทุก 30 วินาที", "currentlyInside นับจาก visit_entries WHERE status='checked-in' (ไม่ใช่จาก appointments)"],
+        notesEn: ["Refresh on every IDLE return", "Poll every 30 seconds", "currentlyInside counts from visit_entries WHERE status='checked-in' (not from appointments)"],
+      },
+      {
+        method: "GET",
+        path: "/counter/entries/today",
+        summary: "ดึงรายการ visit_entries วันนี้ + filter ตาม status",
+        summaryEn: "List today's visit entries with status filtering",
+        tables: ["visit_entries", "visitors", "departments", "visit_purposes", "appointments"],
+        response: {
+          entries: [
+            {
+              entryId: 42,
+              entryCode: "ENT-20260315-0099",
+              appointmentId: null,
+              visitor: { name: "นายสมชาย ใจดี", idNumber: "1-2345-XXXXX-XX-3" },
+              purpose: "ติดต่อราชการ",
+              department: "สำนักงานปลัด",
+              floor: "ชั้น 3",
+              checkinAt: "2026-03-15T09:05:00+07:00",
+              checkoutAt: null,
+              status: "checked-in",
+              type: "walkin",
+            },
+          ],
+          total: 45,
+          filters: { status: "checked-in" },
+        },
+        notes: [
+          "รองรับ query params: ?status=checked-in,checked-out,auto-checkout,overstay",
+          "appointmentId = null หมายถึง walk-in",
+          "ใช้แสดงรายการผู้เยี่ยมที่อยู่ในอาคาร หรือประวัติวันนี้",
+        ],
+        notesEn: [
+          "Supports query params: ?status=checked-in,checked-out,auto-checkout,overstay",
+          "appointmentId = null means walk-in entry",
+          "Used to display visitors currently inside or today's history",
+        ],
       },
     ],
   },
@@ -134,7 +170,7 @@ const apiSpecs: CounterApiSpec[] = [
         path: "/counter/identity/card-read",
         summary: "อ่านบัตร + เช็ค blocklist + upsert visitor",
         summaryEn: "Read card + check blocklist + upsert visitor",
-        tables: ["visitors", "blocklist", "visit_records"],
+        tables: ["visitors", "blocklist", "visit_entries"],
         request: {
           inputMethod: "card-reader",
           documentType: "thai-id-card",
@@ -264,7 +300,7 @@ const apiSpecs: CounterApiSpec[] = [
         summary: "อัปโหลดภาพถ่ายผู้เยี่ยม (Webcam)",
         summaryEn: "Upload visitor photo from webcam",
         contentType: "multipart/form-data",
-        tables: ["visit_records"],
+        tables: ["visit_entries"],
         request: {
           photo: "<binary_jpeg>",
           visitorId: 15,
@@ -290,9 +326,9 @@ const apiSpecs: CounterApiSpec[] = [
       {
         method: "POST",
         path: "/counter/walkin/checkin",
-        summary: "สร้าง visit_record สำหรับ walk-in (API หลัก)",
-        summaryEn: "Create visit record for walk-in (main API)",
-        tables: ["visit_records", "access_groups", "access_group_zones", "department_access_mappings", "visit_slip_templates", "visit_slip_sections", "visit_slip_fields", "purpose_slip_mappings", "visitors"],
+        summary: "สร้าง visit_entry สำหรับ walk-in (API หลัก) — appointment_id = NULL",
+        summaryEn: "Create visit_entry for walk-in (main API) — appointment_id = NULL",
+        tables: ["visit_entries", "access_groups", "access_group_zones", "department_access_mappings", "visit_slip_templates", "visit_slip_sections", "visit_slip_fields", "purpose_slip_mappings", "visitors"],
         request: {
           type: "walkin",
           visitorId: 15,
@@ -307,7 +343,7 @@ const apiSpecs: CounterApiSpec[] = [
           officerId: 8,
         },
         response: {
-          visitRecord: { id: 42, bookingCode: "eVMS-20260315-0099", status: "checked-in", checkinBy: "officer" },
+          entry: { entryId: 42, entryCode: "ENT-20260315-0099", appointmentId: null, status: "checked-in", checkinBy: "officer" },
           accessControl: {
             accessGroupName: "ติดต่อราชการ ชั้น 2-5",
             qrCodeData: "eVMS-OFA-20260315-0099-A2B3C4",
@@ -324,7 +360,7 @@ const apiSpecs: CounterApiSpec[] = [
           notification: { hostNotified: true, channel: "line" },
         },
         errorResponse: {
-          error: "DUPLICATE_ACTIVE_VISIT",
+          error: "DUPLICATE_ACTIVE_ENTRY",
           message: "ผู้เยี่ยมนี้ยังเช็คอินอยู่ — กรุณาเช็คเอาท์ก่อน",
         },
         notes: [
@@ -355,7 +391,7 @@ const apiSpecs: CounterApiSpec[] = [
         path: "/counter/appointments/today",
         summary: "ค้นหานัดหมายวันนี้",
         summaryEn: "Search today's appointments",
-        tables: ["visit_records", "visitors", "staff", "departments", "visit_purposes"],
+        tables: ["appointments", "visitors", "staff", "departments", "visit_purposes"],
         response: {
           appointments: [
             {
@@ -386,7 +422,7 @@ const apiSpecs: CounterApiSpec[] = [
         path: "/counter/appointments/{id}/verify",
         summary: "ยืนยันตัวตนกับนัดหมาย",
         summaryEn: "Verify identity against appointment",
-        tables: ["visitors", "visit_records", "blocklist"],
+        tables: ["visitors", "appointments", "blocklist"],
         request: {
           documentType: "thai-id-card",
           idNumber: "1234567890123",
@@ -420,9 +456,9 @@ const apiSpecs: CounterApiSpec[] = [
       {
         method: "POST",
         path: "/counter/appointments/{id}/checkin",
-        summary: "เช็คอินจากนัดหมาย",
-        summaryEn: "Check-in from appointment",
-        tables: ["visit_records", "access_groups", "access_group_zones", "department_access_mappings", "visit_slip_templates", "purpose_slip_mappings"],
+        summary: "เช็คอินจากนัดหมาย — สร้าง visit_entry ผูกกับ appointment",
+        summaryEn: "Check-in from appointment — creates a visit_entry linked to the appointment",
+        tables: ["visit_entries", "appointments", "access_groups", "access_group_zones", "department_access_mappings", "visit_slip_templates", "purpose_slip_mappings"],
         request: {
           visitorId: 15,
           servicePointId: 3,
@@ -432,7 +468,7 @@ const apiSpecs: CounterApiSpec[] = [
           officerId: 8,
         },
         response: {
-          visitRecord: { id: 42, bookingCode: "eVMS-20260315-0042", status: "checked-in", checkinBy: "officer" },
+          entry: { entryId: 42, entryCode: "ENT-20260315-0042", appointmentId: 42, status: "checked-in", checkinBy: "officer" },
           accessControl: {
             accessGroupName: "ประชุม ชั้น 5",
             qrCodeData: "eVMS-OFA-20260315-0042-X5Y6Z7",
@@ -449,12 +485,14 @@ const apiSpecs: CounterApiSpec[] = [
           notification: { hostNotified: true, channel: "line", notifiedTo: "นางสาวพิมพา เกษมศรี" },
         },
         notes: [
-          "Update appointment status → checked-in",
+          "สร้าง visit_entry ใหม่ผูกกับ appointment (1 appointment → N entries สำหรับนัดหมายแบบ period)",
+          "ไม่เปลี่ยน appointment status — appointment ยังคงเป็น approved/confirmed",
           "แจ้ง host อัตโนมัติ",
           "badge.logoUrl/logoSizePx/showOfficerSign ดึงจาก visit_slip_templates + sections",
         ],
         notesEn: [
-          "Update appointment status → checked-in",
+          "Creates new visit_entry linked to appointment (1 appointment → N entries for period appointments)",
+          "Does NOT change appointment status — appointment stays approved/confirmed",
           "Auto-notify host",
           "badge.logoUrl/logoSizePx/showOfficerSign from visit_slip_templates + sections",
         ],
@@ -469,15 +507,16 @@ const apiSpecs: CounterApiSpec[] = [
     endpoints: [
       {
         method: "GET",
-        path: "/counter/visits/active/{badgeCode}",
-        summary: "ค้นหาผู้เยี่ยมจาก badge/QR",
-        summaryEn: "Look up active visitor by badge/QR code",
-        tables: ["visit_records", "visitors", "departments", "visit_purposes"],
+        path: "/counter/entries/active/{badgeCode}",
+        summary: "ค้นหา entry ผู้เยี่ยมจาก badge/QR",
+        summaryEn: "Look up active visit entry by badge/QR code",
+        tables: ["visit_entries", "visitors", "departments", "visit_purposes"],
         response: {
           found: true,
-          visit: {
-            id: 42,
-            bookingCode: "eVMS-20260315-0099",
+          entry: {
+            entryId: 42,
+            entryCode: "ENT-20260315-0099",
+            appointmentId: null,
             badgeNumber: "V-20260315-0099",
             visitor: { name: "นายสมชาย ใจดี", idNumber: "1-2345-XXXXX-XX-3", photo: "<url>" },
             purpose: "ติดต่อราชการ",
@@ -506,10 +545,10 @@ const apiSpecs: CounterApiSpec[] = [
     endpoints: [
       {
         method: "POST",
-        path: "/counter/visits/{id}/checkout",
-        summary: "ยืนยัน checkout",
-        summaryEn: "Confirm visitor checkout",
-        tables: ["visit_records", "access_groups"],
+        path: "/counter/entries/{id}/checkout",
+        summary: "ยืนยัน checkout — อัปเดต entry status เป็น checked-out",
+        summaryEn: "Confirm visitor checkout — updates entry status to checked-out",
+        tables: ["visit_entries", "access_groups"],
         request: {
           officerId: 8,
           returnedBadge: true,
@@ -518,8 +557,9 @@ const apiSpecs: CounterApiSpec[] = [
         },
         response: {
           success: true,
-          visit: {
-            id: 42,
+          entry: {
+            entryId: 42,
+            entryCode: "ENT-20260315-0099",
             status: "checked-out",
             checkoutAt: "2026-03-15T11:35:00+07:00",
             checkoutBy: "officer",
@@ -527,8 +567,8 @@ const apiSpecs: CounterApiSpec[] = [
           },
           accessRevoked: true,
         },
-        notes: ["ลบ access จาก Hikvision async", "บันทึกการคืนบัตร/อุปกรณ์"],
-        notesEn: ["Revoke Hikvision access async", "Record badge/item returns"],
+        notes: ["อัปเดต visit_entries.status → checked-out", "ลบ access จาก Hikvision async", "บันทึกการคืนบัตร/อุปกรณ์"],
+        notesEn: ["Update visit_entries.status → checked-out", "Revoke Hikvision access async", "Record badge/item returns"],
       },
     ],
   },
@@ -543,9 +583,9 @@ const apiSpecs: CounterApiSpec[] = [
         path: "/counter/badge/print",
         summary: "พิมพ์บัตรผู้เยี่ยม + ดึง slip layout",
         summaryEn: "Print visitor badge + get slip layout",
-        tables: ["visit_slip_templates", "visit_slip_sections", "visit_slip_fields", "purpose_slip_mappings", "visit_records"],
+        tables: ["visit_slip_templates", "visit_slip_sections", "visit_slip_fields", "purpose_slip_mappings", "visit_entries"],
         request: {
-          visitRecordId: 42,
+          entryId: 42,
           servicePointId: 3,
           printType: "badge",
           copies: 1,
@@ -593,12 +633,12 @@ const apiSpecs: CounterApiSpec[] = [
     endpoints: [
       {
         method: "GET",
-        path: "/counter/visits/{id}/summary",
+        path: "/counter/entries/{id}/summary",
         summary: "ดึงสรุปข้อมูล check-in สำเร็จ",
         summaryEn: "Get check-in success summary",
-        tables: ["visit_records", "visitors", "departments", "visit_purposes"],
+        tables: ["visit_entries", "visitors", "departments", "visit_purposes"],
         response: {
-          visit: { id: 42, bookingCode: "eVMS-20260315-0099", badgeNumber: "V-20260315-0099", status: "checked-in", type: "walkin" },
+          entry: { entryId: 42, entryCode: "ENT-20260315-0099", appointmentId: null, badgeNumber: "V-20260315-0099", status: "checked-in", type: "walkin" },
           visitor: { name: "นายสมชาย ใจดี", nameEn: "SOMCHAI JAIDEE" },
           destination: { purpose: "ติดต่อราชการ", department: "สำนักงานปลัด", floor: "ชั้น 3" },
           accessControl: { qrCodeData: "eVMS-OFA-20260315-0099-A2B3C4", validUntil: "17:00 น." },

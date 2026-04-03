@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyToken } from "@/lib/auth";
+import { verifyVisitorToken, VISITOR_COOKIE_NAME } from "@/lib/visitor-auth";
 import { prisma } from "@/lib/prisma";
 
 // ===== Inline response helpers =====
@@ -8,10 +9,29 @@ const ok = (data: unknown) =>
 const err = (code: string, msg: string, status = 400) =>
   NextResponse.json({ success: false, error: { code, message: msg } }, { status });
 
-// ===== Helper: ดึง authenticated user จาก cookie =====
+// ===== Helper: ดึง authenticated user จาก cookie (staff หรือ visitor) =====
 async function getAuthUser(request: NextRequest) {
-  const token = request.cookies.get("evms_session")?.value;
-  return token ? await verifyToken(token) : null;
+  // Try staff session first
+  const staffToken = request.cookies.get("evms_session")?.value;
+  if (staffToken) return await verifyToken(staffToken);
+  // Fallback: visitor session
+  const visitorToken = request.cookies.get(VISITOR_COOKIE_NAME)?.value;
+  if (visitorToken) {
+    const v = await verifyVisitorToken(visitorToken);
+    if (v) {
+      return {
+        id: v.id,
+        username: v.email,
+        email: v.email,
+        name: `${v.firstName} ${v.lastName}`,
+        nameEn: `${v.firstName} ${v.lastName}`,
+        role: "visitor" as const,
+        departmentId: null,
+        departmentName: null,
+      };
+    }
+  }
+  return null;
 }
 
 // ─────────────────────────────────────────────────────
@@ -190,7 +210,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Channel validation
-    const requestChannel = channel || (user.role === "visitor" ? "line" : "web");
+    const requestChannel = channel || "web";
     if (requestChannel === "line" && !rule.acceptFromLine) {
       return err("CHANNEL_BLOCKED", "ไม่รับการนัดหมายจาก LINE สำหรับวัตถุประสงค์และแผนกนี้", 403);
     }

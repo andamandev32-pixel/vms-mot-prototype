@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo, useEffect, useCallback } from "react";
 import Topbar from "@/components/web/Topbar";
 import { DatabaseSchemaModal, DbSchemaButton } from "@/components/web/DatabaseSchemaModal";
 import { FlowchartModal, FlowRulesButton } from "@/components/web/FlowchartModal";
@@ -38,6 +38,7 @@ import {
   FileText,
   IdCard,
   Calendar,
+  CheckCircle2,
 } from "lucide-react";
 import {
   visitPurposeConfigs,
@@ -50,6 +51,15 @@ import {
   type EntryMode,
   getDepartmentLocation,
 } from "@/lib/mock-data";
+import {
+  useVisitPurposes,
+  useCreateVisitPurpose,
+  useUpdateVisitPurpose,
+  useDeleteVisitPurpose,
+  useCreateDepartmentRule,
+  useUpdateDepartmentRule,
+  useDeleteDepartmentRule,
+} from "@/lib/hooks";
 import { cn } from "@/lib/utils";
 
 /* ── helper: bool icon cell ────────────────────── */
@@ -80,13 +90,66 @@ function BoolIcon({
    PAGE
    ══════════════════════════════════════════════════ */
 export default function VisitPurposeSettingsPage() {
+  /* API hooks */
+  const { data: rawPurposes, isLoading } = useVisitPurposes();
+  const createPurposeMut = useCreateVisitPurpose();
+  const updatePurposeMut = useUpdateVisitPurpose();
+  const deletePurposeMut = useDeleteVisitPurpose();
+
+  /* Map API data to VisitPurposeConfig shape */
+  const configs: VisitPurposeConfig[] = useMemo(() => {
+    const raw = rawPurposes as any;
+    const list: any[] = Array.isArray(rawPurposes) ? rawPurposes
+      : raw?.data?.visitPurposes ?? raw?.visitPurposes ?? raw?.data ?? [];
+    if (!Array.isArray(list) || list.length === 0) return visitPurposeConfigs; // fallback to mock
+
+    return list.map((p: any) => {
+      const kioskCfg = p.channelConfigs?.find((c: any) => c.channel === "kiosk");
+      const counterCfg = p.channelConfigs?.find((c: any) => c.channel === "counter");
+
+      return {
+        id: p.id,
+        name: p.name,
+        nameEn: p.nameEn,
+        icon: p.icon ?? "📌",
+        showOnLine: p.showOnLine ?? true,
+        showOnWeb: p.showOnWeb ?? true,
+        showOnKiosk: p.showOnKiosk ?? true,
+        showOnCounter: p.showOnCounter ?? true,
+        allowedEntryModes: (p.allowedEntryModes ?? "single").split(",") as EntryMode[],
+        kioskConfig: {
+          allowedDocuments: kioskCfg?.channelDocuments?.map((d: any) => d.identityDocumentTypeId ?? d.identityDocumentType?.id) ?? [],
+          requirePhoto: kioskCfg?.requirePhoto ?? false,
+        },
+        counterConfig: {
+          allowedDocuments: counterCfg?.channelDocuments?.map((d: any) => d.identityDocumentTypeId ?? d.identityDocumentType?.id) ?? [],
+          requirePhoto: counterCfg?.requirePhoto ?? false,
+        },
+        departmentRules: (p.departmentRules ?? []).map((r: any) => ({
+          id: r.id,
+          departmentId: r.departmentId,
+          requirePersonName: r.requirePersonName,
+          requireApproval: r.requireApproval,
+          approverGroupId: r.approverGroupId ?? undefined,
+          offerWifi: r.offerWifi,
+          acceptFromLine: r.acceptFromLine,
+          acceptFromWeb: r.acceptFromWeb,
+          acceptFromKiosk: r.acceptFromKiosk,
+          acceptFromCounter: r.acceptFromCounter,
+          isActive: r.isActive,
+        })),
+        isActive: p.isActive,
+        order: p.sortOrder ?? p.order ?? 0,
+      } as VisitPurposeConfig;
+    });
+  }, [rawPurposes]);
+
   const [showSchema, setShowSchema] = useState(false);
   const [showFlow, setShowFlow] = useState(false);
   const [showApiDoc, setShowApiDoc] = useState(false);
   const schema = getSchemaByPageId("visit-purposes")!;
   const flowData = getFlowByPageId("visit-purposes")!;
   const apiDoc = getApiDocByPageId("visit-purposes");
-  const [configs, setConfigs] = useState<VisitPurposeConfig[]>(visitPurposeConfigs);
   const [expandedRow, setExpandedRow] = useState<number | null>(null);
 
   /* drawer state */
@@ -100,6 +163,80 @@ export default function VisitPurposeSettingsPage() {
   const openAddDept = (configId: number) => setDeptDrawer({ configId });
   const openEditDept = (configId: number, rule: DepartmentRule) => setDeptDrawer({ configId, rule });
   const closeDeptDrawer = () => setDeptDrawer(null);
+
+  /* toast + confirmation */
+  const [toast, setToast] = useState<{ type: "success" | "error"; message: string } | null>(null);
+  const showToast = useCallback((type: "success" | "error", message: string) => {
+    setToast({ type, message });
+    setTimeout(() => setToast(null), 3000);
+  }, []);
+  const [confirmDelete, setConfirmDelete] = useState<VisitPurposeConfig | null>(null);
+
+  /* department rule mutations */
+  const createDeptRuleMut = useCreateDepartmentRule();
+  const updateDeptRuleMut = useUpdateDepartmentRule();
+  const deleteDeptRuleMut = useDeleteDepartmentRule();
+
+  /* ── CRUD handlers ── */
+  const handleSavePurpose = useCallback(async (data: {
+    id?: number; name: string; nameEn: string; icon: string; isActive: boolean;
+    sortOrder: number; showOnLine: boolean; showOnWeb: boolean; showOnKiosk: boolean;
+    showOnCounter: boolean; allowedEntryModes: string;
+  }) => {
+    try {
+      if (data.id) {
+        await updatePurposeMut.mutateAsync({ id: data.id, ...data });
+        showToast("success", "บันทึกการเปลี่ยนแปลงสำเร็จ");
+      } else {
+        await createPurposeMut.mutateAsync(data);
+        showToast("success", "เพิ่มวัตถุประสงค์สำเร็จ");
+      }
+      closeDrawer();
+    } catch {
+      showToast("error", "เกิดข้อผิดพลาด กรุณาลองใหม่");
+    }
+  }, [updatePurposeMut, createPurposeMut, showToast]);
+
+  const handleDeletePurpose = useCallback(async () => {
+    if (!confirmDelete) return;
+    try {
+      await deletePurposeMut.mutateAsync(confirmDelete.id);
+      showToast("success", "ลบวัตถุประสงค์สำเร็จ");
+    } catch {
+      showToast("error", "ไม่สามารถลบได้ อาจมีนัดหมายอ้างอิงอยู่");
+    }
+    setConfirmDelete(null);
+  }, [confirmDelete, deletePurposeMut, showToast]);
+
+  const handleSaveDeptRule = useCallback(async (data: {
+    purposeId: number; ruleId?: number; departmentId: number;
+    requirePersonName: boolean; requireApproval: boolean; approverGroupId: number | null;
+    offerWifi: boolean; acceptFromLine: boolean; acceptFromWeb: boolean;
+    acceptFromKiosk: boolean; acceptFromCounter: boolean; isActive: boolean;
+  }) => {
+    try {
+      if (data.ruleId) {
+        await updateDeptRuleMut.mutateAsync(data as any);
+        showToast("success", "บันทึกเงื่อนไขแผนกสำเร็จ");
+      } else {
+        await createDeptRuleMut.mutateAsync(data as any);
+        showToast("success", "เพิ่มแผนกสำเร็จ");
+      }
+      closeDeptDrawer();
+    } catch {
+      showToast("error", "เกิดข้อผิดพลาด กรุณาลองใหม่");
+    }
+  }, [updateDeptRuleMut, createDeptRuleMut, showToast]);
+
+  const handleDeleteDeptRule = useCallback(async (configId: number, rule: DepartmentRule) => {
+    if (!rule.id || !window.confirm("ต้องการลบเงื่อนไขแผนกนี้?")) return;
+    try {
+      await deleteDeptRuleMut.mutateAsync({ purposeId: configId, ruleId: rule.id });
+      showToast("success", "ลบเงื่อนไขแผนกสำเร็จ");
+    } catch {
+      showToast("error", "เกิดข้อผิดพลาด กรุณาลองใหม่");
+    }
+  }, [deleteDeptRuleMut, showToast]);
 
   const toggle = (id: number) =>
     setExpandedRow((prev) => (prev === id ? null : id));
@@ -126,6 +263,44 @@ export default function VisitPurposeSettingsPage() {
       <DatabaseSchemaModal open={showSchema} onClose={() => setShowSchema(false)} schema={schema} />
       <FlowchartModal open={showFlow} onClose={() => setShowFlow(false)} flowData={flowData} />
       {apiDoc && <ApiDocModal open={showApiDoc} onClose={() => setShowApiDoc(false)} apiDoc={apiDoc} />}
+
+      {/* Toast */}
+      {toast && (
+        <div className={cn(
+          "fixed top-4 right-4 z-50 px-5 py-3 rounded-xl shadow-lg text-sm font-medium flex items-center gap-2 animate-in fade-in slide-in-from-top-2",
+          toast.type === "success" ? "bg-success text-white" : "bg-error text-white"
+        )}>
+          <CheckCircle2 size={16} /> {toast.message}
+        </div>
+      )}
+
+      {/* Confirm Delete Modal */}
+      {confirmDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm"
+             onClick={(e) => { if (e.target === e.currentTarget) setConfirmDelete(null); }}>
+          <div className="bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full mx-4">
+            <div className="flex justify-center mb-4">
+              <div className="w-14 h-14 rounded-full flex items-center justify-center bg-red-100">
+                <Trash2 size={24} className="text-error" />
+              </div>
+            </div>
+            <h3 className="text-center text-lg font-bold text-text-primary">ลบวัตถุประสงค์</h3>
+            <p className="text-center text-sm text-text-muted mt-2">
+              คุณต้องการลบ &ldquo;{confirmDelete.name}&rdquo; หรือไม่?<br />การดำเนินการนี้ไม่สามารถย้อนกลับได้
+            </p>
+            <div className="flex gap-3 mt-6">
+              <Button variant="outline" fullWidth onClick={() => setConfirmDelete(null)}>ยกเลิก</Button>
+              <Button className="bg-error hover:bg-error/90 text-white" fullWidth onClick={handleDeletePurpose}>ลบ</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isLoading && (
+        <div className="flex-1 flex items-center justify-center p-12">
+          <p className="text-text-muted">กำลังโหลด...</p>
+        </div>
+      )}
       <main className="flex-1 p-6 space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -190,8 +365,10 @@ export default function VisitPurposeSettingsPage() {
               isExpanded={expandedRow === config.id}
               onToggle={() => toggle(config.id)}
               onEdit={() => openEdit(config)}
+              onDelete={() => setConfirmDelete(config)}
               onAddDept={() => openAddDept(config.id)}
               onEditDept={(rule) => openEditDept(config.id, rule)}
+              onDeleteDept={(rule) => handleDeleteDeptRule(config.id, rule)}
             />
           ))}
         </div>
@@ -233,12 +410,15 @@ export default function VisitPurposeSettingsPage() {
           mode={drawerMode}
           config={editingConfig}
           onClose={closeDrawer}
+          onSave={handleSavePurpose}
+          totalCount={configs.length}
         />
 
         {/* ─── Department Rule Drawer ────────────── */}
         <DeptRuleDrawer
           data={deptDrawer}
           onClose={closeDeptDrawer}
+          onSave={handleSaveDeptRule}
         />
       </main>
     </>
@@ -253,15 +433,19 @@ function PurposeCard({
   isExpanded,
   onToggle,
   onEdit,
+  onDelete,
   onAddDept,
   onEditDept,
+  onDeleteDept,
 }: {
   config: VisitPurposeConfig;
   isExpanded: boolean;
   onToggle: () => void;
   onEdit: () => void;
+  onDelete: () => void;
   onAddDept: () => void;
   onEditDept: (rule: DepartmentRule) => void;
+  onDeleteDept: (rule: DepartmentRule) => void;
 }) {
   const activeRules = config.departmentRules.filter((r) => r.isActive);
 
@@ -341,7 +525,7 @@ function PurposeCard({
             <button className="p-2 hover:bg-primary-50 rounded-lg transition-colors text-text-muted hover:text-primary" onClick={onEdit}>
               <Pencil size={16} />
             </button>
-            <button className="p-2 hover:bg-red-50 rounded-lg transition-colors text-text-muted hover:text-error">
+            <button className="p-2 hover:bg-red-50 rounded-lg transition-colors text-text-muted hover:text-error" onClick={onDelete}>
               <Trash2 size={16} />
             </button>
           </div>
@@ -409,7 +593,7 @@ function PurposeCard({
               </thead>
               <tbody className="divide-y divide-border">
                 {config.departmentRules.map((rule) => (
-                  <DeptRuleRow key={rule.departmentId} rule={rule} onEdit={() => onEditDept(rule)} />
+                  <DeptRuleRow key={rule.departmentId} rule={rule} onEdit={() => onEditDept(rule)} onDelete={() => onDeleteDept(rule)} />
                 ))}
               </tbody>
             </table>
@@ -439,7 +623,7 @@ function PurposeCard({
 /* ══════════════════════════════════════════════════
    DEPT RULE ROW
    ══════════════════════════════════════════════════ */
-function DeptRuleRow({ rule, onEdit }: { rule: DepartmentRule; onEdit: () => void }) {
+function DeptRuleRow({ rule, onEdit, onDelete }: { rule: DepartmentRule; onEdit: () => void; onDelete: () => void }) {
   const dept = departments.find((d) => d.id === rule.departmentId);
 
   return (
@@ -572,7 +756,7 @@ function DeptRuleRow({ rule, onEdit }: { rule: DepartmentRule; onEdit: () => voi
           <button className="p-1.5 hover:bg-primary-50 rounded-md transition-colors text-text-muted hover:text-primary" onClick={onEdit}>
             <Pencil size={14} />
           </button>
-          <button className="p-1.5 hover:bg-red-50 rounded-md transition-colors text-text-muted hover:text-error">
+          <button className="p-1.5 hover:bg-red-50 rounded-md transition-colors text-text-muted hover:text-error" onClick={onDelete}>
             <Trash2 size={14} />
           </button>
         </div>
@@ -588,10 +772,18 @@ function PurposeDrawer({
   mode,
   config,
   onClose,
+  onSave,
+  totalCount,
 }: {
   mode: "add" | "edit" | null;
   config: VisitPurposeConfig | null;
   onClose: () => void;
+  onSave: (data: {
+    id?: number; name: string; nameEn: string; icon: string; isActive: boolean;
+    sortOrder: number; showOnLine: boolean; showOnWeb: boolean; showOnKiosk: boolean;
+    showOnCounter: boolean; allowedEntryModes: string;
+  }) => void;
+  totalCount: number;
 }) {
   const defaultChannel: EntryChannelConfig = { allowedDocuments: [1], requirePhoto: false };
 
@@ -612,7 +804,7 @@ function PurposeDrawer({
 
   /* reset form when drawer opens */
   const isOpen = mode !== null;
-  useState(() => {
+  useEffect(() => {
     if (mode === "edit" && config) {
       setName(config.name);
       setNameEn(config.nameEn);
@@ -628,12 +820,12 @@ function PurposeDrawer({
       setCounterDocs(config.counterConfig.allowedDocuments);
       setCounterPhoto(config.counterConfig.requirePhoto);
       setAllowedModes(config.allowedEntryModes);
-    } else {
+    } else if (mode === "add") {
       setName("");
       setNameEn("");
       setIcon("📌");
       setIsActive(true);
-      setOrder(visitPurposeConfigs.length + 1);
+      setOrder(totalCount + 1);
       setShowOnLine(true);
       setShowOnWeb(true);
       setShowOnKiosk(true);
@@ -644,7 +836,7 @@ function PurposeDrawer({
       setCounterPhoto(false);
       setAllowedModes(["single"]);
     }
-  });
+  }, [mode, config, totalCount]);
 
   const toggleDoc = (list: number[], setList: (v: number[]) => void, docId: number) => {
     setList(list.includes(docId) ? list.filter((d) => d !== docId) : [...list, docId]);
@@ -736,12 +928,12 @@ function PurposeDrawer({
             type="button"
             onClick={() => setIsActive(!isActive)}
             className={cn(
-              "w-12 h-7 rounded-full transition-colors relative",
+              "w-11 h-6 rounded-full transition-colors relative shrink-0",
               isActive ? "bg-primary" : "bg-gray-300"
             )}
           >
             <span className={cn(
-              "absolute top-0.5 w-6 h-6 bg-white rounded-full shadow transition-transform",
+              "absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform",
               isActive ? "translate-x-5" : "translate-x-0.5"
             )} />
           </button>
@@ -928,7 +1120,22 @@ function PurposeDrawer({
       {/* Footer */}
       <div className="sticky bottom-0 px-6 py-4 bg-white border-t border-border flex items-center justify-end gap-3">
         <Button variant="outline" onClick={onClose}>ยกเลิก</Button>
-        <Button variant="primary" onClick={onClose}>
+        <Button variant="primary" disabled={!name.trim() || !nameEn.trim()} onClick={() => {
+          if (!name.trim() || !nameEn.trim()) return;
+          onSave({
+            ...(mode === "edit" && config ? { id: config.id } : {}),
+            name: name.trim(),
+            nameEn: nameEn.trim(),
+            icon,
+            isActive,
+            sortOrder: order,
+            showOnLine,
+            showOnWeb,
+            showOnKiosk,
+            showOnCounter,
+            allowedEntryModes: allowedModes.join(","),
+          });
+        }}>
           <Save size={16} className="mr-2" />
           {mode === "add" ? "เพิ่มวัตถุประสงค์" : "บันทึกการเปลี่ยนแปลง"}
         </Button>
@@ -943,9 +1150,16 @@ function PurposeDrawer({
 function DeptRuleDrawer({
   data,
   onClose,
+  onSave,
 }: {
   data: { configId: number; rule?: DepartmentRule } | null;
   onClose: () => void;
+  onSave: (data: {
+    purposeId: number; ruleId?: number; departmentId: number;
+    requirePersonName: boolean; requireApproval: boolean; approverGroupId: number | null;
+    offerWifi: boolean; acceptFromLine: boolean; acceptFromWeb: boolean;
+    acceptFromKiosk: boolean; acceptFromCounter: boolean; isActive: boolean;
+  }) => void;
 }) {
   const isEditing = !!data?.rule;
   const rule = data?.rule;
@@ -962,19 +1176,20 @@ function DeptRuleDrawer({
   const [isActive, setIsActive] = useState(rule?.isActive ?? true);
 
   /* reset when drawer data changes */
-  useState(() => {
-    if (rule) {
-      setDeptId(rule.departmentId);
-      setRequirePersonName(rule.requirePersonName);
-      setRequireApproval(rule.requireApproval);
-      setApproverGroupId(rule.approverGroupId ?? 0);
-      setOfferWifi(rule.offerWifi);
-      setAcceptFromLine(rule.acceptFromLine);
-      setAcceptFromWeb(rule.acceptFromWeb);
-      setAcceptFromKiosk(rule.acceptFromKiosk);
-      setAcceptFromCounter(rule.acceptFromCounter);
-      setIsActive(rule.isActive);
-    } else {
+  useEffect(() => {
+    if (data?.rule) {
+      const r = data.rule;
+      setDeptId(r.departmentId);
+      setRequirePersonName(r.requirePersonName);
+      setRequireApproval(r.requireApproval);
+      setApproverGroupId(r.approverGroupId ?? 0);
+      setOfferWifi(r.offerWifi);
+      setAcceptFromLine(r.acceptFromLine);
+      setAcceptFromWeb(r.acceptFromWeb);
+      setAcceptFromKiosk(r.acceptFromKiosk);
+      setAcceptFromCounter(r.acceptFromCounter);
+      setIsActive(r.isActive);
+    } else if (data && !data.rule) {
       setDeptId(0);
       setRequirePersonName(false);
       setRequireApproval(false);
@@ -986,7 +1201,7 @@ function DeptRuleDrawer({
       setAcceptFromCounter(true);
       setIsActive(true);
     }
-  });
+  }, [data]);
 
   const selectedDept = departments.find((d) => d.id === deptId);
 
@@ -1139,7 +1354,23 @@ function DeptRuleDrawer({
       {/* Footer */}
       <div className="sticky bottom-0 px-6 py-4 bg-white border-t border-border flex items-center justify-end gap-3">
         <Button variant="outline" onClick={onClose}>ยกเลิก</Button>
-        <Button variant="primary" onClick={onClose}>
+        <Button variant="primary" disabled={!deptId} onClick={() => {
+          if (!deptId || !data) return;
+          onSave({
+            purposeId: data.configId,
+            ...(isEditing && rule?.id ? { ruleId: rule.id } : {}),
+            departmentId: deptId,
+            requirePersonName,
+            requireApproval,
+            approverGroupId: requireApproval ? (approverGroupId || null) : null,
+            offerWifi,
+            acceptFromLine,
+            acceptFromWeb,
+            acceptFromKiosk,
+            acceptFromCounter,
+            isActive,
+          });
+        }}>
           <Save size={16} className="mr-2" />
           {isEditing ? "บันทึกการเปลี่ยนแปลง" : "เพิ่มแผนก"}
         </Button>

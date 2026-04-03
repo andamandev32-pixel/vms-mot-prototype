@@ -265,14 +265,14 @@ export const lineFlowStates: FlowStateInfo[] = [
     id: "visitor-checkin-kiosk",
     name: "Check-in ที่ Kiosk/Counter",
     nameEn: "Check-in at Kiosk or Counter",
-    description: "ผู้มาติดต่อสแกน QR ที่ kiosk → ยืนยันตัวตน → ถ่ายรูป → ระบบสร้าง check-in record + ส่ง Flex Message แจ้งทั้ง visitor และ host officer",
+    description: "ผู้มาติดต่อสแกน QR ที่ kiosk → ยืนยันตัวตน → ถ่ายรูป → ระบบสร้าง visit_entry record + ส่ง Flex Message แจ้งทั้ง visitor และ host officer",
     userType: "visitor",
     order: 8,
     triggers: ["QR scanned at kiosk", "ID verified at counter", "POST /api/kiosk/checkin"],
     nextStates: ["visitor-wifi-credentials", "visitor-slip-line"],
     relatedChannels: ["kiosk", "counter", "line"],
     roles: ["visitor", "officer", "security"],
-    dbTables: ["check_ins", "appointments", "notification_logs"],
+    dbTables: ["visit_entries", "appointments", "notification_logs"],
     apiEndpoints: ["POST /api/kiosk/checkin", "POST /api/counter/checkin", "POST /api/line/push-message"],
   },
   {
@@ -286,7 +286,7 @@ export const lineFlowStates: FlowStateInfo[] = [
     nextStates: ["visitor-slip-line"],
     relatedChannels: ["line", "kiosk", "counter"],
     roles: ["visitor"],
-    dbTables: ["check_ins", "wifi_sessions", "visit_purpose_department_rules"],
+    dbTables: ["visit_entries", "wifi_sessions", "visit_purpose_department_rules"],
     apiEndpoints: ["POST /api/kiosk/wifi/accept", "POST /api/line/push-message"],
   },
   {
@@ -300,7 +300,7 @@ export const lineFlowStates: FlowStateInfo[] = [
     nextStates: ["visitor-checkout"],
     relatedChannels: ["line", "kiosk"],
     roles: ["visitor"],
-    dbTables: ["check_ins", "visit_slips"],
+    dbTables: ["visit_entries", "visit_slips"],
     apiEndpoints: ["POST /api/line/push-message", "POST /api/kiosk/slip/print"],
   },
   {
@@ -310,12 +310,12 @@ export const lineFlowStates: FlowStateInfo[] = [
     description: "เมื่อ visitor check-out (สแกน QR ที่ gate หรือ auto-checkout เมื่อหมดเวลา) → ส่ง Push Message ขอบคุณ + สรุปเวลาเข้า-ออก",
     userType: "visitor",
     order: 11,
-    triggers: ["QR scanned at exit gate", "Auto-checkout scheduled job", "PATCH /api/check-ins/:id/checkout"],
+    triggers: ["QR scanned at exit gate", "Auto-checkout scheduled job", "PATCH /api/entries/:id/checkout"],
     nextStates: [],
     relatedChannels: ["line", "kiosk", "counter"],
     roles: ["visitor", "security"],
-    dbTables: ["check_ins", "notification_logs"],
-    apiEndpoints: ["PATCH /api/check-ins/:id/checkout", "POST /api/line/push-message"],
+    dbTables: ["visit_entries", "notification_logs"],
+    apiEndpoints: ["PATCH /api/entries/:id/checkout", "POST /api/line/push-message"],
   },
 
   // ─── Officer Flow ───
@@ -386,7 +386,7 @@ export const lineFlowStates: FlowStateInfo[] = [
     nextStates: ["officer-overstay-alert"],
     relatedChannels: ["line", "kiosk", "counter"],
     roles: ["officer"],
-    dbTables: ["check_ins", "notification_logs"],
+    dbTables: ["visit_entries", "notification_logs"],
     apiEndpoints: ["POST /api/line/push-message"],
   },
   {
@@ -400,8 +400,8 @@ export const lineFlowStates: FlowStateInfo[] = [
     nextStates: [],
     relatedChannels: ["line", "web"],
     roles: ["officer", "security"],
-    dbTables: ["check_ins", "notification_logs"],
-    apiEndpoints: ["POST /api/line/push-message", "GET /api/check-ins/overstay"],
+    dbTables: ["visit_entries", "notification_logs"],
+    apiEndpoints: ["POST /api/line/push-message", "GET /api/entries/overstay"],
   },
 ];
 
@@ -579,7 +579,7 @@ export const lineApiEndpoints: LineApiEndpoint[] = [
   {
     method: "POST",
     path: "/api/kiosk/checkin",
-    summary: "สร้างรายการ Check-in จาก Kiosk",
+    summary: "สร้าง visit_entry จาก Kiosk",
     summaryEn: "Create Check-in Record from Kiosk",
     auth: "admin",
     requestBody: [
@@ -593,11 +593,12 @@ export const lineApiEndpoints: LineApiEndpoint[] = [
     ],
     responseExample: `{
   "status": "checked-in",
-  "check_in": {
+  "entry": {
     "id": 5001,
+    "entry_code": "eVMS-25690330-0099",
     "appointment_id": 1042,
     "slip_number": "eVMS-25690330-0099",
-    "checked_in_at": "2026-03-30T09:45:00Z",
+    "checkin_at": "2026-03-30T09:45:00Z",
     "wifi": { "ssid": "MOTS-Guest", "password": "mots2026", "valid_until": "2026-03-30T16:30:00Z" }
   },
   "slip": {
@@ -625,7 +626,7 @@ export const lineApiEndpoints: LineApiEndpoint[] = [
     summaryEn: "Accept WiFi Offer and Send Credentials",
     auth: "admin",
     requestBody: [
-      { name: "check_in_id", type: "number", required: true, description: "รหัส check-in" },
+      { name: "entry_id", type: "number", required: true, description: "รหัส check-in" },
       { name: "send_via_line", type: "boolean", required: false, description: "ส่ง credentials ทาง LINE ด้วย" },
     ],
     responseExample: `{
@@ -641,7 +642,7 @@ export const lineApiEndpoints: LineApiEndpoint[] = [
   // ─── Check-out ───
   {
     method: "PATCH",
-    path: "/api/check-ins/:id/checkout",
+    path: "/api/entries/:id/checkout",
     summary: "Check-out ผู้มาติดต่อ (สแกน QR หรือ auto)",
     summaryEn: "Check-out Visitor",
     auth: "admin",
@@ -651,9 +652,9 @@ export const lineApiEndpoints: LineApiEndpoint[] = [
     ],
     responseExample: `{
   "status": "checked-out",
-  "check_in": {
+  "entry": {
     "id": 5001,
-    "checked_out_at": "2026-03-30T11:05:00Z",
+    "checkout_at": "2026-03-30T11:05:00Z",
     "duration_minutes": 80,
     "checkout_method": "qr-scan"
   },
@@ -666,14 +667,14 @@ export const lineApiEndpoints: LineApiEndpoint[] = [
   // ─── Overstay Check ───
   {
     method: "GET",
-    path: "/api/check-ins/overstay",
+    path: "/api/entries/overstay",
     summary: "ดึงรายการ visitor ที่เกินเวลานัด",
     summaryEn: "List Overstaying Visitors",
     auth: "admin",
     responseExample: `{
   "data": [
     {
-      "check_in_id": 5001,
+      "entry_id": 5001,
       "visitor_name": "สมศักดิ์ จริงใจ",
       "host_name": "สมศรี รักษ์ดี",
       "expected_out": "11:00",
@@ -746,7 +747,7 @@ export const lineDbTables: LineDbTable[] = [
       { name: "recipient_user_id", type: "INT", nullable: false, comment: "ผู้รับ", isForeignKey: true, references: "user_accounts.id" },
       { name: "recipient_line_id", type: "VARCHAR(50)", nullable: true, comment: "LINE user ID ปลายทาง" },
       { name: "appointment_id", type: "INT", nullable: true, comment: "รหัสนัดหมายที่เกี่ยวข้อง", isForeignKey: true, references: "appointments.id" },
-      { name: "check_in_id", type: "INT", nullable: true, comment: "รหัส check-in ที่เกี่ยวข้อง", isForeignKey: true, references: "check_ins.id" },
+      { name: "entry_id", type: "INT", nullable: true, comment: "รหัส check-in ที่เกี่ยวข้อง", isForeignKey: true, references: "visit_entries.id" },
       { name: "subject", type: "VARCHAR(200)", nullable: true, comment: "หัวข้อ (email/sms)" },
       { name: "body_snapshot", type: "TEXT", nullable: true, comment: "เนื้อหาที่ส่ง (snapshot)" },
       { name: "status", type: "ENUM('sent','failed','queued')", nullable: false, comment: "สถานะการส่ง" },
@@ -778,7 +779,7 @@ export const lineDbTables: LineDbTable[] = [
     comment: "รายการ WiFi ที่แจกให้ visitor",
     columns: [
       { name: "id", type: "SERIAL", nullable: false, comment: "PK", isPrimaryKey: true },
-      { name: "check_in_id", type: "INT", nullable: false, comment: "รหัส check-in", isForeignKey: true, references: "check_ins.id" },
+      { name: "entry_id", type: "INT", nullable: false, comment: "รหัส check-in", isForeignKey: true, references: "visit_entries.id" },
       { name: "ssid", type: "VARCHAR(50)", nullable: false, comment: "ชื่อ WiFi" },
       { name: "password", type: "VARCHAR(50)", nullable: false, comment: "รหัส WiFi" },
       { name: "valid_from", type: "TIMESTAMP", nullable: false, comment: "เริ่มใช้งาน" },
@@ -794,7 +795,7 @@ export const lineDbTables: LineDbTable[] = [
     columns: [
       { name: "id", type: "SERIAL", nullable: false, comment: "PK", isPrimaryKey: true },
       { name: "slip_number", type: "VARCHAR(30)", nullable: false, comment: "เลขที่ slip (e.g. eVMS-25690330-0099)" },
-      { name: "check_in_id", type: "INT", nullable: false, comment: "รหัส check-in", isForeignKey: true, references: "check_ins.id" },
+      { name: "entry_id", type: "INT", nullable: false, comment: "รหัส check-in", isForeignKey: true, references: "visit_entries.id" },
       { name: "delivery_method", type: "ENUM('print','line','both')", nullable: false, comment: "วิธีส่ง slip" },
       { name: "printed_at", type: "TIMESTAMP", nullable: true, comment: "เวลาที่พิมพ์" },
       { name: "line_sent_at", type: "TIMESTAMP", nullable: true, comment: "เวลาที่ส่งทาง LINE" },

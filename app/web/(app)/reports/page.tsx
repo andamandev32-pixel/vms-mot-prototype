@@ -16,13 +16,7 @@ import {
   Briefcase, Package, Wrench, FileCheck, Bookmark,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import {
-  appointments,
-  departments,
-  visitTypes,
-  type VisitType,
-  type VisitStatus,
-} from "@/lib/mock-data";
+import { useVisitReport } from "@/lib/hooks";
 
 type DateRange = "today" | "week" | "month" | "custom";
 
@@ -40,6 +34,8 @@ function SimpleBar({ value, max, color }: { value: number; max: number; color: s
 }
 
 export default function ReportsPage() {
+  const { data: reportData, isLoading: loadingReport } = useVisitReport();
+
   const [showSchema, setShowSchema] = useState(false);
   const [showFlow, setShowFlow] = useState(false);
   const [showApiDoc, setShowApiDoc] = useState(false);
@@ -49,26 +45,40 @@ export default function ReportsPage() {
 
   const [dateRange, setDateRange] = useState<DateRange>("today");
 
-  // Compute stats from mock data
+  // Compute stats from real API data only — no mock fallback
   const stats = useMemo(() => {
-    const total = appointments.length;
-    const checkedIn = appointments.filter((a) => a.status === "checked-in").length;
-    const checkedOut = appointments.filter((a) => ["checked-out", "auto-checkout"].includes(a.status)).length;
-    const pending = appointments.filter((a) => a.status === "pending").length;
-    const overstay = appointments.filter((a) => a.status === "overstay").length;
-    const walkin = appointments.filter((a) => a.createdBy === "staff").length;
+    const rd = reportData as any;
+    const entries: any[] = rd?.entries ?? [];
+
+    const total = rd?.pagination?.total ?? entries.length;
+    const checkedIn = entries.filter((e: any) => e.status === "checked-in").length;
+    const checkedOut = entries.filter((e: any) => ["checked-out", "auto-checkout"].includes(e.status)).length;
+    const pending = entries.filter((e: any) => e.status === "pending").length;
+    const overstay = entries.filter((e: any) => e.status === "overstay").length;
+    const walkin = entries.filter((e: any) => e.appointmentId === null).length;
 
     // Visit type breakdown
-    const typeBreakdown = Object.entries(visitTypes).map(([key, config]) => ({
-      type: key as VisitType,
-      label: config.label,
-      count: appointments.filter((a) => a.type === key).length,
-    })).sort((a, b) => b.count - a.count);
+    const visitTypeLabels: Record<string, string> = {
+      official: "พบเจ้าหน้าที่",
+      meeting: "ประชุม / สัมมนา",
+      document: "ส่งเอกสาร",
+      contractor: "ผู้รับเหมา / ซ่อมบำรุง",
+      delivery: "รับ-ส่งสินค้า",
+      other: "อื่นๆ",
+    };
+    const typeMap = new Map<string, number>();
+    entries.forEach((e: any) => {
+      const t = e.visitType || e.appointment?.type || "other";
+      typeMap.set(t, (typeMap.get(t) ?? 0) + 1);
+    });
+    const typeBreakdown = Array.from(typeMap.entries())
+      .map(([type, count]) => ({ type, label: visitTypeLabels[type] ?? type, count }))
+      .sort((a, b) => b.count - a.count);
 
     // Department breakdown
     const deptMap = new Map<string, number>();
-    appointments.forEach((a) => {
-      const dept = a.host.department.name;
+    entries.forEach((e: any) => {
+      const dept = e.department?.name ?? "ไม่ระบุ";
       deptMap.set(dept, (deptMap.get(dept) ?? 0) + 1);
     });
     const deptBreakdown = Array.from(deptMap.entries())
@@ -76,26 +86,33 @@ export default function ReportsPage() {
       .sort((a, b) => b.count - a.count)
       .slice(0, 6);
 
-    // Channel breakdown — rendered from shared enum (reportChannel)
-    const reportChannelEnum: Record<string, { label: string; color: string; pct: number }> = {
-      kiosk:   { label: "Kiosk",    color: "bg-blue-500",   pct: 0.40 },
-      line:    { label: "LINE OA",  color: "bg-green-500",  pct: 0.25 },
-      web:     { label: "Web App",  color: "bg-indigo-500", pct: 0.15 },
-      counter: { label: "Counter",  color: "bg-purple-500", pct: 0.15 },
-      walkin:  { label: "Walk-in",  color: "bg-amber-500",  pct: 0.05 },
+    // Channel breakdown
+    const channelLabels: Record<string, { label: string; color: string }> = {
+      kiosk:   { label: "Kiosk",    color: "bg-blue-500" },
+      line:    { label: "LINE OA",  color: "bg-green-500" },
+      web:     { label: "Web App",  color: "bg-indigo-500" },
+      counter: { label: "Counter",  color: "bg-purple-500" },
+      walkin:  { label: "Walk-in",  color: "bg-amber-500" },
     };
-    const channelBreakdown = Object.entries(reportChannelEnum).map(([, cfg]) => ({
-      label: cfg.label,
-      count: Math.round(total * cfg.pct),
-      color: cfg.color,
-    }));
+    const channelMap = new Map<string, number>();
+    entries.forEach((e: any) => {
+      const ch = e.checkinChannel || "other";
+      channelMap.set(ch, (channelMap.get(ch) ?? 0) + 1);
+    });
+    const channelBreakdown = Array.from(channelMap.entries())
+      .map(([key, count]) => ({
+        label: channelLabels[key]?.label ?? key,
+        count,
+        color: channelLabels[key]?.color ?? "bg-gray-400",
+      }))
+      .sort((a, b) => b.count - a.count);
 
     return { total, checkedIn, checkedOut, pending, overstay, walkin, typeBreakdown, deptBreakdown, channelBreakdown };
-  }, []);
+  }, [reportData]);
 
-  const maxTypeCount = Math.max(...stats.typeBreakdown.map((t) => t.count), 1);
-  const maxDeptCount = Math.max(...stats.deptBreakdown.map((d) => d.count), 1);
-  const maxChannelCount = Math.max(...stats.channelBreakdown.map((c) => c.count), 1);
+  const maxTypeCount = Math.max(...stats.typeBreakdown.map((t: any) => t.count), 1);
+  const maxDeptCount = Math.max(...stats.deptBreakdown.map((d: any) => d.count), 1);
+  const maxChannelCount = Math.max(...stats.channelBreakdown.map((c: any) => c.count), 1);
 
   const visitTypeIcons: Record<string, React.ReactNode> = {
     official: <Briefcase size={14} />,
@@ -114,6 +131,8 @@ export default function ReportsPage() {
     delivery: "bg-cyan-500",
     other: "bg-gray-400",
   };
+
+  if (loadingReport) return <div><Topbar title="รายงาน" /><div className="p-8 text-center text-text-muted">กำลังโหลดรายงาน...</div></div>;
 
   return (
     <div>
@@ -204,7 +223,7 @@ export default function ReportsPage() {
                 สัดส่วนตามประเภทการติดต่อ
               </h3>
               <div className="space-y-3">
-                {stats.typeBreakdown.map((t) => (
+                {stats.typeBreakdown.map((t: any) => (
                   <div key={t.type} className="flex items-center gap-3">
                     <div className="w-6 flex justify-center text-text-muted">
                       {visitTypeIcons[t.type]}
@@ -225,7 +244,7 @@ export default function ReportsPage() {
                 สถิติตามแผนก (Top 6)
               </h3>
               <div className="space-y-3">
-                {stats.deptBreakdown.map((d, i) => (
+                {stats.deptBreakdown.map((d: any, i: any) => (
                   <div key={d.name} className="flex items-center gap-3">
                     <span className="text-xs text-text-muted w-5 text-right">{i + 1}.</span>
                     <span className="text-xs text-text-secondary w-36 truncate" title={d.name}>{d.name}</span>
@@ -247,7 +266,7 @@ export default function ReportsPage() {
                 สถิติตามช่องทาง
               </h3>
               <div className="space-y-3">
-                {stats.channelBreakdown.map((c) => (
+                {stats.channelBreakdown.map((c: any) => (
                   <div key={c.label} className="flex items-center gap-3">
                     <span className="text-xs text-text-secondary w-20">{c.label}</span>
                     <SimpleBar value={c.count} max={maxChannelCount} color={c.color} />

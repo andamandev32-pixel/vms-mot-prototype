@@ -11,9 +11,9 @@ const mockRequests = [
     { id: "1", name: "นายสมศักดิ์ จริงใจ", company: "บริษัท ABC จำกัด", type: "ติดต่อราชการ", date: "20 ก.พ. 2569", time: "10:00-11:00", status: "pending" },
     { id: "2", name: "นางสาวมาลี งามจิต", company: "บริษัท XYZ จำกัด", type: "ประชุม", date: "20 ก.พ. 2569", time: "13:00-14:00", status: "pending" },
     { id: "3", name: "นายสุชาติ ปรีชา", company: "หจก. สมาร์ท เซอร์วิส", type: "ผู้รับเหมา", date: "21 ก.พ. 2569", time: "09:00-17:00", status: "pending" },
-    { id: "4", name: "นายธนพงศ์ สุขใจ", company: "บริษัท เทคโน จำกัด", type: "ติดต่อราชการ", date: "19 ก.พ. 2569", time: "09:00-10:00", status: "checkedin" },
+    { id: "4", name: "นายธนพงศ์ สุขใจ", company: "บริษัท เทคโน จำกัด", type: "ติดต่อราชการ", date: "19 ก.พ. 2569", time: "09:00-10:00", status: "checked-in" },
     { id: "5", name: "นางวันดี สว่างจิต", company: "บริษัท พรีเมียร์ จำกัด", type: "ประชุม", date: "19 ก.พ. 2569", time: "10:00-12:00", status: "approved" },
-    { id: "6", name: "นายชัยวัฒน์ สุขสันต์", company: "บริษัท เดลต้า จำกัด", type: "ส่งเอกสาร", date: "18 ก.พ. 2569", time: "14:00-15:00", status: "checkout" },
+    { id: "6", name: "นายชัยวัฒน์ สุขสันต์", company: "บริษัท เดลต้า จำกัด", type: "ส่งเอกสาร", date: "18 ก.พ. 2569", time: "14:00-15:00", status: "checked-out" },
     { id: "7", name: "นางสมพร ใจบุญ", company: "บริษัท ซีเนอร์ จำกัด", type: "ติดต่อราชการ", date: "17 ก.พ. 2569", time: "10:00-11:00", status: "rejected" },
 ];
 
@@ -28,8 +28,8 @@ export default function OfficerRequestsPage() {
 
     const filteredRequests = mockRequests.filter((r) => {
         if (activeTab === "appointment") return r.status === "pending" || r.status === "approved";
-        if (activeTab === "meeting") return r.status === "checkedin";
-        return r.status === "checkout" || r.status === "rejected";
+        if (activeTab === "meeting") return r.status === "checked-in";
+        return r.status === "checked-out" || r.status === "rejected";
     });
 
     return (
@@ -96,8 +96,8 @@ function RequestItem({ id, name, company, type, date, time, status }: {
     const statusMap: Record<string, { label: string; variant: string; dot: string }> = {
         pending: { label: "รอดำเนินการ", variant: "pending", dot: "bg-warning" },
         approved: { label: "อนุมัติ", variant: "approved", dot: "bg-success" },
-        checkedin: { label: "เข้าพบแล้ว", variant: "checkedin", dot: "bg-primary" },
-        checkout: { label: "Check-out", variant: "checkout", dot: "bg-gray-400" },
+        "checked-in": { label: "เข้าพบแล้ว", variant: "checked-in", dot: "bg-primary" },
+        "checked-out": { label: "Check-out", variant: "checked-out", dot: "bg-gray-400" },
         rejected: { label: "ปฏิเสธ", variant: "rejected", dot: "bg-error" },
     };
     const s = statusMap[status] || statusMap.pending;

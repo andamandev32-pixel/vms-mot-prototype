@@ -29,23 +29,10 @@ import {
   Hash,
   ToggleLeft,
   ToggleRight,
-  DoorOpen,
-  ShieldCheck,
   Landmark,
 } from "lucide-react";
-import {
-  buildings,
-  floors,
-  departments,
-  staffMembers,
-  accessGroups,
-  accessZones,
-  departmentAccessMappings,
-  getDepartmentLocation,
-  type Building,
-  type Floor,
-  type Department,
-} from "@/lib/mock-data";
+import { useBuildings, useDepartments, useCreateBuilding, useUpdateBuilding, useDeleteBuilding, useCreateDepartment, useUpdateDepartment, useDeleteDepartment, useCreateFloor, useUpdateFloor, useAllFloors, useDeleteFloor } from "@/lib/hooks";
+import { Trash2 } from "lucide-react";
 
 /* ══════════════════════════════════════════════════
    HELPER: Active Badge
@@ -68,6 +55,24 @@ function ActiveBadge({ active }: { active: boolean }) {
    PAGE
    ══════════════════════════════════════════════════ */
 export default function LocationsSettingsPage() {
+  /* ── API hooks ── */
+  const { data: rawBuildings, isLoading: loadingB } = useBuildings();
+  const { data: rawDepts, isLoading: loadingD } = useDepartments();
+  const { data: rawFloors, isLoading: loadingF } = useAllFloors();
+  const createBuildingMut = useCreateBuilding();
+  const updateBuildingMut = useUpdateBuilding();
+  const deleteBuildingMut = useDeleteBuilding();
+  const createDeptMut = useCreateDepartment();
+  const updateDeptMut = useUpdateDepartment();
+  const deleteDeptMut = useDeleteDepartment();
+  const createFloorMut = useCreateFloor();
+  const updateFloorMut = useUpdateFloor();
+  const deleteFloorMut = useDeleteFloor();
+
+  const buildingList: any[] = Array.isArray(rawBuildings) ? rawBuildings : ((rawBuildings as any)?.buildings ?? (rawBuildings as any)?.data ?? []);
+  const deptList: any[] = Array.isArray(rawDepts) ? rawDepts : ((rawDepts as any)?.departments ?? (rawDepts as any)?.data ?? []);
+  const floorList: any[] = Array.isArray(rawFloors) ? rawFloors : ((rawFloors as any)?.floors ?? (rawFloors as any)?.data ?? []);
+
   const [showSchema, setShowSchema] = useState(false);
   const [showFlow, setShowFlow] = useState(false);
   const [showApiDoc, setShowApiDoc] = useState(false);
@@ -75,44 +80,71 @@ export default function LocationsSettingsPage() {
   const flowData = getFlowByPageId("locations")!;
   const apiDoc = getApiDocByPageId("locations");
   const [activeTab, setActiveTab] = useState<"buildings" | "floors" | "departments">("buildings");
-  const [buildingList, setBuildingList] = useState<Building[]>(buildings);
-  const [deptList, setDeptList] = useState<Department[]>(departments);
+
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [searchDept, setSearchDept] = useState("");
   const [drawer, setDrawer] = useState<{
     mode: "add" | "edit";
     type: "building" | "floor" | "department";
-    item?: Building | Floor | Department;
+    item?: any;
   } | null>(null);
-
-  /* computed */
-  const totalStaff = staffMembers.filter((s) => s.status === "active").length;
-  const totalZones = accessZones.filter((z) => z.isActive).length;
-
-  const stats = [
-    { label: "อาคาร", value: buildingList.length, icon: <Building2 size={20} />, color: "text-primary", bg: "bg-primary-50" },
-    { label: "ชั้น", value: floors.length, icon: <Layers size={20} />, color: "text-info", bg: "bg-info-light" },
-    { label: "แผนก / หน่วยงาน", value: deptList.length, icon: <Landmark size={20} />, color: "text-accent-600", bg: "bg-accent-50" },
-    { label: "บุคลากร (Active)", value: totalStaff, icon: <Users size={20} />, color: "text-success", bg: "bg-success-light" },
-  ];
+  const [confirmDelete, setConfirmDelete] = useState<{ type: "building" | "floor" | "department"; id: number; name: string } | null>(null);
 
   /* dept filter */
   const filteredDepts = useMemo(() => {
-    return deptList.filter((d) => {
+    return deptList.filter((d: any) => {
       if (searchDept) {
         const q = searchDept.toLowerCase();
-        if (!d.name.toLowerCase().includes(q) && !d.nameEn.toLowerCase().includes(q) && !String(d.id).includes(q)) return false;
+        if (!(d.name || "").toLowerCase().includes(q) && !(d.nameEn || "").toLowerCase().includes(q) && !String(d.id).includes(q)) return false;
       }
       return true;
     });
   }, [deptList, searchDept]);
 
-  /* toggle active */
-  const toggleBuildingActive = (id: number) => {
-    setBuildingList((prev) => prev.map((b) => (b.id === id ? { ...b, isActive: !b.isActive } : b)));
+  if (loadingB || loadingD || loadingF) return <div><Topbar title="อาคาร / ชั้น / แผนก" /><div className="p-8 text-center text-text-muted">กำลังโหลด...</div></div>;
+
+  /* helper: get floors for a building from API data */
+  const getFloorsForBuilding = (bldId: number) => {
+    // Try from building.floors (nested include) first
+    const bld = buildingList.find((b: any) => b.id === bldId);
+    if (bld?.floors && Array.isArray(bld.floors)) return bld.floors;
+    // Fallback to floorList
+    return floorList.filter((f: any) => f.buildingId === bldId);
   };
-  const toggleDeptActive = (id: number) => {
-    setDeptList((prev) => prev.map((d) => (d.id === id ? { ...d, isActive: !d.isActive } : d)));
+
+  /* helper: get department IDs for a floor */
+  const getFloorDeptIds = (fl: any): number[] => {
+    if (fl.floorDepartments && Array.isArray(fl.floorDepartments)) {
+      return fl.floorDepartments.map((fd: any) => fd.departmentId ?? fd.department?.id).filter(Boolean);
+    }
+    if (fl.departmentIds && Array.isArray(fl.departmentIds)) return fl.departmentIds;
+    return [];
+  };
+
+  const stats = [
+    { label: "อาคาร", value: buildingList.length, icon: <Building2 size={20} />, color: "text-primary", bg: "bg-primary-50" },
+    { label: "ชั้น", value: floorList.length, icon: <Layers size={20} />, color: "text-info", bg: "bg-info-light" },
+    { label: "แผนก / หน่วยงาน", value: deptList.length, icon: <Landmark size={20} />, color: "text-accent-600", bg: "bg-accent-50" },
+    { label: "อาคารใช้งาน", value: buildingList.filter((b: any) => b.isActive !== false).length, icon: <Users size={20} />, color: "text-success", bg: "bg-success-light" },
+  ];
+
+  /* toggle active via API */
+  const toggleBuildingActive = (bld: any) => {
+    updateBuildingMut.mutate({ id: bld.id, isActive: !bld.isActive });
+  };
+  const toggleDeptActive = (dept: any) => {
+    updateDeptMut.mutate({ id: dept.id, isActive: !dept.isActive });
+  };
+
+  /* delete handler */
+  const handleDelete = async () => {
+    if (!confirmDelete) return;
+    try {
+      if (confirmDelete.type === "building") await deleteBuildingMut.mutateAsync(confirmDelete.id);
+      else if (confirmDelete.type === "floor") await deleteFloorMut.mutateAsync(confirmDelete.id);
+      else if (confirmDelete.type === "department") await deleteDeptMut.mutateAsync(confirmDelete.id);
+    } catch (e) { console.error("Delete error:", e); }
+    setConfirmDelete(null);
   };
 
   return (
@@ -203,13 +235,12 @@ export default function LocationsSettingsPage() {
         {/* ══════ Tab: อาคาร ══════ */}
         {activeTab === "buildings" && (
           <div className="space-y-4">
-            {buildingList.map((bld) => {
-              const bldFloors = floors.filter((f) => f.buildingId === bld.id);
-              const bldZones = accessZones.filter((z) => z.buildingId === bld.id && z.isActive).length;
+            {buildingList.map((bld: any) => {
+              const bldFloors = getFloorsForBuilding(bld.id);
               const isExpanded = expandedId === bld.id;
 
               return (
-                <Card key={bld.id} className={cn("border shadow-sm transition-all hover:shadow-md", !bld.isActive && "opacity-50")}>
+                <Card key={bld.id} className={cn("border shadow-sm transition-all hover:shadow-md", bld.isActive === false && "opacity-50")}>
                   <CardContent className="p-5">
                     {/* Header */}
                     <div className="flex items-start justify-between mb-4">
@@ -225,25 +256,21 @@ export default function LocationsSettingsPage() {
                           )}
                         </div>
                       </div>
-                      <ActiveBadge active={bld.isActive} />
+                      <ActiveBadge active={bld.isActive !== false} />
                     </div>
 
                     {/* Stats Row */}
                     <div className="flex items-center gap-6 text-sm mb-4">
                       <div className="flex items-center gap-1.5 text-text-secondary">
                         <Layers size={14} className="text-info" />
-                        <span className="font-semibold">{bld.totalFloors}</span> ชั้น
+                        <span className="font-semibold">{bld.totalFloors ?? bldFloors.length}</span> ชั้น
                       </div>
                       <div className="flex items-center gap-1.5 text-text-secondary">
                         <Landmark size={14} className="text-accent-600" />
                         <span className="font-semibold">
-                          {new Set(bldFloors.flatMap((f) => f.departmentIds)).size}
+                          {new Set(bldFloors.flatMap((f: any) => getFloorDeptIds(f))).size}
                         </span>{" "}
                         แผนก
-                      </div>
-                      <div className="flex items-center gap-1.5 text-text-secondary">
-                        <DoorOpen size={14} className="text-warning" />
-                        <span className="font-semibold">{bldZones}</span> โซน
                       </div>
                       <div className="flex items-center gap-1.5 text-text-secondary">
                         <Hash size={14} className="text-text-muted" />
@@ -257,7 +284,7 @@ export default function LocationsSettingsPage() {
                       className="flex items-center gap-1 text-xs text-primary hover:underline"
                     >
                       {isExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-                      {isExpanded ? "ซ่อนรายละเอียดชั้น" : `แสดงรายละเอียดทั้ง ${bld.totalFloors} ชั้น`}
+                      {isExpanded ? "ซ่อนรายละเอียดชั้น" : `แสดงรายละเอียดทั้ง ${bldFloors.length} ชั้น`}
                     </button>
 
                     {/* Expanded: Floor table */}
@@ -269,16 +296,17 @@ export default function LocationsSettingsPage() {
                               <th className="text-left px-4 py-2.5 font-semibold text-text-secondary w-16">ชั้น</th>
                               <th className="text-left px-4 py-2.5 font-semibold text-text-secondary">ชื่อ / รายละเอียด</th>
                               <th className="text-left px-4 py-2.5 font-semibold text-text-secondary">แผนกที่อยู่ในชั้น</th>
-                              <th className="text-center px-4 py-2.5 font-semibold text-text-secondary w-20">โซน</th>
-                              <th className="text-right px-4 py-2.5 font-semibold text-text-secondary w-20">จัดการ</th>
+                              <th className="text-right px-4 py-2.5 font-semibold text-text-secondary w-28">จัดการ</th>
                             </tr>
                           </thead>
                           <tbody>
                             {bldFloors
-                              .sort((a, b) => a.floorNumber - b.floorNumber)
-                              .map((fl) => {
-                                const flDepts = departments.filter((d) => fl.departmentIds.includes(d.id));
-                                const flZones = accessZones.filter((z) => z.floorId === fl.id && z.isActive).length;
+                              .sort((a: any, b: any) => a.floorNumber - b.floorNumber)
+                              .map((fl: any) => {
+                                const flDeptIds = getFloorDeptIds(fl);
+                                const flDepts = fl.floorDepartments
+                                  ? fl.floorDepartments.map((fd: any) => fd.department).filter(Boolean)
+                                  : deptList.filter((d: any) => flDeptIds.includes(d.id));
 
                                 return (
                                   <tr key={fl.id} className="border-b border-border last:border-0 hover:bg-gray-50/50 transition-colors">
@@ -294,7 +322,7 @@ export default function LocationsSettingsPage() {
                                     <td className="px-4 py-3">
                                       <div className="flex flex-wrap gap-1">
                                         {flDepts.length > 0 ? (
-                                          flDepts.map((d) => (
+                                          flDepts.map((d: any) => (
                                             <span
                                               key={d.id}
                                               className="inline-flex items-center text-[11px] font-medium px-2 py-0.5 rounded-full bg-accent-50 text-accent-600"
@@ -307,20 +335,25 @@ export default function LocationsSettingsPage() {
                                         )}
                                       </div>
                                     </td>
-                                    <td className="px-4 py-3 text-center">
-                                      <span className="inline-flex items-center gap-1 text-xs font-medium text-warning">
-                                        <DoorOpen size={12} /> {flZones}
-                                      </span>
-                                    </td>
                                     <td className="px-4 py-3 text-right">
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => setDrawer({ mode: "edit", type: "floor", item: fl })}
-                                        className="text-xs gap-1"
-                                      >
-                                        <Pencil size={12} />
-                                      </Button>
+                                      <div className="flex items-center justify-end gap-1">
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => setDrawer({ mode: "edit", type: "floor", item: { ...fl, departmentIds: flDeptIds, buildingId: bld.id } })}
+                                          className="text-xs gap-1"
+                                        >
+                                          <Pencil size={12} />
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => setConfirmDelete({ type: "floor", id: fl.id, name: fl.name })}
+                                          className="text-xs gap-1 text-red-500 hover:text-red-700"
+                                        >
+                                          <Trash2 size={12} />
+                                        </Button>
+                                      </div>
                                     </td>
                                   </tr>
                                 );
@@ -335,11 +368,11 @@ export default function LocationsSettingsPage() {
                       <Button
                         variant="ghost"
                         size="sm"
-                        onClick={() => toggleBuildingActive(bld.id)}
+                        onClick={() => toggleBuildingActive(bld)}
                         className="gap-1 text-xs"
                       >
-                        {bld.isActive ? <ToggleRight size={14} /> : <ToggleLeft size={14} />}
-                        {bld.isActive ? "ปิดใช้งาน" : "เปิดใช้งาน"}
+                        {bld.isActive !== false ? <ToggleRight size={14} /> : <ToggleLeft size={14} />}
+                        {bld.isActive !== false ? "ปิดใช้งาน" : "เปิดใช้งาน"}
                       </Button>
                       <Button
                         variant="outline"
@@ -348,6 +381,14 @@ export default function LocationsSettingsPage() {
                         className="gap-1 text-xs"
                       >
                         <Pencil size={14} /> แก้ไข
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setConfirmDelete({ type: "building", id: bld.id, name: bld.name })}
+                        className="gap-1 text-xs text-red-500 border-red-200 hover:bg-red-50"
+                      >
+                        <Trash2 size={14} /> ลบ
                       </Button>
                     </div>
                   </CardContent>
@@ -373,7 +414,7 @@ export default function LocationsSettingsPage() {
                 รายชั้นทั้งหมด — เรียงตามอาคารและลำดับชั้น
               </h4>
               <p className="text-xs text-text-muted mt-1">
-                แสดงข้อมูลชั้นทั้งหมดในระบบ พร้อมแผนกที่ตั้งอยู่ในแต่ละชั้น และจำนวน Access Zone
+                แสดงข้อมูลชั้นทั้งหมดในระบบ พร้อมแผนกที่ตั้งอยู่ในแต่ละชั้น
               </p>
             </div>
             <div className="overflow-x-auto">
@@ -385,18 +426,19 @@ export default function LocationsSettingsPage() {
                     <th className="text-left px-5 py-3 font-semibold text-text-secondary">Name (EN)</th>
                     <th className="text-left px-5 py-3 font-semibold text-text-secondary">อาคาร</th>
                     <th className="text-left px-5 py-3 font-semibold text-text-secondary">แผนกในชั้น</th>
-                    <th className="text-center px-5 py-3 font-semibold text-text-secondary w-20">โซน</th>
-                    <th className="text-right px-5 py-3 font-semibold text-text-secondary w-20">จัดการ</th>
+                    <th className="text-right px-5 py-3 font-semibold text-text-secondary w-28">จัดการ</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {floors
+                  {floorList
                     .slice()
-                    .sort((a, b) => a.floorNumber - b.floorNumber)
-                    .map((fl) => {
-                      const bld = buildingList.find((b) => b.id === fl.buildingId);
-                      const flDepts = departments.filter((d) => fl.departmentIds.includes(d.id));
-                      const flZones = accessZones.filter((z) => z.floorId === fl.id && z.isActive).length;
+                    .sort((a: any, b: any) => a.buildingId - b.buildingId || a.floorNumber - b.floorNumber)
+                    .map((fl: any) => {
+                      const bld = fl.building || buildingList.find((b: any) => b.id === fl.buildingId);
+                      const flDeptIds = getFloorDeptIds(fl);
+                      const flDepts = fl.floorDepartments
+                        ? fl.floorDepartments.map((fd: any) => fd.department).filter(Boolean)
+                        : deptList.filter((d: any) => flDeptIds.includes(d.id));
 
                       return (
                         <tr key={fl.id} className="border-b border-border last:border-0 hover:bg-gray-50/50 transition-colors">
@@ -417,7 +459,7 @@ export default function LocationsSettingsPage() {
                           <td className="px-5 py-3">
                             <div className="flex flex-wrap gap-1">
                               {flDepts.length > 0 ? (
-                                flDepts.map((d) => (
+                                flDepts.map((d: any) => (
                                   <span
                                     key={d.id}
                                     className="inline-flex items-center text-[11px] font-medium px-2 py-0.5 rounded-full bg-accent-50 text-accent-600"
@@ -430,20 +472,25 @@ export default function LocationsSettingsPage() {
                               )}
                             </div>
                           </td>
-                          <td className="px-5 py-3 text-center">
-                            <span className="inline-flex items-center gap-1 text-xs font-semibold text-warning">
-                              <DoorOpen size={12} /> {flZones}
-                            </span>
-                          </td>
                           <td className="px-5 py-3 text-right">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setDrawer({ mode: "edit", type: "floor", item: fl })}
-                              className="gap-1 text-xs"
-                            >
-                              <Pencil size={12} /> แก้ไข
-                            </Button>
+                            <div className="flex items-center justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setDrawer({ mode: "edit", type: "floor", item: { ...fl, departmentIds: flDeptIds, buildingId: fl.buildingId ?? bld?.id } })}
+                                className="gap-1 text-xs"
+                              >
+                                <Pencil size={12} /> แก้ไข
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setConfirmDelete({ type: "floor", id: fl.id, name: fl.name })}
+                                className="gap-1 text-xs text-red-500 hover:text-red-700"
+                              >
+                                <Trash2 size={12} />
+                              </Button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -451,6 +498,13 @@ export default function LocationsSettingsPage() {
                 </tbody>
               </table>
             </div>
+
+            {floorList.length === 0 && (
+              <div className="text-center py-12 text-text-muted">
+                <Layers size={40} className="mx-auto mb-3 opacity-30" />
+                <p className="text-sm">ยังไม่มีชั้นในระบบ</p>
+              </div>
+            )}
           </Card>
         )}
 
@@ -479,33 +533,23 @@ export default function LocationsSettingsPage() {
                       <th className="text-left px-5 py-3 font-semibold text-text-secondary w-24">รหัส</th>
                       <th className="text-left px-5 py-3 font-semibold text-text-secondary">ชื่อแผนก</th>
                       <th className="text-left px-5 py-3 font-semibold text-text-secondary">อาคาร / ชั้น</th>
-                      <th className="text-center px-5 py-3 font-semibold text-text-secondary w-24">บุคลากร</th>
-                      <th className="text-left px-5 py-3 font-semibold text-text-secondary">Access Group</th>
                       <th className="text-center px-5 py-3 font-semibold text-text-secondary w-24">สถานะ</th>
-                      <th className="text-right px-5 py-3 font-semibold text-text-secondary w-28">จัดการ</th>
+                      <th className="text-right px-5 py-3 font-semibold text-text-secondary w-36">จัดการ</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredDepts.map((dept) => {
-                      const deptStaff = staffMembers.filter(
-                        (s) => s.department.id === dept.id && s.status === "active"
-                      ).length;
-                      const mapping = departmentAccessMappings.find((m) => m.departmentId === dept.id);
-                      const defaultGroup = mapping
-                        ? accessGroups.find((g) => g.id === mapping.defaultAccessGroupId)
-                        : null;
-                      const additionalGroups = mapping
-                        ? mapping.additionalGroupIds
-                            .map((gid) => accessGroups.find((g) => g.id === gid))
-                            .filter(Boolean)
-                        : [];
+                    {filteredDepts.map((dept: any) => {
+                      // Get location from floorDepartments (API data)
+                      const deptFloorInfo = dept.floorDepartments?.[0];
+                      const deptBuilding = deptFloorInfo?.floor?.building;
+                      const deptFloor = deptFloorInfo?.floor;
 
                       return (
                         <tr
                           key={dept.id}
                           className={cn(
                             "border-b border-border last:border-0 hover:bg-gray-50/50 transition-colors",
-                            !dept.isActive && "opacity-50"
+                            dept.isActive === false && "opacity-50"
                           )}
                         >
                           <td className="px-5 py-3">
@@ -525,67 +569,30 @@ export default function LocationsSettingsPage() {
                             </div>
                           </td>
                           <td className="px-5 py-3">
-                            {(() => {
-                              const loc = getDepartmentLocation(dept.id);
-                              return loc ? (
-                                <div className="flex items-center gap-1.5 text-text-secondary text-xs">
-                                  <Building2 size={13} className="text-text-muted" />
-                                  <span>{loc.building}</span>
-                                  <span className="text-text-muted">·</span>
-                                  <MapPin size={13} className="text-text-muted" />
-                                  <span className="font-medium">{loc.floor}</span>
-                                </div>
-                              ) : (
-                                <span className="text-xs text-text-muted italic">ยังไม่กำหนดชั้น</span>
-                              );
-                            })()}
+                            {deptBuilding ? (
+                              <div className="flex items-center gap-1.5 text-text-secondary text-xs">
+                                <Building2 size={13} className="text-text-muted" />
+                                <span>{deptBuilding.name}</span>
+                                <span className="text-text-muted">·</span>
+                                <MapPin size={13} className="text-text-muted" />
+                                <span className="font-medium">{deptFloor?.name}</span>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-text-muted italic">ยังไม่กำหนดชั้น</span>
+                            )}
                           </td>
                           <td className="px-5 py-3 text-center">
-                            <span className={cn("text-sm font-bold", deptStaff > 0 ? "text-text-primary" : "text-text-muted")}>
-                              {deptStaff}
-                            </span>
-                            <span className="text-xs text-text-muted ml-1">คน</span>
-                          </td>
-                          <td className="px-5 py-3">
-                            <div className="flex flex-wrap gap-1">
-                              {defaultGroup && (
-                                <span
-                                  className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full"
-                                  style={{
-                                    backgroundColor: defaultGroup.color + "15",
-                                    color: defaultGroup.color,
-                                  }}
-                                >
-                                  <ShieldCheck size={10} /> {defaultGroup.name}
-                                </span>
-                              )}
-                              {additionalGroups.map((g) =>
-                                g ? (
-                                  <span
-                                    key={g.id}
-                                    className="inline-flex items-center text-[11px] font-medium px-2 py-0.5 rounded-full bg-gray-100 text-text-muted"
-                                  >
-                                    +{g.name}
-                                  </span>
-                                ) : null
-                              )}
-                              {!mapping && (
-                                <span className="text-[11px] text-text-muted italic">ยังไม่กำหนด</span>
-                              )}
-                            </div>
-                          </td>
-                          <td className="px-5 py-3 text-center">
-                            <ActiveBadge active={dept.isActive} />
+                            <ActiveBadge active={dept.isActive !== false} />
                           </td>
                           <td className="px-5 py-3 text-right">
                             <div className="flex items-center justify-end gap-1">
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                onClick={() => toggleDeptActive(dept.id)}
+                                onClick={() => toggleDeptActive(dept)}
                                 className="text-xs px-2"
                               >
-                                {dept.isActive ? <ToggleRight size={14} /> : <ToggleLeft size={14} />}
+                                {dept.isActive !== false ? <ToggleRight size={14} /> : <ToggleLeft size={14} />}
                               </Button>
                               <Button
                                 variant="outline"
@@ -594,6 +601,14 @@ export default function LocationsSettingsPage() {
                                 className="gap-1 text-xs"
                               >
                                 <Pencil size={12} /> แก้ไข
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setConfirmDelete({ type: "department", id: dept.id, name: dept.name })}
+                                className="gap-1 text-xs text-red-500 hover:text-red-700"
+                              >
+                                <Trash2 size={12} />
                               </Button>
                             </div>
                           </td>
@@ -634,34 +649,86 @@ export default function LocationsSettingsPage() {
         }
         subtitle={
           drawer?.mode === "edit" && drawer.item
-            ? "name" in drawer.item
-              ? (drawer.item as Building | Department).name
-              : undefined
+            ? drawer.item?.name
             : undefined
         }
       >
         {drawer?.type === "building" && (
           <BuildingForm
-            initial={drawer.mode === "edit" ? (drawer.item as Building) : undefined}
-            onSave={() => setDrawer(null)}
+            initial={drawer.mode === "edit" ? drawer.item : undefined}
+            onSave={async (formData: any) => {
+              if (drawer.mode === "edit" && drawer.item) {
+                await updateBuildingMut.mutateAsync({ id: drawer.item.id, ...formData });
+              } else {
+                await createBuildingMut.mutateAsync(formData);
+              }
+              setDrawer(null);
+            }}
             onCancel={() => setDrawer(null)}
+            saving={createBuildingMut.isPending || updateBuildingMut.isPending}
           />
         )}
         {drawer?.type === "floor" && (
           <FloorForm
-            initial={drawer.mode === "edit" ? (drawer.item as Floor) : undefined}
-            onSave={() => setDrawer(null)}
+            initial={drawer.mode === "edit" ? drawer.item : undefined}
+            buildings={buildingList}
+            departments={deptList}
+            onSave={async (formData: any) => {
+              if (drawer.mode === "edit" && drawer.item) {
+                await updateFloorMut.mutateAsync({ id: drawer.item.id, ...formData });
+              } else {
+                await createFloorMut.mutateAsync(formData);
+              }
+              setDrawer(null);
+            }}
             onCancel={() => setDrawer(null)}
+            saving={createFloorMut.isPending || updateFloorMut.isPending}
           />
         )}
         {drawer?.type === "department" && (
           <DepartmentForm
-            initial={drawer.mode === "edit" ? (drawer.item as Department) : undefined}
-            onSave={() => setDrawer(null)}
+            initial={drawer.mode === "edit" ? drawer.item : undefined}
+            onSave={async (formData: any) => {
+              if (drawer.mode === "edit" && drawer.item) {
+                await updateDeptMut.mutateAsync({ id: drawer.item.id, ...formData });
+              } else {
+                await createDeptMut.mutateAsync(formData);
+              }
+              setDrawer(null);
+            }}
             onCancel={() => setDrawer(null)}
+            saving={createDeptMut.isPending || updateDeptMut.isPending}
           />
         )}
       </Drawer>
+
+      {/* ══════ Confirm Delete Dialog ══════ */}
+      {confirmDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white rounded-xl shadow-xl p-6 max-w-sm w-full mx-4">
+            <h3 className="text-lg font-bold text-text-primary mb-2">ยืนยันการลบ</h3>
+            <p className="text-sm text-text-secondary mb-1">
+              คุณต้องการลบ{confirmDelete.type === "building" ? "อาคาร" : confirmDelete.type === "floor" ? "ชั้น" : "แผนก"}นี้หรือไม่?
+            </p>
+            <p className="text-sm font-semibold text-text-primary mb-4">&quot;{confirmDelete.name}&quot;</p>
+            <p className="text-xs text-red-500 mb-4">
+              {confirmDelete.type === "building" ? "การลบอาคารจะลบชั้นและข้อมูลที่เกี่ยวข้องทั้งหมด" : "การดำเนินการนี้ไม่สามารถย้อนกลับได้"}
+            </p>
+            <div className="flex gap-3">
+              <Button
+                onClick={handleDelete}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                disabled={deleteBuildingMut.isPending || deleteFloorMut.isPending || deleteDeptMut.isPending}
+              >
+                {(deleteBuildingMut.isPending || deleteFloorMut.isPending || deleteDeptMut.isPending) ? "กำลังลบ..." : "ลบ"}
+              </Button>
+              <Button variant="outline" className="flex-1" onClick={() => setConfirmDelete(null)}>
+                ยกเลิก
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </>
   );
 }
@@ -673,25 +740,38 @@ function BuildingForm({
   initial,
   onSave,
   onCancel,
+  saving,
 }: {
-  initial?: Building;
-  onSave: () => void;
+  initial?: any;
+  onSave: (data: any) => void;
   onCancel: () => void;
+  saving?: boolean;
 }) {
+  const [name, setName] = useState(initial?.name ?? "");
+  const [nameEn, setNameEn] = useState(initial?.nameEn ?? "");
+  const [totalFloors, setTotalFloors] = useState(initial?.totalFloors?.toString() ?? "");
+  const [description, setDescription] = useState(initial?.description ?? "");
+
+  const handleSubmit = () => {
+    onSave({ name, nameEn, totalFloors: Number(totalFloors) || 0, description });
+  };
+
   return (
     <div className="p-6 space-y-5">
-      <Input label="ชื่ออาคาร (ไทย)" defaultValue={initial?.name} placeholder="เช่น ศูนย์ราชการ อาคาร C" />
-      <Input label="ชื่ออาคาร (อังกฤษ)" defaultValue={initial?.nameEn} placeholder="e.g. Government Center Building C" />
+      <Input label="ชื่ออาคาร (ไทย)" value={name} onChange={(e: any) => setName(e.target.value)} placeholder="เช่น ศูนย์ราชการ อาคาร C" />
+      <Input label="ชื่ออาคาร (อังกฤษ)" value={nameEn} onChange={(e: any) => setNameEn(e.target.value)} placeholder="e.g. Government Center Building C" />
       <Input
         label="จำนวนชั้น"
         type="number"
-        defaultValue={initial?.totalFloors?.toString()}
+        value={totalFloors}
+        onChange={(e: any) => setTotalFloors(e.target.value)}
         placeholder="9"
         leftIcon={<Layers size={16} />}
       />
       <Input
         label="คำอธิบาย"
-        defaultValue={initial?.description ?? ""}
+        value={description}
+        onChange={(e: any) => setDescription(e.target.value)}
         placeholder="เพิ่มรายละเอียดอาคาร (ไม่บังคับ)"
       />
 
@@ -703,24 +783,19 @@ function BuildingForm({
           </p>
           <div className="grid grid-cols-2 gap-2 text-xs text-text-muted">
             <div className="flex items-center gap-1">
-              <Layers size={12} /> ชั้นทั้งหมด: <strong className="text-text-primary">{floors.filter((f) => f.buildingId === initial.id).length}</strong>
+              <Layers size={12} /> ชั้นทั้งหมด: <strong className="text-text-primary">{initial.floors?.length ?? initial.totalFloors ?? 0}</strong>
             </div>
             <div className="flex items-center gap-1">
-              <DoorOpen size={12} /> Access Zone: <strong className="text-text-primary">{accessZones.filter((z) => z.buildingId === initial.id).length}</strong>
-            </div>
-            <div className="flex items-center gap-1">
-              <Landmark size={12} /> แผนก: <strong className="text-text-primary">{new Set(floors.filter((f) => f.buildingId === initial.id).flatMap((f) => f.departmentIds)).size}</strong>
-            </div>
-            <div className="flex items-center gap-1">
-              <Users size={12} /> บุคลากร: <strong className="text-text-primary">{staffMembers.filter((s) => getDepartmentLocation(s.department.id)?.building === initial.name).length}</strong>
+              <Hash size={12} /> ID: <strong className="text-text-primary">{initial.id}</strong>
             </div>
           </div>
         </div>
       )}
 
       <div className="flex gap-3 pt-4 border-t border-border">
-        <Button className="flex-1 gap-2" onClick={onSave}>
-          <Save size={16} /> บันทึก
+        <Button className="flex-1 gap-2" onClick={handleSubmit} disabled={saving}>
+          {saving ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save size={16} />}
+          {saving ? "กำลังบันทึก..." : "บันทึก"}
         </Button>
         <Button variant="outline" className="flex-1" onClick={onCancel}>
           ยกเลิก
@@ -735,14 +810,28 @@ function BuildingForm({
    ══════════════════════════════════════════════════ */
 function FloorForm({
   initial,
+  buildings,
+  departments,
   onSave,
   onCancel,
+  saving,
 }: {
-  initial?: Floor;
-  onSave: () => void;
+  initial?: any;
+  buildings: any[];
+  departments: any[];
+  onSave: (data: any) => void;
   onCancel: () => void;
+  saving?: boolean;
 }) {
   const [selectedDepts, setSelectedDepts] = useState<number[]>(initial?.departmentIds ?? []);
+  const [buildingId, setBuildingId] = useState(initial?.buildingId?.toString() ?? "");
+  const [floorNumber, setFloorNumber] = useState(initial?.floorNumber?.toString() ?? "");
+  const [floorName, setFloorName] = useState(initial?.name ?? "");
+  const [floorNameEn, setFloorNameEn] = useState(initial?.nameEn ?? "");
+
+  const handleSubmit = () => {
+    onSave({ buildingId: Number(buildingId), floorNumber: Number(floorNumber), name: floorName, nameEn: floorNameEn, departmentIds: selectedDepts });
+  };
 
   const toggleDept = (id: number) =>
     setSelectedDepts((prev) => (prev.includes(id) ? prev.filter((d) => d !== id) : [...prev, id]));
@@ -752,11 +841,12 @@ function FloorForm({
       <div>
         <label className="text-sm font-semibold text-text-primary mb-2 block">อาคาร</label>
         <select
-          defaultValue={initial?.buildingId ?? ""}
+          value={buildingId}
+          onChange={(e) => setBuildingId(e.target.value)}
           className="w-full rounded-lg border border-border px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 bg-white"
         >
           <option value="">เลือกอาคาร</option>
-          {buildings.map((b) => (
+          {buildings.map((b: any) => (
             <option key={b.id} value={b.id}>
               {b.name}
             </option>
@@ -767,12 +857,13 @@ function FloorForm({
       <Input
         label="ลำดับชั้น"
         type="number"
-        defaultValue={initial?.floorNumber?.toString()}
+        value={floorNumber}
+        onChange={(e: any) => setFloorNumber(e.target.value)}
         placeholder="3"
         leftIcon={<Hash size={16} />}
       />
-      <Input label="ชื่อชั้น (ไทย)" defaultValue={initial?.name} placeholder="เช่น ชั้น 3 — สำนักงานปลัด" />
-      <Input label="ชื่อชั้น (อังกฤษ)" defaultValue={initial?.nameEn} placeholder="e.g. 3F — OPS" />
+      <Input label="ชื่อชั้น (ไทย)" value={floorName} onChange={(e: any) => setFloorName(e.target.value)} placeholder="เช่น ชั้น 3 — สำนักงานปลัด" />
+      <Input label="ชื่อชั้น (อังกฤษ)" value={floorNameEn} onChange={(e: any) => setFloorNameEn(e.target.value)} placeholder="e.g. 3F — OPS" />
 
       {/* Department multi-select */}
       <div>
@@ -780,7 +871,7 @@ function FloorForm({
           <Landmark size={15} className="text-accent-600" /> แผนกที่ตั้งอยู่ในชั้นนี้
         </label>
         <div className="space-y-1.5 max-h-64 overflow-y-auto rounded-lg border border-border p-2">
-          {departments.map((dept) => (
+          {departments.map((dept: any) => (
             <button
               key={dept.id}
               type="button"
@@ -809,22 +900,10 @@ function FloorForm({
         <p className="text-xs text-text-muted mt-1">เลือกแล้ว {selectedDepts.length} แผนก</p>
       </div>
 
-      {/* Cross-reference */}
-      {initial && (
-        <div className="rounded-xl bg-gray-50 p-4 space-y-2">
-          <p className="text-xs font-semibold text-text-secondary flex items-center gap-1">
-            <Info size={13} className="text-info" /> ข้อมูลที่เชื่อมโยงในระบบ
-          </p>
-          <div className="text-xs text-text-muted flex items-center gap-1">
-            <DoorOpen size={12} /> Access Zone ในชั้นนี้:{" "}
-            <strong className="text-text-primary">{accessZones.filter((z) => z.floorId === initial.id).length}</strong>
-          </div>
-        </div>
-      )}
-
       <div className="flex gap-3 pt-4 border-t border-border">
-        <Button className="flex-1 gap-2" onClick={onSave}>
-          <Save size={16} /> บันทึก
+        <Button className="flex-1 gap-2" onClick={handleSubmit} disabled={saving}>
+          {saving ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save size={16} />}
+          {saving ? "กำลังบันทึก..." : "บันทึก"}
         </Button>
         <Button variant="outline" className="flex-1" onClick={onCancel}>
           ยกเลิก
@@ -841,34 +920,24 @@ function DepartmentForm({
   initial,
   onSave,
   onCancel,
+  saving,
 }: {
-  initial?: Department;
-  onSave: () => void;
+  initial?: any;
+  onSave: (data: any) => void;
   onCancel: () => void;
+  saving?: boolean;
 }) {
-  const mapping = initial ? departmentAccessMappings.find((m) => m.departmentId === initial.id) : null;
+  const [deptName, setDeptName] = useState(initial?.name ?? "");
+  const [deptNameEn, setDeptNameEn] = useState(initial?.nameEn ?? "");
+
+  const handleSubmit = () => {
+    onSave({ name: deptName, nameEn: deptNameEn });
+  };
 
   return (
     <div className="p-6 space-y-5">
-      <Input label="ชื่อแผนก (ไทย)" defaultValue={initial?.name} placeholder="เช่น กองกิจการท่องเที่ยว" />
-      <Input label="ชื่อแผนก (อังกฤษ)" defaultValue={initial?.nameEn} placeholder="e.g. Tourism Affairs Division" />
-
-      <div>
-        <label className="text-sm font-semibold text-text-primary mb-2 block">Default Access Group</label>
-        <select
-          defaultValue={mapping?.defaultAccessGroupId ?? ""}
-          className="w-full rounded-lg border border-border px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 bg-white"
-        >
-          <option value="">ยังไม่กำหนด</option>
-          {accessGroups
-            .filter((g) => g.isActive)
-            .map((g) => (
-              <option key={g.id} value={g.id}>
-                {g.name} — {g.nameEn}
-              </option>
-            ))}
-        </select>
-      </div>
+      <Input label="ชื่อแผนก (ไทย)" value={deptName} onChange={(e: any) => setDeptName(e.target.value)} placeholder="เช่น กองกิจการท่องเที่ยว" />
+      <Input label="ชื่อแผนก (อังกฤษ)" value={deptNameEn} onChange={(e: any) => setDeptNameEn(e.target.value)} placeholder="e.g. Tourism Affairs Division" />
 
       {/* Cross-reference */}
       {initial && (
@@ -878,35 +947,26 @@ function DepartmentForm({
           </p>
           <div className="grid grid-cols-2 gap-2 text-xs text-text-muted">
             <div className="flex items-center gap-1">
-              <Users size={12} /> บุคลากร:{" "}
-              <strong className="text-text-primary">
-                {staffMembers.filter((s) => s.department.id === initial.id).length}
-              </strong>
-            </div>
-            <div className="flex items-center gap-1">
-              <ShieldCheck size={12} /> Access Group:{" "}
-              <strong className="text-text-primary">
-                {mapping ? 1 + mapping.additionalGroupIds.length : 0}
-              </strong>
+              <Hash size={12} /> ID: <strong className="text-text-primary">{initial.id}</strong>
             </div>
             <div className="flex items-center gap-1 col-span-2">
               <MapPin size={12} /> สถานที่:{" "}
-              {(() => {
-                const loc = getDepartmentLocation(initial.id);
-                return loc ? (
-                  <strong className="text-text-primary">{loc.building} · {loc.floor}</strong>
-                ) : (
-                  <span className="italic">ยังไม่กำหนดชั้น (กำหนดได้ที่แท็บ "ชั้น")</span>
-                );
-              })()}
+              {initial.floorDepartments?.[0]?.floor?.building ? (
+                <strong className="text-text-primary">
+                  {initial.floorDepartments[0].floor.building.name} · {initial.floorDepartments[0].floor.name}
+                </strong>
+              ) : (
+                <span className="italic">ยังไม่กำหนดชั้น (กำหนดได้ที่แท็บ &quot;ชั้น&quot;)</span>
+              )}
             </div>
           </div>
         </div>
       )}
 
       <div className="flex gap-3 pt-4 border-t border-border">
-        <Button className="flex-1 gap-2" onClick={onSave}>
-          <Save size={16} /> บันทึก
+        <Button className="flex-1 gap-2" onClick={handleSubmit} disabled={saving}>
+          {saving ? <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save size={16} />}
+          {saving ? "กำลังบันทึก..." : "บันทึก"}
         </Button>
         <Button variant="outline" className="flex-1" onClick={onCancel}>
           ยกเลิก

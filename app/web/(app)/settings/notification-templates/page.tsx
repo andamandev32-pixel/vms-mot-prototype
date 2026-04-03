@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Topbar from "@/components/web/Topbar";
 import { DatabaseSchemaModal, DbSchemaButton } from "@/components/web/DatabaseSchemaModal";
 import { FlowchartModal, FlowRulesButton } from "@/components/web/FlowchartModal";
@@ -33,12 +33,18 @@ import {
   Variable,
 } from "lucide-react";
 import {
-  notificationTemplates,
+  notificationTemplates as fallbackTemplates,
   notificationTriggerLabels,
   type NotificationTemplate,
   type NotificationChannel,
   type NotificationTrigger,
 } from "@/lib/mock-data";
+import {
+  useNotificationTemplates,
+  useCreateNotificationTemplate,
+  useUpdateNotificationTemplate,
+  useDeleteNotificationTemplate,
+} from "@/lib/hooks";
 
 /* ── Channel Badge ── */
 function ChannelBadge({ channel }: { channel: NotificationChannel }) {
@@ -59,16 +65,28 @@ function ChannelBadge({ channel }: { channel: NotificationChannel }) {
    PAGE
    ══════════════════════════════════════════════════ */
 export default function NotificationTemplatesSettingsPage() {
+  /* ── API hooks ── */
+  const { data: rawTemplates, isLoading } = useNotificationTemplates();
+  const createTemplate = useCreateNotificationTemplate();
+  const updateTemplate = useUpdateNotificationTemplate();
+  const deleteTemplate = useDeleteNotificationTemplate();
+
+  const apiTemplates = Array.isArray(rawTemplates) ? rawTemplates : ((rawTemplates as any)?.data ?? []);
+
   const [showSchema, setShowSchema] = useState(false);
   const [showFlow, setShowFlow] = useState(false);
   const [showApiDoc, setShowApiDoc] = useState(false);
   const schema = getSchemaByPageId("notification-templates")!;
   const flowData = getFlowByPageId("notification-templates")!;
   const apiDoc = getApiDocByPageId("notification-templates");
-  const [items, setItems] = useState<NotificationTemplate[]>(notificationTemplates);
+  const [items, setItems] = useState<NotificationTemplate[]>(apiTemplates.length > 0 ? apiTemplates : fallbackTemplates);
   const [filterChannel, setFilterChannel] = useState<"all" | NotificationChannel>("all");
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [drawer, setDrawer] = useState<{ mode: "add" | "edit"; item?: NotificationTemplate } | null>(null);
+
+  useEffect(() => { if (apiTemplates.length > 0) setItems(apiTemplates); }, [apiTemplates.length]);
+
+  if (isLoading) return <div><Topbar title="เทมเพลตแจ้งเตือน / Notification Templates" /><div className="p-8 text-center text-text-muted">กำลังโหลด...</div></div>;
 
   const filtered = filterChannel === "all" ? items : items.filter((t) => t.channel === filterChannel);
 
@@ -85,6 +103,8 @@ export default function NotificationTemplatesSettingsPage() {
   ];
 
   const toggleActive = (id: number) => {
+    const target = items.find((t) => t.id === id);
+    if (target) updateTemplate.mutate({ id, isActive: !target.isActive } as any);
     setItems((prev) => prev.map((t) => (t.id === id ? { ...t, isActive: !t.isActive } : t)));
   };
 
@@ -229,14 +249,25 @@ export default function NotificationTemplatesSettingsPage() {
         subtitle={drawer?.mode === "edit" ? drawer.item?.name : "กำหนดข้อความแจ้งเตือนตาม event"}
         width="w-[600px]"
       >
-        <NotificationTemplateForm initial={drawer?.item} onSave={() => setDrawer(null)} onCancel={() => setDrawer(null)} />
+        <NotificationTemplateForm
+          initial={drawer?.item}
+          onSave={(data) => {
+            if (drawer?.mode === "edit" && drawer.item) {
+              updateTemplate.mutate({ id: drawer.item.id, ...data } as any);
+            } else {
+              createTemplate.mutate(data);
+            }
+            setDrawer(null);
+          }}
+          onCancel={() => setDrawer(null)}
+        />
       </Drawer>
     </>
   );
 }
 
 /* ── Form ── */
-function NotificationTemplateForm({ initial, onSave, onCancel }: { initial?: NotificationTemplate; onSave: () => void; onCancel: () => void }) {
+function NotificationTemplateForm({ initial, onSave, onCancel }: { initial?: NotificationTemplate; onSave: (data: any) => void; onCancel: () => void }) {
   const [channel, setChannel] = useState<NotificationChannel>(initial?.channel ?? "line");
   const [trigger, setTrigger] = useState<NotificationTrigger>(initial?.trigger ?? "booking-confirmed");
 
@@ -319,7 +350,7 @@ function NotificationTemplateForm({ initial, onSave, onCancel }: { initial?: Not
       </div>
 
       <div className="flex gap-3 pt-4 border-t border-border">
-        <Button className="flex-1 gap-2" onClick={onSave}><Save size={16} /> บันทึก</Button>
+        <Button className="flex-1 gap-2" onClick={() => onSave({ channel, trigger })}><Save size={16} /> บันทึก</Button>
         <Button variant="outline" className="flex-1" onClick={onCancel}>ยกเลิก</Button>
       </div>
     </div>

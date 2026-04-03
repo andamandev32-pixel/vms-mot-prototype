@@ -1,67 +1,149 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
-import { Lock, Mail, Eye, EyeOff } from "lucide-react";
+import { Lock, User, Eye, EyeOff, Globe } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import VmsLogo from "@/components/ui/VmsLogo";
+import Image from "next/image";
+
+type Lang = "th" | "en";
+
+const i18n: Record<string, Record<Lang, string>> = {
+    systemName: { th: "eVMS", en: "eVMS" },
+    systemSub: { th: "Visitor Management", en: "Visitor Management" },
+    orgLine1: { th: "สำนักงานปลัด", en: "Office of the Permanent Secretary" },
+    orgLine2: { th: "กระทรวงการท่องเที่ยวและกีฬา", en: "Ministry of Tourism and Sports" },
+    orgDesc: { th: "ระบบจัดการผู้มาติดต่อราชการ", en: "Visitor Management System" },
+    copyright: { th: "© 2569 กระทรวงการท่องเที่ยวและกีฬา", en: "© 2026 Ministry of Tourism and Sports" },
+    loginTitle: { th: "เข้าสู่ระบบ", en: "Sign In" },
+    loginDesc: { th: "สำหรับเจ้าหน้าที่และผู้ดูแลระบบ", en: "For staff and administrators" },
+    usernameLabel: { th: "Username หรือ Email", en: "Username or Email" },
+    usernamePlaceholder: { th: "username หรือ your@email.com", en: "username or your@email.com" },
+    passwordLabel: { th: "รหัสผ่าน", en: "Password" },
+    forgotPassword: { th: "ลืมรหัสผ่าน?", en: "Forgot password?" },
+    loginBtn: { th: "เข้าสู่ระบบ", en: "Sign In" },
+    demoTitle: { th: "บัญชีทดสอบ (Demo) — ใช้ username หรือ email ก็ได้", en: "Demo Accounts — use username or email" },
+    noAccount: { th: "ยังไม่มีบัญชี?", en: "Don't have an account?" },
+    register: { th: "สมัครสมาชิก", en: "Register" },
+    errRequired: { th: "กรุณากรอก Username/Email และรหัสผ่าน", en: "Please enter Username/Email and Password" },
+    errFailed: { th: "เข้าสู่ระบบไม่สำเร็จ", en: "Login failed" },
+    errGeneric: { th: "เกิดข้อผิดพลาด กรุณาลองใหม่", en: "An error occurred, please try again" },
+    mobileOrg: { th: "สำนักงานปลัด กระทรวงการท่องเที่ยวและกีฬา", en: "Ministry of Tourism and Sports" },
+};
 
 export default function WebLoginPage() {
     const router = useRouter();
-    const [email, setEmail] = useState("");
+    const [usernameOrEmail, setUsernameOrEmail] = useState("");
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState("");
     const [loading, setLoading] = useState(false);
+    const [lang, setLang] = useState<Lang>("th");
+
+    useEffect(() => {
+        const saved = localStorage.getItem("vms-lang");
+        if (saved === "en" || saved === "th") setLang(saved);
+    }, []);
+
+    const toggleLang = () => {
+        const next = lang === "th" ? "en" : "th";
+        setLang(next);
+        localStorage.setItem("vms-lang", next);
+    };
+
+    const t = (key: string) => i18n[key]?.[lang] ?? key;
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setError("");
-        if (!email.trim() || !password.trim()) {
-            setError("กรุณากรอกอีเมลและรหัสผ่าน");
+        if (!usernameOrEmail.trim() || !password.trim()) {
+            setError(t("errRequired"));
             return;
         }
         setLoading(true);
-        // Mock login delay
-        await new Promise((r) => setTimeout(r, 1200));
-        setLoading(false);
-        router.push("/web/dashboard");
+        try {
+            const res = await fetch("/api/auth/login", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ usernameOrEmail, password }),
+            });
+            const json = await res.json();
+            if (json.success) {
+                router.push("/web/dashboard");
+            } else {
+                setError(json.error?.message || t("errFailed"));
+            }
+        } catch {
+            setError(t("errGeneric"));
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
         <div className="flex min-h-screen web-theme">
-            {/* Left Side - Purple Gradient (MOTS Theme) */}
-            <div className="hidden lg:flex w-[40%] bg-gradient-to-br from-primary via-primary-dark to-primary-900 flex-col justify-center px-12 relative overflow-hidden">
-                <div className="absolute top-0 left-0 w-64 h-64 bg-white/5 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2"></div>
-                <div className="absolute bottom-0 right-0 w-96 h-96 bg-accent/20 rounded-full blur-3xl translate-x-1/3 translate-y-1/3"></div>
+            {/* Left Side - Teal Gradient with animated waves & orbs */}
+            <div className="hidden lg:flex w-[40%] bg-gradient-to-br from-primary via-primary-dark to-primary-900 flex-col justify-between px-12 py-10 relative overflow-hidden">
+                {/* Animated orbs */}
+                <div className="absolute top-0 left-0 w-64 h-64 bg-white/5 rounded-full blur-3xl animate-orb-1"></div>
+                <div className="absolute bottom-0 right-0 w-96 h-96 bg-white/10 rounded-full blur-3xl animate-orb-2"></div>
+                <div className="absolute top-1/3 right-1/4 w-48 h-48 bg-white/5 rounded-full blur-2xl animate-orb-1" style={{ animationDelay: "4s" }}></div>
+
+                {/* SVG Wave layers */}
+                <svg className="absolute bottom-0 left-0 w-[200%] h-40 animate-wave-1 opacity-10" viewBox="0 0 1440 120" preserveAspectRatio="none">
+                    <path d="M0,60 C360,120 720,0 1080,60 C1260,90 1380,30 1440,60 L1440,120 L0,120 Z" fill="white" />
+                </svg>
+                <svg className="absolute bottom-0 left-0 w-[200%] h-32 animate-wave-2 opacity-[0.07]" viewBox="0 0 1440 120" preserveAspectRatio="none">
+                    <path d="M0,80 C240,20 480,100 720,60 C960,20 1200,100 1440,80 L1440,120 L0,120 Z" fill="white" />
+                </svg>
+
                 <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-10 mix-blend-overlay"></div>
 
-                <div className="relative z-10 text-center lg:text-left">
-                    <div className="mb-8">
-                        <VmsLogo size={64} darkMode />
-                    </div>
-                    <h1 className="text-5xl font-bold text-white mb-4 leading-tight drop-shadow-lg">Visitor<br />Management<br />System</h1>
-                    <div className="h-1 w-20 bg-accent rounded-full mb-6"></div>
-                    <p className="text-primary-light text-xl font-light tracking-wide">สำนักงานปลัด กระทรวงการท่องเที่ยวและกีฬา</p>
+                {/* Top: System name — left aligned */}
+                <div className="relative z-10 text-left">
+                    <h1 className="text-4xl font-extrabold text-white leading-tight drop-shadow-lg tracking-tight">{t("systemName")}</h1>
+                    <p className="text-base text-primary-light font-light uppercase tracking-[0.15em]">{t("systemSub")}</p>
                 </div>
-                <div className="absolute bottom-12 text-primary-light/60 text-sm font-light">
-                    &copy; 2569 Ministry of Tourism and Sports
+
+                {/* Center: Logo + org name */}
+                <div className="relative z-10 text-center flex-1 flex flex-col items-center justify-center -mt-20">
+                    <div className="mb-4 flex justify-center">
+                        <Image src="/images/mot_wt_logo.png" alt="MOT Logo" width={312} height={312} className="drop-shadow-2xl" priority />
+                    </div>
+                    <p className="text-primary-light text-3xl font-light tracking-wide">{t("orgLine1")}</p>
+                    <p className="text-primary-light text-3xl font-light tracking-wide">{t("orgLine2")}</p>
+                    <p className="text-primary-light/60 text-lg font-light mt-3">{t("orgDesc")}</p>
+                </div>
+
+                <div className="relative z-10 text-primary-light/60 text-sm font-light">
+                    {t("copyright")}
                 </div>
             </div>
 
             {/* Right Side - White */}
-            <div className="flex-1 flex items-center justify-center bg-bg p-8">
+            <div className="flex-1 flex items-center justify-center bg-bg p-8 relative">
+                {/* Language toggle */}
+                <button
+                    type="button"
+                    onClick={toggleLang}
+                    className="absolute top-5 right-6 flex items-center gap-1.5 text-sm text-text-secondary hover:text-primary border border-gray-200 rounded-full px-3 py-1.5 hover:border-primary/40 transition-all bg-white shadow-sm"
+                >
+                    <Globe size={15} />
+                    {lang === "th" ? "EN" : "TH"}
+                </button>
+
                 <form onSubmit={handleLogin} className="w-full max-w-[420px] space-y-8 bg-white p-10 rounded-2xl shadow-xl border border-gray-100">
                     {/* Mobile logo */}
-                    <div className="lg:hidden flex justify-center mb-4">
-                        <VmsLogo size={48} />
+                    <div className="lg:hidden flex flex-col items-center mb-4">
+                        <Image src="/images/mot_wt_logo.png" alt="MOT Logo" width={80} height={80} className="mb-2" />
+                        <p className="text-xs text-text-secondary">{t("mobileOrg")}</p>
                     </div>
 
                     <div className="text-center">
-                        <h2 className="text-3xl font-bold text-primary mb-2">เข้าสู่ระบบ</h2>
-                        <p className="text-text-secondary">สำหรับเจ้าหน้าที่และผู้ดูแลระบบ</p>
+                        <h2 className="text-3xl font-bold text-primary mb-2">{t("loginTitle")}</h2>
+                        <p className="text-text-secondary">{t("loginDesc")}</p>
                     </div>
 
                     {error && (
@@ -72,17 +154,17 @@ export default function WebLoginPage() {
 
                     <div className="space-y-5">
                         <Input
-                            label="อีเมล"
-                            type="email"
-                            placeholder="your@email.com"
-                            leftIcon={<Mail size={18} />}
+                            label={t("usernameLabel")}
+                            type="text"
+                            placeholder={t("usernamePlaceholder")}
+                            leftIcon={<User size={18} />}
                             className="h-12 bg-gray-50 border-gray-200 focus:bg-white transition-all"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
+                            value={usernameOrEmail}
+                            onChange={(e) => setUsernameOrEmail(e.target.value)}
                         />
                         <div>
                             <Input
-                                label="รหัสผ่าน"
+                                label={t("passwordLabel")}
                                 type={showPassword ? "text" : "password"}
                                 placeholder="••••••••"
                                 leftIcon={<Lock size={18} />}
@@ -97,35 +179,38 @@ export default function WebLoginPage() {
                             />
                             <div className="flex justify-end mt-2">
                                 <Link href="/web/forgot-password" className="text-sm text-primary font-medium hover:text-primary-dark hover:underline">
-                                    ลืมรหัสผ่าน?
+                                    {t("forgotPassword")}
                                 </Link>
                             </div>
                         </div>
 
                         <Button type="submit" fullWidth size="lg" loading={loading} className="h-14 text-lg font-bold shadow-lg hover:shadow-xl hover:-translate-y-0.5 transition-all">
-                            เข้าสู่ระบบ
+                            {t("loginBtn")}
                         </Button>
                     </div>
 
                     {/* Demo accounts */}
                     <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
-                        <p className="text-xs font-bold text-text-secondary mb-2.5 uppercase tracking-wider">บัญชีทดสอบ (Demo)</p>
+                        <p className="text-xs font-bold text-text-secondary mb-2.5 uppercase tracking-wider">{t("demoTitle")}</p>
                         <div className="space-y-2">
                             {[
-                                { email: "admin@mots.go.th", password: "admin1234", role: "Admin", color: "text-red-600 bg-red-50" },
-                                { email: "prawit.s@mots.go.th", password: "pass1234", role: "Supervisor", color: "text-purple-600 bg-purple-50" },
-                                { email: "somsri.r@mots.go.th", password: "pass1234", role: "Staff", color: "text-emerald-600 bg-emerald-50" },
-                                { email: "somchai.p@mots.go.th", password: "pass1234", role: "Security", color: "text-orange-600 bg-orange-50" },
-                                { email: "wichai@siamtech.co.th", password: "pass1234", role: "Visitor", color: "text-blue-600 bg-blue-50" },
+                                { username: "admin", email: "admin@mots.go.th", password: "admin1234", role: "Admin", color: "text-red-600 bg-red-50" },
+                                { username: "prawit.s", email: "prawit.s@mots.go.th", password: "pass1234", role: "Supervisor", color: "text-purple-600 bg-purple-50" },
+                                { username: "somsri.r", email: "somsri.r@mots.go.th", password: "pass1234", role: "Staff", color: "text-emerald-600 bg-emerald-50" },
+                                { username: "somchai.p", email: "somchai.p@mots.go.th", password: "pass1234", role: "Security", color: "text-orange-600 bg-orange-50" },
+                                { username: "wichai.m", email: "wichai@siamtech.co.th", password: "pass1234", role: "Visitor", color: "text-blue-600 bg-blue-50" },
                             ].map((acc) => (
                                 <button
-                                    key={acc.email}
+                                    key={acc.username}
                                     type="button"
-                                    onClick={() => { setEmail(acc.email); setPassword(acc.password); }}
+                                    onClick={() => { setUsernameOrEmail(acc.username); setPassword(acc.password); }}
                                     className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-white hover:shadow-sm border border-transparent hover:border-gray-200 transition-all text-left group"
                                 >
                                     <div className="min-w-0">
-                                        <p className="text-xs font-mono text-text-primary truncate group-hover:text-primary transition-colors">{acc.email}</p>
+                                        <p className="text-xs font-mono text-text-primary truncate group-hover:text-primary transition-colors">
+                                            <span className="font-bold">{acc.username}</span>
+                                            <span className="text-text-muted ml-1">({acc.email})</span>
+                                        </p>
                                         <p className="text-[10px] text-text-muted">pw: {acc.password}</p>
                                     </div>
                                     <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ${acc.color}`}>{acc.role}</span>
@@ -135,9 +220,9 @@ export default function WebLoginPage() {
                     </div>
 
                     <div className="text-center text-sm text-text-secondary pt-4 border-t border-gray-100">
-                        ยังไม่มีบัญชี?{" "}
+                        {t("noAccount")}{" "}
                         <Link href="/web/register" className="text-primary font-bold hover:text-primary-dark hover:underline">
-                            สมัครสมาชิก
+                            {t("register")}
                         </Link>
                     </div>
                 </form>

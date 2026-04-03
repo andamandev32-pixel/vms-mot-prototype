@@ -1,6 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
+import {
+  useBusinessHours,
+  useUpdateBusinessHours,
+} from "@/lib/hooks";
 import Topbar from "@/components/web/Topbar";
 import { DatabaseSchemaModal, DbSchemaButton } from "@/components/web/DatabaseSchemaModal";
 import { FlowchartModal, FlowRulesButton } from "@/components/web/FlowchartModal";
@@ -59,7 +63,24 @@ export default function BusinessHoursSettingsPage() {
   const schema = getSchemaByPageId("business-hours")!;
   const flowData = getFlowByPageId("business-hours")!;
   const apiDoc = getApiDocByPageId("business-hours");
-  const [items, setItems] = useState<BusinessHoursRule[]>(businessHoursRules);
+  /* API hooks */
+  const { data: rawBizHours, isLoading } = useBusinessHours();
+  const items: BusinessHoursRule[] = ((rawBizHours as any)?.rules ?? []).map((r: any) => {
+    const fmtTime = (iso: string | null) => {
+      if (!iso) return "00:00";
+      const d = new Date(iso);
+      return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+    };
+    return {
+      ...r,
+      openTime: fmtTime(r.openTime),
+      closeTime: fmtTime(r.closeTime),
+      specificDate: r.specificDate ? r.specificDate.slice(0, 10) : undefined,
+      daysOfWeek: Array.isArray(r.daysOfWeek) ? r.daysOfWeek : undefined,
+    };
+  }) as BusinessHoursRule[];
+  const updateBizHoursMut = useUpdateBusinessHours();
+
   const [filterType, setFilterType] = useState<"all" | BusinessHoursRule["type"]>("all");
   const [drawer, setDrawer] = useState<{ mode: "add" | "edit"; item?: BusinessHoursRule } | null>(null);
 
@@ -76,8 +97,11 @@ export default function BusinessHoursSettingsPage() {
     { label: "กฎทั้งหมด", value: items.length, icon: <Calendar size={20} />, color: "text-accent-600", bg: "bg-accent-50" },
   ];
 
-  const toggleActive = (id: number) => {
-    setItems((prev) => prev.map((r) => (r.id === id ? { ...r, isActive: !r.isActive } : r)));
+  const toggleActive = async (id: number) => {
+    const rule = items.find((r) => r.id === id);
+    if (!rule) return;
+    const toggled = { ...rule, isActive: !rule.isActive };
+    await updateBizHoursMut.mutateAsync({ rules: [toggled] });
   };
 
   return (
@@ -86,6 +110,11 @@ export default function BusinessHoursSettingsPage() {
       <DatabaseSchemaModal open={showSchema} onClose={() => setShowSchema(false)} schema={schema} />
       <FlowchartModal open={showFlow} onClose={() => setShowFlow(false)} flowData={flowData} />
       {apiDoc && <ApiDocModal open={showApiDoc} onClose={() => setShowApiDoc(false)} apiDoc={apiDoc} />}
+      {isLoading && (
+        <div className="flex-1 flex items-center justify-center p-12">
+          <p className="text-text-muted">กำลังโหลด...</p>
+        </div>
+      )}
       <main className="flex-1 p-6 space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -220,25 +249,63 @@ export default function BusinessHoursSettingsPage() {
         title={drawer?.mode === "add" ? "เพิ่มกฎเวลาทำการ" : "แก้ไขกฎเวลาทำการ"}
         subtitle={drawer?.mode === "edit" ? drawer.item?.name : "กำหนดช่วงเวลาเปิด-ปิดระบบ"}
       >
-        <BusinessHoursForm initial={drawer?.item} onSave={() => setDrawer(null)} onCancel={() => setDrawer(null)} />
+        <BusinessHoursForm
+          initial={drawer?.item}
+          onSave={async (formData) => {
+            const rule = {
+              ...(drawer?.mode === "edit" && drawer.item ? { id: drawer.item.id } : {}),
+              ...formData,
+            };
+            await updateBizHoursMut.mutateAsync({ rules: [rule] });
+            setDrawer(null);
+          }}
+          onCancel={() => setDrawer(null)}
+        />
       </Drawer>
     </>
   );
 }
 
 /* ── Form ── */
-function BusinessHoursForm({ initial, onSave, onCancel }: { initial?: BusinessHoursRule; onSave: () => void; onCancel: () => void }) {
+type FormData = Omit<BusinessHoursRule, "id">;
+
+function BusinessHoursForm({ initial, onSave, onCancel }: { initial?: BusinessHoursRule; onSave: (data: FormData) => void; onCancel: () => void }) {
   const [type, setType] = useState<BusinessHoursRule["type"]>(initial?.type ?? "regular");
   const [days, setDays] = useState<number[]>(initial?.daysOfWeek ?? [1, 2, 3, 4, 5]);
   const [allowWalkin, setAllowWalkin] = useState(initial?.allowWalkin ?? true);
   const [allowKiosk, setAllowKiosk] = useState(initial?.allowKiosk ?? true);
 
+  const nameRef = useRef<HTMLInputElement>(null);
+  const nameEnRef = useRef<HTMLInputElement>(null);
+  const specificDateRef = useRef<HTMLInputElement>(null);
+  const openTimeRef = useRef<HTMLInputElement>(null);
+  const closeTimeRef = useRef<HTMLInputElement>(null);
+  const notesRef = useRef<HTMLInputElement>(null);
+
   const toggleDay = (d: number) => setDays((prev) => prev.includes(d) ? prev.filter((x) => x !== d) : [...prev, d]);
+
+  const handleSave = () => {
+    const data: FormData = {
+      name: nameRef.current?.value ?? initial?.name ?? "",
+      nameEn: nameEnRef.current?.value ?? initial?.nameEn ?? "",
+      type,
+      ...(type === "regular"
+        ? { daysOfWeek: days }
+        : { specificDate: specificDateRef.current?.value ?? initial?.specificDate ?? "" }),
+      openTime: openTimeRef.current?.value ?? initial?.openTime ?? "08:30",
+      closeTime: closeTimeRef.current?.value ?? initial?.closeTime ?? "16:30",
+      allowWalkin,
+      allowKiosk,
+      notes: notesRef.current?.value || undefined,
+      isActive: initial?.isActive ?? true,
+    };
+    onSave(data);
+  };
 
   return (
     <div className="p-6 space-y-5">
-      <Input label="ชื่อกฎ (ไทย)" defaultValue={initial?.name} placeholder="เช่น วันทำการปกติ (จ-ศ)" />
-      <Input label="ชื่อกฎ (อังกฤษ)" defaultValue={initial?.nameEn} placeholder="e.g. Regular Weekdays" />
+      <Input ref={nameRef} label="ชื่อกฎ (ไทย)" defaultValue={initial?.name} placeholder="เช่น วันทำการปกติ (จ-ศ)" />
+      <Input ref={nameEnRef} label="ชื่อกฎ (อังกฤษ)" defaultValue={initial?.nameEn} placeholder="e.g. Regular Weekdays" />
 
       {/* Type */}
       <div>
@@ -277,12 +344,12 @@ function BusinessHoursForm({ initial, onSave, onCancel }: { initial?: BusinessHo
           </div>
         </div>
       ) : (
-        <Input label="วันที่ (YYYY-MM-DD)" defaultValue={initial?.specificDate} placeholder="2569-04-06" leftIcon={<Calendar size={16} />} />
+        <Input ref={specificDateRef} label="วันที่ (YYYY-MM-DD)" defaultValue={initial?.specificDate} placeholder="2569-04-06" leftIcon={<Calendar size={16} />} />
       )}
 
       <div className="grid grid-cols-2 gap-4">
-        <Input label="เวลาเปิด" defaultValue={initial?.openTime ?? "08:30"} placeholder="08:30" leftIcon={<Clock size={16} />} />
-        <Input label="เวลาปิด" defaultValue={initial?.closeTime ?? "16:30"} placeholder="16:30" leftIcon={<Clock size={16} />} />
+        <Input ref={openTimeRef} label="เวลาเปิด" defaultValue={initial?.openTime ?? "08:30"} placeholder="08:30" leftIcon={<Clock size={16} />} />
+        <Input ref={closeTimeRef} label="เวลาปิด" defaultValue={initial?.closeTime ?? "16:30"} placeholder="16:30" leftIcon={<Clock size={16} />} />
       </div>
 
       {/* Toggles */}
@@ -301,10 +368,10 @@ function BusinessHoursForm({ initial, onSave, onCancel }: { initial?: BusinessHo
         </button>
       </div>
 
-      <Input label="หมายเหตุ" defaultValue={initial?.notes ?? ""} placeholder="หมายเหตุเพิ่มเติม (ไม่บังคับ)" />
+      <Input ref={notesRef} label="หมายเหตุ" defaultValue={initial?.notes ?? ""} placeholder="หมายเหตุเพิ่มเติม (ไม่บังคับ)" />
 
       <div className="flex gap-3 pt-4 border-t border-border">
-        <Button className="flex-1 gap-2" onClick={onSave}><Save size={16} /> บันทึก</Button>
+        <Button className="flex-1 gap-2" onClick={handleSave}><Save size={16} /> บันทึก</Button>
         <Button variant="outline" className="flex-1" onClick={onCancel}>ยกเลิก</Button>
       </div>
     </div>

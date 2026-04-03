@@ -21,6 +21,7 @@ import {
   type PdpaConsentLog,
   type PdpaDisplayChannel,
 } from "@/lib/mock-data";
+import { usePdpaConfig, useUpdatePdpaConfig } from "@/lib/hooks";
 
 type TabId = "versions" | "editor" | "logs";
 
@@ -528,6 +529,8 @@ function ConsentLogsTab({ logs }: { logs: PdpaConsentLog[] }) {
 
 // ── Main Page ─────────────────────────────────────────────────────────
 export default function PdpaConsentSettingsPage() {
+  const { data: pdpaConfig, isLoading: loadingPdpa } = usePdpaConfig();
+  const updatePdpaMut = useUpdatePdpaConfig();
   const [showSchema, setShowSchema] = useState(false);
   const [showFlow, setShowFlow] = useState(false);
   const [showApiDoc, setShowApiDoc] = useState(false);
@@ -536,16 +539,34 @@ export default function PdpaConsentSettingsPage() {
   const apiDoc = getApiDocByPageId("pdpa-consent");
 
   const [activeTab, setActiveTab] = useState<TabId>("versions");
+  const pdpaData = pdpaConfig as { config?: { id?: number; versions?: PdpaVersion[] } } | undefined;
+  const apiVersions = Array.isArray(pdpaData?.config?.versions) ? pdpaData.config.versions : [];
   const [versions, setVersions] = useState<PdpaVersion[]>(initialVersions);
   const [editingVersion, setEditingVersion] = useState<PdpaVersion | null>(null);
   const [isNewItem, setIsNewItem] = useState(false);
   const [viewingVersion, setViewingVersion] = useState<PdpaVersion | null>(null);
 
+  // Sync versions state when API data arrives
+  const [hasLoadedApi, setHasLoadedApi] = useState(false);
+  if (!hasLoadedApi && apiVersions.length > 0) {
+    setVersions(apiVersions);
+    setHasLoadedApi(true);
+  }
+
   // Activate a version (deactivate all others)
   const handleActivate = (id: number) => {
+    const targetVersion = versions.find((v) => v.id === id);
     setVersions((prev) =>
       prev.map((v) => ({ ...v, isActive: v.id === id }))
     );
+    if (targetVersion) {
+      updatePdpaMut.mutateAsync({
+        id: targetVersion.configId ?? pdpaData?.config?.id,
+        isActive: true,
+        version: targetVersion.version,
+        changeNote: `เปิดใช้งาน v${targetVersion.version}`,
+      } as any).catch(() => {});
+    }
   };
 
   // Open editor with a specific version
@@ -596,6 +617,12 @@ export default function PdpaConsentSettingsPage() {
     setVersions((prev) => [...prev, newVersion]);
     setEditingVersion(newVersion);
     setIsNewItem(false);
+    // Persist to API — include config id so PUT can find the record
+    updatePdpaMut.mutateAsync({
+      id: pdpaData?.config?.id,
+      ...data,
+      version: newVersion.version,
+    } as any).catch(() => {});
   };
 
   const activeVersion = versions.find((v) => v.isActive);

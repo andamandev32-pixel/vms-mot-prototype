@@ -1,6 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import {
+  useServicePoints,
+  useCreateServicePoint,
+  useUpdateServicePoint,
+  useDeleteServicePoint,
+} from "@/lib/hooks";
 import Topbar from "@/components/web/Topbar";
 import { DatabaseSchemaModal, DbSchemaButton } from "@/components/web/DatabaseSchemaModal";
 import { FlowchartModal, FlowRulesButton } from "@/components/web/FlowchartModal";
@@ -101,7 +107,13 @@ export default function ServicePointsSettingsPage() {
   const schema = getSchemaByPageId("service-points")!;
   const flowData = getFlowByPageId("service-points")!;
   const apiDoc = getApiDocByPageId("service-points");
-  const [items, setItems] = useState<ServicePoint[]>(servicePoints);
+  /* API hooks */
+  const { data: rawServicePoints, isLoading } = useServicePoints();
+  const items: ServicePoint[] = ((rawServicePoints as any)?.servicePoints ?? []) as ServicePoint[];
+  const createMut = useCreateServicePoint();
+  const updateMut = useUpdateServicePoint();
+  const deleteMut = useDeleteServicePoint();
+
   const [filterType, setFilterType] = useState<"all" | ServicePointType>("all");
   const [filterStatus, setFilterStatus] = useState<"all" | ServicePointStatus>("all");
   const [drawer, setDrawer] = useState<{ mode: "add" | "edit"; item?: ServicePoint } | null>(null);
@@ -116,7 +128,7 @@ export default function ServicePointsSettingsPage() {
   const totalKiosks = items.filter((s) => s.type === "kiosk").length;
   const totalCounters = items.filter((s) => s.type === "counter").length;
   const onlineCount = items.filter((s) => s.status === "online").length;
-  const todayTotal = items.reduce((sum, s) => sum + s.todayTransactions, 0);
+  const todayTotal = items.reduce((sum, s) => sum + ((s as any).todayTransactions ?? 0), 0);
 
   const stats = [
     { label: "Kiosk ทั้งหมด", value: totalKiosks, icon: <Tablet size={20} />, color: "text-primary", bg: "bg-primary-50" },
@@ -126,14 +138,11 @@ export default function ServicePointsSettingsPage() {
   ];
 
   /* toggle status */
-  const cycleStatus = (id: number) => {
-    setItems((prev) =>
-      prev.map((sp) => {
-        if (sp.id !== id) return sp;
-        const next: ServicePointStatus = sp.status === "online" ? "offline" : sp.status === "offline" ? "maintenance" : "online";
-        return { ...sp, status: next };
-      })
-    );
+  const cycleStatus = async (id: number) => {
+    const sp = items.find((s) => s.id === id);
+    if (!sp) return;
+    const next: ServicePointStatus = sp.status === "online" ? "offline" : sp.status === "offline" ? "maintenance" : "online";
+    await updateMut.mutateAsync({ id, status: next } as any);
   };
 
   return (
@@ -142,6 +151,11 @@ export default function ServicePointsSettingsPage() {
       <DatabaseSchemaModal open={showSchema} onClose={() => setShowSchema(false)} schema={schema} />
       <FlowchartModal open={showFlow} onClose={() => setShowFlow(false)} flowData={flowData} />
       {apiDoc && <ApiDocModal open={showApiDoc} onClose={() => setShowApiDoc(false)} apiDoc={apiDoc} />}
+      {isLoading && (
+        <div className="flex-1 flex items-center justify-center p-12">
+          <p className="text-text-muted">กำลังโหลด...</p>
+        </div>
+      )}
       <main className="flex-1 p-6 space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
@@ -279,7 +293,7 @@ export default function ServicePointsSettingsPage() {
                     <div>
                       <p className="text-[11px] font-semibold text-text-muted mb-1 flex items-center gap-1"><Target size={11} /> วัตถุประสงค์ที่เปิดให้บริการ</p>
                       <div className="flex flex-wrap gap-1">
-                        {sp.allowedPurposeIds.length > 0 ? sp.allowedPurposeIds.map((pid) => {
+                        {sp.allowedPurposeIds?.length > 0 ? sp.allowedPurposeIds.map((pid) => {
                           const purpose = visitPurposeConfigs.find((p) => p.id === pid);
                           return purpose ? (
                             <span key={pid} className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-primary-50 text-primary">
@@ -293,7 +307,7 @@ export default function ServicePointsSettingsPage() {
                     <div>
                       <p className="text-[11px] font-semibold text-text-muted mb-1 flex items-center gap-1"><FileText size={11} /> เอกสารยืนยันตัวตนที่รับ</p>
                       <div className="flex flex-wrap gap-1">
-                        {sp.allowedDocumentIds.length > 0 ? sp.allowedDocumentIds.map((did) => {
+                        {sp.allowedDocumentIds?.length > 0 ? sp.allowedDocumentIds.map((did) => {
                           const doc = identityDocumentTypes.find((d) => d.id === did);
                           return doc ? (
                             <span key={did} className="inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full bg-accent-50 text-accent-600">
@@ -344,7 +358,18 @@ export default function ServicePointsSettingsPage() {
       >
         <ServicePointForm
           initial={drawer?.item}
-          onSave={() => setDrawer(null)}
+          onSave={async (formData) => {
+            try {
+              if (drawer?.mode === "edit" && drawer.item) {
+                await updateMut.mutateAsync({ id: drawer.item.id, ...formData } as any);
+              } else {
+                await createMut.mutateAsync(formData as any);
+              }
+              setDrawer(null);
+            } catch (err) {
+              console.error("Failed to save service point:", err);
+            }
+          }}
           onCancel={() => setDrawer(null)}
         />
       </Drawer>
@@ -353,11 +378,50 @@ export default function ServicePointsSettingsPage() {
 }
 
 /* ── Add/Edit Form ── */
-function ServicePointForm({ initial, onSave, onCancel }: { initial?: ServicePoint; onSave: () => void; onCancel: () => void }) {
+type ServicePointFormData = {
+  type: ServicePointType;
+  status: ServicePointStatus;
+  name: string;
+  nameEn: string;
+  location: string;
+  building: string;
+  floor: string;
+  ipAddress: string;
+  serialNumber: string;
+  macAddress: string;
+  notes: string;
+  allowedPurposeIds: number[];
+  allowedDocumentIds: number[];
+  timeoutConfig: Record<string, number>;
+  wifiConfig: {
+    ssid: string;
+    passwordPattern: string;
+    validityMode: "business-hours-close" | "fixed-duration";
+    fixedDurationMinutes: number;
+  };
+  pdpaConfig: { requireScroll: boolean; retentionDays: number };
+  slipConfig: { headerText: string; footerText: string };
+  followBusinessHours: boolean;
+  idMaskingPattern: string;
+  adminPin: string;
+  assignedStaff: { staffId: number; isPrimary: boolean }[];
+  isActive: boolean;
+};
+
+function ServicePointForm({ initial, onSave, onCancel }: { initial?: ServicePoint; onSave: (data: ServicePointFormData) => void; onCancel: () => void }) {
   const kioskOnlyDocIds = [1, 2, 5];
 
   const [type, setType] = useState<ServicePointType>(initial?.type ?? "kiosk");
   const [status, setStatus] = useState<ServicePointStatus>(initial?.status ?? "offline");
+  const [name, setName] = useState(initial?.name ?? "");
+  const [nameEn, setNameEn] = useState(initial?.nameEn ?? "");
+  const [location, setLocation] = useState(initial?.location ?? "");
+  const [building, setBuilding] = useState(initial?.building ?? "");
+  const [floor, setFloor] = useState(initial?.floor ?? "");
+  const [ipAddress, setIpAddress] = useState(initial?.ipAddress ?? "");
+  const [serialNumber, setSerialNumber] = useState(initial?.serialNumber ?? "");
+  const [macAddress, setMacAddress] = useState(initial?.macAddress ?? "");
+  const [notes, setNotes] = useState(initial?.notes ?? "");
   const [selectedPurposes, setSelectedPurposes] = useState<number[]>(initial?.allowedPurposeIds ?? []);
   const [selectedDocs, setSelectedDocs] = useState<number[]>(initial?.allowedDocumentIds ?? []);
   const [showTimeouts, setShowTimeouts] = useState(false);
@@ -476,18 +540,18 @@ function ServicePointForm({ initial, onSave, onCancel }: { initial?: ServicePoin
         </div>
       </div>
 
-      <Input label="ชื่อจุดบริการ (ไทย)" defaultValue={initial?.name} placeholder="เช่น ตู้ Kiosk ล็อบบี้หลัก" />
-      <Input label="ชื่อจุดบริการ (อังกฤษ)" defaultValue={initial?.nameEn} placeholder="e.g. Main Lobby Kiosk" />
-      <Input label="ที่ตั้ง / ตำแหน่ง" defaultValue={initial?.location} placeholder="เช่น ล็อบบี้ ชั้น 1 ประตูหลัก" leftIcon={<MapPin size={16} />} />
+      <Input label="ชื่อจุดบริการ (ไทย)" value={name} onChange={(e) => setName(e.target.value)} placeholder="เช่น ตู้ Kiosk ล็อบบี้หลัก" />
+      <Input label="ชื่อจุดบริการ (อังกฤษ)" value={nameEn} onChange={(e) => setNameEn(e.target.value)} placeholder="e.g. Main Lobby Kiosk" />
+      <Input label="ที่ตั้ง / ตำแหน่ง" value={location} onChange={(e) => setLocation(e.target.value)} placeholder="เช่น ล็อบบี้ ชั้น 1 ประตูหลัก" leftIcon={<MapPin size={16} />} />
       <div className="grid grid-cols-2 gap-4">
-        <Input label="อาคาร" defaultValue={initial?.building} placeholder="ศูนย์ราชการ อาคาร C" />
-        <Input label="ชั้น" defaultValue={initial?.floor} placeholder="ชั้น 1" />
+        <Input label="อาคาร" value={building} onChange={(e) => setBuilding(e.target.value)} placeholder="ศูนย์ราชการ อาคาร C" />
+        <Input label="ชั้น" value={floor} onChange={(e) => setFloor(e.target.value)} placeholder="ชั้น 1" />
       </div>
       <div className="grid grid-cols-2 gap-4">
-        <Input label="IP Address" defaultValue={initial?.ipAddress} placeholder="192.168.1.101" leftIcon={<Network size={16} />} />
-        <Input label="Serial Number" defaultValue={initial?.serialNumber} placeholder="KIOSK-2024-001" leftIcon={<Hash size={16} />} />
+        <Input label="IP Address" value={ipAddress} onChange={(e) => setIpAddress(e.target.value)} placeholder="192.168.1.101" leftIcon={<Network size={16} />} />
+        <Input label="Serial Number" value={serialNumber} onChange={(e) => setSerialNumber(e.target.value)} placeholder="KIOSK-2024-001" leftIcon={<Hash size={16} />} />
       </div>
-      <Input label="MAC Address" defaultValue={initial?.macAddress} placeholder="AA:BB:CC:DD:01:01" />
+      <Input label="MAC Address" value={macAddress} onChange={(e) => setMacAddress(e.target.value)} placeholder="AA:BB:CC:DD:01:01" />
 
       {/* วัตถุประสงค์ที่เปิดให้บริการ */}
       <div>
@@ -942,11 +1006,42 @@ function ServicePointForm({ initial, onSave, onCancel }: { initial?: ServicePoin
         </div>
       </div>
 
-      <Input label="หมายเหตุ" defaultValue={initial?.notes ?? ""} placeholder="เพิ่มหมายเหตุ (ไม่บังคับ)" leftIcon={<StickyNote size={16} />} />
+      <Input label="หมายเหตุ" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="เพิ่มหมายเหตุ (ไม่บังคับ)" leftIcon={<StickyNote size={16} />} />
 
       {/* Actions */}
       <div className="flex gap-3 pt-4 border-t border-border">
-        <Button className="flex-1 gap-2" onClick={onSave}><Save size={16} /> บันทึก</Button>
+        <Button className="flex-1 gap-2" onClick={() => {
+          const formData: ServicePointFormData = {
+            type,
+            status,
+            name,
+            nameEn,
+            location,
+            building,
+            floor,
+            ipAddress,
+            serialNumber,
+            macAddress,
+            notes,
+            allowedPurposeIds: selectedPurposes,
+            allowedDocumentIds: selectedDocs,
+            timeoutConfig: timeouts,
+            wifiConfig: {
+              ssid: wifiSsid,
+              passwordPattern: wifiPassword,
+              validityMode: wifiValidityMode,
+              fixedDurationMinutes: wifiFixedDuration,
+            },
+            pdpaConfig: { requireScroll: pdpaRequireScroll, retentionDays: pdpaRetentionDays },
+            slipConfig: { headerText: slipHeader, footerText: slipFooter },
+            followBusinessHours,
+            idMaskingPattern,
+            adminPin,
+            assignedStaff: assignedStaffIds,
+            isActive: initial?.isActive ?? true,
+          };
+          onSave(formData);
+        }}><Save size={16} /> บันทึก</Button>
         <Button variant="outline" className="flex-1" onClick={onCancel}>ยกเลิก</Button>
       </div>
     </div>

@@ -7,30 +7,30 @@ import { Shield, Bell, Search, Calendar, Filter, ChevronRight } from "lucide-rea
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 
-type FilterType = "all" | "approved" | "checkedin" | "checkout" | "rejected";
+type FilterType = "all" | "approved" | "checked-in" | "checked-out" | "rejected";
 
 const historyData = [
-    { id: "1", name: "นายธนพงศ์ สุขใจ", company: "บริษัท เทคโน จำกัด", type: "ติดต่อราชการ", date: "19 ก.พ. 2569", time: "09:00 - 10:00", status: "checkout" },
-    { id: "2", name: "นางวันดี สว่างจิต", company: "บริษัท พรีเมียร์ จำกัด", type: "ประชุม", date: "19 ก.พ. 2569", time: "10:00 - 12:00", status: "checkedin" },
-    { id: "3", name: "นายสมศักดิ์ จริงใจ", company: "บริษัท ABC จำกัด", type: "ติดต่อราชการ", date: "18 ก.พ. 2569", time: "10:00 - 11:00", status: "checkout" },
+    { id: "1", name: "นายธนพงศ์ สุขใจ", company: "บริษัท เทคโน จำกัด", type: "ติดต่อราชการ", date: "19 ก.พ. 2569", time: "09:00 - 10:00", status: "checked-out" },
+    { id: "2", name: "นางวันดี สว่างจิต", company: "บริษัท พรีเมียร์ จำกัด", type: "ประชุม", date: "19 ก.พ. 2569", time: "10:00 - 12:00", status: "checked-in" },
+    { id: "3", name: "นายสมศักดิ์ จริงใจ", company: "บริษัท ABC จำกัด", type: "ติดต่อราชการ", date: "18 ก.พ. 2569", time: "10:00 - 11:00", status: "checked-out" },
     { id: "4", name: "นางสาวมาลี งามจิต", company: "บริษัท XYZ จำกัด", type: "ประชุม", date: "18 ก.พ. 2569", time: "13:00 - 14:00", status: "approved" },
-    { id: "5", name: "นายสุชาติ ปรีชา", company: "หจก. สมาร์ท เซอร์วิส", type: "ผู้รับเหมา", date: "17 ก.พ. 2569", time: "09:00 - 17:00", status: "checkout" },
+    { id: "5", name: "นายสุชาติ ปรีชา", company: "หจก. สมาร์ท เซอร์วิส", type: "ผู้รับเหมา", date: "17 ก.พ. 2569", time: "09:00 - 17:00", status: "checked-out" },
     { id: "6", name: "นายชัยวัฒน์ มั่นคง", company: "บริษัท ไอที โซลูชั่น", type: "ติดต่อราชการ", date: "17 ก.พ. 2569", time: "14:00 - 15:00", status: "rejected" },
-    { id: "7", name: "นางสุภาพร ดีงาม", company: "สำนักงานตรวจเงินแผ่นดิน", type: "ประชุม", date: "16 ก.พ. 2569", time: "09:00 - 12:00", status: "checkout" },
-    { id: "8", name: "นายวิทยา ฉลาดดี", company: "มหาวิทยาลัยธรรมศาสตร์", type: "รับ-ส่งเอกสาร", date: "16 ก.พ. 2569", time: "13:00 - 13:30", status: "checkout" },
+    { id: "7", name: "นางสุภาพร ดีงาม", company: "สำนักงานตรวจเงินแผ่นดิน", type: "ประชุม", date: "16 ก.พ. 2569", time: "09:00 - 12:00", status: "checked-out" },
+    { id: "8", name: "นายวิทยา ฉลาดดี", company: "มหาวิทยาลัยธรรมศาสตร์", type: "รับ-ส่งเอกสาร", date: "16 ก.พ. 2569", time: "13:00 - 13:30", status: "checked-out" },
 ];
 
 const statusMap: Record<string, { label: string; variant: string }> = {
     approved: { label: "อนุมัติ", variant: "approved" },
-    checkedin: { label: "เข้าพบแล้ว", variant: "checkedin" },
-    checkout: { label: "เสร็จสิ้น", variant: "checkout" },
+    "checked-in": { label: "เข้าพบแล้ว", variant: "checked-in" },
+    "checked-out": { label: "เสร็จสิ้น", variant: "checked-out" },
     rejected: { label: "ปฏิเสธ", variant: "rejected" },
 };
 
 const filterTabs: { key: FilterType; label: string }[] = [
     { key: "all", label: "ทั้งหมด" },
-    { key: "checkedin", label: "เข้าพบ" },
-    { key: "checkout", label: "เสร็จสิ้น" },
+    { key: "checked-in", label: "เข้าพบ" },
+    { key: "checked-out", label: "เสร็จสิ้น" },
     { key: "approved", label: "อนุมัติ" },
     { key: "rejected", label: "ปฏิเสธ" },
 ];

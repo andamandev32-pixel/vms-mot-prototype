@@ -163,7 +163,7 @@ export async function POST(request: NextRequest) {
               firstNameEn: null,
               lastNameEn: null,
               name: `${v.firstName} ${v.lastName}`,
-              idNumber: v.idNumber || `BATCH-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+              idNumber: v.idNumber || `B${Date.now().toString(36)}${Math.random().toString(36).slice(2, 5)}`.slice(0, 20),
               idType: v.idType || "thai-id",
               company: v.company || null,
               phone: v.phone || "",

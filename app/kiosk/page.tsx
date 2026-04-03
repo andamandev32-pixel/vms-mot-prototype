@@ -12,8 +12,9 @@ import { getActiveDevice } from "@/lib/kiosk/kiosk-device-map";
 import { getAudioCue, speakText, stopSpeech } from "@/lib/kiosk/kiosk-audio-config";
 import { mockVisitorIdCard, mockVisitorPassport, mockVisitorThaiId, mockAppointment } from "@/lib/kiosk/kiosk-mock-data";
 import { resolveKioskConfig, getKioskServicePoints, resolveWifiPassword, resolveWifiValidity, getStateConfigInfo, type ResolvedKioskConfig } from "@/lib/kiosk/kiosk-config-resolver";
-import type { KioskEvent, KioskLocale, StepInfo, IdMethod, SlipData } from "@/lib/kiosk/kiosk-types";
+import type { KioskEvent, KioskLocale, StepInfo, IdMethod, SlipData, ThermalSection } from "@/lib/kiosk/kiosk-types";
 import { maskIdNumber } from "@/lib/kiosk/kiosk-mock-data";
+import { useVisitSlipTemplate } from "@/lib/hooks";
 
 // UI components
 import KioskFrame from "@/components/kiosk/KioskFrame";
@@ -210,6 +211,13 @@ export default function KioskDemoPage() {
   // Resolve kiosk config from web app settings
   const kioskConfig = useMemo(() => resolveKioskConfig(selectedKioskId), [selectedKioskId]);
 
+  // Visit Slip Template จาก API — ใช้สำหรับพิมพ์บัตร
+  const { data: slipTplData } = useVisitSlipTemplate();
+  const slipTplAny = slipTplData as { template?: { sections?: ThermalSection[]; logoUrl?: string; logoSizePx?: number } } | undefined;
+  const slipSections = slipTplAny?.template?.sections;
+  const slipLogoUrl = slipTplAny?.template?.logoUrl;
+  const slipLogoSize = slipTplAny?.template?.logoSizePx;
+
   // Config info for current state
   const stateConfigInfo = useMemo(
     () => kioskConfig ? getStateConfigInfo(state.type, kioskConfig) : null,
@@ -386,6 +394,9 @@ export default function KioskDemoPage() {
             printSlip={state.printSlip}
             onChoosePrint={() => fire({ type: "CHOOSE_PRINT" })}
             onSkipPrint={() => fire({ type: "SKIP_PRINT" })}
+            slipSections={slipSections}
+            slipLogoUrl={slipLogoUrl}
+            slipLogoSize={slipLogoSize}
           />
         );
       case "QR_SCAN":

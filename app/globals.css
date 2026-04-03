@@ -239,3 +239,42 @@ body {
   --color-accent-500: #099fb0;
   --color-accent-600: #099fb0;
 }
+
+/* ===== SIDEBAR WAVE & ORB ANIMATIONS ===== */
+@keyframes wave-drift {
+  0% { transform: translateX(0) translateY(0); }
+  50% { transform: translateX(-25%) translateY(-3px); }
+  100% { transform: translateX(0) translateY(0); }
+}
+
+@keyframes wave-drift-reverse {
+  0% { transform: translateX(0) translateY(0); }
+  50% { transform: translateX(15%) translateY(3px); }
+  100% { transform: translateX(0) translateY(0); }
+}
+
+@keyframes orb-float-1 {
+  0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.05; }
+  50% { transform: translate(-40%, -60%) scale(1.15); opacity: 0.1; }
+}
+
+@keyframes orb-float-2 {
+  0%, 100% { transform: translate(33%, 33%) scale(1); opacity: 0.15; }
+  50% { transform: translate(25%, 25%) scale(1.1); opacity: 0.22; }
+}
+
+.animate-wave-1 {
+  animation: wave-drift 8s ease-in-out infinite;
+}
+
+.animate-wave-2 {
+  animation: wave-drift-reverse 10s ease-in-out infinite;
+}
+
+.animate-orb-1 {
+  animation: orb-float-1 12s ease-in-out infinite;
+}
+
+.animate-orb-2 {
+  animation: orb-float-2 14s ease-in-out infinite;
+}

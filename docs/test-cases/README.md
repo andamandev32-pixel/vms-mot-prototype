@@ -17,6 +17,7 @@
 | 8 | LINE OA Flow | [line-oa-flow.md](line-oa-flow.md) | 10 | 📝 |
 | 9 | Arrival Dashboard | [arrival-dashboard.md](arrival-dashboard.md) | 8 | 📝 |
 | 10 | Overstay & Auto-Expire | [overstay-expire.md](overstay-expire.md) | 8 | 📝 |
+| 11 | Settings CRUD | [settings-crud.md](settings-crud.md) | 27 | ✅ |
 
 ## สัญลักษณ์สถานะ
 

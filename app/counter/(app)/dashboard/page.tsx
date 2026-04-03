@@ -23,12 +23,20 @@ import {
   identityDocumentTypes,
   staffMembers,
   departments,
+  appointments as mockAppointments,
+  visitEntries,
   type ServicePoint,
   type BlocklistEntry,
+  type VisitEntry,
+  type EntryStatus,
+  entryStatusConfig,
   checkBlocklist,
   getDepartmentLocation,
 } from "@/lib/mock-data";
 import { purposeDepartmentMap } from "@/lib/kiosk/kiosk-mock-data";
+import { useVisitSlipTemplate } from "@/lib/hooks";
+import type { ThermalSection } from "@/lib/kiosk/kiosk-types";
+import ThermalSlipPreview from "@/components/kiosk/ThermalSlipPreview";
 
 // ── Types ──
 type InputMethod = "auto-card-reader" | "passport-reader" | "manual-officer" | "qr-scan" | "thai-id-app";
@@ -131,16 +139,53 @@ const APPOINTMENT_TYPES: Record<string, { label: string; icon: string; color: st
   other: { label: "อื่นๆ", icon: "🔖", color: "text-gray-600" },
 };
 
-const MOCK_CHECKED_IN = [
-  { name: "นายพุทธิพงษ์ คาดสนิท", slip: "eVMS-0089", timeIn: "08:32", department: "สำนักงานปลัดฯ", method: "auto-card-reader" as InputMethod, company: "บริษัท ไอที โปร จำกัด", host: "คุณสมศรี รักงาน", type: "official" as const, companions: 0, status: "checked-in" as const },
-  { name: "Ms. Sarah Connor", slip: "eVMS-0088", timeIn: "08:45", department: "กองการต่างประเทศ", method: "passport-reader" as InputMethod, company: "US Embassy", host: "คุณนภาพร วงศ์สวัสดิ์", type: "official" as const, companions: 1, status: "checked-in" as const },
-  { name: "นายธนกร เจริญสุข", slip: "eVMS-0087", timeIn: "09:10", department: "กองกลาง", method: "manual-officer" as InputMethod, company: "บริษัท ซ่อมเอก จำกัด", host: "คุณประเสริฐ ศรีวิไล", type: "contractor" as const, companions: 2, status: "checked-in" as const },
-  { name: "นางสาวลภัสรดา ชูวงศ์", slip: "eVMS-0086", timeIn: "09:25", department: "กองกิจการท่องเที่ยว", method: "auto-card-reader" as InputMethod, company: "สมาคมท่องเที่ยวไทย", host: "คุณสมศรี รักงาน", type: "meeting" as const, companions: 0, status: "checked-in" as const },
-  { name: "นายวรเดช สิริสม", slip: "eVMS-0085", timeIn: "09:40", department: "สำนักนโยบายและแผน", method: "manual-officer" as InputMethod, company: "บริษัท คอนซัลท์ จำกัด", host: "คุณประเสริฐ ศรีวิไล", type: "document" as const, companions: 0, status: "checked-in" as const },
-  { name: "Mr. John Smith", slip: "eVMS-0084", timeIn: "10:05", department: "กองการต่างประเทศ", method: "passport-reader" as InputMethod, company: "JICA", host: "คุณนภาพร วงศ์สวัสดิ์", type: "official" as const, companions: 3, status: "checked-in" as const },
-  { name: "นายอนุชา พลายงาม", slip: "eVMS-0083", timeIn: "10:15", department: "กรมพลศึกษา", method: "qr-scan" as InputMethod, company: "สมาคมกีฬาไทย", host: "คุณสมศรี รักงาน", type: "meeting" as const, companions: 0, status: "checked-in" as const },
-  { name: "นางสุภาภรณ์ ดีงาม", slip: "eVMS-0082", timeIn: "10:30", department: "กองกลาง", method: "auto-card-reader" as InputMethod, company: "บริษัท เอกสารด่วน จำกัด", host: "คุณประเสริฐ ศรีวิไล", type: "delivery" as const, companions: 0, status: "checked-in" as const },
-];
+type CheckedInEntry = {
+  entryId: number;
+  entryCode: string;
+  name: string;
+  slip: string;
+  timeIn: string;
+  department: string;
+  method: InputMethod;
+  company: string;
+  host: string;
+  type: keyof typeof APPOINTMENT_TYPES;
+  companions: number;
+  status: EntryStatus;
+};
+
+// Derive checked-in list from visitEntries (VisitEntry data)
+function deriveCheckedInList(entries: VisitEntry[]): CheckedInEntry[] {
+  return entries
+    .filter(e => e.status === "checked-in")
+    .map(e => {
+      // For appointment-linked entries, look up appointment data
+      const linkedApt = e.appointmentId != null
+        ? mockAppointments.find(a => a.id === e.appointmentId)
+        : null;
+      const timeIn = e.checkinAt.includes("T") ? e.checkinAt.split("T")[1].slice(0, 5) : e.checkinAt;
+      const channelMethod: InputMethod = e.idMethod === "passport" ? "passport-reader"
+        : e.idMethod === "thai-id-app" ? "thai-id-app"
+        : e.checkinChannel === "kiosk" ? "qr-scan"
+        : "auto-card-reader";
+      return {
+        entryId: e.id,
+        entryCode: e.entryCode,
+        name: e.visitor.name,
+        slip: e.entryCode,
+        timeIn,
+        department: e.department ?? linkedApt?.host.department.name ?? e.area,
+        method: channelMethod as InputMethod,
+        company: e.visitor.company,
+        host: e.host?.name ?? linkedApt?.host.name ?? "-",
+        type: (e.visitType ?? linkedApt?.type ?? "other") as keyof typeof APPOINTMENT_TYPES,
+        companions: e.companions,
+        status: e.status as EntryStatus,
+      } satisfies CheckedInEntry;
+    });
+}
+
+const INITIAL_CHECKED_IN = deriveCheckedInList(visitEntries);
 
 // ═══ Counter Selection Screen ═══
 function CounterSelectionScreen({ onSelect }: { onSelect: (sp: ServicePoint) => void }) {
@@ -277,7 +322,7 @@ export default function CounterDashboard() {
   const [appointmentSearch, setAppointmentSearch] = useState("");
   const [selectedAppointment, setSelectedAppointment] = useState<typeof MOCK_APPOINTMENTS[0] | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
-  const [successData, setSuccessData] = useState<{ name: string; slip: string; type: string; method: InputMethod } | null>(null);
+  const [successData, setSuccessData] = useState<{ name: string; slip: string; type: string; method: InputMethod; slipData?: import("@/lib/kiosk/kiosk-types").SlipData } | null>(null);
   const [showStatePanel, setShowStatePanel] = useState(true);
   const [checkoutScan, setCheckoutScan] = useState("");
   const [time, setTime] = useState("");
@@ -286,7 +331,15 @@ export default function CounterDashboard() {
   const [showBlocklistModal, setShowBlocklistModal] = useState(false);
   const [aptPage, setAptPage] = useState(1);
   const [checkedInPage, setCheckedInPage] = useState(1);
+  const [checkedInEntries, setCheckedInEntries] = useState(INITIAL_CHECKED_IN);
   const PANEL_PAGE_SIZE = 5;
+
+  // Visit Slip Template จาก API — ใช้สำหรับพิมพ์บัตร
+  const { data: slipTplData } = useVisitSlipTemplate();
+  const slipTplAny = slipTplData as { template?: { sections?: ThermalSection[]; logoUrl?: string; logoSizePx?: number } } | undefined;
+  const slipSections = slipTplAny?.template?.sections;
+  const slipLogoUrl = slipTplAny?.template?.logoUrl;
+  const slipLogoSize = slipTplAny?.template?.logoSizePx;
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -318,9 +371,9 @@ export default function CounterDashboard() {
   const safeAptPage = Math.min(aptPage, aptTotalPages);
   const pagedAppointments = filteredAppointments.slice((safeAptPage - 1) * PANEL_PAGE_SIZE, safeAptPage * PANEL_PAGE_SIZE);
 
-  const checkedInTotalPages = Math.max(1, Math.ceil(MOCK_CHECKED_IN.length / PANEL_PAGE_SIZE));
+  const checkedInTotalPages = Math.max(1, Math.ceil(checkedInEntries.length / PANEL_PAGE_SIZE));
   const safeCheckedInPage = Math.min(checkedInPage, checkedInTotalPages);
-  const pagedCheckedIn = MOCK_CHECKED_IN.slice((safeCheckedInPage - 1) * PANEL_PAGE_SIZE, safeCheckedInPage * PANEL_PAGE_SIZE);
+  const pagedCheckedIn = checkedInEntries.slice((safeCheckedInPage - 1) * PANEL_PAGE_SIZE, safeCheckedInPage * PANEL_PAGE_SIZE);
 
   const handleReadCard = useCallback(() => {
     if (cardReaderStatus === "reading") return;
@@ -403,16 +456,83 @@ export default function CounterDashboard() {
   }, [firstName, lastName]);
 
   const doSave = useCallback(() => {
-    const slip = `eVMS-${String(Math.floor(Math.random() * 9000) + 1000)}`;
+    const entryCode = `eVMS-ENTRY-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}-${String(Math.floor(Math.random() * 9000) + 1000)}`;
+    const now = new Date();
+    const timeInStr = now.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" });
+    const dateStr = now.toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" });
+    const purposeName = visitPurposeConfigs.find(p => p.id === selectedPurposeId)?.name ?? "ติดต่อราชการ";
+    const purposeNameEn = visitPurposeConfigs.find(p => p.id === selectedPurposeId)?.nameEn ?? "Official Business";
+
     if (checkinMode === "walkin") {
-      setSuccessData({ name: `${firstName} ${lastName}`, slip, type: "Walk-in", method: inputMethod });
+      // Walk-in: create a VisitEntry with appointmentId: null
+      const newEntry: CheckedInEntry = {
+        entryId: Date.now(),
+        entryCode,
+        name: `${firstName} ${lastName}`,
+        slip: entryCode,
+        timeIn: timeInStr,
+        department: selectedDepartment?.name ?? "-",
+        method: inputMethod,
+        company: "-",
+        host: contactHost || "-",
+        type: (purposeName === "ประชุม / สัมมนา" ? "meeting"
+          : purposeName === "ส่งเอกสาร" ? "document"
+          : "official") as keyof typeof APPOINTMENT_TYPES,
+        companions: 0,
+        status: "checked-in" as EntryStatus,
+      };
+      setCheckedInEntries(prev => [newEntry, ...prev]);
+      const slipData: import("@/lib/kiosk/kiosk-types").SlipData = {
+        slipNumber: entryCode,
+        visitorName: `${firstName} ${lastName}`,
+        idNumber: idNumber ? `${idNumber.slice(0, 4)}-****-${idNumber.slice(-4)}` : "-",
+        visitPurpose: purposeName,
+        visitPurposeEn: purposeNameEn,
+        hostName: contactHost || "-",
+        department: selectedDepartment?.name ?? "-",
+        accessZone: selectedDepartment ? (() => { const loc = getDepartmentLocation(selectedDepartment.id); return loc ? `${loc.floor} ${loc.building}` : "-"; })() : "-",
+        date: dateStr,
+        timeIn: timeInStr,
+        qrCodeData: entryCode,
+      };
+      setSuccessData({ name: `${firstName} ${lastName}`, slip: entryCode, type: "Walk-in", method: inputMethod, slipData });
     } else if (selectedAppointment) {
-      setSuccessData({ name: selectedAppointment.visitorName, slip, type: "นัดหมาย", method: inputMethod });
+      // Appointment check-in: create a VisitEntry linked to appointmentId
+      const newEntry: CheckedInEntry = {
+        entryId: Date.now(),
+        entryCode,
+        name: selectedAppointment.visitorName,
+        slip: entryCode,
+        timeIn: timeInStr,
+        department: selectedAppointment.department,
+        method: inputMethod,
+        company: selectedAppointment.company,
+        host: selectedAppointment.host,
+        type: selectedAppointment.type as keyof typeof APPOINTMENT_TYPES,
+        companions: selectedAppointment.companions,
+        status: "checked-in" as EntryStatus,
+      };
+      setCheckedInEntries(prev => [newEntry, ...prev]);
+      const slipData: import("@/lib/kiosk/kiosk-types").SlipData = {
+        slipNumber: entryCode,
+        visitorName: selectedAppointment.visitorName,
+        idNumber: "-",
+        visitPurpose: purposeName,
+        visitPurposeEn: purposeNameEn,
+        hostName: selectedAppointment.host,
+        department: selectedAppointment.department,
+        accessZone: `${selectedAppointment.department} ${selectedAppointment.floor}`,
+        date: dateStr,
+        timeIn: timeInStr,
+        qrCodeData: entryCode,
+        companions: selectedAppointment.companions,
+      };
+      setSuccessData({ name: selectedAppointment.visitorName, slip: entryCode, type: "นัดหมาย", method: inputMethod, slipData });
     }
     setShowSuccess(true);
     setShowBlocklistModal(false);
     setBlocklistWarning(null);
-  }, [checkinMode, firstName, lastName, selectedAppointment, inputMethod]);
+  }, [checkinMode, firstName, lastName, selectedAppointment, inputMethod, selectedDepartment, selectedPurposeId, contactHost]);
 
   // Keep old ref for backward compat
   const handleSave = handleCheckAndSave;
@@ -636,12 +756,12 @@ export default function CounterDashboard() {
               </div>
               <div className="flex-1 overflow-y-auto">
                 <div className="px-3 py-2">
-                  <p className="text-[11px] font-semibold text-text-muted mb-1.5 flex items-center gap-1"><Activity size={11} /> ผู้เข้าพบ ณ ขณะนี้ ({MOCK_CHECKED_IN.length})</p>
+                  <p className="text-[11px] font-semibold text-text-muted mb-1.5 flex items-center gap-1"><Activity size={11} /> ผู้เข้าพบ ณ ขณะนี้ ({checkedInEntries.length})</p>
                 </div>
-                {pagedCheckedIn.map((v, idx) => {
+                {pagedCheckedIn.map((v) => {
                   const typeInfo = APPOINTMENT_TYPES[v.type] || APPOINTMENT_TYPES.other;
                   return (
-                    <div key={idx} className="px-3 py-2.5 border-b border-gray-50 hover:bg-primary-50/30 transition-colors">
+                    <div key={v.entryId} className="px-3 py-2.5 border-b border-gray-50 hover:bg-primary-50/30 transition-colors">
                       <div className="flex items-center gap-2 mb-1">
                         <div className="w-7 h-7 rounded-full bg-gradient-to-br from-primary to-primary-dark text-white flex items-center justify-center text-[10px] font-bold uppercase shrink-0">
                           {v.name.charAt(0)}
@@ -650,7 +770,9 @@ export default function CounterDashboard() {
                           <span className="text-xs font-bold text-text-primary block truncate">{v.name}</span>
                           <span className="text-[10px] text-text-muted truncate block">{v.company}</span>
                         </div>
-                        <Button size="sm" variant="destructive" className="h-6 text-[10px] px-2 rounded-md shrink-0">Out</Button>
+                        <Button size="sm" variant="destructive" className="h-6 text-[10px] px-2 rounded-md shrink-0" onClick={() => {
+                          setCheckedInEntries(prev => prev.filter(entry => entry.entryId !== v.entryId));
+                        }}>Out</Button>
                       </div>
                       <div className="flex items-center gap-1.5 ml-9 mb-1">
                         <span className={cn("text-xs", typeInfo.color)}>{typeInfo.icon}</span>
@@ -673,7 +795,7 @@ export default function CounterDashboard() {
               {checkedInTotalPages > 1 && (
                 <div className="px-3 py-2 border-t border-border flex items-center justify-between bg-gray-50/50">
                   <span className="text-[10px] text-text-muted">
-                    {(safeCheckedInPage - 1) * PANEL_PAGE_SIZE + 1}–{Math.min(safeCheckedInPage * PANEL_PAGE_SIZE, MOCK_CHECKED_IN.length)} จาก {MOCK_CHECKED_IN.length}
+                    {(safeCheckedInPage - 1) * PANEL_PAGE_SIZE + 1}–{Math.min(safeCheckedInPage * PANEL_PAGE_SIZE, checkedInEntries.length)} จาก {checkedInEntries.length}
                   </span>
                   <div className="flex items-center gap-1">
                     <button onClick={() => setCheckedInPage(Math.max(1, safeCheckedInPage - 1))} disabled={safeCheckedInPage <= 1} className="p-1 rounded hover:bg-gray-200 disabled:opacity-30 text-text-muted"><ChevronLeft size={14} /></button>
@@ -949,7 +1071,7 @@ export default function CounterDashboard() {
       {/* ── Success Overlay ── */}
       {showSuccess && successData && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-3xl w-full overflow-hidden">
             <div className="bg-gradient-to-r from-emerald-500 to-emerald-600 p-6 text-center text-white relative">
               <button onClick={handleCloseSuccess} className="absolute top-3 right-3 w-7 h-7 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 transition-colors" title="Close" aria-label="Close">
                 <X size={14} />
@@ -960,36 +1082,52 @@ export default function CounterDashboard() {
               <h2 className="text-xl font-bold">ลงทะเบียนสำเร็จ!</h2>
               <p className="text-xs text-white/80 mt-1">Check-in Completed</p>
             </div>
-            <div className="p-5 space-y-4">
-              <div className="bg-gray-50 rounded-xl p-4 space-y-2.5 text-sm">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-text-muted">หมายเลขบัตร</span>
-                  <span className="font-mono font-bold text-primary text-base">{successData.slip}</span>
+            <div className="p-5 flex gap-5">
+              {/* Left: Summary */}
+              <div className="flex-1 space-y-4">
+                <div className="bg-gray-50 rounded-xl p-4 space-y-2.5 text-sm">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-text-muted">หมายเลขบัตร</span>
+                    <span className="font-mono font-bold text-primary text-base">{successData.slip}</span>
+                  </div>
+                  <div className="border-t border-dashed border-gray-200"></div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-text-muted">ชื่อ</span>
+                    <span className="font-bold text-text-primary">{successData.name}</span>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-text-muted">ประเภท</span>
+                    <Badge className="bg-primary/10 text-primary">{successData.type}</Badge>
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-text-muted">วิธีป้อนข้อมูล</span>
+                    <InputMethodBadge method={successData.method} />
+                  </div>
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs text-text-muted">เวลาเข้า</span>
+                    <span className="text-sm font-medium text-text-secondary">{time}</span>
+                  </div>
                 </div>
-                <div className="border-t border-dashed border-gray-200"></div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-text-muted">ชื่อ</span>
-                  <span className="font-bold text-text-primary">{successData.name}</span>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-text-muted">ประเภท</span>
-                  <Badge className="bg-primary/10 text-primary">{successData.type}</Badge>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-text-muted">วิธีป้อนข้อมูล</span>
-                  <InputMethodBadge method={successData.method} />
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-text-muted">เวลาเข้า</span>
-                  <span className="text-sm font-medium text-text-secondary">{time}</span>
+                <div className="flex gap-3">
+                  <Button fullWidth variant="outline" className="h-11 rounded-xl font-bold" onClick={handleCloseSuccess}>ปิด</Button>
+                  <Button fullWidth className="h-11 rounded-xl font-bold bg-gradient-to-r from-primary to-primary-dark text-white" onClick={handleCloseSuccess}>
+                    <Printer size={16} className="mr-2" /> พิมพ์บัตร
+                  </Button>
                 </div>
               </div>
-              <div className="flex gap-3">
-                <Button fullWidth variant="outline" className="h-11 rounded-xl font-bold" onClick={handleCloseSuccess}>ปิด</Button>
-                <Button fullWidth className="h-11 rounded-xl font-bold bg-gradient-to-r from-primary to-primary-dark text-white" onClick={handleCloseSuccess}>
-                  <Printer size={16} className="mr-2" /> พิมพ์บัตร
-                </Button>
-              </div>
+              {/* Right: Thermal Slip Preview */}
+              {successData.slipData && (
+                <div className="flex-shrink-0">
+                  <p className="text-[10px] text-text-muted text-center mb-2 font-medium">ตัวอย่างบัตรผู้เยี่ยม</p>
+                  <ThermalSlipPreview
+                    data={successData.slipData}
+                    scale={0.85}
+                    sections={slipSections}
+                    logoSrc={slipLogoUrl}
+                    logoSize={slipLogoSize}
+                  />
+                </div>
+              )}
             </div>
           </div>
         </div>

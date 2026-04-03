@@ -1,6 +1,12 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
+import {
+  useStaffList,
+  useCreateStaff,
+  useUpdateStaff,
+  useDeleteStaff,
+} from "@/lib/hooks";
 import Topbar from "@/components/web/Topbar";
 import { DatabaseSchemaModal, DbSchemaButton } from "@/components/web/DatabaseSchemaModal";
 import { FlowchartModal, FlowRulesButton } from "@/components/web/FlowchartModal";
@@ -25,10 +31,13 @@ import {
   Info,
   ToggleLeft,
   ToggleRight,
+  Trash2,
   Save,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
+
+const PAGE_SIZE_OPTIONS = [5, 10, 20, 50];
 import {
   staffMembers,
   departments,
@@ -69,15 +78,33 @@ export default function StaffPage() {
   const schema = getSchemaByPageId("staff")!;
   const flowData = getFlowByPageId("staff")!;
   const apiDoc = getApiDocByPageId("staff");
+  /* API hooks */
+  const { data: rawStaff, isLoading } = useStaffList();
+  const createStaffMut = useCreateStaff();
+  const updateStaffMut = useUpdateStaff();
+  const deleteStaffMut = useDeleteStaff();
+
+  // Extract staff array from API response shape { data: { staff: [...] } } or fall back to mock
+  const apiStaff: Staff[] = (() => {
+    if (!rawStaff) return [];
+    if (Array.isArray(rawStaff)) return rawStaff as Staff[];
+    const inner = (rawStaff as any)?.data;
+    if (Array.isArray(inner)) return inner as Staff[];
+    if (inner?.staff && Array.isArray(inner.staff)) return inner.staff as Staff[];
+    if ((rawStaff as any)?.staff && Array.isArray((rawStaff as any).staff)) return (rawStaff as any).staff as Staff[];
+    return [];
+  })();
+  const allStaff: Staff[] = apiStaff.length > 0 ? apiStaff : staffMembers;
+
   const [search, setSearch] = useState("");
   const [filterDept, setFilterDept] = useState<"all" | number>("all");
   const [filterStatus, setFilterStatus] = useState<"all" | "active" | "inactive">("all");
   const [drawerData, setDrawerData] = useState<{ mode: "add" | "edit"; staff?: Staff } | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 5;
+  const [pageSize, setPageSize] = useState(5);
 
   const filtered = useMemo(() => {
-    return staffMembers.filter((s) => {
+    return allStaff.filter((s: any) => {
       const q = search.toLowerCase();
       const matchSearch =
         !q ||
@@ -89,14 +116,14 @@ export default function StaffPage() {
       const matchStatus = filterStatus === "all" || s.status === filterStatus;
       return matchSearch && matchDept && matchStatus;
     });
-  }, [search, filterDept, filterStatus]);
+  }, [search, filterDept, filterStatus, allStaff]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const safePage = Math.min(currentPage, totalPages);
   const paged = filtered.slice((safePage - 1) * pageSize, safePage * pageSize);
 
-  const activeCount = staffMembers.filter((s) => s.status === "active").length;
-  const inactiveCount = staffMembers.filter((s) => s.status === "inactive").length;
+  const activeCount = allStaff.filter((s: any) => s.status === "active").length;
+  const inactiveCount = allStaff.filter((s: any) => s.status === "inactive").length;
 
   return (
     <>
@@ -104,6 +131,11 @@ export default function StaffPage() {
       <DatabaseSchemaModal open={showSchema} onClose={() => setShowSchema(false)} schema={schema} />
       <FlowchartModal open={showFlow} onClose={() => setShowFlow(false)} flowData={flowData} />
       {apiDoc && <ApiDocModal open={showApiDoc} onClose={() => setShowApiDoc(false)} apiDoc={apiDoc} />}
+      {isLoading && (
+        <div className="flex-1 flex items-center justify-center p-12">
+          <p className="text-text-muted">กำลังโหลด...</p>
+        </div>
+      )}
       <main className="flex-1 p-6 space-y-6">
         {/* header */}
         <div className="flex items-center justify-between">
@@ -160,7 +192,7 @@ export default function StaffPage() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <SummaryCard
             label="พนักงานทั้งหมด"
-            value={staffMembers.length}
+            value={allStaff.length}
             sub="ในระบบ"
             color="text-primary"
             bgColor="bg-primary-50"
@@ -233,7 +265,7 @@ export default function StaffPage() {
                 </thead>
                 <tbody className="divide-y divide-border">
                   {paged.map((staff) => (
-                    <StaffRow key={staff.id} staff={staff} onEdit={() => setDrawerData({ mode: "edit", staff })} />
+                    <StaffRow key={staff.id} staff={staff} onEdit={() => setDrawerData({ mode: "edit", staff })} onDelete={() => deleteStaffMut.mutate(staff.id as any)} onToggleStatus={() => updateStaffMut.mutate({ id: staff.id, status: staff.status === "active" ? "inactive" : "active" } as any)} />
                   ))}
                   {filtered.length === 0 && (
                     <tr>
@@ -250,48 +282,60 @@ export default function StaffPage() {
             </div>
 
             {/* Pagination */}
-            {filtered.length > pageSize && (
-              <div className="px-4 py-3 border-t border-border flex items-center justify-between">
-                <p className="text-sm text-text-muted">
-                  แสดง {(safePage - 1) * pageSize + 1}–{Math.min(safePage * pageSize, filtered.length)} จาก {filtered.length} รายการ
-                </p>
-                <div className="flex items-center gap-1">
-                  <button
-                    disabled={safePage <= 1}
-                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                    className="p-2 rounded-lg border border-border hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                  >
-                    <ChevronLeft size={16} />
-                  </button>
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((pg) => (
-                    <button
-                      key={pg}
-                      onClick={() => setCurrentPage(pg)}
-                      className={cn(
-                        "w-9 h-9 rounded-lg text-sm font-medium transition-colors",
-                        pg === safePage
-                          ? "bg-primary text-white"
-                          : "hover:bg-gray-50 text-text-secondary"
-                      )}
-                    >
-                      {pg}
-                    </button>
+            <div className="flex items-center justify-between px-6 py-3 border-t border-gray-100 bg-gray-50/50">
+              <div className="flex items-center gap-2 text-xs text-text-muted">
+                <span>แสดง</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
+                  className="border border-gray-200 rounded-lg px-2 py-1 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-primary/30"
+                >
+                  {PAGE_SIZE_OPTIONS.map((s) => (
+                    <option key={s} value={s}>{s}</option>
                   ))}
-                  <button
-                    disabled={safePage >= totalPages}
-                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                    className="p-2 rounded-lg border border-border hover:bg-gray-50 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-                  >
-                    <ChevronRight size={16} />
-                  </button>
-                </div>
+                </select>
+                <span>รายการ / หน้า</span>
               </div>
-            )}
+              <span className="text-xs text-text-muted">
+                {filtered.length > 0
+                  ? <>{(safePage - 1) * pageSize + 1}–{Math.min(safePage * pageSize, filtered.length)} จาก {filtered.length} รายการ</>
+                  : <>0–0 จาก 0 รายการ</>
+                }
+              </span>
+              <div className="flex items-center gap-1">
+                <button onClick={() => setCurrentPage((p) => Math.max(1, p - 1))} disabled={safePage <= 1} className="p-1.5 rounded-lg hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-text-muted">
+                  <ChevronLeft size={16} />
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((pg) => (
+                  <button
+                    key={pg}
+                    onClick={() => setCurrentPage(pg)}
+                    className={`min-w-[28px] h-7 rounded-lg text-xs font-semibold transition-colors ${pg === safePage ? "bg-primary text-white shadow-sm" : "text-text-muted hover:bg-gray-200"}`}
+                  >
+                    {pg}
+                  </button>
+                ))}
+                <button onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))} disabled={safePage >= totalPages} className="p-1.5 rounded-lg hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-text-muted">
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
         {/* Drawer */}
-        <StaffDrawer data={drawerData} onClose={() => setDrawerData(null)} />
+        <StaffDrawer
+          data={drawerData}
+          onClose={() => setDrawerData(null)}
+          onSave={async (formData: any) => {
+            if (drawerData?.mode === "edit" && drawerData.staff) {
+              await updateStaffMut.mutateAsync({ id: drawerData.staff.id, ...formData } as any);
+            } else {
+              await createStaffMut.mutateAsync(formData as any);
+            }
+            setDrawerData(null);
+          }}
+        />
       </main>
     </>
   );
@@ -300,7 +344,7 @@ export default function StaffPage() {
 /* ══════════════════════════════════════════════════
    STAFF ROW
    ══════════════════════════════════════════════════ */
-function StaffRow({ staff, onEdit }: { staff: Staff; onEdit: () => void }) {
+function StaffRow({ staff, onEdit, onDelete, onToggleStatus }: { staff: Staff; onEdit: () => void; onDelete: () => void; onToggleStatus: () => void }) {
   const groups = staffApproverGroups(staff.id);
   const apts = staffAppointments(staff.id);
   const role = roleLabels[staff.role] ?? {
@@ -415,12 +459,20 @@ function StaffRow({ staff, onEdit }: { staff: Staff; onEdit: () => void }) {
             title={
               staff.status === "active" ? "ปิดใช้งาน" : "เปิดใช้งาน"
             }
+            onClick={onToggleStatus}
           >
             {staff.status === "active" ? (
               <ToggleRight size={16} />
             ) : (
               <ToggleLeft size={16} />
             )}
+          </button>
+          <button
+            className="p-2 hover:bg-red-50 rounded-lg transition-colors text-text-muted hover:text-error"
+            title="ลบ"
+            onClick={onDelete}
+          >
+            <Trash2 size={16} />
           </button>
         </div>
       </td>
@@ -477,33 +529,48 @@ const roleOptions = [
 function StaffDrawer({
   data,
   onClose,
+  onSave,
 }: {
   data: { mode: "add" | "edit"; staff?: Staff } | null;
   onClose: () => void;
+  onSave?: (formData: any) => Promise<void>;
 }) {
   const staff = data?.staff;
   const isEdit = data?.mode === "edit";
 
-  const [name, setName] = useState(staff?.name ?? "");
-  const [nameEn, setNameEn] = useState(staff?.nameEn ?? "");
-  const [employeeId, setEmployeeId] = useState(staff?.employeeId ?? "");
-  const [position, setPosition] = useState(staff?.position ?? "");
-  const [departmentId, setDepartmentId] = useState(staff?.department.id ?? 0);
-  const [email, setEmail] = useState(staff?.email ?? "");
-  const [phone, setPhone] = useState(staff?.phone ?? "");
-  const [role, setRole] = useState(staff?.role ?? "staff");
-  const [status, setStatus] = useState<"active" | "inactive">(
-    (staff?.status === "active" || staff?.status === "inactive") ? staff.status : "active"
-  );
+  const [name, setName] = useState("");
+  const [nameEn, setNameEn] = useState("");
+  const [employeeId, setEmployeeId] = useState("");
+  const [position, setPosition] = useState("");
+  const [departmentId, setDepartmentId] = useState(0);
+  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [role, setRole] = useState("staff");
+  const [status, setStatus] = useState<"active" | "inactive">("active");
 
-  useState(() => {
-    if (staff) {
-      setName(staff.name); setNameEn(staff.nameEn); setEmployeeId(staff.employeeId);
-      setPosition(staff.position); setDepartmentId(staff.department.id);
-      setEmail(staff.email); setPhone(staff.phone); setRole(staff.role);
+  useEffect(() => {
+    if (data && staff) {
+      setName(staff.name);
+      setNameEn(staff.nameEn);
+      setEmployeeId(staff.employeeId);
+      setPosition(staff.position);
+      setDepartmentId(staff.department.id);
+      setEmail(staff.email);
+      setPhone(staff.phone);
+      setRole(staff.role);
       setStatus(staff.status === "inactive" ? "inactive" : "active");
+    } else if (data && !staff) {
+      setName("");
+      setNameEn("");
+      setEmployeeId("");
+      setPosition("");
+      setDepartmentId(0);
+      setEmail("");
+      setPhone("");
+      setRole("staff");
+      setStatus("active");
     }
-  });
+  }, [data, staff]);
 
   return (
     <Drawer
@@ -605,7 +672,13 @@ function StaffDrawer({
 
       <div className="sticky bottom-0 px-6 py-4 bg-white border-t border-border flex items-center justify-end gap-3">
         <Button variant="outline" onClick={onClose}>ยกเลิก</Button>
-        <Button variant="primary" onClick={onClose}>
+        <Button variant="primary" onClick={() => {
+          if (onSave) {
+            onSave({ name, nameEn, employeeId, position, departmentId, email, phone, role, status });
+          } else {
+            onClose();
+          }
+        }}>
           <Save size={16} className="mr-2" />
           {isEdit ? "บันทึกการเปลี่ยนแปลง" : "เพิ่มพนักงาน"}
         </Button>

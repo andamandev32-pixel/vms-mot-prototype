@@ -8,15 +8,16 @@ export interface InputProps
     helperText?: string;
     leftIcon?: React.ReactNode;
     rightIcon?: React.ReactNode;
+    required?: boolean;
 }
 
 const Input = React.forwardRef<HTMLInputElement, InputProps>(
-    ({ className, type, label, error, helperText, leftIcon, rightIcon, disabled, ...props }, ref) => {
+    ({ className, type, label, error, helperText, leftIcon, rightIcon, disabled, required, ...props }, ref) => {
         return (
             <div className="w-full">
                 {label && (
                     <label className={cn("block text-xs font-medium uppercase text-text-secondary mb-1", error && "text-error")}>
-                        {label}
+                        {label}{required && <span className="text-error ml-0.5">*</span>}
                     </label>
                 )}
                 <div className="relative">

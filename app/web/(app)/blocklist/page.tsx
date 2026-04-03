@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import Topbar from "@/components/web/Topbar";
 import { DatabaseSchemaModal, DbSchemaButton } from "@/components/web/DatabaseSchemaModal";
 import { FlowchartModal, FlowRulesButton } from "@/components/web/FlowchartModal";
@@ -15,12 +15,24 @@ import {
   Shield, Search, Plus, X, AlertTriangle, User, Calendar, Clock,
   ChevronLeft, ChevronRight, Edit2, Trash2, CheckCircle2, XCircle,
 } from "lucide-react";
+
+const PAGE_SIZE_OPTIONS = [5, 10, 20, 50];
 import { cn } from "@/lib/utils";
 import { blocklist as mockBlocklist, type BlocklistEntry } from "@/lib/mock-data";
+import { useBlocklist, useCreateBlocklistEntry, useUpdateBlocklistEntry, useDeleteBlocklistEntry } from "@/lib/hooks";
 
 type BlocklistType = "all" | "permanent" | "temporary";
 
 export default function BlocklistPage() {
+  const { data: rawBlocklist, isLoading } = useBlocklist();
+  const apiBlocklist = Array.isArray(rawBlocklist) ? rawBlocklist : ((rawBlocklist as any)?.data ?? (rawBlocklist as any) ?? []);
+  const [blocklistItems, setBlocklistItems] = useState<BlocklistEntry[]>(apiBlocklist.length > 0 ? apiBlocklist : mockBlocklist);
+  const createMut = useCreateBlocklistEntry();
+  const updateMut = useUpdateBlocklistEntry();
+  const deleteMut = useDeleteBlocklistEntry();
+
+  useEffect(() => { if (apiBlocklist.length > 0) setBlocklistItems(apiBlocklist); }, [apiBlocklist.length]);
+
   const [showSchema, setShowSchema] = useState(false);
   const [showFlow, setShowFlow] = useState(false);
   const [showApiDoc, setShowApiDoc] = useState(false);
@@ -32,9 +44,11 @@ export default function BlocklistPage() {
   const [typeFilter, setTypeFilter] = useState<BlocklistType>("all");
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedEntry, setSelectedEntry] = useState<BlocklistEntry | null>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
 
   const filtered = useMemo(() => {
-    let result = [...mockBlocklist];
+    let result = [...blocklistItems];
     if (typeFilter !== "all") result = result.filter((b) => b.type === typeFilter);
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -46,13 +60,25 @@ export default function BlocklistPage() {
       );
     }
     return result;
-  }, [typeFilter, searchQuery]);
+  }, [blocklistItems, typeFilter, searchQuery]);
+
+  // Pagination
+  const totalCount = filtered.length;
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
+  const safeCurrentPage = Math.min(page, totalPages);
+  const startIdx = (safeCurrentPage - 1) * pageSize;
+  const paged = filtered.slice(startIdx, startIdx + pageSize);
+  const startRow = totalCount > 0 ? startIdx + 1 : 0;
+  const endRow = Math.min(startIdx + pageSize, totalCount);
+  const goTo = (p: number) => setPage(Math.max(1, Math.min(p, totalPages)));
 
   const stats = {
-    total: mockBlocklist.length,
-    permanent: mockBlocklist.filter((b) => b.type === "permanent").length,
-    temporary: mockBlocklist.filter((b) => b.type === "temporary").length,
+    total: blocklistItems.length,
+    permanent: blocklistItems.filter((b) => b.type === "permanent").length,
+    temporary: blocklistItems.filter((b) => b.type === "temporary").length,
   };
+
+  if (isLoading) return <div><Topbar title="Blocklist" /><div className="p-8 text-center text-text-muted">กำลังโหลด...</div></div>;
 
   return (
     <div>
@@ -115,7 +141,7 @@ export default function BlocklistPage() {
               <input
                 type="text"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
                 placeholder="ค้นหาชื่อ / บริษัท / เหตุผล..."
                 className="w-full pl-9 pr-8 py-2 text-sm border border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/40"
               />
@@ -127,7 +153,7 @@ export default function BlocklistPage() {
             </div>
             <select
               value={typeFilter}
-              onChange={(e) => setTypeFilter(e.target.value as BlocklistType)}
+              onChange={(e) => { setTypeFilter(e.target.value as BlocklistType); setPage(1); }}
               className="border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-primary/20"
             >
               <option value="all">ประเภท: ทั้งหมด</option>
@@ -135,7 +161,7 @@ export default function BlocklistPage() {
               <option value="temporary">ชั่วคราว (Temporary)</option>
             </select>
             <span className="text-sm text-text-muted ml-auto">
-              แสดง {filtered.length} จาก {mockBlocklist.length} รายการ
+              แสดง {filtered.length} จาก {blocklistItems.length} รายการ
             </span>
           </CardContent>
         </Card>
@@ -164,7 +190,7 @@ export default function BlocklistPage() {
                     </td>
                   </tr>
                 ) : (
-                  filtered.map((entry) => (
+                  paged.map((entry) => (
                     <tr key={entry.id} className="hover:bg-gray-50 transition-colors group">
                       <td className="px-6 py-4">
                         <div className="flex items-center gap-3">
@@ -204,10 +230,10 @@ export default function BlocklistPage() {
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button className="h-8 w-8 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 flex items-center justify-center transition-colors" title="แก้ไข">
+                          <button onClick={() => updateMut.mutate({ id: entry.id } as any)} className="h-8 w-8 rounded-full bg-blue-50 text-blue-600 hover:bg-blue-100 flex items-center justify-center transition-colors" title="แก้ไข">
                             <Edit2 size={14} />
                           </button>
-                          <button className="h-8 w-8 rounded-full bg-red-50 text-red-600 hover:bg-red-100 flex items-center justify-center transition-colors" title="ลบ">
+                          <button onClick={async () => { await deleteMut.mutateAsync(entry.id as any); setBlocklistItems(prev => prev.filter(b => b.id !== entry.id)); }} className="h-8 w-8 rounded-full bg-red-50 text-red-600 hover:bg-red-100 flex items-center justify-center transition-colors" title="ลบ">
                             <Trash2 size={14} />
                           </button>
                         </div>
@@ -217,11 +243,39 @@ export default function BlocklistPage() {
                 )}
               </tbody>
             </table>
-            <div className="p-4 border-t border-border flex items-center justify-between">
-              <span className="text-xs text-text-muted">แสดง {filtered.length} รายการ</span>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" disabled>ก่อนหน้า</Button>
-                <Button variant="outline" size="sm" disabled>ถัดไป</Button>
+            <div className="flex items-center justify-between px-6 py-3 border-t border-gray-100 bg-gray-50/50">
+              <div className="flex items-center gap-2 text-xs text-text-muted">
+                <span>แสดง</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
+                  className="border border-gray-200 rounded-lg px-2 py-1 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-primary/30"
+                >
+                  {PAGE_SIZE_OPTIONS.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
+                <span>รายการ / หน้า</span>
+              </div>
+              <span className="text-xs text-text-muted">
+                {startRow}–{endRow} จาก {totalCount} รายการ
+              </span>
+              <div className="flex items-center gap-1">
+                <button onClick={() => goTo(safeCurrentPage - 1)} disabled={safeCurrentPage <= 1} className="p-1.5 rounded-lg hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-text-muted">
+                  <ChevronLeft size={16} />
+                </button>
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => goTo(p)}
+                    className={`min-w-[28px] h-7 rounded-lg text-xs font-semibold transition-colors ${p === safeCurrentPage ? "bg-primary text-white shadow-sm" : "text-text-muted hover:bg-gray-200"}`}
+                  >
+                    {p}
+                  </button>
+                ))}
+                <button onClick={() => goTo(safeCurrentPage + 1)} disabled={safeCurrentPage >= totalPages} className="p-1.5 rounded-lg hover:bg-gray-200 disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-text-muted">
+                  <ChevronRight size={16} />
+                </button>
               </div>
             </div>
           </CardContent>
@@ -292,7 +346,18 @@ export default function BlocklistPage() {
 
               <div className="mt-6 flex justify-end gap-3">
                 <Button variant="outline" onClick={() => setShowAddModal(false)}>ยกเลิก</Button>
-                <Button variant="secondary" onClick={() => setShowAddModal(false)}>
+                <Button variant="secondary" onClick={async () => {
+                  const form = document.querySelector('[name="blockType"]:checked') as HTMLInputElement | null;
+                  const reasonEl = document.querySelector('textarea') as HTMLTextAreaElement | null;
+                  const dateEl = document.querySelector('input[type="date"]') as HTMLInputElement | null;
+                  const data = {
+                    type: form?.value ?? "permanent",
+                    reason: reasonEl?.value ?? "",
+                    expiryDate: dateEl?.value || null,
+                  };
+                  await createMut.mutateAsync(data as any);
+                  setShowAddModal(false);
+                }}>
                   <Shield size={16} className="mr-2" />
                   เพิ่มรายชื่อ
                 </Button>

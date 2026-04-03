@@ -64,7 +64,7 @@ export interface FlexTemplateConfig {
   // Status Badge
   showStatusBadge: boolean;
   statusBadgeText?: string;
-  statusBadgeType?: "pending" | "approved" | "rejected" | "checked-in" | "checked-out";
+  statusBadgeType?: "pending" | "approved" | "rejected" | "confirmed" | "cancelled" | "expired" | "checked-in" | "checked-out" | "auto-checkout" | "overstay";
 
   // Body Rows
   rows: FlexTemplateRow[];
@@ -304,16 +304,16 @@ export const defaultFlexTemplates: FlexTemplateConfig[] = [
     showStatusBadge: true,
     statusBadgeType: "checked-in",
     rows: [
-      { id: "r1", label: "เลข Slip", variable: "slipNumber", previewValue: "eVMS-25690402-0099", enabled: true, sortOrder: 1 },
-      { id: "r2", label: "เวลาเข้า", variable: "checkinTime", previewValue: "09:45 น.", enabled: true, sortOrder: 2 },
-      { id: "r3", label: "เวลาออก", variable: "checkoutTime", previewValue: "ภายใน 11:00 น.", enabled: true, sortOrder: 3 },
+      { id: "r1", label: "เลข Entry", variable: "entryCode", previewValue: "eVMS-25690402-0099", enabled: true, sortOrder: 1 },
+      { id: "r2", label: "เวลาเข้า", variable: "checkinAt", previewValue: "09:45 น.", enabled: true, sortOrder: 2 },
+      { id: "r3", label: "เวลาออก", variable: "checkoutAt", previewValue: "ภายใน 11:00 น.", enabled: true, sortOrder: 3 },
       { id: "r4", label: "สถานที่", variable: "location", previewValue: "อาคาร C ชั้น 4", enabled: true, sortOrder: 4 },
     ],
     buttons: [
       { id: "b1", label: "ดู Visit Slip", variant: "primary", enabled: true, sortOrder: 1 },
     ],
     showQrCode: false,
-    availableVariables: ["slipNumber", "checkinTime", "checkoutTime", "location"],
+    availableVariables: ["entryCode", "checkinAt", "checkoutAt", "location"],
   },
 
   // ─── visitor-wifi-credentials ───
@@ -334,7 +334,7 @@ export const defaultFlexTemplates: FlexTemplateConfig[] = [
     ],
     buttons: [],
     showQrCode: false,
-    availableVariables: ["wifiSSID", "wifiPassword", "expiry"],
+    availableVariables: ["entryCode", "wifiSSID", "wifiPassword", "expiry"],
   },
 
   // ─── visitor-slip-line ───
@@ -349,19 +349,19 @@ export const defaultFlexTemplates: FlexTemplateConfig[] = [
     headerVariant: "slip",
     showStatusBadge: false,
     rows: [
-      { id: "r1", label: "เลข Slip", variable: "slipNumber", previewValue: "eVMS-25690402-0099", enabled: true, sortOrder: 1 },
+      { id: "r1", label: "เลข Entry", variable: "entryCode", previewValue: "eVMS-25690402-0099", enabled: true, sortOrder: 1 },
       { id: "r2", label: "ชื่อ", variable: "visitorName", previewValue: "พุทธิพงษ์ คาดสนิท", enabled: true, sortOrder: 2 },
       { id: "r3", label: "บัตร", variable: "idNumber", previewValue: "1-xxxx-xxxxx-90-3", enabled: true, sortOrder: 3 },
       { id: "r4", label: "วัตถุประสงค์", variable: "purposeName", previewValue: "ติดต่อราชการ", enabled: true, sortOrder: 4 },
       { id: "r5", label: "แผนก", variable: "department", previewValue: "สำนักนโยบายฯ", enabled: true, sortOrder: 5 },
       { id: "r6", label: "อาคาร", variable: "location", previewValue: "อาคาร C ชั้น 4", enabled: true, sortOrder: 6 },
-      { id: "r7", label: "เข้า", variable: "checkinTime", previewValue: "09:45", enabled: true, sortOrder: 7 },
-      { id: "r8", label: "ออก (ภายใน)", variable: "checkoutTime", previewValue: "11:00 น.", enabled: true, sortOrder: 8 },
+      { id: "r7", label: "เข้า", variable: "checkinAt", previewValue: "09:45", enabled: true, sortOrder: 7 },
+      { id: "r8", label: "ออก (ภายใน)", variable: "checkoutAt", previewValue: "11:00 น.", enabled: true, sortOrder: 8 },
     ],
     buttons: [],
     showQrCode: true,
     qrLabel: "สแกน QR นี้ที่ทางออกเพื่อ Check-out",
-    availableVariables: ["slipNumber", "visitorName", "idNumber", "purposeName", "department", "location", "checkinTime", "checkoutTime"],
+    availableVariables: ["entryCode", "visitorName", "idNumber", "purposeName", "department", "location", "checkinAt", "checkoutAt"],
   },
 
   // ─── visitor-checkout ───
@@ -378,14 +378,14 @@ export const defaultFlexTemplates: FlexTemplateConfig[] = [
     showStatusBadge: true,
     statusBadgeType: "checked-out",
     rows: [
-      { id: "r1", label: "เข้า", variable: "checkinTime", previewValue: "09:45 น.", enabled: true, sortOrder: 1 },
-      { id: "r2", label: "ออก", variable: "checkoutTime", previewValue: "10:55 น.", enabled: true, sortOrder: 2 },
+      { id: "r1", label: "เข้า", variable: "checkinAt", previewValue: "09:45 น.", enabled: true, sortOrder: 1 },
+      { id: "r2", label: "ออก", variable: "checkoutAt", previewValue: "10:55 น.", enabled: true, sortOrder: 2 },
       { id: "r3", label: "ระยะเวลา", variable: "duration", previewValue: "1 ชม. 10 นาที", enabled: true, sortOrder: 3 },
     ],
     buttons: [],
     infoBox: { text: "กรุณาส่งคืนบัตร Visitor (ถ้ามี) ที่จุด Counter", color: "gray", enabled: true },
     showQrCode: false,
-    availableVariables: ["checkinTime", "checkoutTime", "duration"],
+    availableVariables: ["entryCode", "checkinAt", "checkoutAt", "duration"],
   },
 
   // ─── officer-register (LIFF) ───

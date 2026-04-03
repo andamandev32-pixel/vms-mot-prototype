@@ -3,16 +3,17 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { LayoutDashboard, Calendar, Search, FileText, Settings, Shield, LogOut, ChevronRight, ClipboardList, DoorOpen, ShieldCheck, UserCog, Monitor, FileCheck, Clock, Bell, Printer, Building2, Mail, MessageCircle, Users, User } from "lucide-react";
+import { LayoutDashboard, Calendar, Search, FileText, Settings, Shield, LogOut, ChevronRight, ClipboardList, DoorOpen, ShieldCheck, UserCog, Monitor, FileCheck, Clock, Printer, Building2, MessageCircle, Users } from "lucide-react";
 import VmsLogo from "@/components/ui/VmsLogo";
-import { canAccess, roleConfig, type AppRole } from "@/lib/auth-config";
-
-// Mock current user — ในระบบจริงจะดึงจาก session/context
-const CURRENT_USER_ROLE: AppRole = "admin";
+import { canAccess, type AppRole } from "@/lib/auth-config";
+import { useAuth } from "@/components/providers/AuthProvider";
+import { useRouter } from "next/navigation";
 
 export default function Sidebar() {
     const pathname = usePathname();
-    const role = CURRENT_USER_ROLE;
+    const router = useRouter();
+    const { user, logout } = useAuth();
+    const role: AppRole = user?.role ?? "staff";
 
     const allNavItems = [
         { href: "/web/dashboard", label: "ภาพรวม", icon: <LayoutDashboard size={20} />, resource: "dashboard" },
@@ -37,7 +38,6 @@ export default function Sidebar() {
 
     // Filter menu items by role permissions
     const navItems = allNavItems.filter((item) => canAccess(role, item.resource));
-    const rc = roleConfig[role];
 
     return (
         <aside className="w-[260px] bg-primary-dark flex flex-col fixed inset-y-0 left-0 z-50 text-white shadow-2xl">
@@ -46,51 +46,51 @@ export default function Sidebar() {
                 <VmsLogo size={42} showText darkMode />
             </div>
 
-
             {/* Navigation */}
             <nav className="flex-1 py-6 px-3 space-y-1 overflow-y-auto custom-scrollbar">
                 {navItems.map((item) => (
                     <div key={item.href}>
                         {item.separator && <div className="my-4 border-t border-white/10 mx-3"></div>}
-                        <Link
-                            href={item.href}
-                            className={cn(
-                                "flex items-center px-4 py-3 text-sm font-medium transition-all rounded-xl relative group overflow-hidden",
-                                pathname === item.href || pathname.startsWith(item.href + "/")
-                                    ? "text-white bg-white/10 shadow-inner"
-                                    : "text-white/70 hover:text-white hover:bg-white/5"
-                            )}
-                        >
-                            {(pathname === item.href || pathname.startsWith(item.href + "/")) && (
-                                <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-accent rounded-r-full shadow-[0_0_10px_rgba(77,182,172,0.8)]"></div>
-                            )}
-                            <span className={cn("mr-3 transition-colors", (pathname === item.href || pathname.startsWith(item.href + "/")) ? "text-accent" : "text-white/60 group-hover:text-white")}>
-                                {item.icon}
-                            </span>
-                            <span className="flex-1">{item.label}</span>
-                            {(pathname === item.href || pathname.startsWith(item.href + "/")) && <ChevronRight size={14} className="text-accent opacity-80" />}
-                        </Link>
+                        {item.separator ? (
+                            <div className="flex items-center px-4 py-3 text-sm font-medium text-white/70 cursor-default select-none">
+                                <span className="mr-3 text-white/60">
+                                    {item.icon}
+                                </span>
+                                <span className="flex-1">{item.label}</span>
+                            </div>
+                        ) : (
+                            <Link
+                                href={item.href}
+                                className={cn(
+                                    "flex items-center px-4 py-3 text-sm font-medium transition-all rounded-xl relative group overflow-hidden",
+                                    pathname === item.href || pathname.startsWith(item.href + "/")
+                                        ? "text-white bg-white/10 shadow-inner"
+                                        : "text-white/70 hover:text-white hover:bg-white/5"
+                                )}
+                            >
+                                {(pathname === item.href || pathname.startsWith(item.href + "/")) && (
+                                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-accent rounded-r-full shadow-[0_0_10px_rgba(77,182,172,0.8)]"></div>
+                                )}
+                                <span className={cn("mr-3 transition-colors", (pathname === item.href || pathname.startsWith(item.href + "/")) ? "text-accent" : "text-white/60 group-hover:text-white")}>
+                                    {item.icon}
+                                </span>
+                                <span className="flex-1">{item.label}</span>
+                                {(pathname === item.href || pathname.startsWith(item.href + "/")) && <ChevronRight size={14} className="text-accent opacity-80" />}
+                            </Link>
+                        )}
                     </div>
                 ))}
             </nav>
 
-            {/* User Footer */}
-            <div className="p-4 border-t border-white/10 bg-black/20 backdrop-blur-md space-y-1">
-                <Link href="/web/profile" className="flex items-center gap-3 p-2 rounded-xl hover:bg-white/5 transition-colors cursor-pointer group">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary-300 to-primary-700 p-[2px]">
-                        <div className="w-full h-full rounded-full bg-primary-dark flex items-center justify-center text-xs font-bold text-accent">
-                            AD
-                        </div>
-                    </div>
-                    <div className="flex-1 min-w-0">
-                        <p className="text-sm font-bold truncate text-white group-hover:text-accent transition-colors">Admin User</p>
-                        <p className="text-xs text-white/50 truncate">{rc.label} ({rc.labelEn})</p>
-                    </div>
-                    <User size={16} className="text-white/30 group-hover:text-accent transition-colors" />
-                </Link>
-                <Link href="/web" className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-white/40 hover:text-error hover:bg-white/5 transition-colors text-xs">
-                    <LogOut size={14} /> ออกจากระบบ
-                </Link>
+            {/* Logout Button - Bottom */}
+            <div className="px-3 py-4 border-t border-white/10">
+                <button
+                    onClick={async () => { await logout(); router.push("/web"); }}
+                    className="w-full flex items-center px-4 py-3 rounded-xl text-white/50 hover:text-error hover:bg-white/10 transition-colors text-sm font-medium gap-3"
+                >
+                    <LogOut size={20} />
+                    <span>ออกจากระบบ</span>
+                </button>
             </div>
         </aside>
     );

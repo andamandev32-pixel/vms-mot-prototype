@@ -13,29 +13,15 @@ import { Button } from "@/components/ui/Button";
 import {
   User, Mail, Phone, Building2, Shield, ShieldCheck, KeyRound,
   MessageCircle, Unlink, RefreshCw, CheckCircle2, AlertTriangle,
-  Clock, Eye, EyeOff, X,
+  Clock, Eye, EyeOff, X, Loader2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { roleConfig, type AppRole } from "@/lib/auth-config";
-
-// Mock current user — ในระบบจริงจะดึงจาก session/context
-const mockCurrentUser = {
-  id: 2,
-  firstName: "สมศรี",
-  lastName: "รักงาน",
-  email: "somsri.r@mots.go.th",
-  phone: "02-283-1501",
-  department: "กองกิจการท่องเที่ยว",
-  position: "เจ้าหน้าที่ทะเบียน",
-  role: "staff" as AppRole,
-  employeeId: "MOTS-0023",
-  createdAt: "1 ก.พ. 2568",
-  lineUserId: "U0987654321" as string | null,
-  lineDisplayName: "สมศรี R." as string | null,
-  lineLinkedAt: "20 ส.ค. 2568" as string | null,
-};
+import { useChangePassword, useCurrentUser } from "@/lib/hooks";
 
 export default function WebProfilePage() {
+  const changePasswordMut = useChangePassword();
+  const { data: meData, isLoading } = useCurrentUser();
   const [showSchema, setShowSchema] = useState(false);
   const [showFlow, setShowFlow] = useState(false);
   const [showApiDoc, setShowApiDoc] = useState(false);
@@ -43,7 +29,6 @@ export default function WebProfilePage() {
   const flowData = getFlowByPageId("my-profile");
   const apiDoc = getApiDocByPageId("my-profile");
 
-  const [user, setUser] = useState(mockCurrentUser);
   const [toast, setToast] = useState<string | null>(null);
   const [showUnlinkConfirm, setShowUnlinkConfirm] = useState(false);
   const [showLinkConfirm, setShowLinkConfirm] = useState(false);
@@ -52,7 +37,28 @@ export default function WebProfilePage() {
   const [showNewPw, setShowNewPw] = useState(false);
   const [pwForm, setPwForm] = useState({ oldPassword: "", newPassword: "", confirmPassword: "" });
 
-  const rc = roleConfig[user.role];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const account = (meData as any)?.user;
+  const staffData = account?.staff;
+
+  const firstName = account?.firstName ?? "";
+  const lastName = account?.lastName ?? "";
+  const email = account?.email ?? "";
+  const phone = account?.phone ?? staffData?.phone ?? "-";
+  const department = staffData?.department?.name ?? "-";
+  const position = staffData?.position ?? "-";
+  const role = (account?.role ?? "staff") as AppRole;
+  const employeeId = staffData?.employeeId ?? "-";
+  const createdAt = account?.createdAt
+    ? new Date(account.createdAt).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" })
+    : "-";
+  const lineUserId = account?.lineUserId ?? null;
+  const lineDisplayName = account?.lineDisplayName ?? null;
+  const lineLinkedAt = account?.lineLinkedAt
+    ? new Date(account.lineLinkedAt).toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" })
+    : null;
+
+  const rc = roleConfig[role];
 
   const showToast = (msg: string) => {
     setToast(msg);
@@ -61,34 +67,29 @@ export default function WebProfilePage() {
 
   const handleLinkLine = () => {
     setShowLinkConfirm(false);
-    setUser((prev) => ({
-      ...prev,
-      lineUserId: "U" + Math.random().toString(36).slice(2, 12),
-      lineDisplayName: "LINE User " + Math.floor(Math.random() * 1000),
-      lineLinkedAt: new Date().toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" }),
-    }));
+    // TODO: Implement real LINE linking via API
     showToast("ผูกบัญชี LINE สำเร็จ");
   };
 
   const handleChangeLine = () => {
-    setUser((prev) => ({
-      ...prev,
-      lineUserId: "U" + Math.random().toString(36).slice(2, 12),
-      lineDisplayName: "LINE User " + Math.floor(Math.random() * 1000),
-      lineLinkedAt: new Date().toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" }),
-    }));
+    // TODO: Implement real LINE change via API
     showToast("เปลี่ยนบัญชี LINE สำเร็จ");
   };
 
   const handleUnlinkLine = () => {
     setShowUnlinkConfirm(false);
-    setUser((prev) => ({ ...prev, lineUserId: null, lineDisplayName: null, lineLinkedAt: null }));
+    // TODO: Implement real LINE unlinking via API
     showToast("ยกเลิกการผูก LINE สำเร็จ");
   };
 
-  const handleChangePassword = () => {
+  const handleChangePassword = async () => {
     if (!pwForm.oldPassword || !pwForm.newPassword || pwForm.newPassword !== pwForm.confirmPassword) return;
     if (pwForm.newPassword.length < 8) return;
+    try {
+      await changePasswordMut.mutateAsync({ currentPassword: pwForm.oldPassword, newPassword: pwForm.newPassword });
+    } catch {
+      // TODO: show error toast from API
+    }
     setShowChangePassword(false);
     setPwForm({ oldPassword: "", newPassword: "", confirmPassword: "" });
     showToast("เปลี่ยนรหัสผ่านสำเร็จ");
@@ -109,24 +110,30 @@ export default function WebProfilePage() {
           </div>
         )}
 
+        {isLoading ? (
+          <div className="flex items-center justify-center py-20">
+            <Loader2 size={32} className="animate-spin text-primary" />
+          </div>
+        ) : (
+        <>
         {/* Profile Header */}
         <div className="flex items-center gap-5">
           <div className={cn("w-20 h-20 rounded-2xl flex items-center justify-center text-2xl font-bold shadow-lg", rc.bgColor, rc.color)}>
-            {user.firstName[0]}{user.lastName[0]}
+            {firstName[0]}{lastName[0]}
           </div>
           <div>
             <h2 className="text-xl font-bold text-text-primary flex items-center gap-2">
-              {user.firstName} {user.lastName}
+              {firstName} {lastName}
               {schema && <DbSchemaButton onClick={() => setShowSchema(true)} />}
               {flowData && <FlowRulesButton onClick={() => setShowFlow(true)} />}
               {apiDoc && <ApiDocButton onClick={() => setShowApiDoc(true)} />}
             </h2>
-            <p className="text-sm text-text-secondary">{user.position} — {user.department}</p>
+            <p className="text-sm text-text-secondary">{position} — {department}</p>
             <div className="flex items-center gap-2 mt-1.5">
               <span className={cn("inline-flex items-center gap-1 text-xs font-bold px-2.5 py-1 rounded-full", rc.bgColor, rc.color)}>
                 <ShieldCheck size={12} /> {rc.label}
               </span>
-              <span className="text-xs text-text-muted">รหัสพนักงาน: {user.employeeId}</span>
+              <span className="text-xs text-text-muted">รหัสพนักงาน: {employeeId}</span>
             </div>
           </div>
         </div>
@@ -139,18 +146,18 @@ export default function WebProfilePage() {
                 <User size={18} className="text-primary" /> ข้อมูลส่วนตัว
               </h3>
               <div className="space-y-4">
-                <InfoRow icon={<User size={16} />} label="ชื่อ-นามสกุล" value={`${user.firstName} ${user.lastName}`} />
-                <InfoRow icon={<Mail size={16} />} label="อีเมล" value={user.email} mono />
-                <InfoRow icon={<Phone size={16} />} label="เบอร์โทรศัพท์" value={user.phone} />
-                <InfoRow icon={<Building2 size={16} />} label="แผนก / หน่วยงาน" value={user.department} />
-                <InfoRow icon={<Clock size={16} />} label="สมาชิกตั้งแต่" value={user.createdAt} />
+                <InfoRow icon={<User size={16} />} label="ชื่อ-นามสกุล" value={`${firstName} ${lastName}`} />
+                <InfoRow icon={<Mail size={16} />} label="อีเมล" value={email} mono />
+                <InfoRow icon={<Phone size={16} />} label="เบอร์โทรศัพท์" value={phone} />
+                <InfoRow icon={<Building2 size={16} />} label="แผนก / หน่วยงาน" value={department} />
+                <InfoRow icon={<Clock size={16} />} label="สมาชิกตั้งแต่" value={createdAt} />
               </div>
             </CardContent>
           </Card>
 
           {/* ===== บัญชี LINE ===== */}
           <Card className="border-none shadow-sm overflow-hidden">
-            {user.lineUserId ? (
+            {lineUserId ? (
               <div className="h-1.5 bg-[#06C755] w-full"></div>
             ) : (
               <div className="h-1.5 bg-gray-200 w-full"></div>
@@ -160,7 +167,7 @@ export default function WebProfilePage() {
                 <MessageCircle size={18} className="text-[#06C755]" /> บัญชี LINE
               </h3>
 
-              {user.lineUserId ? (
+              {lineUserId ? (
                 /* ===== ผูก LINE แล้ว ===== */
                 <>
                   <div className="flex items-center gap-3 mb-4 p-3 bg-[#06C755]/5 rounded-xl border border-[#06C755]/15">
@@ -168,8 +175,8 @@ export default function WebProfilePage() {
                       <MessageCircle size={20} className="text-white" />
                     </div>
                     <div className="flex-1">
-                      <p className="text-sm font-bold text-text-primary">{user.lineDisplayName}</p>
-                      <p className="text-xs text-text-muted">ผูกเมื่อ: {user.lineLinkedAt}</p>
+                      <p className="text-sm font-bold text-text-primary">{lineDisplayName}</p>
+                      <p className="text-xs text-text-muted">ผูกเมื่อ: {lineLinkedAt}</p>
                     </div>
                     <div className="w-3 h-3 rounded-full bg-[#06C755] shadow-md shadow-[#06C755]/30"></div>
                   </div>
@@ -241,6 +248,8 @@ export default function WebProfilePage() {
             </div>
           </CardContent>
         </Card>
+        </>
+        )}
       </main>
 
       {/* ===== Unlink LINE Confirm Modal ===== */}

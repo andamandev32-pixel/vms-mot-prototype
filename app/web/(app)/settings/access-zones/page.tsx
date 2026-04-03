@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import Topbar from "@/components/web/Topbar";
 import { DatabaseSchemaModal, DbSchemaButton } from "@/components/web/DatabaseSchemaModal";
 import { FlowchartModal, FlowRulesButton } from "@/components/web/FlowchartModal";
@@ -38,10 +38,10 @@ import {
   Save,
 } from "lucide-react";
 import {
-  buildings as initialBuildings,
+  buildings as fallbackBuildings,
   floors as initialFloors,
-  accessZones as initialAccessZones,
-  accessGroups as initialAccessGroups,
+  accessZones as fallbackAccessZones,
+  accessGroups as fallbackAccessGroups,
   departments,
   departmentAccessMappings as initialDeptMappings,
   accessZoneTypeLabels,
@@ -52,6 +52,7 @@ import {
   type DepartmentAccessMapping,
   getDepartmentLocation,
 } from "@/lib/mock-data";
+import { useAccessZones, useBuildings, useCreateAccessZone, useUpdateAccessZone, useDeleteAccessZone } from "@/lib/hooks";
 
 /* ── helpers ───────────────────────────────────── */
 const dayLabels = ["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"];
@@ -78,6 +79,16 @@ function ZoneTypeBadge({ type }: { type: AccessZoneType }) {
    PAGE
    ══════════════════════════════════════════════════ */
 export default function AccessZonesSettingsPage() {
+  /* ── API data ─────────────────────────────────── */
+  const { data: rawZones, isLoading: loadingZones } = useAccessZones();
+  const { data: rawBuildings, isLoading: loadingBuildings } = useBuildings();
+  const createZoneMut = useCreateAccessZone();
+  const updateZoneMut = useUpdateAccessZone();
+  const deleteZoneMut = useDeleteAccessZone();
+
+  const apiZones = Array.isArray(rawZones) ? rawZones : ((rawZones as any)?.zones ?? (rawZones as any)?.data ?? []);
+  const apiBuildings = Array.isArray(rawBuildings) ? rawBuildings : ((rawBuildings as any)?.buildings ?? (rawBuildings as any)?.data ?? []);
+
   const [showSchema, setShowSchema] = useState(false);
   const [showFlow, setShowFlow] = useState(false);
   const [showApiDoc, setShowApiDoc] = useState(false);
@@ -88,11 +99,12 @@ export default function AccessZonesSettingsPage() {
   const [expandedGroup, setExpandedGroup] = useState<number | null>(null);
   const [expandedBuilding, setExpandedBuilding] = useState<number | null>(null);
 
-  /* ── Stateful data ────────────────────────────── */
-  const [accessGroups, setAccessGroups] = useState<AccessGroup[]>(initialAccessGroups);
-  const [accessZones, setAccessZones] = useState<AccessZone[]>(initialAccessZones);
-  const [buildings] = useState<Building[]>(initialBuildings);
+  /* ── Stateful data (seeded from API or fallback) ── */
+  const [accessGroups, setAccessGroups] = useState<AccessGroup[]>(fallbackAccessGroups);
+  const [accessZones, setAccessZones] = useState<AccessZone[]>(apiZones.length > 0 ? apiZones : fallbackAccessZones);
+  const [buildings] = useState<Building[]>(apiBuildings.length > 0 ? apiBuildings : fallbackBuildings);
   const [floors] = useState(initialFloors);
+
   const [deptMappings, setDeptMappings] = useState<DepartmentAccessMapping[]>(initialDeptMappings);
 
   /* drawer state — Access Group */
@@ -104,6 +116,9 @@ export default function AccessZonesSettingsPage() {
 
   /* ── Delete confirm ─────────────────────────── */
   const [deleteTarget, setDeleteTarget] = useState<{ type: "group" | "zone"; id: number; name: string } | null>(null);
+
+  useEffect(() => { if (apiZones.length > 0) setAccessZones(apiZones); }, [apiZones.length]);
+  // TODO: wire useAccessGroups when API hook is available
 
   const toggleGroup = (id: number) => setExpandedGroup((p) => (p === id ? null : id));
   const toggleBuilding = (id: number) => setExpandedBuilding((p) => (p === id ? null : id));
@@ -120,6 +135,12 @@ export default function AccessZonesSettingsPage() {
     setAccessZones((prev) =>
       isEdit ? prev.map((z) => (z.id === zone.id ? zone : z)) : [...prev, zone]
     );
+    // Fire API mutation (non-blocking — local state already updated)
+    if (isEdit) {
+      updateZoneMut.mutateAsync({ ...zone, id: zone.id } as any).catch(() => {});
+    } else {
+      createZoneMut.mutateAsync(zone as any).catch(() => {});
+    }
     setZoneDrawer(null);
   }, []);
 
@@ -136,9 +157,13 @@ export default function AccessZonesSettingsPage() {
       setAccessGroups((prev) => prev.filter((g) => g.id !== deleteTarget.id));
     } else {
       setAccessZones((prev) => prev.filter((z) => z.id !== deleteTarget.id));
+      deleteZoneMut.mutateAsync(deleteTarget.id).catch(() => {});
     }
     setDeleteTarget(null);
   }, [deleteTarget]);
+
+  /* ── Loading guard (after all hooks) ─────────── */
+  if (loadingZones || loadingBuildings) return <div><Topbar title="โซนการเข้าถึง / Access Zones" /><div className="p-8 text-center text-text-muted">กำลังโหลด...</div></div>;
 
   /* stats */
   const activeGroups = accessGroups.filter((g) => g.isActive);
@@ -366,7 +391,7 @@ function AccessGroupCard({
             </span>
             <span className="flex items-center gap-1.5">
               <Timer size={14} className="text-info" />
-              {group.validityMinutes} นาที
+              {group.validityMode === "appointment-time" ? "ตามเวลานัดหมาย" : group.validityMode === "until-checkout" ? "จน check-out" : `${group.validityMinutes} นาที`}
             </span>
           </div>
 
@@ -423,7 +448,7 @@ function AccessGroupCard({
               <div className="flex items-center gap-3">
                 <span className="text-xs font-mono bg-white border border-border px-2 py-1 rounded">{group.qrCodePrefix}-XXXXXXXX</span>
                 <span className="text-xs text-text-muted flex items-center gap-1">
-                  <Timer size={12} /> หมดอายุ {group.validityMinutes} นาที
+                  <Timer size={12} /> {group.validityMode === "appointment-time" ? "หมดอายุตามเวลานัดหมาย" : group.validityMode === "until-checkout" ? "ใช้ได้จนกว่า check-out (ภายในเวลาทำการ)" : `หมดอายุ ${group.validityMinutes} นาที`}
                 </span>
               </div>
             </div>
@@ -816,6 +841,7 @@ function AccessGroupDrawer({
   const [color, setColor] = useState(group?.color ?? "#6A0DAD");
   const [hikvisionGroupId, setHikvisionGroupId] = useState(group?.hikvisionGroupId ?? "");
   const [qrCodePrefix, setQrCodePrefix] = useState(group?.qrCodePrefix ?? "eVMS-");
+  const [validityMode, setValidityMode] = useState<"fixed-minutes" | "appointment-time" | "until-checkout">(group?.validityMode ?? "fixed-minutes");
   const [validityMinutes, setValidityMinutes] = useState(group?.validityMinutes ?? 60);
   const [selectedZoneIds, setSelectedZoneIds] = useState<number[]>(group?.zoneIds ?? []);
   const [scheduleDays, setScheduleDays] = useState<number[]>(group?.schedule.daysOfWeek ?? [1, 2, 3, 4, 5]);
@@ -827,7 +853,7 @@ function AccessGroupDrawer({
     if (group) {
       setName(group.name); setNameEn(group.nameEn); setDescription(group.description);
       setColor(group.color); setHikvisionGroupId(group.hikvisionGroupId);
-      setQrCodePrefix(group.qrCodePrefix); setValidityMinutes(group.validityMinutes);
+      setQrCodePrefix(group.qrCodePrefix); setValidityMode(group.validityMode); setValidityMinutes(group.validityMinutes);
       setSelectedZoneIds(group.zoneIds); setScheduleDays(group.schedule.daysOfWeek);
       setStartTime(group.schedule.startTime); setEndTime(group.schedule.endTime);
       setIsActive(group.isActive);
@@ -893,8 +919,36 @@ function AccessGroupDrawer({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-text-primary mb-1">QR หมดอายุ (นาที)</label>
-          <input type="number" min={1} value={validityMinutes} onChange={(e) => setValidityMinutes(Number(e.target.value))} className="w-28 h-10 px-3 text-sm rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-primary/20" />
+          <label className="block text-sm font-medium text-text-primary mb-2">QR หมดอายุ</label>
+          <div className="space-y-2">
+            <label className={cn("flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all", validityMode === "fixed-minutes" ? "border-primary bg-primary-50" : "border-border hover:border-gray-300")}>
+              <input type="radio" name="validityMode" checked={validityMode === "fixed-minutes"} onChange={() => setValidityMode("fixed-minutes")} className="mt-0.5" />
+              <div className="flex-1">
+                <p className="text-sm font-medium text-text-primary">กำหนดเวลา (นาที)</p>
+                <p className="text-xs text-text-muted">QR หมดอายุตามจำนวนนาทีที่กำหนดหลัง check-in</p>
+                {validityMode === "fixed-minutes" && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <input type="number" min={1} value={validityMinutes} onChange={(e) => setValidityMinutes(Number(e.target.value))} className="w-24 h-9 px-3 text-sm rounded-lg border border-border bg-white focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                    <span className="text-sm text-text-muted">นาที</span>
+                  </div>
+                )}
+              </div>
+            </label>
+            <label className={cn("flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all", validityMode === "appointment-time" ? "border-primary bg-primary-50" : "border-border hover:border-gray-300")}>
+              <input type="radio" name="validityMode" checked={validityMode === "appointment-time"} onChange={() => setValidityMode("appointment-time")} className="mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-text-primary">อ้างอิงเวลานัดหมาย</p>
+                <p className="text-xs text-text-muted">QR ใช้ได้ตลอดช่วงเวลาที่นัดหมาย (timeStart–timeEnd) เหมาะสำหรับผู้ที่มีนัดหมายล่วงหน้า</p>
+              </div>
+            </label>
+            <label className={cn("flex items-start gap-3 p-3 rounded-lg border cursor-pointer transition-all", validityMode === "until-checkout" ? "border-primary bg-primary-50" : "border-border hover:border-gray-300")}>
+              <input type="radio" name="validityMode" checked={validityMode === "until-checkout"} onChange={() => setValidityMode("until-checkout")} className="mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-text-primary">จนกว่าจะ Check-out (ภายในเวลาทำการ)</p>
+                <p className="text-xs text-text-muted">QR ใช้ได้ตั้งแต่ check-in จนกว่าจะ check-out หรือหมดเวลาทำการของ schedule ด้านล่าง เหมาะสำหรับ walk-in, ผู้รับเหมา, ช่างซ่อม ที่ไม่ได้กำหนดเวลาล่วงหน้า</p>
+              </div>
+            </label>
+          </div>
         </div>
 
         {/* Schedule */}
@@ -972,6 +1026,7 @@ function AccessGroupDrawer({
               color,
               hikvisionGroupId,
               qrCodePrefix,
+              validityMode,
               validityMinutes,
               zoneIds: selectedZoneIds,
               schedule: { daysOfWeek: scheduleDays, startTime, endTime },

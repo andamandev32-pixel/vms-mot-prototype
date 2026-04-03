@@ -1281,6 +1281,47 @@ const visitSlipsApi: PageApiDoc = {
 }`,
       notes: ["ใช้ข้อมูล mock สำหรับ preview", "คืน HTML หรือ image URL สำหรับ frontend render", "แสดงโลโก้ปัจจุบัน + ขนาดปัจจุบัน + Officer Sign section"],
     },
+    {
+      method: "GET",
+      path: "/api/visit-slips/template",
+      summary: "ดึง Visit Slip Template (Public — ไม่ต้อง auth) สำหรับ Kiosk / Counter พิมพ์บัตร",
+      summaryEn: "Get visit slip template (public, no auth) for Kiosk/Counter printing",
+      auth: "public",
+      responseExample: `{
+  "template": {
+    "id": 1,
+    "name": "แบบ Thermal 80mm มาตรฐาน",
+    "logoUrl": "/images/mot_logo_slip.png",
+    "logoSizePx": 50,
+    "orgName": "กระทรวงการท่องเที่ยวและกีฬา",
+    "orgNameEn": "Ministry of Tourism and Sports",
+    "slipTitle": "VISITOR PASS",
+    "footerTextTh": "กรุณาส่งคืนบัตรเมื่อออกจากอาคาร",
+    "footerTextEn": "Please return this pass when leaving",
+    "paperSize": "thermal-80mm",
+    "paperWidthPx": 302,
+    "sections": [
+      {
+        "id": "header",
+        "name": "ส่วนหัว (Header)",
+        "nameEn": "Header Section",
+        "enabled": true,
+        "fields": [
+          { "key": "orgLogo", "label": "โลโก้หน่วยงาน", "labelEn": "Organization Logo", "enabled": true, "editable": false }
+        ]
+      }
+    ]
+  }
+}`,
+      notes: [
+        "Public endpoint — ไม่ต้อง authentication (Kiosk/Counter ไม่ได้ login เป็น admin)",
+        "ดึง default template (isDefault: true) หรือ first active template",
+        "Response sections ถูก map จาก DB (sectionKey → id, isEnabled → enabled) ให้ตรงกับ ThermalSection[] type",
+        "Frontend Hook: useVisitSlipTemplate() — cache 5 นาที",
+        "Kiosk: ส่ง sections ให้ SuccessScreen → ThermalSlipPreview",
+        "Counter: ส่ง sections ให้ Success Overlay → ThermalSlipPreview",
+      ],
+    },
   ],
 };
 

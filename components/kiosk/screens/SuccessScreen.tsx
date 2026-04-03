@@ -2,7 +2,8 @@
 
 import { CheckCircle, Home, Printer, MessageCircle, FileX } from "lucide-react";
 import { useEffect, useState } from "react";
-import type { SlipData } from "@/lib/kiosk/kiosk-types";
+import type { SlipData, ThermalSection } from "@/lib/kiosk/kiosk-types";
+import ThermalSlipPreview from "@/components/kiosk/ThermalSlipPreview";
 
 interface SuccessScreenProps {
   locale: "th" | "en";
@@ -16,9 +17,15 @@ interface SuccessScreenProps {
   onSkipPrint?: () => void;
   /** ค่าจาก state ว่าเลือกพิมพ์หรือไม่ */
   printSlip?: boolean;
+  /** Template sections จาก API /api/visit-slips/template */
+  slipSections?: ThermalSection[];
+  /** Logo URL จาก template */
+  slipLogoUrl?: string;
+  /** Logo size จาก template */
+  slipLogoSize?: number;
 }
 
-export default function SuccessScreen({ locale, slipData, onDone, lineLinked, onChoosePrint, onSkipPrint, printSlip }: SuccessScreenProps) {
+export default function SuccessScreen({ locale, slipData, onDone, lineLinked, onChoosePrint, onSkipPrint, printSlip, slipSections, slipLogoUrl, slipLogoSize }: SuccessScreenProps) {
   const [countdown, setCountdown] = useState(lineLinked && printSlip === undefined ? 30 : 10);
 
   useEffect(() => {
@@ -129,43 +136,16 @@ export default function SuccessScreen({ locale, slipData, onDone, lineLinked, on
           </div>
         )}
 
-        {/* Mini slip preview — show when printing or skipped (for reference) */}
+        {/* Thermal Slip Preview — ใช้ template จาก API */}
         {slipData && !showPrintChoice && (
-          <div className="w-full max-w-[220px] border-2 border-dashed border-gray-200 rounded-xl p-3 space-y-1.5 bg-gray-50">
-            <p className="text-[9px] text-gray-400 text-center font-medium">
-              {locale === "th" ? "— ตัวอย่างบัตร —" : "— Slip Preview —"}
-            </p>
-            <div className="space-y-1">
-              <div className="flex justify-between text-[9px]">
-                <span className="text-gray-400">{locale === "th" ? "เลขที่" : "Slip #"}</span>
-                <span className="text-[#1B2B5E] font-mono font-medium">{slipData.slipNumber}</span>
-              </div>
-              <div className="flex justify-between text-[9px]">
-                <span className="text-gray-400">{locale === "th" ? "ชื่อ" : "Name"}</span>
-                <span className="text-[#1B2B5E] font-medium">{slipData.visitorName}</span>
-              </div>
-              <div className="flex justify-between text-[9px]">
-                <span className="text-gray-400">{locale === "th" ? "วัตถุประสงค์" : "Purpose"}</span>
-                <span className="text-[#1B2B5E] font-medium">{slipData.visitPurpose}</span>
-              </div>
-              <div className="flex justify-between text-[9px]">
-                <span className="text-gray-400">{locale === "th" ? "พื้นที่" : "Zone"}</span>
-                <span className="text-[#1B2B5E] font-medium">{slipData.accessZone}</span>
-              </div>
-              {slipData.wifi && (
-                <>
-                  <div className="border-t border-dashed border-gray-200 my-0.5" />
-                  <div className="flex justify-between text-[9px]">
-                    <span className="text-gray-400">WiFi</span>
-                    <span className="text-[#2E4A8A] font-medium">{slipData.wifi.ssid}</span>
-                  </div>
-                  <div className="flex justify-between text-[9px]">
-                    <span className="text-gray-400">{locale === "th" ? "รหัส" : "Pass"}</span>
-                    <span className="text-[#2E4A8A] font-mono font-medium">{slipData.wifi.password}</span>
-                  </div>
-                </>
-              )}
-            </div>
+          <div className="w-full flex justify-center">
+            <ThermalSlipPreview
+              data={slipData}
+              scale={0.75}
+              sections={slipSections}
+              logoSrc={slipLogoUrl}
+              logoSize={slipLogoSize}
+            />
           </div>
         )}
 

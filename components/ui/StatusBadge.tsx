@@ -12,12 +12,13 @@ const statusToBadgeVariant: Record<VisitStatus, string> = {
   approved: "approved",
   rejected: "rejected",
   confirmed: "approved",          // reuse green
+  cancelled: "outline",
+  expired: "outline",
   "checked-in": "checkedin",
   "checked-out": "checkout",
   "auto-checkout": "checkout",
   overstay: "destructive",
   blocked: "destructive",
-  cancelled: "outline",
 };
 
 interface StatusBadgeProps extends React.HTMLAttributes<HTMLDivElement> {
@@ -59,7 +60,7 @@ export function StatusBadge({
   };
 
   // For statuses that don't have a built-in badge variant, use custom styling
-  const isCustom = ["confirmed", "auto-checkout", "overstay", "blocked", "cancelled"].includes(status);
+  const isCustom = ["confirmed", "auto-checkout", "overstay", "blocked", "cancelled", "expired"].includes(status);
 
   if (isCustom) {
     return (
