@@ -109,7 +109,11 @@ export default function ServicePointsSettingsPage() {
   const apiDoc = getApiDocByPageId("service-points");
   /* API hooks */
   const { data: rawServicePoints, isLoading } = useServicePoints();
-  const items: ServicePoint[] = ((rawServicePoints as any)?.servicePoints ?? []) as ServicePoint[];
+  const items: ServicePoint[] = ((rawServicePoints as any)?.servicePoints ?? []).map((sp: any) => ({
+    ...sp,
+    allowedPurposeIds: sp.servicePointPurposes?.map((spp: any) => spp.visitPurpose?.id ?? spp.visitPurposeId) ?? sp.allowedPurposeIds ?? [],
+    allowedDocumentIds: sp.servicePointDocuments?.map((spd: any) => spd.identityDocumentType?.id ?? spd.identityDocumentTypeId) ?? sp.allowedDocumentIds ?? [],
+  })) as ServicePoint[];
   const createMut = useCreateServicePoint();
   const updateMut = useUpdateServicePoint();
   const deleteMut = useDeleteServicePoint();
@@ -1011,12 +1015,13 @@ function ServicePointForm({ initial, onSave, onCancel }: { initial?: ServicePoin
       {/* Actions */}
       <div className="flex gap-3 pt-4 border-t border-border">
         <Button className="flex-1 gap-2" onClick={() => {
-          const formData: ServicePointFormData = {
+          const formData = {
             type,
             status,
             name,
             nameEn,
             location,
+            locationEn: location,
             building,
             floor,
             ipAddress,
@@ -1026,21 +1031,21 @@ function ServicePointForm({ initial, onSave, onCancel }: { initial?: ServicePoin
             allowedPurposeIds: selectedPurposes,
             allowedDocumentIds: selectedDocs,
             timeoutConfig: timeouts,
-            wifiConfig: {
-              ssid: wifiSsid,
-              passwordPattern: wifiPassword,
-              validityMode: wifiValidityMode,
-              fixedDurationMinutes: wifiFixedDuration,
-            },
-            pdpaConfig: { requireScroll: pdpaRequireScroll, retentionDays: pdpaRetentionDays },
-            slipConfig: { headerText: slipHeader, footerText: slipFooter },
+            wifiSsid,
+            wifiPasswordPattern: wifiPassword,
+            wifiValidityMode,
+            wifiFixedDurationMin: wifiFixedDuration,
+            pdpaRequireScroll,
+            pdpaRetentionDays,
+            slipHeaderText: slipHeader,
+            slipFooterText: slipFooter,
             followBusinessHours,
             idMaskingPattern,
             adminPin,
             assignedStaff: assignedStaffIds,
             isActive: initial?.isActive ?? true,
           };
-          onSave(formData);
+          onSave(formData as any);
         }}><Save size={16} /> บันทึก</Button>
         <Button variant="outline" className="flex-1" onClick={onCancel}>ยกเลิก</Button>
       </div>

@@ -98,6 +98,7 @@ export async function PUT(
       pdpaRequireScroll, pdpaRetentionDays,
       slipHeaderText, slipFooterText, followBusinessHours,
       idMaskingPattern, adminPin,
+      allowedPurposeIds, allowedDocumentIds, assignedStaff,
     } = body as {
       name?: string;
       nameEn?: string;
@@ -124,6 +125,9 @@ export async function PUT(
       followBusinessHours?: boolean;
       idMaskingPattern?: string;
       adminPin?: string;
+      allowedPurposeIds?: number[];
+      allowedDocumentIds?: number[];
+      assignedStaff?: { staffId: number; isPrimary: boolean }[];
     };
 
     // Check serialNumber uniqueness if changed
@@ -134,35 +138,74 @@ export async function PUT(
       }
     }
 
-    const servicePoint = await prisma.servicePoint.update({
-      where: { id: spId },
-      data: {
-        ...(name !== undefined && { name: name.trim() }),
-        ...(nameEn !== undefined && { nameEn: nameEn.trim() }),
-        ...(type !== undefined && { type: type.trim() }),
-        ...(status !== undefined && { status }),
-        ...(location !== undefined && { location: location.trim() }),
-        ...(locationEn !== undefined && { locationEn: locationEn.trim() }),
-        ...(building !== undefined && { building: building.trim() }),
-        ...(floor !== undefined && { floor: floor.trim() }),
-        ...(ipAddress !== undefined && { ipAddress: ipAddress.trim() }),
-        ...(macAddress !== undefined && { macAddress: macAddress.trim() }),
-        ...(serialNumber !== undefined && { serialNumber: serialNumber.trim() }),
-        ...(assignedStaffId !== undefined && { assignedStaffId }),
-        ...(notes !== undefined && { notes: notes?.trim() || null }),
-        ...(isActive !== undefined && { isActive }),
-        ...(wifiSsid !== undefined && { wifiSsid: wifiSsid?.trim() || null }),
-        ...(wifiPasswordPattern !== undefined && { wifiPasswordPattern: wifiPasswordPattern?.trim() || null }),
-        ...(wifiValidityMode !== undefined && { wifiValidityMode: wifiValidityMode?.trim() || null }),
-        ...(wifiFixedDurationMin !== undefined && { wifiFixedDurationMin }),
-        ...(pdpaRequireScroll !== undefined && { pdpaRequireScroll }),
-        ...(pdpaRetentionDays !== undefined && { pdpaRetentionDays }),
-        ...(slipHeaderText !== undefined && { slipHeaderText: slipHeaderText?.trim() || null }),
-        ...(slipFooterText !== undefined && { slipFooterText: slipFooterText?.trim() || null }),
-        ...(followBusinessHours !== undefined && { followBusinessHours }),
-        ...(idMaskingPattern !== undefined && { idMaskingPattern: idMaskingPattern?.trim() || null }),
-        ...(adminPin !== undefined && { adminPin: adminPin?.trim() || null }),
-      },
+    // Use transaction to update service point + relations atomically
+    const servicePoint = await prisma.$transaction(async (tx) => {
+      const updated = await tx.servicePoint.update({
+        where: { id: spId },
+        data: {
+          ...(name !== undefined && { name: name.trim() }),
+          ...(nameEn !== undefined && { nameEn: nameEn.trim() }),
+          ...(type !== undefined && { type: type.trim() }),
+          ...(status !== undefined && { status }),
+          ...(location !== undefined && { location: location.trim() }),
+          ...(locationEn !== undefined && { locationEn: locationEn.trim() }),
+          ...(building !== undefined && { building: building.trim() }),
+          ...(floor !== undefined && { floor: floor.trim() }),
+          ...(ipAddress !== undefined && { ipAddress: ipAddress.trim() }),
+          ...(macAddress !== undefined && { macAddress: macAddress.trim() }),
+          ...(serialNumber !== undefined && { serialNumber: serialNumber.trim() }),
+          ...(assignedStaffId !== undefined && { assignedStaffId }),
+          ...(notes !== undefined && { notes: notes?.trim() || null }),
+          ...(isActive !== undefined && { isActive }),
+          ...(wifiSsid !== undefined && { wifiSsid: wifiSsid?.trim() || null }),
+          ...(wifiPasswordPattern !== undefined && { wifiPasswordPattern: wifiPasswordPattern?.trim() || null }),
+          ...(wifiValidityMode !== undefined && { wifiValidityMode: wifiValidityMode?.trim() || null }),
+          ...(wifiFixedDurationMin !== undefined && { wifiFixedDurationMin }),
+          ...(pdpaRequireScroll !== undefined && { pdpaRequireScroll }),
+          ...(pdpaRetentionDays !== undefined && { pdpaRetentionDays }),
+          ...(slipHeaderText !== undefined && { slipHeaderText: slipHeaderText?.trim() || null }),
+          ...(slipFooterText !== undefined && { slipFooterText: slipFooterText?.trim() || null }),
+          ...(followBusinessHours !== undefined && { followBusinessHours }),
+          ...(idMaskingPattern !== undefined && { idMaskingPattern: idMaskingPattern?.trim() || null }),
+          ...(adminPin !== undefined && { adminPin: adminPin?.trim() || null }),
+        },
+      });
+
+      // Update allowed purposes (delete-then-create)
+      if (allowedPurposeIds !== undefined) {
+        await tx.servicePointPurpose.deleteMany({ where: { servicePointId: spId } });
+        if (allowedPurposeIds.length > 0) {
+          await tx.servicePointPurpose.createMany({
+            data: allowedPurposeIds.map((vpId) => ({ servicePointId: spId, visitPurposeId: vpId })),
+          });
+        }
+      }
+
+      // Update allowed documents (delete-then-create)
+      if (allowedDocumentIds !== undefined) {
+        await tx.servicePointDocument.deleteMany({ where: { servicePointId: spId } });
+        if (allowedDocumentIds.length > 0) {
+          await tx.servicePointDocument.createMany({
+            data: allowedDocumentIds.map((dtId) => ({ servicePointId: spId, identityDocumentTypeId: dtId })),
+          });
+        }
+      }
+
+      // Update counter staff assignments (delete-then-create)
+      if (assignedStaff !== undefined) {
+        await tx.counterStaffAssignment.deleteMany({ where: { servicePointId: spId } });
+        if (assignedStaff.length > 0) {
+          await tx.counterStaffAssignment.createMany({
+            data: assignedStaff.map((a) => ({
+              servicePointId: spId,
+              staffId: a.staffId,
+              isPrimary: a.isPrimary,
+            })),
+          });
+        }
+      }
+
+      return updated;
     });
 
     return ok({ servicePoint });

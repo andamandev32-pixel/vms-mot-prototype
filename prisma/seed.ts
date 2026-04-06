@@ -48,6 +48,8 @@ async function main() {
 
     // --- Original entity clears ---
     await tx.systemSetting.deleteMany();
+    await tx.appointmentGroupDaySchedule.deleteMany();
+    await tx.appointmentGroup.deleteMany();
     await tx.visitEntry.deleteMany();
     await tx.appointmentEquipment.deleteMany();
     await tx.appointmentCompanion.deleteMany();
@@ -883,6 +885,46 @@ async function main() {
     });
 
     console.log("✅ 4 identity document types seeded.\n");
+
+    // ── 19a. Service Point Purposes & Documents ──────────────────
+    console.log("🎯 Seeding service point purposes & documents...");
+
+    await tx.servicePointPurpose.createMany({
+      data: [
+        // ตู้คีออส A (id=1): ติดต่อราชการ + รับ-ส่งสินค้า
+        { servicePointId: 1, visitPurposeId: 1 },
+        { servicePointId: 1, visitPurposeId: 7 },
+        // ตู้คีออส B (id=2): ติดต่อราชการ
+        { servicePointId: 2, visitPurposeId: 1 },
+        // เคาน์เตอร์ 1 (id=3): ติดต่อราชการ + ประชุม + รับ-ส่งสินค้า
+        { servicePointId: 3, visitPurposeId: 1 },
+        { servicePointId: 3, visitPurposeId: 2 },
+        { servicePointId: 3, visitPurposeId: 7 },
+        // เคาน์เตอร์ 2 (id=4): ติดต่อราชการ
+        { servicePointId: 4, visitPurposeId: 1 },
+      ],
+    });
+
+    await tx.servicePointDocument.createMany({
+      data: [
+        // ตู้คีออส A (id=1): บัตรประชาชน + หนังสือเดินทาง
+        { servicePointId: 1, identityDocumentTypeId: 1 },
+        { servicePointId: 1, identityDocumentTypeId: 2 },
+        // ตู้คีออส B (id=2): บัตรประชาชน + หนังสือเดินทาง
+        { servicePointId: 2, identityDocumentTypeId: 1 },
+        { servicePointId: 2, identityDocumentTypeId: 2 },
+        // เคาน์เตอร์ 1 (id=3): บัตรประชาชน + หนังสือเดินทาง + ใบขับขี่ + บัตรข้าราชการ
+        { servicePointId: 3, identityDocumentTypeId: 1 },
+        { servicePointId: 3, identityDocumentTypeId: 2 },
+        { servicePointId: 3, identityDocumentTypeId: 3 },
+        { servicePointId: 3, identityDocumentTypeId: 4 },
+        // เคาน์เตอร์ 2 (id=4): บัตรประชาชน + หนังสือเดินทาง
+        { servicePointId: 4, identityDocumentTypeId: 1 },
+        { servicePointId: 4, identityDocumentTypeId: 2 },
+      ],
+    });
+
+    console.log("✅ Service point purposes & documents seeded.\n");
 
     // ── 19b. Visit Purpose Department Rules ───────────────────────
     // (must come after approver groups + departments + visit purposes)

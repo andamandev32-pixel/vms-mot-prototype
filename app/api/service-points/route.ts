@@ -37,6 +37,19 @@ export async function GET(request: NextRequest) {
       where,
       include: {
         assignedStaff: { select: { id: true, name: true, nameEn: true } },
+        servicePointPurposes: {
+          include: {
+            visitPurpose: { select: { id: true, name: true, nameEn: true, icon: true, isActive: true } },
+          },
+        },
+        servicePointDocuments: {
+          include: {
+            identityDocumentType: { select: { id: true, name: true, nameEn: true } },
+          },
+        },
+        counterStaffAssignments: {
+          select: { staffId: true, isPrimary: true, staff: { select: { id: true, name: true, nameEn: true } } },
+        },
       },
       orderBy: { name: "asc" },
     });
