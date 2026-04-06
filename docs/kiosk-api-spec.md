@@ -1463,3 +1463,50 @@ Kiosk App                Backend API                     Database               
 
 - ถ้าวันทดสอบเป็นวันหยุด (เช่น วันจักรี) appointment ที่ใช้ `followBusinessHours=true` จะถูก reject
 - Script ใช้ purpose+dept combo ที่ `followBusinessHours=false` เพื่อทดสอบได้ทุกวัน
+
+---
+
+## ผลการทดสอบ Appointment Check-in Flow (Kiosk)
+
+> ทดสอบ: 6 เมษายน 2569
+> Script: `scripts/test-appointment-checkin.mjs`
+> Target: `https://vms-prototype-delta.vercel.app`
+> ผลรวม: ✅ ผ่านทุกรายการ (100/100 tests)
+
+### Kiosk — Appointment Lookup & Check-in (QR Scan Flow) — Phase 4
+
+| # | Endpoint | Method | Auth | ผลทดสอบ |
+|---|----------|--------|------|---------|
+| 1 | `/api/search/appointments?q={bookingCode}` | GET | Device Token | ✅ ค้นหานัดหมายจาก QR code สำเร็จ |
+| 2 | `/api/appointments/:id` | GET | Device Token | ✅ ดึง detail (visitor, host, companions, statusLogs) |
+| 3 | `/api/pdpa/accept` | POST | Public | ✅ บันทึก PDPA consent |
+| 4 | `/api/entries` | POST | Device Token | ✅ check-in linked to appointment (channel=kiosk) |
+| 5 | `/api/visit-slips/template` | GET | Public | ✅ ดึง slip template (Thermal 80mm) |
+| 6 | `/api/entries/today` | GET | Staff Cookie | ✅ entry ปรากฏใน today list |
+
+### Kiosk — Pending & Rejected Appointment — Phase 5
+
+| # | ทดสอบ | ผลทดสอบ |
+|---|-------|---------|
+| 1 | สร้าง pending appointment | ✅ status = pending |
+| 2 | Kiosk lookup ค้นหานัดหมายที่ pending | ✅ พบ, status = pending |
+| 3 | Check-in บน pending appointment | ⚠️ API อนุญาต (frontend ต้อง block) |
+| 4 | Reject appointment | ✅ status = rejected, มี reason + statusLog |
+| 5 | Check-in บน rejected appointment | ✅ ถูก block ด้วย `INVALID_APPOINTMENT_STATUS` |
+
+### Kiosk — Period Appointment — Phase 6
+
+| # | ทดสอบ | ผลทดสอบ |
+|---|-------|---------|
+| 1 | สร้าง period appointment (5 วัน) | ✅ entryMode=period, มี dateEnd |
+| 2 | Kiosk lookup period appointment | ✅ พบ, entryMode=period |
+| 3 | Check-in วันแรก | ✅ สร้าง entry สำเร็จ |
+| 4 | Check-in ซ้ำวันเดียวกัน | ✅ ถูก reject 409 `ALREADY_CHECKED_IN_TODAY` |
+
+### ข้อค้นพบสำคัญ
+
+| Issue | รายละเอียด | ระดับ |
+|-------|-----------|-------|
+| Pending check-in ไม่ถูก block ที่ API | `POST /api/entries` อนุญาตให้ check-in เมื่อ appointment status=pending — frontend ต้อง validate ก่อนเรียก API | ⚠️ Frontend ต้อง block |
+| Rejected check-in ถูก block ที่ API | `POST /api/entries` reject ด้วย `INVALID_APPOINTMENT_STATUS` เมื่อ status=rejected | ✅ ทำงานถูกต้อง |
+| Single mode ไม่ให้ re-entry แม้ checkout แล้ว | หลัง checkout แล้วก็ไม่สามารถ check-in อีกครั้ง → `SINGLE_ENTRY_USED` | ✅ ทำงานถูกต้อง |

@@ -1592,3 +1592,67 @@ visitors table:
 
 - วันหยุดราชการ (เช่น วันจักรี 6 เม.ย.) → appointment ที่ `followBusinessHours=true` ถูก reject ด้วย `BUSINESS_HOURS_CLOSED`
 - Purpose+Dept ที่ `followBusinessHours=false` สามารถนัดหมายได้ทุกวัน
+
+---
+
+## ผลการทดสอบ Appointment Check-in Flow (Counter)
+
+> ทดสอบ: 6 เมษายน 2569
+> Script: `scripts/test-appointment-checkin.mjs`
+> Target: `https://vms-prototype-delta.vercel.app`
+> ผลรวม: ✅ ผ่านทุกรายการ (100/100 tests)
+
+### Counter — Appointment Search & Check-in — Phase 1
+
+| # | Endpoint | Method | ผลทดสอบ |
+|---|----------|--------|---------|
+| 1 | `/api/appointments?date=today&search=` | GET | ✅ ค้นหานัดหมายวันนี้สำเร็จ |
+| 2 | `/api/appointments/:id` | GET | ✅ ดึง detail ครบ (visitor, department, visitEntries, statusLogs) |
+| 3 | `/api/entries` | POST | ✅ check-in linked to appointment (channel=counter) |
+| 4 | `/api/entries/today` | GET | ✅ entry ปรากฏ + linked to appointment |
+| 5 | `/api/appointments/:id` | GET | ✅ appointment แสดง visitEntries หลัง check-in |
+| 6 | `/api/entries/:id/checkout` | POST | ✅ checkout สำเร็จ |
+
+### Counter — Appointment Reject — Phase 2
+
+| # | Endpoint | Method | ผลทดสอบ |
+|---|----------|--------|---------|
+| 1 | `/api/appointments` | POST | ✅ สร้าง pending appointment (requireApproval=true) |
+| 2 | `/api/appointments/:id/reject` | POST | ✅ reject สำเร็จ (status=rejected, มี reason + rejectedAt + statusLog) |
+| 3 | `/api/entries` | POST | ✅ check-in บน rejected appointment ถูก block → `INVALID_APPOINTMENT_STATUS` |
+
+### Counter — Period Appointment Check-in — Phase 3
+
+| # | ทดสอบ | ผลทดสอบ |
+|---|-------|---------|
+| 1 | สร้าง period appointment (5 วัน) | ✅ entryMode=period, มี dateEnd |
+| 2 | Check-in วันแรก | ✅ สร้าง entry สำเร็จ |
+| 3 | Check-in ซ้ำวันเดียวกัน | ✅ reject 409 `ALREADY_CHECKED_IN_TODAY` |
+| 4 | Appointment detail แสดง entry history | ✅ visitEntries มี record |
+| 5 | Checkout | ✅ สำเร็จ |
+
+### Single Mode — ป้องกัน Re-entry — Phase 7
+
+| # | ทดสอบ | ผลทดสอบ |
+|---|-------|---------|
+| 1 | Entry ครั้งแรก (single mode) | ✅ สำเร็จ |
+| 2 | Entry ครั้งที่ 2 | ✅ reject 409 `SINGLE_ENTRY_USED` |
+| 3 | Entry หลัง checkout (re-entry) | ✅ reject 409 `SINGLE_ENTRY_USED` (ไม่ให้เข้าซ้ำแม้ checkout แล้ว) |
+
+### Dashboard & Visit Slip — Phase 8
+
+| # | Endpoint | Method | ผลทดสอบ |
+|---|----------|--------|---------|
+| 1 | `/api/dashboard/kpis` | GET | ✅ totalVisitorsToday, currentlyInBuilding, pendingApprovals |
+| 2 | `/api/entries/today` | GET | ✅ entries array + summary |
+| 3 | `/api/visit-slips/template` | GET (public) | ✅ template "แบบ Thermal 80mm มาตรฐาน" + sections + fields |
+
+### Appointment Status Validation Summary
+
+| status | Check-in ได้? | Error Code | หมายเหตุ |
+|--------|:------------:|------------|----------|
+| `approved` | ✅ | — | check-in ได้ปกติ |
+| `pending` | ⚠️ | — | API อนุญาต แต่ frontend ควร block |
+| `rejected` | ❌ | `INVALID_APPOINTMENT_STATUS` | ถูก block ที่ API |
+| `cancelled` | ❌ | `INVALID_APPOINTMENT_STATUS` | ถูก block ที่ API |
+| `expired` | ❌ | `INVALID_APPOINTMENT_STATUS` | ถูก block ที่ API |
