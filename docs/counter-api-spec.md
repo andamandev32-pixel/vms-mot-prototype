@@ -1528,3 +1528,67 @@ visitors table:
   name            VARCHAR(200)   — ชื่อเต็ม (computed, backward compat)
   name_en         VARCHAR(200)   — ชื่อเต็ม English (computed)
 ```
+
+---
+
+## ผลการทดสอบ Walk-in Check-in Flow (Counter)
+
+> ทดสอบ: 6 เมษายน 2569
+> Script: `scripts/test-walkin-flow.mjs`
+> Target: `https://vms-prototype-delta.vercel.app`
+> ผลรวม: ✅ ผ่านทุกรายการ
+
+### Counter Walk-in (requireApproval=false) — Phase 1
+
+| # | Endpoint | Method | ผลทดสอบ |
+|---|----------|--------|---------|
+| 1 | `/api/service-points/:id` | GET | ✅ โหลด counter config สำเร็จ |
+| 2 | `/api/visit-purposes` | GET | ✅ โหลด purposes สำเร็จ |
+| 3 | `/api/search/visitors?q=` | GET | ✅ ค้นหา visitor สำเร็จ |
+| 4 | `/api/blocklist/check` | POST | ✅ ตรวจ blocklist สำเร็จ (not blocked) |
+| 5 | `/api/entries` | POST | ✅ สร้าง walk-in entry สำเร็จ (channel=counter, no appointment) |
+| 6 | `/api/entries/today` | GET | ✅ entry ปรากฏใน today list, status=checked-in |
+| 7 | `/api/entries/:id/checkout` | POST | ✅ checkout สำเร็จ, status=checked-out |
+| 8 | `/api/entries/today` | GET | ✅ status เปลี่ยนเป็น checked-out |
+| 9 | `/api/dashboard/kpis` | GET | ✅ KPIs แสดงตัวเลขถูกต้อง |
+
+### Counter Walk-in (requireApproval=true + inline approve) — Phase 2
+
+| # | Endpoint | Method | ผลทดสอบ |
+|---|----------|--------|---------|
+| 1 | `/api/appointments` | POST | ✅ สร้าง pending appointment สำเร็จ (status=pending) |
+| 2 | `/api/appointments/:id/approve` | POST | ✅ admin approve inline สำเร็จ (status=approved) |
+| 3 | `/api/appointments?search=` | GET | ✅ ตรวจยืนยัน appointment approved |
+| 4 | `/api/entries` | POST | ✅ สร้าง entry linked to appointment สำเร็จ |
+| 5 | `/api/entries/:id/checkout` | POST | ✅ checkout สำเร็จ |
+
+### Counter Walk-in (period mode) — Phase 3
+
+| # | Endpoint | Method | ผลทดสอบ |
+|---|----------|--------|---------|
+| 1 | `/api/appointments` | POST | ✅ สร้าง period appointment สำเร็จ (entryMode=period, dateEnd) |
+| 2 | `/api/appointments/:id/approve` | POST | ✅ approve period appointment |
+| 3 | `/api/entries` | POST | ✅ สร้าง entry วันที่ 1 สำเร็จ (status=checked-in) |
+| 4 | `/api/entries` | POST | ✅ ซ้ำวันเดียวกัน → reject 409 `ALREADY_CHECKED_IN_TODAY` |
+| 5 | `/api/entries/:id/checkout` | POST | ✅ checkout entry สำเร็จ |
+
+### Edge Cases — Phase 6
+
+| # | Test Case | ผลทดสอบ |
+|---|-----------|---------|
+| 6a | Single mode duplicate entry (entryMode=single) | ✅ ครั้งแรกสำเร็จ, ครั้งที่ 2 reject 409 `SINGLE_ENTRY_USED` |
+| 6b | Auth limitations documented | ✅ checkout/approve ต้องใช้ staff cookie auth |
+
+### Entry Mode Validation Summary
+
+| entryMode | พฤติกรรม | Error Code | HTTP Status |
+|-----------|---------|------------|:-----------:|
+| `single` | อนุญาต 1 entry เท่านั้น ตลอด appointment | `SINGLE_ENTRY_USED` | 409 |
+| `period` | อนุญาต 1 entry ต่อวัน (ในช่วง dateStart-dateEnd) | `ALREADY_CHECKED_IN_TODAY` | 409 |
+| `period` | หลังวันสิ้นสุด | `APPOINTMENT_EXPIRED` | 410 |
+| `period` | ก่อนวันเริ่มต้น | `BEFORE_DATE_RANGE` | 400 |
+
+### Business Hours Note
+
+- วันหยุดราชการ (เช่น วันจักรี 6 เม.ย.) → appointment ที่ `followBusinessHours=true` ถูก reject ด้วย `BUSINESS_HOURS_CLOSED`
+- Purpose+Dept ที่ `followBusinessHours=false` สามารถนัดหมายได้ทุกวัน

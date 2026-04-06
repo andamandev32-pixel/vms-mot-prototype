@@ -1412,3 +1412,54 @@ Kiosk App                Backend API                     Database               
 | first_name_en | VARCHAR(100) | First Name (English) |
 | last_name_en | VARCHAR(100) | Last Name (English) |
 | name | VARCHAR(200) | ชื่อเต็ม (computed, backward compat) |
+
+---
+
+## ผลการทดสอบ Walk-in Check-in Flow (Kiosk)
+
+> ทดสอบ: 6 เมษายน 2569
+> Script: `scripts/test-walkin-flow.mjs`
+> Target: `https://vms-prototype-delta.vercel.app`
+> ผลรวม: ✅ ผ่านทุกรายการ
+
+### Kiosk Walk-in (requireApproval=false) — Phase 4
+
+| # | Endpoint | Method | Auth | ผลทดสอบ |
+|---|----------|--------|------|---------|
+| 1 | `/api/service-points/:id` | GET | Device Token | ✅ โหลด config สำเร็จ |
+| 2 | `/api/pdpa/accept` | POST | Public | ✅ บันทึก consent สำเร็จ |
+| 3 | `/api/search/visitors?q=` | GET | Device Token | ✅ ค้นหา visitor สำเร็จ |
+| 4 | `/api/blocklist/check` | POST | Device Token | ✅ ตรวจ blocklist สำเร็จ (not blocked) |
+| 5 | `/api/visit-purposes` | GET | Device Token | ✅ โหลด purposes สำเร็จ |
+| 6 | `/api/entries` | POST | Device Token | ✅ สร้าง walk-in entry สำเร็จ (channel=kiosk) |
+| 7 | `/api/entries/today` | GET | Staff Cookie | ✅ entry ปรากฏใน today list |
+| 8 | `/api/entries/:id/checkout` | POST | Staff Cookie | ✅ checkout สำเร็จ (ผ่าน admin) |
+
+### Kiosk Walk-in (requireApproval=true) — Phase 5
+
+| # | Endpoint | Method | Auth | ผลทดสอบ |
+|---|----------|--------|------|---------|
+| 1 | `/api/appointments` | POST | Device Token | ✅ สร้าง pending appointment สำเร็จ |
+| 2 | `/api/appointments?search=` | GET | Device Token | ✅ poll status = pending |
+| 3 | `/api/appointments/:id/approve` | POST | Staff Cookie | ✅ admin approve สำเร็จ |
+| 4 | `/api/appointments?search=` | GET | Device Token | ✅ poll status = approved |
+| 5 | `/api/entries` | POST | Device Token | ✅ check-in linked to appointment สำเร็จ |
+| 6 | `/api/entries/today` | GET | Staff Cookie | ✅ entry ปรากฏใน today list |
+
+### ข้อจำกัดที่พบ (Auth Limitations)
+
+| Endpoint | Kiosk Auth | Staff Cookie | หมายเหตุ |
+|----------|:----------:|:------------:|----------|
+| `POST /api/entries/:id/checkout` | ❌ | ✅ | Kiosk ไม่สามารถ checkout ได้ (ต้องใช้ staff cookie) |
+| `POST /api/appointments/:id/approve` | ❌ | ✅ | Kiosk ไม่สามารถ approve ได้ (ต้องใช้ staff cookie) |
+
+### Bug Fix ที่พบระหว่างทดสอบ
+
+| Issue | รายละเอียด | สถานะ |
+|-------|-----------|-------|
+| `kiosk_devices.token_prefix` | Column เป็น `VARCHAR(10)` แต่ token prefix (`kvms_` + 8 hex = 13 chars) เกิน → 500 Server Error ตอนสร้าง device | ✅ แก้แล้ว → `VARCHAR(20)` |
+
+### Business Hours Note
+
+- ถ้าวันทดสอบเป็นวันหยุด (เช่น วันจักรี) appointment ที่ใช้ `followBusinessHours=true` จะถูก reject
+- Script ใช้ purpose+dept combo ที่ `followBusinessHours=false` เพื่อทดสอบได้ทุกวัน
