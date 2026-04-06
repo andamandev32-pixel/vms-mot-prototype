@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyToken } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
 
 const ok = (data: unknown) =>
   NextResponse.json({ success: true, data });
@@ -24,11 +25,39 @@ export async function POST(request: NextRequest) {
       return err("FORBIDDEN", "คุณไม่มีสิทธิ์ดำเนินการนี้", 403);
     }
 
-    // Mock success — actual webhook verification not yet implemented
+    const config = await prisma.lineOaConfig.findFirst();
+    if (!config?.webhookUrl) {
+      return err("NO_WEBHOOK_URL", "ยังไม่ได้ตั้งค่า Webhook URL");
+    }
+
+    // Test the webhook URL by sending a POST request
+    const testRes = await fetch(config.webhookUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ events: [] }),
+    });
+
+    const verified = testRes.ok;
+    const now = new Date();
+
+    // Update test result in DB
+    await prisma.lineOaConfig.update({
+      where: { id: config.id },
+      data: {
+        lastTestAt: now,
+        lastTestResult: verified
+          ? "success"
+          : `failed (${testRes.status})`,
+      },
+    });
+
     return ok({
-      verified: true,
-      message: "Webhook URL ตรวจสอบสำเร็จ (mock)",
-      verifiedAt: new Date().toISOString(),
+      verified,
+      statusCode: testRes.status,
+      message: verified
+        ? "Webhook URL ตรวจสอบสำเร็จ"
+        : `Webhook URL ตอบกลับ ${testRes.status}`,
+      verifiedAt: now.toISOString(),
     });
   } catch (error) {
     console.error("POST /api/settings/line-oa/verify-webhook error:", error);
