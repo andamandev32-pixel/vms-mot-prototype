@@ -661,3 +661,7 @@ for (const spec of apiSpecs) {
 export function getCounterApiSpec(state: CounterState): CounterApiSpec | undefined {
   return specMap.get(state);
 }
+
+export function getAllCounterApiSpecs(): CounterApiSpec[] {
+  return apiSpecs;
+}
