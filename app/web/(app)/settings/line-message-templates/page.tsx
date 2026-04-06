@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect, MutableRefObject } from "react";
 import { Card, CardContent } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import {
@@ -44,9 +44,10 @@ export default function LineMessageTemplatesPage() {
   const [showApiDoc, setShowApiDoc] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  const updateLineOaMut = useUpdateLineOaSettings();
   const updateFlexMut = useUpdateLineFlexTemplates();
-  const updateEmailMut = useUpdateEmailSettings();
+
+  const lineConfigSaveRef = useRef<(() => Promise<void>) | null>(null);
+  const emailConfigSaveRef = useRef<(() => Promise<void>) | null>(null);
 
   const schema = getSchemaByPageId("line-message-templates");
   const flowData = getFlowByPageId("line-message-templates");
@@ -54,11 +55,13 @@ export default function LineMessageTemplatesPage() {
 
   const handleSave = async () => {
     setSaved(true);
-    // The actual save payload depends on which tab is active; fire a generic save
     try {
-      if (activeMainTab === "line-templates") {
-        // Template data is managed in LineFlexTemplatesTab; this is a top-level trigger
+      if (activeMainTab === "line-config" && lineConfigSaveRef.current) {
+        await lineConfigSaveRef.current();
+      } else if (activeMainTab === "line-templates") {
         await updateFlexMut.mutateAsync({} as any);
+      } else if (activeMainTab === "email-config" && emailConfigSaveRef.current) {
+        await emailConfigSaveRef.current();
       }
     } catch (_) { /* API may not be live yet */ }
     setTimeout(() => setSaved(false), 2000);
@@ -114,9 +117,9 @@ export default function LineMessageTemplatesPage() {
 
       {/* Tab Content */}
       <div className="max-w-[1400px] mx-auto px-6 py-6">
-        {activeMainTab === "line-config" && <LineOaConfigTab />}
+        {activeMainTab === "line-config" && <LineOaConfigTab saveRef={lineConfigSaveRef} />}
         {activeMainTab === "line-templates" && <LineFlexTemplatesTab />}
-        {activeMainTab === "email-config" && <EmailConfigTab />}
+        {activeMainTab === "email-config" && <EmailConfigTab saveRef={emailConfigSaveRef} />}
       </div>
     </div>
   );
@@ -126,21 +129,21 @@ export default function LineMessageTemplatesPage() {
 // TAB 1: LINE OA Config
 // ════════════════════════════════════════════════════
 
-function LineOaConfigTab() {
+function LineOaConfigTab({ saveRef }: { saveRef: MutableRefObject<(() => Promise<void>) | null> }) {
   const { data: lineConfig } = useLineOaSettings();
   const updateLineMut = useUpdateLineOaSettings();
   const testLineMut = useTestLineOa();
   const verifyWebhookMut = useVerifyLineOaWebhook();
-  const [channelId, setChannelId] = useState("1234567890");
-  const [channelSecret, setChannelSecret] = useState("abc123secret");
-  const [accessToken, setAccessToken] = useState("eyJhbGciOiJIUzI1NiJ9...");
-  const [botBasicId, setBotBasicId] = useState("@evms-mots");
-  const [liffAppId, setLiffAppId] = useState("1234567890-abcdefgh");
-  const [liffEndpoint, setLiffEndpoint] = useState("https://vms.mots.go.th/liff");
-  const [webhookUrl] = useState("https://vms.mots.go.th/api/line/webhook");
+  const [channelId, setChannelId] = useState("");
+  const [channelSecret, setChannelSecret] = useState("");
+  const [accessToken, setAccessToken] = useState("");
+  const [botBasicId, setBotBasicId] = useState("");
+  const [liffAppId, setLiffAppId] = useState("");
+  const [liffEndpoint, setLiffEndpoint] = useState("");
+  const [webhookUrl] = useState("https://vms-prototype-delta.vercel.app/api/line/webhook");
   const [webhookActive, setWebhookActive] = useState(true);
-  const [richMenuVisitor, setRichMenuVisitor] = useState("richmenu-visitor-001");
-  const [richMenuOfficer, setRichMenuOfficer] = useState("richmenu-officer-001");
+  const [richMenuVisitor, setRichMenuVisitor] = useState("");
+  const [richMenuOfficer, setRichMenuOfficer] = useState("");
   const [lineActive, setLineActive] = useState(true);
   const [showSecret, setShowSecret] = useState(false);
   const [showToken, setShowToken] = useState(false);
@@ -148,21 +151,35 @@ function LineOaConfigTab() {
   const [testStatus, setTestStatus] = useState<"idle" | "sending" | "success" | "error">("idle");
   const [copied, setCopied] = useState(false);
 
-  // Seed from API
+  // Seed from API — lineConfig is { config: { channelId, ... } }
   const [seeded, setSeeded] = useState(false);
   if (!seeded && lineConfig) {
-    const cfg = lineConfig as any;
-    if (cfg.channelId) setChannelId(cfg.channelId);
-    if (cfg.channelSecret) setChannelSecret(cfg.channelSecret);
-    if (cfg.channelAccessToken) setAccessToken(cfg.channelAccessToken);
-    if (cfg.botBasicId) setBotBasicId(cfg.botBasicId);
-    if (cfg.liffAppId) setLiffAppId(cfg.liffAppId);
-    if (cfg.liffEndpointUrl) setLiffEndpoint(cfg.liffEndpointUrl);
-    if (cfg.richMenuVisitor) setRichMenuVisitor(cfg.richMenuVisitor);
-    if (cfg.richMenuOfficer) setRichMenuOfficer(cfg.richMenuOfficer);
-    if (cfg.isActive !== undefined) setLineActive(cfg.isActive);
+    const cfg = (lineConfig as any)?.config;
+    if (cfg) {
+      if (cfg.channelId) setChannelId(cfg.channelId);
+      if (cfg.channelSecret) setChannelSecret(cfg.channelSecret);
+      if (cfg.channelAccessToken) setAccessToken(cfg.channelAccessToken);
+      if (cfg.botBasicId) setBotBasicId(cfg.botBasicId);
+      if (cfg.liffAppId) setLiffAppId(cfg.liffAppId);
+      if (cfg.liffEndpointUrl) setLiffEndpoint(cfg.liffEndpointUrl);
+      if (cfg.richMenuVisitorId) setRichMenuVisitor(cfg.richMenuVisitorId);
+      if (cfg.richMenuOfficerId) setRichMenuOfficer(cfg.richMenuOfficerId);
+      if (cfg.isActive !== undefined) setLineActive(cfg.isActive);
+    }
     setSeeded(true);
   }
+
+  // Register save function for parent "บันทึก" button
+  useEffect(() => {
+    saveRef.current = async () => {
+      await updateLineMut.mutateAsync({
+        channelId, channelSecret, channelAccessToken: accessToken, botBasicId,
+        liffAppId, liffEndpointUrl: liffEndpoint, webhookActive,
+        richMenuVisitorId: richMenuVisitor, richMenuOfficerId: richMenuOfficer, isActive: lineActive,
+      } as any);
+    };
+    return () => { saveRef.current = null; };
+  });
 
   const copyWebhook = () => { navigator.clipboard.writeText(webhookUrl); setCopied(true); setTimeout(() => setCopied(false), 2000); };
   const sendTest = async () => {
@@ -605,7 +622,7 @@ function LineFlexTemplatesTab() {
 // TAB 3: Email Config & Templates
 // ════════════════════════════════════════════════════
 
-function EmailConfigTab() {
+function EmailConfigTab({ saveRef }: { saveRef: MutableRefObject<(() => Promise<void>) | null> }) {
   const { data: emailConfig } = useEmailSettings();
   const updateEmailMut = useUpdateEmailSettings();
   const testEmailMut = useTestEmailHook();
@@ -637,19 +654,33 @@ function EmailConfigTab() {
   const selectedEmail = emailTemplates.find(t => t.id === selectedEmailId);
 
   // Seed from API
+  // Seed from API — emailConfig is { config: { smtpHost, ... } }
   const [emailSeeded, setEmailSeeded] = useState(false);
   if (!emailSeeded && emailConfig) {
-    const cfg = emailConfig as any;
-    if (cfg.smtpHost) setSmtpHost(cfg.smtpHost);
-    if (cfg.smtpPort) setSmtpPort(cfg.smtpPort);
-    if (cfg.encryption) setEncryption(cfg.encryption);
-    if (cfg.smtpUsername) setSmtpUser(cfg.smtpUsername);
-    if (cfg.fromEmail) setFromEmail(cfg.fromEmail);
-    if (cfg.fromDisplayName) setFromName(cfg.fromDisplayName);
-    if (cfg.replyToEmail) setReplyTo(cfg.replyToEmail);
-    if (cfg.isActive !== undefined) setEmailActive(cfg.isActive);
+    const cfg = (emailConfig as any)?.config;
+    if (cfg) {
+      if (cfg.smtpHost) setSmtpHost(cfg.smtpHost);
+      if (cfg.smtpPort) setSmtpPort(cfg.smtpPort);
+      if (cfg.encryption) setEncryption(cfg.encryption);
+      if (cfg.smtpUsername) setSmtpUser(cfg.smtpUsername);
+      if (cfg.fromEmail) setFromEmail(cfg.fromEmail);
+      if (cfg.fromDisplayName) setFromName(cfg.fromDisplayName);
+      if (cfg.replyToEmail) setReplyTo(cfg.replyToEmail);
+      if (cfg.isActive !== undefined) setEmailActive(cfg.isActive);
+    }
     setEmailSeeded(true);
   }
+
+  // Register save function for parent "บันทึก" button
+  useEffect(() => {
+    saveRef.current = async () => {
+      await updateEmailMut.mutateAsync({
+        smtpHost, smtpPort, encryption, smtpUsername: smtpUser, smtpPassword: smtpPass,
+        fromEmail, fromDisplayName: fromName, replyToEmail: replyTo, isActive: emailActive,
+      } as any);
+    };
+    return () => { saveRef.current = null; };
+  });
 
   const sendTest = async () => {
     if (!testEmail) return;

@@ -49,7 +49,7 @@ export default function LineOaConfigPage() {
   const [liffEndpointUrl, setLiffEndpointUrl] = useState("https://evms.mots.go.th/liff");
 
   /* ── Card 3: Webhook ── */
-  const webhookUrl = "https://evms.mots.go.th/api/line/webhook";
+  const webhookUrl = "https://vms-prototype-delta.vercel.app/api/line/webhook";
   const [webhookActive, setWebhookActive] = useState(true);
   const [copied, setCopied] = useState(false);
   const [webhookChecking, setWebhookChecking] = useState(false);
@@ -64,19 +64,21 @@ export default function LineOaConfigPage() {
   const [testSending, setTestSending] = useState(false);
   const [testResult, setTestResult] = useState<"success" | null>(null);
 
-  /* ── Seed from API ── */
+  /* ── Seed from API — lineConfig is { config: { channelId, ... } } ── */
   const [seeded, setSeeded] = useState(false);
   if (!seeded && lineConfig) {
-    const cfg = lineConfig as any;
-    if (cfg.channelId) setChannelId(cfg.channelId);
-    if (cfg.channelSecret) setChannelSecret(cfg.channelSecret);
-    if (cfg.channelAccessToken) setChannelAccessToken(cfg.channelAccessToken);
-    if (cfg.botBasicId) setBotBasicId(cfg.botBasicId);
-    if (cfg.liffAppId) setLiffAppId(cfg.liffAppId);
-    if (cfg.liffEndpointUrl) setLiffEndpointUrl(cfg.liffEndpointUrl);
-    if (cfg.richMenuVisitor) setRichMenuVisitor(cfg.richMenuVisitor);
-    if (cfg.richMenuOfficer) setRichMenuOfficer(cfg.richMenuOfficer);
-    if (cfg.isActive !== undefined) setIsActive(cfg.isActive);
+    const cfg = (lineConfig as any)?.config;
+    if (cfg) {
+      if (cfg.channelId) setChannelId(cfg.channelId);
+      if (cfg.channelSecret) setChannelSecret(cfg.channelSecret);
+      if (cfg.channelAccessToken) setChannelAccessToken(cfg.channelAccessToken);
+      if (cfg.botBasicId) setBotBasicId(cfg.botBasicId);
+      if (cfg.liffAppId) setLiffAppId(cfg.liffAppId);
+      if (cfg.liffEndpointUrl) setLiffEndpointUrl(cfg.liffEndpointUrl);
+      if (cfg.richMenuVisitorId) setRichMenuVisitor(cfg.richMenuVisitorId);
+      if (cfg.richMenuOfficerId) setRichMenuOfficer(cfg.richMenuOfficerId);
+      if (cfg.isActive !== undefined) setIsActive(cfg.isActive);
+    }
     setSeeded(true);
   }
 
@@ -116,7 +118,7 @@ export default function LineOaConfigPage() {
       await updateLineMut.mutateAsync({
         channelId, channelSecret, channelAccessToken, botBasicId,
         liffAppId, liffEndpointUrl, webhookActive,
-        richMenuVisitor, richMenuOfficer, isActive,
+        richMenuVisitorId: richMenuVisitor, richMenuOfficerId: richMenuOfficer, isActive,
       } as any);
     } catch (_) { /* API may not be live yet */ }
     alert("บันทึกการตั้งค่าสำเร็จ");
