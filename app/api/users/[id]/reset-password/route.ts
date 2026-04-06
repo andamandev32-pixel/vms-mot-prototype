@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyToken } from "@/lib/auth";
+import { verifyToken, hashPassword } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import crypto from "crypto";
 
@@ -39,7 +39,27 @@ export async function POST(
       return err("USER_NOT_FOUND", "ไม่พบผู้ใช้", 404);
     }
 
-    // Generate reset token (48 bytes = 64 chars hex)
+    // ─── Option A: Admin sets password directly ───
+    const body = await request.json().catch(() => ({}));
+    const { newPassword } = body as { newPassword?: string };
+
+    if (newPassword) {
+      if (newPassword.length < 8) {
+        return err("WEAK_PASSWORD", "รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร");
+      }
+      const passwordHash = await hashPassword(newPassword);
+      await prisma.userAccount.update({
+        where: { id: userId },
+        data: {
+          passwordHash,
+          resetToken: null,
+          resetTokenExpires: null,
+        },
+      });
+      return ok({ message: "เปลี่ยนรหัสผ่านเรียบร้อยแล้ว" });
+    }
+
+    // ─── Option B: Generate reset token & send email ───
     const resetToken = crypto.randomBytes(48).toString("hex");
     const resetTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 ชั่วโมง
 

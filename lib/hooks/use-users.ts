@@ -84,7 +84,7 @@ export function useChangePassword() {
 
 export function useResetUserPassword() {
   return useMutation({
-    mutationFn: ({ id, ...data }: { id: number; newPassword: string }) =>
+    mutationFn: ({ id, ...data }: { id: number; newPassword?: string }) =>
       apiPost(`/api/users/${id}/reset-password`, data),
   });
 }

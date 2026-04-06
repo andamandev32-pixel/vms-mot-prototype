@@ -22,10 +22,12 @@ const PAGE_SIZE_OPTIONS = [5, 10, 20, 50];
 import { cn } from "@/lib/utils";
 import { roleConfig, type AppRole } from "@/lib/auth-config";
 import { useUsers, useCreateUser, useUpdateUserRole, useLockUser, useResetUserPassword, useUnlinkLine } from "@/lib/hooks";
+import { useDepartments } from "@/lib/hooks/use-settings";
 
 // ===== Mock User Accounts =====
 interface UserAccount {
   id: number;
+  username?: string;
   email: string;
   firstName: string;
   lastName: string;
@@ -89,6 +91,8 @@ export default function UserManagementPage() {
       lineLinkedAt: u.lineLinkedAt ? new Date(u.lineLinkedAt).toISOString().slice(0, 10) : undefined,
     }));
   })();
+  const { data: deptData } = useDepartments();
+  const departments = ((deptData as any)?.departments ?? []).filter((d: any) => d.isActive);
   const createUserMut = useCreateUser();
   const updateRoleMut = useUpdateUserRole();
   const lockUserMut = useLockUser();
@@ -115,13 +119,60 @@ export default function UserManagementPage() {
   const [openMenuId, setOpenMenuId] = useState<number | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [newUser, setNewUser] = useState({
+    username: "",
     firstName: "", lastName: "", email: "", phone: "",
     password: "",
     userType: "staff" as "staff" | "visitor",
     role: "staff" as AppRole,
-    department: "", company: "",
+    departmentId: 0, company: "",
   });
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [touched, setTouched] = useState<Record<string, boolean>>({});
+  const [resetMode, setResetMode] = useState<"choose" | "email" | "direct" | null>(null);
+  const [directPassword, setDirectPassword] = useState("");
   const menuRef = useRef<HTMLDivElement>(null);
+
+  const validateField = (field: string, value: string) => {
+    switch (field) {
+      case "username":
+        if (newUser.userType === "staff" && value && value.length < 4) return "ต้องมีอย่างน้อย 4 ตัวอักษร";
+        if (value && !/^[a-zA-Z0-9_-]*$/.test(value)) return "ใช้ได้เฉพาะ a-z, 0-9, _ และ -";
+        return "";
+      case "firstName":
+        return !value.trim() ? "กรุณากรอกชื่อ" : "";
+      case "email":
+        if (!value.trim()) return "กรุณากรอกอีเมล";
+        return !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) ? "รูปแบบอีเมลไม่ถูกต้อง" : "";
+      case "phone":
+        if (!value) return "";
+        return !/^0\d{8,9}$/.test(value) ? "รูปแบบเบอร์โทรไม่ถูกต้อง (เช่น 0812345678)" : "";
+      case "password":
+        if (!value) return "กรุณากรอกรหัสผ่าน";
+        return value.length < 8 ? "รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร" : "";
+      default:
+        return "";
+    }
+  };
+
+  const handleBlur = (field: string, value: string) => {
+    setTouched((p) => ({ ...p, [field]: true }));
+    setFieldErrors((p) => ({ ...p, [field]: validateField(field, value) }));
+  };
+
+  const getError = (field: string) => touched[field] ? fieldErrors[field] : "";
+
+  const isFormValid = () => {
+    const u = newUser;
+    if (!u.firstName.trim() || !u.email.trim() || !u.password.trim()) return false;
+    if (u.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(u.email)) return false;
+    if (u.password.length < 8) return false;
+    if (u.phone && !/^0\d{8,9}$/.test(u.phone)) return false;
+    if (u.userType === "staff") {
+      if (u.username && (u.username.length < 4 || !/^[a-zA-Z0-9_-]+$/.test(u.username))) return false;
+      if (!u.departmentId) return false;
+    }
+    return true;
+  };
 
   // Close menu on click outside
   useEffect(() => {
@@ -197,21 +248,37 @@ export default function UserManagementPage() {
     showToast(newIsActive ? "ปลดล็อกบัญชีสำเร็จ" : "ล็อกบัญชีสำเร็จ");
   };
 
-  const handleResetPassword = async (userId: number) => {
+  const handleResetPasswordEmail = async (userId: number) => {
     const user = users.find((u) => u.id === userId);
     try {
-      await resetPasswordMut.mutateAsync({ id: userId, newPassword: "Reset1234" } as any);
+      await resetPasswordMut.mutateAsync({ id: userId } as any);
       showToast(`ส่งลิงก์รีเซ็ตรหัสผ่านไปที่ ${user?.email} แล้ว`);
     } catch {
-      showToast(`รีเซ็ตรหัสผ่านสำเร็จ (ชั่วคราว: Reset1234)`);
+      showToast("เกิดข้อผิดพลาดในการส่งลิงก์รีเซ็ต");
     }
     setConfirmAction(null);
+    setResetMode(null);
+  };
+
+  const handleResetPasswordDirect = async (userId: number) => {
+    if (directPassword.length < 8) return;
+    try {
+      await resetPasswordMut.mutateAsync({ id: userId, newPassword: directPassword } as any);
+      showToast("เปลี่ยนรหัสผ่านสำเร็จ");
+    } catch {
+      showToast("เกิดข้อผิดพลาดในการเปลี่ยนรหัสผ่าน");
+    }
+    setConfirmAction(null);
+    setResetMode(null);
+    setDirectPassword("");
   };
 
   const handleCreateUser = async () => {
-    if (!newUser.firstName.trim() || !newUser.email.trim() || !newUser.password.trim()) return;
+    if (!isFormValid()) return;
+    const selectedDept = departments.find((d: any) => d.id === newUser.departmentId);
     const created: UserAccount = {
-      id: Math.max(...users.map((u) => u.id)) + 1,
+      id: Math.max(...users.map((u) => u.id), 0) + 1,
+      username: newUser.username || undefined,
       email: newUser.email,
       firstName: newUser.firstName,
       lastName: newUser.lastName,
@@ -223,13 +290,19 @@ export default function UserManagementPage() {
       lastLoginAt: null,
       createdAt: new Date().toISOString().slice(0, 10),
       refName: newUser.userType === "staff" ? `${newUser.firstName} ${newUser.lastName}` : undefined,
-      department: newUser.userType === "staff" ? newUser.department : undefined,
+      department: newUser.userType === "staff" ? selectedDept?.name : undefined,
       company: newUser.userType === "visitor" ? newUser.company : undefined,
     };
-    await createUserMut.mutateAsync(newUser as any);
+    await createUserMut.mutateAsync({
+      ...newUser,
+      username: newUser.username || undefined,
+      department: selectedDept?.name || undefined,
+    } as any);
     setUsers((prev) => [created, ...prev]);
     setShowAddModal(false);
-    setNewUser({ firstName: "", lastName: "", email: "", phone: "", password: "", userType: "staff", role: "staff", department: "", company: "" });
+    setNewUser({ username: "", firstName: "", lastName: "", email: "", phone: "", password: "", userType: "staff", role: "staff", departmentId: 0, company: "" });
+    setFieldErrors({});
+    setTouched({});
     showToast(`สร้างผู้ใช้ ${created.firstName} ${created.lastName} สำเร็จ`);
   };
 
@@ -581,7 +654,7 @@ export default function UserManagementPage() {
               </div>
             </div>
 
-            <div className="space-y-4">
+            <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-1">
               {/* User Type */}
               <div>
                 <label className="block text-xs font-medium uppercase text-text-secondary mb-1.5">ประเภทผู้ใช้</label>
@@ -601,7 +674,8 @@ export default function UserManagementPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium uppercase text-text-secondary mb-1.5">ชื่อ <span className="text-error">*</span></label>
-                  <input type="text" placeholder="ชื่อ" value={newUser.firstName} onChange={(e) => setNewUser((p) => ({ ...p, firstName: e.target.value }))} className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
+                  <input type="text" placeholder="ชื่อ" value={newUser.firstName} onChange={(e) => setNewUser((p) => ({ ...p, firstName: e.target.value }))} onBlur={() => handleBlur("firstName", newUser.firstName)} className={cn("w-full px-3 py-2.5 text-sm border rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary", getError("firstName") ? "border-red-400" : "border-gray-200")} />
+                  {getError("firstName") && <p className="text-xs text-error mt-1">{getError("firstName")}</p>}
                 </div>
                 <div>
                   <label className="block text-xs font-medium uppercase text-text-secondary mb-1.5">นามสกุล</label>
@@ -609,39 +683,59 @@ export default function UserManagementPage() {
                 </div>
               </div>
 
+              {/* Username (staff only) */}
+              {newUser.userType === "staff" && (
+                <div>
+                  <label className="block text-xs font-medium uppercase text-text-secondary mb-1.5">Username</label>
+                  <input type="text" placeholder="ภาษาอังกฤษ เช่น john_doe" value={newUser.username} onChange={(e) => setNewUser((p) => ({ ...p, username: e.target.value.toLowerCase() }))} onBlur={() => handleBlur("username", newUser.username)} className={cn("w-full px-3 py-2.5 text-sm border rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary", getError("username") ? "border-red-400" : "border-gray-200")} />
+                  <p className={cn("text-xs mt-1", getError("username") ? "text-error" : "text-text-muted")}>{getError("username") || "ใช้ a-z, 0-9, _ หรือ - อย่างน้อย 4 ตัว"}</p>
+                </div>
+              )}
+
               {/* Email */}
               <div>
                 <label className="block text-xs font-medium uppercase text-text-secondary mb-1.5">อีเมล <span className="text-error">*</span></label>
-                <input type="email" placeholder="email@example.com" value={newUser.email} onChange={(e) => setNewUser((p) => ({ ...p, email: e.target.value }))} className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
+                <input type="email" placeholder="email@example.com" value={newUser.email} onChange={(e) => setNewUser((p) => ({ ...p, email: e.target.value }))} onBlur={() => handleBlur("email", newUser.email)} className={cn("w-full px-3 py-2.5 text-sm border rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary", getError("email") ? "border-red-400" : "border-gray-200")} />
+                {getError("email") && <p className="text-xs text-error mt-1">{getError("email")}</p>}
               </div>
 
               {/* Password */}
               <div>
                 <label className="block text-xs font-medium uppercase text-text-secondary mb-1.5">รหัสผ่าน <span className="text-error">*</span></label>
-                <input type="password" placeholder="กรอกรหัสผ่าน" value={newUser.password} onChange={(e) => setNewUser((p) => ({ ...p, password: e.target.value }))} className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
+                <input type="password" placeholder="กรอกรหัสผ่าน (อย่างน้อย 8 ตัวอักษร)" value={newUser.password} onChange={(e) => setNewUser((p) => ({ ...p, password: e.target.value }))} onBlur={() => handleBlur("password", newUser.password)} className={cn("w-full px-3 py-2.5 text-sm border rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary", getError("password") ? "border-red-400" : "border-gray-200")} />
+                {getError("password") && <p className="text-xs text-error mt-1">{getError("password")}</p>}
               </div>
 
               {/* Phone */}
               <div>
                 <label className="block text-xs font-medium uppercase text-text-secondary mb-1.5">เบอร์โทรศัพท์</label>
-                <input type="tel" placeholder="0xx-xxx-xxxx" value={newUser.phone} onChange={(e) => setNewUser((p) => ({ ...p, phone: e.target.value }))} className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
+                <input type="tel" inputMode="numeric" placeholder="0812345678" maxLength={10} value={newUser.phone} onChange={(e) => setNewUser((p) => ({ ...p, phone: e.target.value.replace(/\D/g, "") }))} onBlur={() => handleBlur("phone", newUser.phone)} className={cn("w-full px-3 py-2.5 text-sm border rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary", getError("phone") ? "border-red-400" : "border-gray-200")} />
+                {getError("phone") && <p className="text-xs text-error mt-1">{getError("phone")}</p>}
               </div>
 
-              {/* Role */}
-              <div>
-                <label className="block text-xs font-medium uppercase text-text-secondary mb-1.5">สิทธิ์ (Role)</label>
-                <select value={newUser.role} onChange={(e) => setNewUser((p) => ({ ...p, role: e.target.value as AppRole }))} className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary">
-                  {allRoles.filter((r) => newUser.userType === "visitor" ? r === "visitor" : r !== "visitor").map((r) => (
-                    <option key={r} value={r}>{roleConfig[r].label} ({roleConfig[r].labelEn})</option>
-                  ))}
-                </select>
-              </div>
+              {/* Role (staff only — visitor is fixed) */}
+              {newUser.userType === "staff" && (
+                <div>
+                  <label className="block text-xs font-medium uppercase text-text-secondary mb-1.5">สิทธิ์ (Role)</label>
+                  <select value={newUser.role} onChange={(e) => setNewUser((p) => ({ ...p, role: e.target.value as AppRole }))} className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary">
+                    {allRoles.filter((r) => r !== "visitor").map((r) => (
+                      <option key={r} value={r}>{roleConfig[r].label} ({roleConfig[r].labelEn})</option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
-              {/* Department (staff) or Company (visitor) */}
+              {/* Department dropdown (staff) or Company text (visitor) */}
               {newUser.userType === "staff" ? (
                 <div>
-                  <label className="block text-xs font-medium uppercase text-text-secondary mb-1.5">แผนก / หน่วยงาน</label>
-                  <input type="text" placeholder="เช่น กองกิจการท่องเที่ยว" value={newUser.department} onChange={(e) => setNewUser((p) => ({ ...p, department: e.target.value }))} className="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary" />
+                  <label className="block text-xs font-medium uppercase text-text-secondary mb-1.5">แผนก / หน่วยงาน <span className="text-error">*</span></label>
+                  <select value={newUser.departmentId} onChange={(e) => setNewUser((p) => ({ ...p, departmentId: Number(e.target.value) }))} className={cn("w-full px-3 py-2.5 text-sm border rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary", touched["departmentId"] && !newUser.departmentId ? "border-red-400" : "border-gray-200")} onBlur={() => setTouched((p) => ({ ...p, departmentId: true }))}>
+                    <option value={0}>— เลือกแผนก / หน่วยงาน —</option>
+                    {departments.map((d: any) => (
+                      <option key={d.id} value={d.id}>{d.name}</option>
+                    ))}
+                  </select>
+                  {touched["departmentId"] && !newUser.departmentId && <p className="text-xs text-error mt-1">กรุณาเลือกแผนก</p>}
                 </div>
               ) : (
                 <div>
@@ -653,7 +747,7 @@ export default function UserManagementPage() {
               {/* Info box */}
               <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 text-xs text-blue-700 flex items-start gap-2">
                 <Mail size={14} className="shrink-0 mt-0.5" />
-                <span>ผู้ใช้สามารถเข้าสู่ระบบด้วยอีเมลและรหัสผ่านที่ตั้งไว้ได้ทันที</span>
+                <span>ผู้ใช้สามารถเข้าสู่ระบบด้วย {newUser.userType === "staff" ? "Username หรือ" : ""}อีเมลและรหัสผ่านที่ตั้งไว้ได้ทันที</span>
               </div>
 
               {/* Actions */}
@@ -663,7 +757,7 @@ export default function UserManagementPage() {
                   variant="primary"
                   fullWidth
                   onClick={handleCreateUser}
-                  disabled={!newUser.firstName.trim() || !newUser.email.trim() || !newUser.password.trim()}
+                  disabled={!isFormValid()}
                 >
                   <UserPlus size={16} className="mr-1.5" /> สร้างผู้ใช้
                 </Button>
@@ -707,10 +801,30 @@ export default function UserManagementPage() {
                       <span>ผู้ใช้จะไม่สามารถเข้าสู่ระบบได้จนกว่าจะปลดล็อก</span>
                     </div>
                   )}
-                  {isReset && (
+                  {isReset && !resetMode && (
+                    <div className="space-y-3 mb-4">
+                      <p className="text-xs text-text-muted text-center mb-2">เลือกวิธีรีเซ็ตรหัสผ่าน</p>
+                      <button onClick={() => setResetMode("email")} className="w-full flex items-center gap-3 p-3 rounded-xl border border-gray-200 hover:border-amber-300 hover:bg-amber-50 transition-colors text-left">
+                        <div className="w-9 h-9 rounded-lg bg-amber-100 flex items-center justify-center shrink-0"><Mail size={16} className="text-amber-600" /></div>
+                        <div><p className="text-sm font-medium text-text-primary">ส่งลิงก์รีเซ็ตทางอีเมล</p><p className="text-xs text-text-muted">ส่งลิงก์ไปที่ {user.email}</p></div>
+                      </button>
+                      <button onClick={() => setResetMode("direct")} className="w-full flex items-center gap-3 p-3 rounded-xl border border-gray-200 hover:border-emerald-300 hover:bg-emerald-50 transition-colors text-left">
+                        <div className="w-9 h-9 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0"><KeyRound size={16} className="text-emerald-600" /></div>
+                        <div><p className="text-sm font-medium text-text-primary">ตั้งรหัสผ่านใหม่โดยตรง</p><p className="text-xs text-text-muted">แอดมินกำหนดรหัสผ่านใหม่ได้เลย</p></div>
+                      </button>
+                    </div>
+                  )}
+                  {isReset && resetMode === "email" && (
                     <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4 text-xs text-amber-700 flex items-start gap-2">
                       <Mail size={14} className="shrink-0 mt-0.5" />
                       <span>ระบบจะส่งลิงก์รีเซ็ตรหัสผ่านไปที่อีเมลของผู้ใช้</span>
+                    </div>
+                  )}
+                  {isReset && resetMode === "direct" && (
+                    <div className="mb-4 space-y-2">
+                      <label className="block text-xs font-medium text-text-secondary">รหัสผ่านใหม่</label>
+                      <input type="password" placeholder="อย่างน้อย 8 ตัวอักษร" value={directPassword} onChange={(e) => setDirectPassword(e.target.value)} className={cn("w-full px-3 py-2.5 text-sm border rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary", directPassword && directPassword.length < 8 ? "border-red-400" : "border-gray-200")} />
+                      {directPassword && directPassword.length < 8 && <p className="text-xs text-error">รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร</p>}
                     </div>
                   )}
                   {isUnlinkLine && (
@@ -720,18 +834,23 @@ export default function UserManagementPage() {
                     </div>
                   )}
                   <div className="flex gap-3">
-                    <Button variant="outline" fullWidth onClick={() => setConfirmAction(null)}>ยกเลิก</Button>
-                    <Button
-                      variant={isLock || isUnlinkLine ? "destructive" : "primary"}
-                      fullWidth
-                      onClick={() => {
-                        if (isLock || isUnlock) handleToggleLock(confirmAction.id);
-                        else if (isUnlinkLine) handleUnlinkLine(confirmAction.id);
-                        else handleResetPassword(confirmAction.id);
-                      }}
-                    >
-                      {isLock ? "ล็อกบัญชี" : isUnlock ? "ปลดล็อก" : isUnlinkLine ? "ยกเลิกผูก LINE" : "ส่งลิงก์รีเซ็ต"}
-                    </Button>
+                    <Button variant="outline" fullWidth onClick={() => { setConfirmAction(null); setResetMode(null); setDirectPassword(""); }}>ยกเลิก</Button>
+                    {/* Non-reset actions or reset with mode selected */}
+                    {(!isReset || resetMode) && (
+                      <Button
+                        variant={isLock || isUnlinkLine ? "destructive" : "primary"}
+                        fullWidth
+                        disabled={isReset && resetMode === "direct" && directPassword.length < 8}
+                        onClick={() => {
+                          if (isLock || isUnlock) handleToggleLock(confirmAction.id);
+                          else if (isUnlinkLine) handleUnlinkLine(confirmAction.id);
+                          else if (resetMode === "email") handleResetPasswordEmail(confirmAction.id);
+                          else if (resetMode === "direct") handleResetPasswordDirect(confirmAction.id);
+                        }}
+                      >
+                        {isLock ? "ล็อกบัญชี" : isUnlock ? "ปลดล็อก" : isUnlinkLine ? "ยกเลิกผูก LINE" : resetMode === "direct" ? "เปลี่ยนรหัสผ่าน" : "ส่งลิงก์รีเซ็ต"}
+                      </Button>
+                    )}
                   </div>
                 </>
               );
