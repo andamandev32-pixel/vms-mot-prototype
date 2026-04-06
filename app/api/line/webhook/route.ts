@@ -92,7 +92,18 @@ async function handleMessageEvent(event: LineEvent, accessToken: string) {
   if (message.type === "text") {
     const userText = (message.text || "").trim().toLowerCase();
 
-    if (userText === "สวัสดี" || userText === "hello") {
+    if (userText === "myid" || userText === "id") {
+      await replyMessage(
+        replyToken,
+        [
+          {
+            type: "text",
+            text: `🆔 Your LINE User ID:\n${source?.userId || "ไม่พบ"}`,
+          },
+        ],
+        accessToken
+      );
+    } else if (userText === "สวัสดี" || userText === "hello") {
       const profile = source?.userId
         ? await getProfile(source.userId, accessToken)
         : null;
@@ -113,7 +124,7 @@ async function handleMessageEvent(event: LineEvent, accessToken: string) {
         [
           {
             type: "text",
-            text: "📋 คำสั่งที่ใช้ได้:\n• สวัสดี — ทักทาย\n• help — แสดงเมนูนี้\n• เวลา — แสดงเวลาปัจจุบัน\n• สถานะ — ตรวจสอบสถานะการลงทะเบียน",
+            text: "📋 คำสั่งที่ใช้ได้:\n• สวัสดี — ทักทาย\n• help — แสดงเมนูนี้\n• เวลา — แสดงเวลาปัจจุบัน\n• สถานะ — ตรวจสอบสถานะการลงทะเบียน\n• myid — แสดง LINE User ID ของคุณ",
           },
         ],
         accessToken
