@@ -32,7 +32,15 @@ function verifySignature(
     .createHmac("SHA256", channelSecret)
     .update(rawBody)
     .digest("base64");
-  return hash === signature;
+  // Use timing-safe comparison to prevent timing attacks
+  try {
+    const a = Buffer.from(hash);
+    const b = Buffer.from(signature);
+    if (a.length !== b.length) return false;
+    return crypto.timingSafeEqual(a, b);
+  } catch {
+    return false;
+  }
 }
 
 async function replyMessage(
@@ -280,14 +288,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ status: "error", message: "Not configured" }, { status: 500 });
     }
 
-    // Verify signature
-    if (!signature || !verifySignature(rawBody, signature, config.channelSecret)) {
-      console.warn("[LINE Webhook] Invalid signature");
+    const body = JSON.parse(rawBody);
+    const events: LineEvent[] = body.events || [];
+
+    // For LINE webhook verification (empty events), be lenient with signature
+    // to handle edge cases where body encoding differs
+    if (!signature) {
+      console.warn("[LINE Webhook] No signature header");
       return NextResponse.json({ error: "Invalid signature" }, { status: 403 });
     }
 
-    const body = JSON.parse(rawBody);
-    const events: LineEvent[] = body.events || [];
+    if (!verifySignature(rawBody, signature, config.channelSecret)) {
+      console.warn("[LINE Webhook] Signature mismatch", {
+        bodyLength: rawBody.length,
+        secretLength: config.channelSecret.length,
+        signatureLength: signature.length,
+      });
+      return NextResponse.json({ error: "Invalid signature" }, { status: 403 });
+    }
 
     if (events.length === 0) {
       // LINE sends empty events for webhook verification
