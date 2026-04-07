@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyToken } from "@/lib/auth";
+import { getStaffOrKiosk } from "@/lib/kiosk-auth";
 import { prisma } from "@/lib/prisma";
 import { generateDeviceToken } from "@/lib/kiosk-auth";
 
@@ -16,12 +17,12 @@ async function getAuthUser(request: NextRequest) {
 }
 
 // ─────────────────────────────────────────────────────
-// GET /api/service-points — รายการจุดบริการทั้งหมด (any authenticated user)
+// GET /api/service-points — รายการจุดบริการทั้งหมด (staff หรือ kiosk)
 // ─────────────────────────────────────────────────────
 export async function GET(request: NextRequest) {
   try {
-    const user = await getAuthUser(request);
-    if (!user) {
+    const auth = await getStaffOrKiosk(request);
+    if (!auth) {
       return err("UNAUTHORIZED", "กรุณาเข้าสู่ระบบ", 401);
     }
 
