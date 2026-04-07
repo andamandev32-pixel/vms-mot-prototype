@@ -1,12 +1,14 @@
 "use client";
 
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   useServicePoints,
   useCreateServicePoint,
   useUpdateServicePoint,
   useDeleteServicePoint,
 } from "@/lib/hooks";
+import { apiPost } from "@/lib/hooks/use-api";
 import Topbar from "@/components/web/Topbar";
 import { DatabaseSchemaModal, DbSchemaButton } from "@/components/web/DatabaseSchemaModal";
 import { FlowchartModal, FlowRulesButton } from "@/components/web/FlowchartModal";
@@ -57,6 +59,8 @@ import {
   X,
   Star,
   Users,
+  Copy,
+  ClipboardCheck,
 } from "lucide-react";
 import {
   servicePoints,
@@ -97,6 +101,67 @@ function TypeBadge({ type }: { type: ServicePointType }) {
   );
 }
 
+/* ── Device Token Section (kiosk only) ── */
+function DeviceTokenSection({ sp }: { sp: any }) {
+  const qc = useQueryClient();
+  const [copied, setCopied] = useState(false);
+  const [generating, setGenerating] = useState(false);
+  const token: string | null = sp.deviceToken ?? null;
+
+  const handleCopy = async () => {
+    if (!token) return;
+    await navigator.clipboard.writeText(token);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleGenerate = async () => {
+    setGenerating(true);
+    try {
+      await apiPost("/api/kiosk-devices", {
+        name: sp.name,
+        serialNumber: sp.serialNumber,
+        servicePointId: sp.id,
+      });
+      qc.invalidateQueries({ queryKey: ["service-points"] });
+    } catch (e) {
+      console.error("Failed to generate device token:", e);
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  if (!token) {
+    return (
+      <div className="col-span-2 mt-1">
+        <button
+          onClick={handleGenerate}
+          disabled={generating}
+          className="inline-flex items-center gap-1.5 text-[11px] font-medium text-primary hover:text-primary-dark transition-colors disabled:opacity-50"
+        >
+          <KeyRound size={12} />
+          {generating ? "กำลังสร้าง..." : "สร้าง Device Token"}
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-2 col-span-2 mt-1">
+      <KeyRound size={13} className="text-primary shrink-0" />
+      <code className="text-[11px] font-mono bg-gray-100 px-2 py-1 rounded text-text-secondary truncate max-w-[220px]" title={token}>
+        {token}
+      </code>
+      <button
+        onClick={handleCopy}
+        className="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:text-primary-dark transition-colors"
+      >
+        {copied ? <><ClipboardCheck size={12} /> Copied!</> : <><Copy size={12} /> Copy</>}
+      </button>
+    </div>
+  );
+}
+
 /* ══════════════════════════════════════════════════
    PAGE
    ══════════════════════════════════════════════════ */
@@ -113,6 +178,7 @@ export default function ServicePointsSettingsPage() {
     ...sp,
     allowedPurposeIds: sp.servicePointPurposes?.map((spp: any) => spp.visitPurpose?.id ?? spp.visitPurposeId) ?? sp.allowedPurposeIds ?? [],
     allowedDocumentIds: sp.servicePointDocuments?.map((spd: any) => spd.identityDocumentType?.id ?? spd.identityDocumentTypeId) ?? sp.allowedDocumentIds ?? [],
+    deviceToken: sp.kioskDevices?.[0]?.token ?? null,
   })) as ServicePoint[];
   const createMut = useCreateServicePoint();
   const updateMut = useUpdateServicePoint();
@@ -288,6 +354,10 @@ export default function ServicePointsSettingsPage() {
                       <div className="flex items-start gap-1.5 text-warning col-span-2">
                         <StickyNote size={13} className="mt-0.5" /> {sp.notes}
                       </div>
+                    )}
+                    {/* Device Token (kiosk only) */}
+                    {sp.type === "kiosk" && (
+                      <DeviceTokenSection sp={sp} />
                     )}
                   </div>
 

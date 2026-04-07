@@ -77,6 +77,7 @@ export async function POST(request: NextRequest) {
         name: name.trim(),
         serialNumber: serialNumber.trim(),
         servicePointId,
+        token,
         tokenHash,
         tokenPrefix,
         registeredById: user.id,

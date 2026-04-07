@@ -39,7 +39,7 @@ export async function POST(
 
     await prisma.kioskDevice.update({
       where: { id: deviceId },
-      data: { tokenHash, tokenPrefix, status: "active" },
+      data: { token, tokenHash, tokenPrefix, status: "active" },
     });
 
     return ok({

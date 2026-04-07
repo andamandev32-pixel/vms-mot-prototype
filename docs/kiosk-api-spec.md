@@ -28,17 +28,27 @@ X-Kiosk-Id: <service_point_id>
 
 ### การลงทะเบียน Device
 
-1. Admin เรียก `POST /api/kiosk-devices` → ได้ raw token **ครั้งเดียว**
-2. ที่ Kiosk เปิด Settings (ใช้ adminPin) → ใส่ token ใน Device Token section
-3. Token เก็บใน localStorage (`evms_kiosk_device_token`)
-4. ทุก API call จะแนบ `Authorization: Bearer <token>` อัตโนมัติ
+**วิธีที่ 1 — Auto-generate ตอนสร้างจุดบริการ (แนะนำ)**
+1. Admin สร้าง Service Point ประเภท "kiosk" ที่หน้า `/web/settings/service-points`
+2. ระบบจะ auto-create KioskDevice + generate token อัตโนมัติ
+3. Token แสดงในการ์ดจุดบริการ พร้อมปุ่ม **Copy** ให้ copy ไปใช้งาน
+
+**วิธีที่ 2 — สร้างทีหลังจากหน้า Settings**
+1. ที่หน้า `/web/settings/service-points` กดปุ่ม **"สร้าง Device Token"** ในการ์ด Kiosk
+2. ระบบจะเรียก `POST /api/kiosk-devices` → สร้าง token ให้
+
+**ตั้งค่าที่ Kiosk**
+1. ที่ Kiosk เปิด Settings (ใช้ adminPin) → ใส่ token ใน Device Token section
+2. Token เก็บใน localStorage (`evms_kiosk_device_token`)
+3. ทุก API call จะแนบ `Authorization: Bearer <token>` อัตโนมัติ
 
 ### Auth Flow ใน API Routes
 
-ทุก endpoint รองรับ 3 แบบ (เช็คตามลำดับ):
+ทุก endpoint รองรับ 4 แบบ (เช็คตามลำดับ):
 1. **Staff cookie** (`evms_session`) — สำหรับ Web App / Counter
-2. **Visitor cookie** (`evms_visitor_session`) — สำหรับ Visitor Portal
-3. **Device token** (`Authorization: Bearer kvms_...`) — สำหรับ Kiosk
+2. **Staff Bearer token** (`Authorization: Bearer <jwt>`) — สำหรับ Mobile App / API Client (ได้จาก `POST /api/auth/login`)
+3. **Visitor cookie** (`evms_visitor_session`) — สำหรับ Visitor Portal
+4. **Device token** (`Authorization: Bearer kvms_...`) — สำหรับ Kiosk
 
 ### Endpoints ที่ Kiosk ใช้
 
@@ -74,8 +84,9 @@ X-Kiosk-Id: <service_point_id>
 | name | VARCHAR(100) | ชื่ออุปกรณ์ |
 | serial_number | VARCHAR(50) UNIQUE | S/N ของเครื่อง |
 | service_point_id | INT FK | จุดบริการที่เชื่อมต่อ |
-| token_hash | VARCHAR(255) | SHA-256 hash ของ token |
-| token_prefix | VARCHAR(10) | prefix สำหรับ fast DB lookup |
+| token | VARCHAR(255) NULL | raw token สำหรับแสดงให้ admin copy |
+| token_hash | VARCHAR(255) | SHA-256 hash ของ token (ใช้ verify) |
+| token_prefix | VARCHAR(20) | prefix สำหรับ fast DB lookup |
 | status | VARCHAR(20) | active / revoked / suspended |
 | last_seen_at | DATETIME | เวลาใช้งานล่าสุด |
 | last_ip_address | VARCHAR(45) | IP ล่าสุด |
@@ -86,8 +97,8 @@ X-Kiosk-Id: <service_point_id>
 
 ### Security Notes
 
-- Token แสดงครั้งเดียวตอน register — ไม่สามารถดึงกลับมาได้
-- เก็บเป็น SHA-256 hash ใน DB (ไม่เก็บ raw)
+- Token เก็บทั้ง raw (ให้ admin ดู/copy ได้จากหน้า Settings) และ SHA-256 hash (ใช้ verify)
+- Token จะถูก auto-generate ตอนสร้างจุดบริการ หรือกดปุ่ม "สร้าง Device Token"
 - รองรับ revoke ทันที (เปลี่ยน status → "revoked")
 - รองรับ token rotation (สร้าง token ใหม่ token เก่าใช้ไม่ได้ทันที)
 - `lastSeenAt` + `lastIpAddress` update ทุกครั้งที่ใช้งาน (fire-and-forget)

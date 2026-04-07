@@ -820,6 +820,7 @@ model KioskDevice {
   name            String    @db.VarChar(100)
   serialNumber    String    @unique @map("serial_number") @db.VarChar(50)
   servicePointId  Int       @map("service_point_id")
+  token           String?   @db.VarChar(255)
   tokenHash       String    @map("token_hash") @db.VarChar(255)
   tokenPrefix     String    @map("token_prefix") @db.VarChar(20)
   status          String    @default("active") @db.VarChar(20) // active | revoked | suspended

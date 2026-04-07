@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyToken } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { generateDeviceToken } from "@/lib/kiosk-auth";
 
 // ===== Inline response helpers =====
 const ok = (data: unknown) =>
@@ -49,6 +50,11 @@ export async function GET(request: NextRequest) {
         },
         counterStaffAssignments: {
           select: { staffId: true, isPrimary: true, staff: { select: { id: true, name: true, nameEn: true } } },
+        },
+        kioskDevices: {
+          where: { status: "active" },
+          select: { id: true, token: true, status: true },
+          take: 1,
         },
       },
       orderBy: { name: "asc" },
@@ -121,37 +127,66 @@ export async function POST(request: NextRequest) {
       return err("SERIAL_NUMBER_EXISTS", "หมายเลขซีเรียลนี้ถูกใช้งานแล้ว");
     }
 
-    const servicePoint = await prisma.servicePoint.create({
-      data: {
-        name: name.trim(),
-        nameEn: nameEn.trim(),
-        type: type.trim(),
-        status: status ?? "online",
-        location: location.trim(),
-        locationEn: locationEn.trim(),
-        building: building.trim(),
-        floor: floor.trim(),
-        ipAddress: ipAddress.trim(),
-        macAddress: macAddress.trim(),
-        serialNumber: serialNumber.trim(),
-        assignedStaffId: assignedStaffId || null,
-        notes: notes?.trim() || null,
-        isActive: isActive ?? true,
-        wifiSsid: wifiSsid?.trim() || null,
-        wifiPasswordPattern: wifiPasswordPattern?.trim() || null,
-        wifiValidityMode: wifiValidityMode?.trim() || null,
-        wifiFixedDurationMin: wifiFixedDurationMin || null,
-        pdpaRequireScroll: pdpaRequireScroll ?? true,
-        pdpaRetentionDays: pdpaRetentionDays ?? 90,
-        slipHeaderText: slipHeaderText?.trim() || null,
-        slipFooterText: slipFooterText?.trim() || null,
-        followBusinessHours: followBusinessHours ?? true,
-        idMaskingPattern: idMaskingPattern?.trim() || null,
-        adminPin: adminPin?.trim() || "10210",
-      },
+    // ใช้ transaction เพื่อสร้าง ServicePoint + KioskDevice (ถ้าเป็น kiosk) แบบ atomic
+    let deviceToken: string | null = null;
+
+    const result = await prisma.$transaction(async (tx) => {
+      const servicePoint = await tx.servicePoint.create({
+        data: {
+          name: name.trim(),
+          nameEn: nameEn.trim(),
+          type: type.trim(),
+          status: status ?? "online",
+          location: location.trim(),
+          locationEn: locationEn.trim(),
+          building: building.trim(),
+          floor: floor.trim(),
+          ipAddress: ipAddress.trim(),
+          macAddress: macAddress.trim(),
+          serialNumber: serialNumber.trim(),
+          assignedStaffId: assignedStaffId || null,
+          notes: notes?.trim() || null,
+          isActive: isActive ?? true,
+          wifiSsid: wifiSsid?.trim() || null,
+          wifiPasswordPattern: wifiPasswordPattern?.trim() || null,
+          wifiValidityMode: wifiValidityMode?.trim() || null,
+          wifiFixedDurationMin: wifiFixedDurationMin || null,
+          pdpaRequireScroll: pdpaRequireScroll ?? true,
+          pdpaRetentionDays: pdpaRetentionDays ?? 90,
+          slipHeaderText: slipHeaderText?.trim() || null,
+          slipFooterText: slipFooterText?.trim() || null,
+          followBusinessHours: followBusinessHours ?? true,
+          idMaskingPattern: idMaskingPattern?.trim() || null,
+          adminPin: adminPin?.trim() || "10210",
+        },
+      });
+
+      // Auto-create KioskDevice + generate token เมื่อเป็นประเภท kiosk
+      let kioskDevice = null;
+      if (type.trim() === "kiosk") {
+        const generated = generateDeviceToken();
+        deviceToken = generated.token;
+
+        kioskDevice = await tx.kioskDevice.create({
+          data: {
+            name: name.trim(),
+            serialNumber: serialNumber.trim(),
+            servicePointId: servicePoint.id,
+            token: generated.token,
+            tokenHash: generated.tokenHash,
+            tokenPrefix: generated.tokenPrefix,
+            registeredById: user.id,
+          },
+        });
+      }
+
+      return { servicePoint, kioskDevice };
     });
 
-    return ok({ servicePoint });
+    return ok({
+      servicePoint: result.servicePoint,
+      ...(deviceToken ? { deviceToken, kioskDevice: { id: result.kioskDevice!.id } } : {}),
+    });
   } catch (error) {
     console.error("POST /api/service-points error:", error);
     return err("SERVER_ERROR", "เกิดข้อผิดพลาด กรุณาลองใหม่", 500);

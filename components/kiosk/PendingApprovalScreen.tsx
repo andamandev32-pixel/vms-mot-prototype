@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Clock, CheckCircle, XCircle, Loader2, ArrowLeft } from "lucide-react";
+import { kioskApiFetch } from "@/lib/kiosk/kiosk-auth-context";
 
 interface PendingApprovalScreenProps {
   locale: "th" | "en";
@@ -38,17 +39,14 @@ export default function PendingApprovalScreen({
     if (!appointmentId || status !== "polling") return;
     const poll = setInterval(async () => {
       try {
-        const res = await fetch(`/api/appointments/${appointmentId}`, { credentials: "include" });
-        const json = await res.json();
-        if (json.success) {
-          const appt = json.data?.appointment || json.data;
-          if (appt?.status === "approved") {
-            setStatus("approved");
-            setTimeout(() => onApproved(), 1500);
-          } else if (appt?.status === "rejected") {
-            setStatus("rejected");
-            setTimeout(() => onRejected(appt?.rejectedReason), 2000);
-          }
+        const data: any = await kioskApiFetch(`/api/appointments/${appointmentId}`);
+        const appt = data?.appointment || data;
+        if (appt?.status === "approved") {
+          setStatus("approved");
+          setTimeout(() => onApproved(), 1500);
+        } else if (appt?.status === "rejected") {
+          setStatus("rejected");
+          setTimeout(() => onRejected(appt?.rejectedReason), 2000);
         }
       } catch { /* ignore poll errors */ }
     }, 10000);
