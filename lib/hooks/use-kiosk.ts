@@ -1,12 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { kioskApiFetch, kioskApiPost } from "../kiosk/kiosk-auth-context";
-import { apiPost } from "./use-api";
+import { apiFetch, apiPost } from "./use-api";
 
-// Load kiosk service point config
+// Load kiosk service point config — public endpoint (ไม่ต้อง auth)
 export function useKioskConfig(servicePointId: number | null) {
   return useQuery({
     queryKey: ["kiosk-config", servicePointId],
-    queryFn: () => kioskApiFetch(`/api/service-points/${servicePointId}`),
+    queryFn: () => apiFetch(`/api/kiosk/${servicePointId}/config`),
     enabled: !!servicePointId,
   });
 }

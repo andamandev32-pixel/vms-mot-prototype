@@ -13,13 +13,15 @@ https://evms.mots.go.th    (Prototype — Next.js App Router)
 
 ## Authentication
 
-Prototype ใช้ cookie-based auth (`evms_session` JWT cookie) — ทุก API call ส่ง cookie อัตโนมัติ
+รองรับ 2 รูปแบบ:
 
-> **Production Roadmap:** อาจเปลี่ยนเป็น officer session auth สำหรับ standalone counter:
+1. **Cookie-based** (`evms_session` JWT cookie) — Web App ส่ง cookie อัตโนมัติ
+2. **Bearer token** (`Authorization: Bearer <jwt>`) — สำหรับ Mobile/Flutter App, API Client
+
+> **วิธีได้ token:** เรียก `POST /api/auth/login` ด้วย `{ "usernameOrEmail": "...", "password": "..." }` → response จะมี `data.token`
+>
 > ```
-> Authorization: Bearer <officer_session_token>
-> X-Counter-Id: <service_point_id>
-> X-Officer-Id: <staff_id>
+> Authorization: Bearer <jwt_token>
 > ```
 
 ### Response Envelope
@@ -43,7 +45,7 @@ Prototype ใช้ cookie-based auth (`evms_session` JWT cookie) — ทุก 
 
 | Counter State | Hook | Existing API Endpoint |
 |--------------|------|----------------------|
-| COUNTER_SELECTION | `useCounterConfig(servicePointId)` | GET /api/service-points/:id |
+| COUNTER_SELECTION | `useCounterConfig(servicePointId)` | GET /api/service-points/:id (Staff Auth) |
 | IDLE | `useCounterDashboard()` | GET /api/dashboard/kpis + GET /api/entries/today |
 | WALKIN_PURPOSE | `useCounterPurposes()` | GET /api/visit-purposes |
 | WALKIN_IDENTITY | `useCounterSearchVisitor()` | GET /api/search/visitors |
@@ -57,13 +59,17 @@ Prototype ใช้ cookie-based auth (`evms_session` JWT cookie) — ทุก 
 
 **Hooks file:** `lib/hooks/use-counter.ts`
 
+> **หมายเหตุ — ความแตกต่างจาก Kiosk:**
+> Counter ใช้ `GET /api/service-points/:id` **(ต้อง Staff Auth)** เพราะ Counter มี session อยู่แล้ว
+> ≠ Kiosk ที่ใช้ **public endpoint** `GET /api/kiosk/:servicePointId/config` (ไม่ต้อง auth เพราะตอน boot ยังไม่มี token)
+
 ---
 
 ## สรุป API ตาม Counter State
 
-| # | State | Method | Actual Endpoint | Hook | สถานะ |
-|---|-------|--------|----------------|------|-------|
-| 1 | COUNTER_SELECTION | GET | `/api/service-points/:id` | `useCounterConfig` | ✅ Implemented |
+| # | State | Method | Actual Endpoint | Hook | Auth | สถานะ |
+|---|-------|--------|----------------|------|------|-------|
+| 1 | COUNTER_SELECTION | GET | `/api/service-points/:id` | `useCounterConfig` | Staff Cookie/Bearer | ✅ Implemented |
 | 1b | COUNTER_SELECTION | POST | *(ยังไม่มี session endpoint)* | — | 🔲 Planned |
 | 2 | IDLE | GET | `/api/dashboard/kpis` + `/api/entries/today` | `useCounterDashboard` | ✅ Implemented |
 | 3 | WALKIN_IDENTITY | GET | `/api/search/visitors?q=` | `useCounterSearchVisitor` | ✅ Implemented |

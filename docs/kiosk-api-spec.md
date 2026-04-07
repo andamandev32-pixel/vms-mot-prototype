@@ -54,7 +54,7 @@ X-Kiosk-Id: <service_point_id>
 
 | Endpoint | Auth Required | หมายเหตุ |
 |----------|:------------:|----------|
-| `GET /api/service-points/:id` | ✅ Device Token | โหลด config จุดบริการ |
+| `GET /api/kiosk/:servicePointId/config` | ❌ Public | โหลด config จุดบริการ (ไม่ต้อง auth — Kiosk ตอน boot ยังไม่มี token) |
 | `POST /api/pdpa/accept` | ❌ Public | ไม่ต้อง auth |
 | `GET /api/search/visitors` | ✅ Device Token | ค้นหาผู้เยี่ยม |
 | `POST /api/blocklist/check` | ✅ Device Token | ตรวจ blocklist |
@@ -119,13 +119,13 @@ X-Kiosk-Id: <service_point_id>
 
 ## API Reuse Strategy — การใช้ API ร่วมกับ Web App
 
-> **หมายเหตุ:** Kiosk ไม่ได้สร้าง API routes เฉพาะ (`/api/kiosk/*`) แต่ reuse existing endpoints ของ Web App
-> โดยใช้ React hooks จาก `lib/hooks/use-kiosk.ts` เป็น abstraction layer
-> ทุก hook ใช้ `kioskApiFetch` / `kioskApiPost` จาก `lib/kiosk/kiosk-auth-context.tsx` ที่ inject `Authorization: Bearer <device_token>` อัตโนมัติ
+> **หมายเหตุ:** ส่วนใหญ่ Kiosk reuse existing endpoints ของ Web App โดยใช้ React hooks จาก `lib/hooks/use-kiosk.ts`
+> ยกเว้น **WELCOME state** ที่ใช้ dedicated public endpoint `/api/kiosk/:servicePointId/config`
+> เพราะ Kiosk ตอน boot ยังไม่มี device token
 
-| Kiosk State | Hook | Existing API Endpoint | Auth |
+| Kiosk State | Hook | Actual API Endpoint | Auth |
 |------------|------|----------------------|------|
-| WELCOME | `useKioskConfig(servicePointId)` | GET /api/service-points/:id | Device Token |
+| WELCOME | `useKioskConfig(servicePointId)` | GET /api/kiosk/:servicePointId/config | **Public** (ไม่ต้อง auth) |
 | SELECT_PURPOSE | `useKioskPurposes()` | GET /api/visit-purposes | Device Token |
 | ID_VERIFICATION | `useSearchVisitor()` | GET /api/search/visitors | Device Token |
 | ID_VERIFICATION | `useKioskBlocklistCheck()` | POST /api/blocklist/check | Device Token |
@@ -146,7 +146,7 @@ X-Kiosk-Id: <service_point_id>
 
 | # | State | Method | Actual Endpoint | Hook | Auth | สถานะ |
 |---|-------|--------|----------------|------|------|-------|
-| 1 | WELCOME | GET | `/api/service-points/:id` | `useKioskConfig` | Device Token | ✅ Implemented |
+| 1 | WELCOME | GET | `/api/kiosk/:servicePointId/config` | `useKioskConfig` | **Public** | ✅ Implemented |
 | 2 | PDPA_CONSENT | POST | `/api/pdpa/accept` | `useRecordPdpaConsent` | Public | ✅ Implemented |
 | 3 | SELECT_ID_METHOD | — | *(config จาก service-point, cached)* | — | — | ✅ Frontend-only |
 | 4 | ID_VERIFICATION | GET | `/api/search/visitors?q=` | `useSearchVisitor` | Device Token | ✅ Implemented |
@@ -164,8 +164,8 @@ X-Kiosk-Id: <service_point_id>
 | 12 | APPOINTMENT_VERIFY_ID | — | *(ใช้ search/visitors + blocklist/check)* | — | Device Token | ✅ Reuse existing |
 | — | ERROR | POST | *(ยังไม่มี endpoint)* | — | — | 🔲 Planned |
 
-> **Total: 9 Implemented API endpoints** — reuse จาก Web App ผ่าน hooks ใน `lib/hooks/use-kiosk.ts`
-> **Auth: 8 endpoints ใช้ Device Token** (`Authorization: Bearer kvms_...`), 2 endpoints เป็น Public (PDPA + visit-slips)
+> **Total: 9 Implemented API endpoints** — 1 dedicated kiosk endpoint + 8 reuse จาก Web App
+> **Auth: 7 endpoints ใช้ Device Token** (`Authorization: Bearer kvms_...`), **3 endpoints เป็น Public** (kiosk config + PDPA + visit-slips)
 > **Planned: 3 endpoints** — face-photo, wifi, error-log (ต้องสร้างเพิ่มสำหรับ production)
 
 ---
@@ -174,10 +174,12 @@ X-Kiosk-Id: <service_point_id>
 
 เรียกตอน boot หรือ reset กลับหน้าแรก — ดึงข้อมูล service_points + business_hours_rules
 
-### `GET /api/service-points/:id`
+### `GET /api/kiosk/:servicePointId/config`
 
 > **Hook:** `useKioskConfig(servicePointId)` from `lib/hooks/use-kiosk.ts`
-> **Status:** ✅ Implemented
+> **Status:** ✅ Implemented — **Public endpoint (ไม่ต้อง auth)**
+> **หมายเหตุ:** เดิมใช้ `GET /api/service-points/:id` (ต้อง Device Token) แต่เปลี่ยนเป็น dedicated public endpoint
+> เพราะ Kiosk ตอน boot ครั้งแรกยังไม่มี device token — กรองเฉพาะ type=kiosk เท่านั้น
 
 **Tables ที่ใช้:** `service_points`, `business_hours_rules`, `service_point_purposes`, `service_point_documents`
 
@@ -193,36 +195,51 @@ X-Kiosk-Id: <service_point_id>
     "status": "online",
     "serialNumber": "KIOSK-C1-L001",
     "location": "ชั้น 1 ล็อบบี้ ศูนย์ราชการ อาคาร C",
-    "wifi": {
-      "ssid": "MOTS-Guest",
-      "passwordPattern": "MOTSGuest{YYYY}",
-      "validityMode": "end-of-day",
-      "fixedDurationMin": null
-    },
-    "slip": {
-      "headerText": "กระทรวงการท่องเที่ยวและกีฬา",
-      "footerText": "ขอบคุณที่มาเยือน — กรุณาคืนบัตรผู้เยี่ยมก่อนออก"
-    },
-    "supportedDocuments": [
-      { "id": 1, "code": "thai-id-card", "name": "บัตรประชาชน", "nameEn": "Thai National ID Card" },
-      { "id": 2, "code": "passport", "name": "หนังสือเดินทาง", "nameEn": "Passport" },
-      { "id": 5, "code": "thai-id-app", "name": "แอป ThaiID", "nameEn": "ThaiID App" }
-    ],
-    "supportedPurposes": [1, 2, 3, 4, 5, 6, 7]
+    "locationEn": "1st Floor Lobby, Government Complex Building C",
+    "building": "อาคาร C",
+    "floor": "ชั้น 1",
+    "ipAddress": "192.168.1.101",
+    "adminPin": "10210",
+    "followBusinessHours": true,
+    "wifiSsid": "MOTS-Guest",
+    "wifiPasswordPattern": "MOTSGuest{YYYY}",
+    "wifiValidityMode": "end-of-day",
+    "wifiFixedDurationMin": null,
+    "pdpaRequireScroll": true,
+    "pdpaRetentionDays": 90,
+    "slipHeaderText": "กระทรวงการท่องเที่ยวและกีฬา",
+    "slipFooterText": "ขอบคุณที่มาเยือน — กรุณาคืนบัตรผู้เยี่ยมก่อนออก",
+    "idMaskingPattern": "show-first1-last5",
+    "todayTransactions": 42
   },
+  "supportedDocuments": [
+    { "id": 1, "name": "บัตรประชาชน", "nameEn": "Thai National ID Card" },
+    { "id": 2, "name": "หนังสือเดินทาง", "nameEn": "Passport" },
+    { "id": 5, "name": "แอป ThaiID", "nameEn": "ThaiID App" }
+  ],
+  "supportedPurposeIds": [1, 2, 3, 4, 5, 6, 7],
   "businessHours": {
+    "followBusinessHours": true,
     "isOpen": true,
     "allowWalkin": true,
     "allowKiosk": true,
+    "currentRule": "เวลาทำการปกติ (จ-ศ)",
     "todaySchedule": {
       "openTime": "08:00",
       "closeTime": "17:00"
-    },
-    "message": null
+    }
   },
   "serverTime": "2026-03-15T08:30:00+07:00"
 }
 ```
+
+> **Security Notes:**
+> - Endpoint เฉพาะ kiosk type — request service point ที่เป็น counter จะได้ 404
+> - ข้อมูลที่ส่งกลับเป็น config เท่านั้น ไม่มี sensitive data ของ staff/visitor
+> - ไม่ส่ง `assignedStaff`, `notes`, `macAddress` ออกทาง public endpoint
+
+> **เทียบกับ Counter:**
+> Counter ยังใช้ `GET /api/service-points/:id` (ต้อง Staff auth) เหมือนเดิม
 
 ---
 

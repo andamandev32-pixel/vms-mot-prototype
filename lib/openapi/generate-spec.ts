@@ -73,9 +73,9 @@ function authToSecurity(auth: string, context?: "kiosk" | "counter" | "line"): R
   if (auth === "webhook") return [{ lineSignature: [] }];
   if (context === "kiosk") return [{ kioskToken: [] }];
   if (context === "counter") return [{ staffCookie: [] }];
-  if (auth === "admin") return [{ staffCookie: [] }];
+  if (auth === "admin") return [{ staffCookie: [] }, { staffBearer: [] }];
   // "user" — could be staff or visitor
-  return [{ staffCookie: [] }, { visitorCookie: [] }];
+  return [{ staffCookie: [] }, { staffBearer: [] }, { visitorCookie: [] }];
 }
 
 /** Parse a JSON string safely, return undefined on failure */
@@ -263,6 +263,9 @@ export function generateOpenAPISpec(): OpenAPISpec {
         schema: { type: pp.toLowerCase().includes("id") ? "integer" : "string" },
       }));
 
+      // /api/kiosk/{servicePointId}/config is public (no auth)
+      const isPublicEndpoint = path.includes("/kiosk/") && path.includes("/config");
+
       const operation: Record<string, unknown> = {
         tags: ["kiosk"],
         summary: ep.summaryEn,
@@ -271,7 +274,7 @@ export function generateOpenAPISpec(): OpenAPISpec {
         ...(parameters.length > 0 ? { parameters } : {}),
         ...(ep.request ? { requestBody: objectToRequestBody(ep.request as Record<string, unknown>) } : {}),
         responses: buildResponse(ep.response),
-        security: authToSecurity("user", "kiosk"),
+        security: isPublicEndpoint ? [] : authToSecurity("user", "kiosk"),
       };
 
       if (!paths[path]) paths[path] = {};
@@ -322,12 +325,15 @@ export function generateOpenAPISpec(): OpenAPISpec {
     processed.add(key);
 
     const pathParams = extractPathParams(path);
-    const parameters: unknown[] = pathParams.map((pp) => ({
-      name: pp,
-      in: "path",
-      required: true,
-      schema: { type: pp.toLowerCase().includes("id") ? "integer" : "string" },
-    }));
+    const parameters: unknown[] = [
+      ...pathParams.map((pp) => ({
+        name: pp,
+        in: "path",
+        required: true,
+        schema: { type: pp.toLowerCase().includes("id") ? "integer" : "string" },
+      })),
+      ...apiParamsToParameters(ep.queryParams, "query"),
+    ];
 
     const responseExample = ep.responseExample ? tryParseJson(ep.responseExample) : undefined;
 
@@ -392,6 +398,12 @@ export function generateOpenAPISpec(): OpenAPISpec {
           in: "cookie",
           name: "evms_session",
           description: "Staff JWT session cookie",
+        },
+        staffBearer: {
+          type: "http",
+          scheme: "bearer",
+          bearerFormat: "JWT",
+          description: "Staff JWT token (Authorization: Bearer <token>) — ได้จาก POST /api/auth/login",
         },
         visitorCookie: {
           type: "apiKey",

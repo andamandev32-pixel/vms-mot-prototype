@@ -42,8 +42,8 @@ const apiSpecs: CounterApiSpec[] = [
       {
         method: "GET",
         path: "/counter/service-points",
-        summary: "โหลดรายการจุดบริการ Counter ที่ว่าง",
-        summaryEn: "Load available counter service points",
+        summary: "โหลดรายการจุดบริการ Counter ที่ว่าง (ต้อง Staff Auth)",
+        summaryEn: "Load available counter service points (Staff Auth required)",
         tables: ["service_points", "business_hours_rules", "service_point_purposes", "service_point_documents"],
         response: {
           servicePoints: [
@@ -60,8 +60,8 @@ const apiSpecs: CounterApiSpec[] = [
             },
           ],
         },
-        notes: ["กรอง type=counter, status=online", "แสดงเจ้าหน้าที่ที่ประจำจุดอยู่"],
-        notesEn: ["Filter type=counter, status=online", "Show currently assigned officer"],
+        notes: ["🔒 ต้อง Staff Auth (Cookie/Bearer) — ≠ Kiosk ที่ใช้ public endpoint", "กรอง type=counter, status=online", "แสดงเจ้าหน้าที่ที่ประจำจุดอยู่"],
+        notesEn: ["🔒 Requires Staff Auth (Cookie/Bearer) — unlike Kiosk which uses public endpoint", "Filter type=counter, status=online", "Show currently assigned officer"],
       },
       {
         method: "POST",
