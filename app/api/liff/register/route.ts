@@ -155,7 +155,7 @@ export async function POST(request: NextRequest) {
 
     // --- 4. Send confirmation Flex Message ---
     if (config?.channelAccessToken) {
-      const flexMsg = buildVisitorRegisteredMessage({
+      const flexMsg = await buildVisitorRegisteredMessage({
         visitorName: `${visitor.firstName} ${visitor.lastName}`,
         company: visitor.company || "-",
         phone: visitor.phone || "-",

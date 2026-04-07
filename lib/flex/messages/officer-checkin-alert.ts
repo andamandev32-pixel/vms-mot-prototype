@@ -1,6 +1,6 @@
 // officer-checkin-alert — Flex Message แจ้ง Officer ว่า Visitor Check-in แล้ว
 
-import { getFlexTemplate } from "@/lib/line-flex-template-data";
+import { getFlexTemplateFromDB } from "@/lib/line-flex-template-data";
 import { buildFlexMessage } from "../builder";
 import type { LineFlexMessage } from "../types";
 import type { BuildFlexOptions } from "../builder";
@@ -12,11 +12,11 @@ export interface OfficerCheckinAlertParams {
   location: string;
 }
 
-export function buildOfficerCheckinAlertMessage(
+export async function buildOfficerCheckinAlertMessage(
   params: OfficerCheckinAlertParams,
   options?: BuildFlexOptions
-): LineFlexMessage {
-  const template = getFlexTemplate("officer-checkin-alert")!;
+): Promise<LineFlexMessage> {
+  const template = (await getFlexTemplateFromDB("officer-checkin-alert"))!;
   return buildFlexMessage(
     template,
     { ...params },

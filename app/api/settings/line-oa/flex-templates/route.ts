@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyToken } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { defaultFlexTemplates } from "@/lib/line-flex-template-data";
+import { defaultFlexTemplates, invalidateTemplateCache } from "@/lib/line-flex-template-data";
 
 const ok = (data: unknown) =>
   NextResponse.json({ success: true, data });
@@ -207,6 +207,9 @@ export async function PUT(request: NextRequest) {
       include: templateInclude,
       orderBy: { id: "asc" },
     });
+
+    // Invalidate template cache so next message send uses fresh data
+    invalidateTemplateCache();
 
     return ok({ templates });
   } catch (error) {

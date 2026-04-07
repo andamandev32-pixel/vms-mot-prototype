@@ -22,11 +22,19 @@ export function apiError(code: string, message: string, status = 400) {
 
 // ===== Auth Helpers =====
 
-/** ดึง AuthUser จาก cookie — คืน null พร้อม 401 response ถ้าไม่มี session */
+/** ดึง AuthUser จาก cookie หรือ Authorization header — คืน 401 response ถ้าไม่มี session */
 export async function requireAuth(
   request: NextRequest
 ): Promise<AuthUser | NextResponse> {
-  const token = request.cookies.get("evms_session")?.value;
+  let token = request.cookies.get("evms_session")?.value;
+
+  if (!token) {
+    const authHeader = request.headers.get("authorization");
+    if (authHeader?.startsWith("Bearer ")) {
+      token = authHeader.slice(7);
+    }
+  }
+
   if (!token) {
     return apiError("UNAUTHORIZED", "กรุณาเข้าสู่ระบบ", 401);
   }

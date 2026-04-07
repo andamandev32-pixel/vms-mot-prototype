@@ -27,6 +27,12 @@ export async function POST(request: NextRequest) {
       select: { id: true, email: true },
     });
 
+    // Lookup email from staff table if available
+    const staffRecord = await prisma.staff.findUnique({
+      where: { employeeId: personnel.employeeId },
+      select: { email: true, phone: true },
+    });
+
     return apiSuccess({
       personnel: {
         id: personnel.id,
@@ -38,6 +44,8 @@ export async function POST(request: NextRequest) {
         position: personnel.position,
         departmentId: personnel.departmentId,
         departmentName: personnel.departmentName,
+        email: staffRecord?.email || null,
+        phone: staffRecord?.phone || null,
       },
       hasAccount: !!existingAccount,
     });

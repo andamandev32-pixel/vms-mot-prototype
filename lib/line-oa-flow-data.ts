@@ -51,6 +51,7 @@ export interface LineApiEndpoint {
   summary: string;
   summaryEn: string;
   auth: "public" | "user" | "admin" | "webhook";
+  queryParams?: { name: string; type: string; required: boolean; description: string }[];
   requestBody?: { name: string; type: string; required: boolean; description: string }[];
   responseExample: string;
   stateIds: LineFlowStateId[];
@@ -118,23 +119,21 @@ export const lineFlowStates: FlowStateInfo[] = [
     dbTables: ["user_accounts", "visitor_profiles", "line_oa_config"],
     apiEndpoints: ["POST /api/auth/register", "POST /api/users/me/line/link", "POST /api/line/richmenu/assign"],
     codeExample: [
-      "// LIFF Registration (Frontend)",
-      "import liff from '@line/liff';",
-      "",
-      "await liff.init({ liffId: LIFF_ID });",
-      "const profile = await liff.getProfile();",
-      "// profile.userId = 'U1234567890'",
-      "// profile.displayName = 'พุทธิพงษ์'",
-      "",
+      "// LIFF Registration — สร้าง UserAccount + Visitor + ผูก LINE",
       "const res = await fetch('/api/auth/register', {",
       "  method: 'POST',",
+      "  headers: { 'Content-Type': 'application/json' },",
       "  body: JSON.stringify({",
-      "    user_type: 'visitor',",
-      "    first_name, last_name, phone, email, company,",
-      "    line_access_token: liff.getAccessToken(),",
-      "  })",
+      "    userType: 'visitor',",
+      "    username: 'visitor01',    // สำหรับ login Web App",
+      "    password: 'mypassword',   // ≥ 8 ตัวอักษร",
+      "    firstName, lastName, phone, email,",
+      "    company, idNumber, idType: 'thai-id',",
+      "    lineAccessToken: liff.getAccessToken(), // ผูก LINE",
+      "  }),",
       "});",
-      "// → ระบบ link LINE account + assign Visitor Rich Menu",
+      "// → สร้าง UserAccount + Visitor + ผูก LINE + set session cookie",
+      "// → ใช้ username/password login Web App ได้ทันที",
     ],
   },
   {
@@ -163,32 +162,31 @@ export const lineFlowStates: FlowStateInfo[] = [
     relatedChannels: ["line", "web"],
     roles: ["visitor"],
     dbTables: ["appointments", "visit_purposes", "visit_purpose_department_rules", "departments", "approver_groups", "pdpa_consents"],
-    apiEndpoints: ["GET /api/visit-purposes?channel=line", "GET /api/departments", "GET /api/staff", "POST /api/appointments", "POST /api/pdpa-consents"],
+    apiEndpoints: ["GET /api/visit-purposes?channel=line", "GET /api/locations/departments", "GET /api/staff", "POST /api/appointments", "POST /api/pdpa/accept"],
     codeExample: [
-      "// LIFF Booking (Frontend) — อัปเดต: เพิ่ม departmentId + ตรวจ rules",
-      "const purposes = await fetch('/api/visit-purposes?channel=line');",
-      "const departments = await fetch('/api/departments');",
-      "// ตรวจ rules: GET /api/visit-purposes/:id/department-rules",
-      "// rule.acceptFromLine → แสดงเฉพาะที่อนุญาต LINE",
-      "// rule.requireApproval → แสดง badge 'รออนุมัติ'/'อนุมัติอัตโนมัติ'",
-      "// rule.requirePersonName → ต้องเลือก host staff",
+      "// LIFF Booking — Real API (React Query Hooks)",
+      "import { useVisitPurposesForLine, useStaffSearch, useCreateBooking } from '@/lib/hooks/use-line-oa';",
       "",
-      "const res = await fetch('/api/appointments', {",
-      "  method: 'POST',",
-      "  headers: { Authorization: `Bearer ${token}` },",
-      "  body: JSON.stringify({",
-      "    visitorId: myVisitorId,",
-      "    visitPurposeId: 1,",
-      "    departmentId: 2,",
-      "    type: 'official',",
-      "    date: '2026-04-02',",
-      "    timeStart: '10:00',",
-      "    timeEnd: '11:00',",
-      "    purpose: 'ติดต่อราชการ',",
-      "    hostStaffId: 5, // ถ้า requirePersonName=true",
-      "    channel: 'line',",
-      "  })",
+      "// Step 1: Fetch purposes (real API)",
+      "const { data: purposes } = useVisitPurposesForLine();",
+      "// → GET /api/visit-purposes?channel=line",
+      "",
+      "// Step 2: Search host staff (real API)",
+      "const { data: staffResults } = useStaffSearch(hostSearch);",
+      "// → GET /api/staff?search=...&limit=10",
+      "",
+      "// Step 4: Create booking (real API)",
+      "const createBooking = useCreateBooking();",
+      "await createBooking.mutateAsync({",
+      "  visitPurposeId: selectedPurpose.id,",
+      "  departmentId: selectedDept.id,",
+      "  date: '2569-04-02',",
+      "  timeStart: '10:00',",
+      "  timeEnd: '11:00',",
+      "  hostStaffId: selectedHost.id,",
+      "  channel: 'line',",
       "});",
+      "// → POST /api/appointments { channel: 'line' }",
       "// → สร้าง appointment + ส่ง notification ไปยัง host",
     ],
   },
@@ -229,12 +227,12 @@ export const lineFlowStates: FlowStateInfo[] = [
     description: "เจ้าหน้าที่อนุมัติ/ปฏิเสธ → ระบบส่ง Flex Message แจ้ง visitor ทาง LINE → ถ้าอนุมัติ = แสดง QR Code สำหรับ check-in ที่ kiosk",
     userType: "visitor",
     order: 6,
-    triggers: ["Officer approves/rejects via LINE or Web", "PATCH /api/appointments/:id/status"],
+    triggers: ["Officer approves/rejects via LINE or Web", "POST /api/appointments/:id/approve or /reject"],
     nextStates: ["visitor-reminder", "visitor-checkin-kiosk", "visitor-auto-cancelled"],
     relatedChannels: ["line", "web", "kiosk"],
     roles: ["visitor", "officer", "supervisor"],
     dbTables: ["appointments", "notification_logs", "approver_groups"],
-    apiEndpoints: ["PATCH /api/appointments/:id/status", "POST /api/line/push-message"],
+    apiEndpoints: ["POST /api/appointments/:id/approve", "POST /api/appointments/:id/reject", "POST /api/line/push-message"],
   },
   {
     id: "visitor-auto-cancelled",
@@ -252,7 +250,7 @@ export const lineFlowStates: FlowStateInfo[] = [
     relatedChannels: ["line", "web"],
     roles: ["visitor"],
     dbTables: ["appointments", "notification_logs", "notification_templates", "system_settings"],
-    apiEndpoints: ["PATCH /api/appointments/:id/status", "POST /api/line/push-message", "GET /api/appointments/pending-expired"],
+    apiEndpoints: ["GET /api/appointments/pending-expired", "POST /api/appointments/:id/approve", "POST /api/appointments/:id/reject", "POST /api/line/push-message"],
   },
   {
     id: "visitor-reminder",
@@ -275,12 +273,12 @@ export const lineFlowStates: FlowStateInfo[] = [
     description: "ผู้มาติดต่อสแกน QR ที่ kiosk → ยืนยันตัวตน → ถ่ายรูป → ระบบสร้าง visit_entry record + ส่ง Flex Message แจ้งทั้ง visitor และ host officer",
     userType: "visitor",
     order: 8,
-    triggers: ["QR scanned at kiosk", "ID verified at counter", "POST /api/kiosk/checkin"],
+    triggers: ["QR scanned at kiosk", "ID verified at counter", "POST /api/entries"],
     nextStates: ["visitor-wifi-credentials", "visitor-slip-line"],
     relatedChannels: ["kiosk", "counter", "line"],
     roles: ["visitor", "officer", "security"],
     dbTables: ["visit_entries", "appointments", "notification_logs"],
-    apiEndpoints: ["POST /api/kiosk/checkin", "POST /api/counter/checkin", "POST /api/line/push-message"],
+    apiEndpoints: ["POST /api/entries", "POST /api/line/push-message"],
   },
   {
     id: "visitor-wifi-credentials",
@@ -294,7 +292,7 @@ export const lineFlowStates: FlowStateInfo[] = [
     relatedChannels: ["line", "kiosk", "counter"],
     roles: ["visitor"],
     dbTables: ["visit_entries", "wifi_sessions", "visit_purpose_department_rules"],
-    apiEndpoints: ["POST /api/kiosk/wifi/accept", "POST /api/line/push-message"],
+    apiEndpoints: ["POST /api/wifi/accept", "POST /api/line/push-message"],
   },
   {
     id: "visitor-slip-line",
@@ -308,7 +306,7 @@ export const lineFlowStates: FlowStateInfo[] = [
     relatedChannels: ["line", "kiosk"],
     roles: ["visitor"],
     dbTables: ["visit_entries", "visit_slips"],
-    apiEndpoints: ["POST /api/line/push-message", "POST /api/kiosk/slip/print"],
+    apiEndpoints: ["POST /api/line/push-message", "POST /api/visit-slips/preview"],
   },
   {
     id: "visitor-checkout",
@@ -317,12 +315,12 @@ export const lineFlowStates: FlowStateInfo[] = [
     description: "เมื่อ visitor check-out (สแกน QR ที่ gate หรือ auto-checkout เมื่อหมดเวลา) → ส่ง Push Message ขอบคุณ + สรุปเวลาเข้า-ออก",
     userType: "visitor",
     order: 11,
-    triggers: ["QR scanned at exit gate", "Auto-checkout scheduled job", "PATCH /api/entries/:id/checkout"],
+    triggers: ["QR scanned at exit gate", "Auto-checkout scheduled job", "POST /api/entries/:id/checkout"],
     nextStates: [],
     relatedChannels: ["line", "kiosk", "counter"],
     roles: ["visitor", "security"],
     dbTables: ["visit_entries", "notification_logs"],
-    apiEndpoints: ["PATCH /api/entries/:id/checkout", "POST /api/line/push-message"],
+    apiEndpoints: ["POST /api/entries/:id/checkout", "POST /api/line/push-message"],
   },
 
   // ─── Officer Flow ───
@@ -338,7 +336,34 @@ export const lineFlowStates: FlowStateInfo[] = [
     relatedChannels: ["line"],
     roles: ["officer", "supervisor", "admin"],
     dbTables: ["user_accounts", "staff", "line_oa_config"],
-    apiEndpoints: ["POST /api/auth/register", "GET /api/staff/lookup", "POST /api/users/me/line/link", "POST /api/line/richmenu/assign"],
+    apiEndpoints: ["POST /api/auth/check-staff", "POST /api/auth/register", "POST /api/users/me/line/link", "POST /api/line/richmenu/assign"],
+    codeExample: [
+      "// Officer Registration — 2 Steps",
+      "// Step 1: ค้นหาพนักงานด้วยรหัส/เลขบัตร",
+      "const res1 = await fetch('/api/auth/check-staff', {",
+      "  method: 'POST',",
+      "  body: JSON.stringify({ query: 'EMP-007' }),",
+      "});",
+      "const { personnel } = (await res1.json()).data;",
+      "",
+      "// Step 2: ลงทะเบียน + ตั้ง username/password + ผูก LINE",
+      "const res2 = await fetch('/api/auth/register', {",
+      "  method: 'POST',",
+      "  body: JSON.stringify({",
+      "    userType: 'staff',",
+      "    username: 'officer01',    // สำหรับ login Web App",
+      "    password: 'mypassword',   // ≥ 8 ตัวอักษร",
+      "    firstName: personnel.firstName,",
+      "    lastName: personnel.lastName,",
+      "    phone, email: personnel.email,",
+      "    employeeId: personnel.employeeId,",
+      "    departmentId: personnel.departmentId,",
+      "    position: personnel.position,",
+      "    lineAccessToken: liff.getAccessToken(),",
+      "  }),",
+      "});",
+      "// → สร้าง UserAccount + link Staff + ผูก LINE + set cookie",
+    ],
   },
   {
     id: "officer-registered",
@@ -381,6 +406,24 @@ export const lineFlowStates: FlowStateInfo[] = [
     roles: ["officer", "supervisor", "admin"],
     dbTables: ["appointments", "appointment_status_logs", "approver_group_members", "notification_logs"],
     apiEndpoints: ["POST /api/appointments/:id/approve", "POST /api/appointments/:id/reject", "POST /api/line/push-message"],
+    codeExample: [
+      "// Officer Approve/Reject — Real API (React Query Hook)",
+      "import { useApproveAppointment, useRejectAppointment, useMyAppointments } from '@/lib/hooks/use-line-oa';",
+      "",
+      "// Fetch pending appointments",
+      "const { data } = useMyAppointments({ status: 'pending', limit: 5 });",
+      "// → GET /api/appointments?status=pending&limit=5",
+      "",
+      "// Approve",
+      "const approve = useApproveAppointment();",
+      "await approve.mutateAsync({ id: appointmentId, notes: 'อนุมัติ' });",
+      "// → POST /api/appointments/:id/approve",
+      "",
+      "// Reject",
+      "const reject = useRejectAppointment();",
+      "await reject.mutateAsync({ id: appointmentId, reason: 'ไม่อนุมัติ' });",
+      "// → POST /api/appointments/:id/reject",
+    ],
   },
   {
     id: "officer-checkin-alert",
@@ -441,18 +484,20 @@ export const lineApiEndpoints: LineApiEndpoint[] = [
     path: "/api/line/push-message",
     summary: "ส่ง Push Message / Flex Message ไปยังผู้ใช้",
     summaryEn: "Send Push/Flex Message to User",
-    auth: "admin",
+    auth: "user",
     requestBody: [
       { name: "to", type: "string", required: true, description: "LINE user ID ปลายทาง" },
-      { name: "template_id", type: "string", required: true, description: "รหัส notification template" },
-      { name: "variables", type: "object", required: false, description: "ตัวแปรแทนที่ใน template (e.g. visitor_name, date)" },
-      { name: "flex_message", type: "object", required: false, description: "LINE Flex Message JSON (ถ้าไม่ใช้ template)" },
+      { name: "messages", type: "object[]", required: false, description: "Array ของ LINE Message objects (text, flex, etc.) — ต้องมี messages หรือ flexMessage อย่างน้อย 1 อย่าง" },
+      { name: "flexMessage", type: "object", required: false, description: "Flex Message contents (wrapped เป็น type:flex อัตโนมัติ)" },
     ],
     responseExample: `{
-  "status": "sent",
-  "message_id": "msg-20260330-001",
-  "sent_at": "2026-03-30T09:00:00Z",
-  "recipient_line_id": "U1234567890"
+  "success": true,
+  "data": {
+    "status": "sent",
+    "to": "U1234567890",
+    "messageCount": 1,
+    "sentAt": "2026-03-30T09:00:00Z"
+  }
 }`,
     stateIds: ["visitor-registered", "visitor-booking-confirmed", "visitor-approval-result", "visitor-auto-cancelled", "visitor-reminder", "visitor-checkin-kiosk", "visitor-wifi-credentials", "visitor-slip-line", "visitor-checkout", "officer-registered", "officer-new-request", "officer-checkin-alert", "officer-overstay-alert"],
   },
@@ -464,14 +509,14 @@ export const lineApiEndpoints: LineApiEndpoint[] = [
     summaryEn: "Assign Rich Menu by User Type",
     auth: "admin",
     requestBody: [
-      { name: "line_user_id", type: "string", required: true, description: "LINE user ID" },
-      { name: "menu_type", type: "string", required: true, description: "'new-friend' | 'visitor' | 'officer'" },
+      { name: "lineUserId", type: "string", required: true, description: "LINE user ID" },
+      { name: "menuType", type: "string", required: true, description: "'new-friend' | 'visitor' | 'officer'" },
     ],
     responseExample: `{
   "status": "assigned",
-  "rich_menu_id": "richmenu-abc123",
-  "menu_type": "visitor",
-  "assigned_at": "2026-03-30T09:00:00Z"
+  "richMenuId": "richmenu-abc123",
+  "menuType": "visitor",
+  "assignedAt": "2026-03-30T09:00:00Z"
 }`,
     stateIds: ["new-friend", "visitor-register", "officer-register"],
     notes: [
@@ -488,31 +533,31 @@ export const lineApiEndpoints: LineApiEndpoint[] = [
     summaryEn: "Register User via LIFF",
     auth: "public",
     requestBody: [
-      { name: "user_type", type: "string", required: true, description: "'visitor' | 'staff'" },
-      { name: "first_name", type: "string", required: true, description: "ชื่อ" },
-      { name: "last_name", type: "string", required: true, description: "นามสกุล" },
+      { name: "userType", type: "string", required: true, description: "'visitor' | 'staff'" },
+      { name: "firstName", type: "string", required: true, description: "ชื่อ" },
+      { name: "lastName", type: "string", required: true, description: "นามสกุล" },
       { name: "phone", type: "string", required: true, description: "เบอร์โทรศัพท์" },
-      { name: "email", type: "string", required: false, description: "อีเมล" },
+      { name: "email", type: "string", required: true, description: "อีเมล (unique)" },
+      { name: "password", type: "string", required: true, description: "รหัสผ่าน (≥ 8 ตัวอักษร)" },
+      { name: "username", type: "string", required: false, description: "ชื่อผู้ใช้ (unique, optional)" },
       { name: "company", type: "string", required: false, description: "บริษัท/หน่วยงาน (visitor only)" },
-      { name: "employee_id", type: "string", required: false, description: "รหัสพนักงาน (staff only)" },
-      { name: "national_id", type: "string", required: false, description: "เลขบัตรประชาชน (staff lookup)" },
+      { name: "idNumber", type: "string", required: false, description: "เลขบัตรประชาชน/พาสปอร์ต (required ถ้า visitor)" },
+      { name: "idType", type: "string", required: false, description: "'thai-id' | 'passport' (required ถ้า visitor)" },
+      { name: "employeeId", type: "string", required: false, description: "รหัสพนักงาน (required ถ้า staff)" },
       { name: "line_access_token", type: "string", required: true, description: "LIFF access token สำหรับผูก LINE" },
     ],
     responseExample: `{
-  "status": "registered",
+  "token": "eyJhbGciOiJIUzI1NiIs...",
   "user": {
     "id": 42,
+    "username": "puttipong.k",
     "email": "puttipong@company.com",
-    "user_type": "visitor",
-    "first_name": "พุทธิพงษ์",
-    "last_name": "คาดสนิท",
-    "phone": "081-302-5678",
-    "company": "บริษัท สยามเทค จำกัด",
-    "line_user_id": "U1234567890",
-    "line_display_name": "พุทธิพงษ์",
-    "line_linked_at": "2026-03-30T09:00:00Z"
-  },
-  "token": "eyJhbGciOiJIUzI1NiIs..."
+    "name": "พุทธิพงษ์ คาดสนิท",
+    "nameEn": "พุทธิพงษ์ คาดสนิท",
+    "role": "visitor",
+    "departmentId": null,
+    "departmentName": null
+  }
 }`,
     stateIds: ["visitor-register", "officer-register"],
   },
@@ -524,70 +569,101 @@ export const lineApiEndpoints: LineApiEndpoint[] = [
     summaryEn: "Create New Appointment",
     auth: "user",
     requestBody: [
-      { name: "visit_purpose_id", type: "number", required: true, description: "รหัสวัตถุประสงค์" },
-      { name: "host_staff_id", type: "number", required: true, description: "รหัสเจ้าหน้าที่ผู้รับพบ" },
+      { name: "visitorId", type: "number", required: true, description: "ID ผู้เยี่ยมชม" },
+      { name: "visitPurposeId", type: "number", required: true, description: "รหัสวัตถุประสงค์" },
+      { name: "departmentId", type: "number", required: true, description: "รหัสแผนก (ใช้คู่กับ visitPurposeId ตรวจ rule)" },
+      { name: "hostStaffId", type: "number", required: false, description: "รหัสเจ้าหน้าที่ผู้รับพบ (required ถ้า rule.requirePersonName=true)" },
+      { name: "type", type: "string", required: true, description: "'official' | 'meeting' | 'document' | 'contractor' | 'delivery' | 'other'" },
       { name: "date", type: "string", required: true, description: "วันนัดหมาย (YYYY-MM-DD)" },
-      { name: "time_start", type: "string", required: true, description: "เวลาเริ่ม (HH:mm)" },
-      { name: "time_end", type: "string", required: true, description: "เวลาสิ้นสุด (HH:mm)" },
+      { name: "timeStart", type: "string", required: true, description: "เวลาเริ่ม (HH:mm)" },
+      { name: "timeEnd", type: "string", required: true, description: "เวลาสิ้นสุด (HH:mm)" },
+      { name: "purpose", type: "string", required: true, description: "รายละเอียดวัตถุประสงค์" },
+      { name: "channel", type: "string", required: true, description: "'line' | 'web' | 'kiosk' | 'counter'" },
       { name: "companions", type: "number", required: false, description: "จำนวนผู้ติดตาม" },
-      { name: "purpose_note", type: "string", required: false, description: "หมายเหตุวัตถุประสงค์" },
-      { name: "equipment", type: "object[]", required: false, description: "รายการอุปกรณ์นำเข้า" },
-      { name: "channel", type: "string", required: true, description: "'line' | 'web' | 'counter'" },
+      { name: "equipment", type: "object[]", required: false, description: "รายการอุปกรณ์นำเข้า [{name, quantity, serialNumber}]" },
     ],
     responseExample: `{
-  "status": "created",
-  "appointment": {
-    "id": 1042,
-    "code": "eVMS-20260330-1042",
-    "visit_purpose": "ติดต่อราชการ",
-    "host": { "name": "สมชาย รักชาติ", "department": "สำนักนโยบายและยุทธศาสตร์" },
-    "date": "2026-04-02",
-    "time_start": "10:00",
-    "time_end": "11:00",
-    "status": "pending",
-    "require_approval": true,
-    "qr_code_data": "eVMS-20260402-1042",
-    "created_at": "2026-03-30T09:15:00Z"
-  },
-  "notifications_sent": [
-    { "to": "host_officer", "channel": "line", "template": "new-request" },
-    { "to": "approver_group", "channel": "line", "template": "approval-needed" }
-  ]
+  "success": true,
+  "data": {
+    "appointment": {
+      "id": 1042,
+      "bookingCode": "eVMS-20260402-0001",
+      "visitorId": 42,
+      "visitPurposeId": 1,
+      "departmentId": 2,
+      "type": "official",
+      "status": "pending",
+      "dateStart": "2026-04-02",
+      "timeStart": "10:00",
+      "timeEnd": "11:00"
+    },
+    "autoApproved": false,
+    "rule": {
+      "requireApproval": true,
+      "requirePersonName": true,
+      "approverGroupId": 1
+    }
+  }
 }`,
     stateIds: ["visitor-booking", "visitor-booking-confirmed"],
   },
-  // ─── Approve / Reject ───
+  // ─── Approve ───
   {
-    method: "PATCH",
-    path: "/api/appointments/:id/status",
-    summary: "อนุมัติ หรือ ปฏิเสธนัดหมาย",
-    summaryEn: "Approve or Reject Appointment",
+    method: "POST",
+    path: "/api/appointments/:id/approve",
+    summary: "อนุมัตินัดหมาย",
+    summaryEn: "Approve Appointment",
     auth: "user",
-    requestBody: [
-      { name: "status", type: "string", required: true, description: "'approved' | 'rejected'" },
-      { name: "reject_reason", type: "string", required: false, description: "เหตุผลการปฏิเสธ (required if rejected)" },
-      { name: "officer_note", type: "string", required: false, description: "หมายเหตุจากเจ้าหน้าที่" },
-    ],
+    requestBody: [],
     responseExample: `{
-  "status": "updated",
-  "appointment": {
-    "id": 1042,
-    "status": "approved",
-    "approved_at": "2026-03-30T10:30:00Z",
-    "approved_by": { "id": 5, "name": "สมศรี รักษ์ดี" }
-  },
-  "notifications_sent": [
-    { "to": "visitor", "channel": "line", "template": "approval-approved" }
-  ]
+  "success": true,
+  "data": {
+    "appointment": {
+      "id": 1042,
+      "status": "approved",
+      "approvedBy": 5,
+      "approvedAt": "2026-03-30T10:30:00Z"
+    }
+  }
 }`,
     stateIds: ["officer-approve-action", "visitor-approval-result"],
+    notes: [
+      "Authorization: admin/supervisor ได้ทุกรายการ, staff ต้องอยู่ใน ApproverGroup ที่มี canApprove=true",
+      "visitor → 403 Forbidden",
+    ],
+  },
+  // ─── Reject ───
+  {
+    method: "POST",
+    path: "/api/appointments/:id/reject",
+    summary: "ปฏิเสธนัดหมาย",
+    summaryEn: "Reject Appointment",
+    auth: "user",
+    requestBody: [
+      { name: "reason", type: "string", required: true, description: "เหตุผลการปฏิเสธ" },
+    ],
+    responseExample: `{
+  "success": true,
+  "data": {
+    "appointment": {
+      "id": 1042,
+      "status": "rejected",
+      "rejectedAt": "2026-03-30T10:30:00Z",
+      "rejectedReason": "เอกสารไม่ครบ"
+    }
+  }
+}`,
+    stateIds: ["officer-approve-action", "visitor-approval-result"],
+    notes: [
+      "Authorization: เหมือน approve — ตรวจ ApproverGroup membership",
+    ],
   },
   // ─── Kiosk Check-in ───
   {
     method: "POST",
-    path: "/api/kiosk/checkin",
-    summary: "สร้าง visit_entry จาก Kiosk",
-    summaryEn: "Create Check-in Record from Kiosk",
+    path: "/api/entries",
+    summary: "สร้าง visit_entry จาก Kiosk/Counter",
+    summaryEn: "Create Check-in Record (Kiosk/Counter)",
     auth: "admin",
     requestBody: [
       { name: "appointment_id", type: "number", required: false, description: "รหัสนัดหมาย (null = walk-in)" },
@@ -628,7 +704,7 @@ export const lineApiEndpoints: LineApiEndpoint[] = [
   // ─── WiFi Accept ───
   {
     method: "POST",
-    path: "/api/kiosk/wifi/accept",
+    path: "/api/wifi/accept",
     summary: "ผู้ใช้ยอมรับ WiFi → ส่ง credentials ทาง LINE",
     summaryEn: "Accept WiFi Offer and Send Credentials",
     auth: "admin",
@@ -648,11 +724,11 @@ export const lineApiEndpoints: LineApiEndpoint[] = [
   },
   // ─── Check-out ───
   {
-    method: "PATCH",
+    method: "POST",
     path: "/api/entries/:id/checkout",
     summary: "Check-out ผู้มาติดต่อ (สแกน QR หรือ auto)",
     summaryEn: "Check-out Visitor",
-    auth: "admin",
+    auth: "user",
     requestBody: [
       { name: "checkout_method", type: "string", required: true, description: "'qr-scan' | 'manual' | 'auto'" },
       { name: "checkout_by", type: "number", required: false, description: "รหัสเจ้าหน้าที่ (manual only)" },
@@ -693,6 +769,42 @@ export const lineApiEndpoints: LineApiEndpoint[] = [
 }`,
     stateIds: ["officer-overstay-alert"],
   },
+  // ─── Upcoming Appointments (Reminder) ───
+  {
+    method: "GET",
+    path: "/api/appointments/upcoming",
+    summary: "ดึงนัดหมายที่ใกล้ถึง (สำหรับส่งเตือนล่วงหน้า)",
+    summaryEn: "List Upcoming Appointments for Reminder",
+    auth: "user",
+    queryParams: [
+      { name: "hours", type: "integer", required: false, description: "จำนวนชั่วโมงข้างหน้า (default: 24)" },
+      { name: "page", type: "integer", required: false, description: "หน้า (default: 1)" },
+      { name: "limit", type: "integer", required: false, description: "จำนวนต่อหน้า (default: 50)" },
+    ],
+    responseExample: `{
+  "success": true,
+  "data": {
+    "appointments": [
+      {
+        "id": 1042,
+        "bookingCode": "eVMS-20260408-1042",
+        "dateStart": "2026-04-08",
+        "timeStart": "10:00",
+        "timeEnd": "11:00",
+        "visitorLineUserId": "U1234567890"
+      }
+    ],
+    "pagination": { "page": 1, "limit": 50, "total": 1, "totalPages": 1 },
+    "filter": { "hours": 24 }
+  }
+}`,
+    stateIds: ["visitor-reminder"],
+    notes: [
+      "Cron job เรียกทุก 1 ชม. เพื่อหา appointments ที่ approved ภายใน ?hours=24 ชม.",
+      "Response รวม visitorLineUserId เพื่อให้ส่ง push message ได้เลย",
+      "Default: 24 ชม. — ปรับได้ด้วย ?hours=48",
+    ],
+  },
   // ─── Pending Expired (Auto-cancel) ───
   {
     method: "GET",
@@ -700,6 +812,10 @@ export const lineApiEndpoints: LineApiEndpoint[] = [
     summary: "ดึงรายการนัดหมายที่หมดเวลาอนุมัติ (pending เกินกำหนด)",
     summaryEn: "List Pending Appointments Past Approval Deadline",
     auth: "admin",
+    queryParams: [
+      { name: "timeoutHours", type: "integer", required: false, description: "จำนวนชั่วโมงที่ถือว่าเกินกำหนด (default: 24)" },
+      { name: "autoCancel", type: "boolean", required: false, description: "true = ยกเลิกอัตโนมัติด้วย (default: false)" },
+    ],
     responseExample: `{
   "data": [
     {
@@ -721,8 +837,71 @@ export const lineApiEndpoints: LineApiEndpoint[] = [
       "Cron job เรียกทุก 1 ชม. เพื่อตรวจสอบ pending appointments",
       "เงื่อนไขยกเลิก: pending_hours > approval_timeout_hours OR date < TODAY",
       "approval_timeout_hours กำหนดใน system_settings (default: 24 ชม.)",
-      "เมื่อยกเลิก → PATCH /api/appointments/:id/status { status: 'auto-cancelled' }",
+      "เมื่อยกเลิก → cron job อัปเดตสถานะเป็น auto-cancelled ผ่าน GET /api/appointments/pending-expired?autoCancel=true",
       "ส่ง LINE notification แจ้ง visitor + host officer",
+    ],
+  },
+  // ─── Staff Lookup (Officer Registration) ───
+  {
+    method: "GET",
+    path: "/api/staff/lookup",
+    summary: "ค้นหาข้อมูลพนักงานด้วยรหัสพนักงาน หรือ เลขบัตรประชาชน",
+    summaryEn: "Lookup Staff by Employee ID or National ID",
+    auth: "public",
+    queryParams: [
+      { name: "query", type: "string", required: true, description: "รหัสพนักงาน หรือ เลขบัตรประชาชน" },
+      { name: "employeeId", type: "string", required: false, description: "รหัสพนักงาน (ใช้แทน query ได้)" },
+      { name: "nationalId", type: "string", required: false, description: "เลขบัตรประชาชน (ใช้แทน query ได้)" },
+    ],
+    requestBody: [],
+    responseExample: `{
+  "success": true,
+  "data": {
+    "staff": {
+      "id": 1,
+      "employeeId": "EMP-001",
+      "name": "คุณสมศรี รักงาน",
+      "nameEn": "Somsri Rakngarn",
+      "position": "ผู้อำนวยการ",
+      "departmentId": 4,
+      "departmentName": "กองกิจการท่องเที่ยว"
+    },
+    "hasAccount": true,
+    "hasLineLinked": false
+  }
+}`,
+    stateIds: ["officer-register"],
+    notes: [
+      "ค้นหาด้วย ?query=xxx (รหัสพนักงาน หรือ เลขบัตรประชาชน)",
+      "รองรับ ?employeeId=xxx หรือ ?nationalId=xxx แยกด้วย",
+      "ไม่ต้อง auth — เรียกจาก LIFF ก่อน login",
+      "ตอบ hasAccount, hasLineLinked เพื่อ LIFF ตัดสินใจ flow ต่อ",
+    ],
+  },
+  // ─── LINE Link (User Self-Link) ───
+  {
+    method: "POST",
+    path: "/api/users/me/line/link",
+    summary: "ผูก LINE account กับ user ปัจจุบัน",
+    summaryEn: "Link LINE Account to Current User",
+    auth: "user",
+    requestBody: [
+      { name: "lineAccessToken", type: "string", required: true, description: "LIFF access token สำหรับ verify LINE profile" },
+    ],
+    responseExample: `{
+  "success": true,
+  "data": {
+    "linked": true,
+    "lineUserId": "U1234567890",
+    "lineDisplayName": "พุทธิพงษ์",
+    "lineLinkedAt": "2026-04-07T06:00:00Z"
+  }
+}`,
+    stateIds: ["visitor-register", "officer-register"],
+    notes: [
+      "ใช้ LINE access token verify กับ LINE API → ได้ userId + displayName",
+      "ตรวจว่า LINE account ไม่ซ้ำกับ user อื่น",
+      "อัปเดตทั้ง user_accounts + staff (ถ้าเป็น staff)",
     ],
   },
 ];

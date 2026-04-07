@@ -2426,27 +2426,31 @@ const lineOaConfigApi: PageApiDoc = {
     {
       method: "POST",
       path: "/api/settings/line-oa/test",
-      summary: "ทดสอบส่งข้อความ LINE (mock)",
-      summaryEn: "Send test LINE message (mock)",
+      summary: "ทดสอบส่งข้อความ LINE",
+      summaryEn: "Send test LINE message",
       auth: "admin",
+      requestBody: [
+        { name: "userId", type: "string", required: true, description: "LINE User ID ปลายทาง" },
+        { name: "message", type: "string", required: false, description: "ข้อความที่ต้องการส่ง (default: test message)" },
+      ],
       responseExample: `{
   "message": "Test LINE message sent successfully",
   "sentAt": "2026-04-01T10:05:00Z"
 }`,
-      notes: ["ปัจจุบันเป็น mock — ยังไม่ส่ง LINE message จริง"],
+      notes: ["ส่งข้อความทดสอบไปยัง LINE User ID ที่ระบุผ่าน LINE Push API"],
     },
     {
       method: "POST",
       path: "/api/settings/line-oa/verify-webhook",
-      summary: "ตรวจสอบ Webhook URL (mock)",
-      summaryEn: "Verify webhook URL (mock)",
+      summary: "ตรวจสอบ Webhook URL",
+      summaryEn: "Verify webhook URL",
       auth: "admin",
       responseExample: `{
   "verified": true,
   "message": "Webhook URL verified successfully",
   "verifiedAt": "2026-04-01T10:06:00Z"
 }`,
-      notes: ["ปัจจุบันเป็น mock — ยังไม่เรียก LINE Verify Webhook API จริง"],
+      notes: ["ส่ง POST request ทดสอบไปยัง Webhook URL ที่ตั้งค่าไว้", "บันทึกผลลง lastTestAt / lastTestResult"],
     },
   ],
 };
@@ -2463,7 +2467,7 @@ const lineMessageTemplatesApi: PageApiDoc = {
   endpoints: [
     {
       method: "GET",
-      path: "/api/settings/line-flex-templates",
+      path: "/api/settings/line-oa/flex-templates",
       summary: "ดึง Flex Message template ทั้งหมด",
       summaryEn: "List all LINE Flex Message templates",
       auth: "admin",
@@ -2490,8 +2494,8 @@ const lineMessageTemplatesApi: PageApiDoc = {
 }`,
     },
     {
-      method: "PUT",
-      path: "/api/settings/line-flex-templates/:stateId",
+      method: "PATCH",
+      path: "/api/settings/line-oa/flex-templates/:stateId",
       summary: "แก้ไข Flex Message template ตาม state",
       summaryEn: "Update LINE Flex Message template by state ID",
       auth: "admin",
@@ -2589,6 +2593,112 @@ const lineMessageTemplatesApi: PageApiDoc = {
 };
 
 // ════════════════════════════════════════════════════
+// LIFF API (LINE Frontend Framework)
+// ════════════════════════════════════════════════════
+
+const liffApi: PageApiDoc = {
+  pageId: "liff",
+  menuName: "LIFF API",
+  menuNameEn: "LIFF API — LINE Frontend",
+  baseUrl: "/api/liff",
+  endpoints: [
+    {
+      method: "POST",
+      path: "/api/liff/register",
+      summary: "ลงทะเบียน Visitor ผ่าน LIFF",
+      summaryEn: "Register visitor via LIFF",
+      auth: "public",
+      requestBody: [
+        { name: "firstName", type: "string", required: true, description: "ชื่อจริง" },
+        { name: "lastName", type: "string", required: true, description: "นามสกุล" },
+        { name: "phone", type: "string", required: true, description: "เบอร์โทร" },
+        { name: "email", type: "string", required: false, description: "อีเมล" },
+        { name: "company", type: "string", required: false, description: "บริษัท/หน่วยงาน" },
+        { name: "idNumber", type: "string", required: false, description: "เลขบัตรประชาชน" },
+        { name: "lineAccessToken", type: "string", required: true, description: "LINE access token จาก liff.getAccessToken()" },
+      ],
+      responseExample: `{
+  "success": true,
+  "data": {
+    "visitor": {
+      "id": 1,
+      "firstName": "สมชาย",
+      "lastName": "ใจดี",
+      "email": "somchai@example.com",
+      "phone": "081-234-5678",
+      "company": "บริษัท สยามเทค จำกัด",
+      "lineUserId": "U1234567890abcdef"
+    }
+  }
+}`,
+      notes: [
+        "ยืนยันตัวตนผ่าน LINE access token (verify กับ LINE API)",
+        "สร้างหรือเชื่อม visitor record + ผูก LINE userId",
+        "กำหนด Rich Menu ประเภท visitor ให้อัตโนมัติ",
+        "ส่ง Flex Message ยืนยันลงทะเบียนสำเร็จ",
+        "ตั้ง cookie sameSite=none สำหรับ LINE WebView",
+      ],
+    },
+    {
+      method: "POST",
+      path: "/api/liff/register-officer",
+      summary: "ลงทะเบียน Officer ผ่าน LIFF",
+      summaryEn: "Register officer via LIFF",
+      auth: "public",
+      requestBody: [
+        { name: "query", type: "string", required: true, description: "รหัสพนักงาน หรือ email" },
+        { name: "lineAccessToken", type: "string", required: true, description: "LINE access token จาก liff.getAccessToken()" },
+      ],
+      responseExample: `{
+  "success": true,
+  "data": {
+    "staff": {
+      "id": 1,
+      "name": "นพดล ชูช่วย",
+      "position": "นักวิชาการ",
+      "departmentName": "กองกิจการท่องเที่ยว",
+      "employeeId": "EMP-001",
+      "lineUserId": "U1234567890abcdef"
+    }
+  }
+}`,
+      notes: [
+        "ค้นหา Staff ด้วย employeeId หรือ email",
+        "ผูก LINE userId กับ Staff record",
+        "กำหนด Rich Menu ประเภท officer ให้อัตโนมัติ",
+        "ส่ง Flex Message ยืนยันลงทะเบียนสำเร็จ",
+      ],
+    },
+    {
+      method: "POST",
+      path: "/api/liff/auth",
+      summary: "แลก LINE access token → session cookie",
+      summaryEn: "Exchange LINE access token for session cookie",
+      auth: "public",
+      requestBody: [
+        { name: "lineAccessToken", type: "string", required: true, description: "LINE access token จาก liff.getAccessToken()" },
+      ],
+      responseExample: `{
+  "success": true,
+  "data": {
+    "user": {
+      "id": 1,
+      "name": "นพดล ชูช่วย",
+      "role": "staff",
+      "departmentName": "กองกิจการท่องเที่ยว"
+    }
+  }
+}`,
+      notes: [
+        "สำหรับ LIFF pages ที่ต้องการ staff auth (เช่น หน้าอนุมัติ)",
+        "Verify LINE access token → ดึง userId → ค้น UserAccount/Staff",
+        "สร้าง JWT แล้ว set httpOnly cookie (sameSite=none สำหรับ LINE WebView)",
+      ],
+    },
+  ],
+};
+
+// ════════════════════════════════════════════════════
 // EXPORT & LOOKUP
 // ════════════════════════════════════════════════════
 
@@ -2617,6 +2727,7 @@ export const allApiDocs: PageApiDoc[] = [
   emailSystemApi,
   lineOaConfigApi,
   lineMessageTemplatesApi,
+  liffApi,
 ];
 
 export function getApiDocByPageId(pageId: string): PageApiDoc | undefined {

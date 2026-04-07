@@ -4,6 +4,12 @@
 // ════════════════════════════════════════════════════
 
 import type { LineFlowStateId } from "./line-oa-flow-data";
+import { prisma } from "@/lib/prisma";
+import type {
+  LineFlexTemplate,
+  LineFlexTemplateRow,
+  LineFlexTemplateButton,
+} from "@/lib/generated/prisma";
 
 // ===== TYPES =====
 
@@ -550,4 +556,107 @@ export function getVisitorTemplates(): FlexTemplateConfig[] {
 
 export function getOfficerTemplates(): FlexTemplateConfig[] {
   return defaultFlexTemplates.filter((t) => t.stateId.startsWith("officer-"));
+}
+
+// ===== DB-AWARE TEMPLATE LOADER =====
+
+type LineFlexTemplateWithRelations = LineFlexTemplate & {
+  rows: LineFlexTemplateRow[];
+  buttons: LineFlexTemplateButton[];
+};
+
+// In-memory cache: stateId → { config, fetchedAt }
+const templateCache = new Map<string, { config: FlexTemplateConfig; fetchedAt: number }>();
+const CACHE_TTL_MS = 60_000; // 60 seconds
+
+/** Convert a DB record (with relations) to FlexTemplateConfig */
+function dbRecordToFlexConfig(
+  db: LineFlexTemplateWithRelations,
+  staticDefault: FlexTemplateConfig | undefined
+): FlexTemplateConfig {
+  return {
+    stateId: db.stateId as LineFlowStateId,
+    name: db.name,
+    nameEn: db.nameEn,
+    type: db.type as FlexTemplateType,
+    isActive: db.isActive,
+    headerTitle: db.headerTitle ?? "",
+    headerSubtitle: db.headerSubtitle ?? undefined,
+    headerColor: db.headerColor as HeaderColor,
+    headerVariant: db.headerVariant as HeaderVariant,
+    showStatusBadge: db.showStatusBadge,
+    statusBadgeText: db.statusBadgeText ?? undefined,
+    statusBadgeType: staticDefault?.statusBadgeType,
+    showQrCode: db.showQrCode,
+    qrLabel: db.qrLabel ?? undefined,
+    rows: db.rows.map((r, i) => ({
+      id: `r${i + 1}`,
+      label: r.label,
+      variable: r.variable,
+      previewValue: r.previewValue ?? "",
+      enabled: r.enabled,
+      sortOrder: r.sortOrder,
+    })),
+    buttons: db.buttons.map((b, i) => ({
+      id: `b${i + 1}`,
+      label: b.label,
+      variant: b.variant as ButtonVariant,
+      enabled: b.enabled,
+      sortOrder: b.sortOrder,
+    })),
+    infoBox: db.infoBoxEnabled || db.infoBoxText
+      ? {
+          text: db.infoBoxText ?? "",
+          color: (db.infoBoxColor ?? "gray") as FlexTemplateInfoBox["color"],
+          enabled: db.infoBoxEnabled,
+        }
+      : staticDefault?.infoBox,
+    availableVariables: staticDefault?.availableVariables ?? [],
+  };
+}
+
+/** Fetch template from DB (cached 60s), fall back to static default on miss or error */
+export async function getFlexTemplateFromDB(
+  stateId: LineFlowStateId
+): Promise<FlexTemplateConfig | undefined> {
+  // Check cache
+  const cached = templateCache.get(stateId);
+  if (cached && Date.now() - cached.fetchedAt < CACHE_TTL_MS) {
+    return cached.config;
+  }
+
+  const staticDefault = getFlexTemplate(stateId);
+
+  try {
+    const dbRecord = await prisma.lineFlexTemplate.findUnique({
+      where: { stateId },
+      include: {
+        rows: { orderBy: { sortOrder: "asc" } },
+        buttons: { orderBy: { sortOrder: "asc" } },
+      },
+    });
+
+    if (!dbRecord || !dbRecord.isActive) {
+      if (staticDefault) {
+        templateCache.set(stateId, { config: staticDefault, fetchedAt: Date.now() });
+      }
+      return staticDefault;
+    }
+
+    const config = dbRecordToFlexConfig(dbRecord, staticDefault);
+    templateCache.set(stateId, { config, fetchedAt: Date.now() });
+    return config;
+  } catch (error) {
+    console.error(`[getFlexTemplateFromDB] Error for ${stateId}:`, error);
+    return staticDefault;
+  }
+}
+
+/** Clear template cache — call after admin saves template changes */
+export function invalidateTemplateCache(stateId?: string): void {
+  if (stateId) {
+    templateCache.delete(stateId);
+  } else {
+    templateCache.clear();
+  }
 }

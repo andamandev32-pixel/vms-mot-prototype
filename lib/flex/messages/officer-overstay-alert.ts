@@ -1,6 +1,6 @@
 // officer-overstay-alert — Flex Message แจ้งเตือน Visitor อยู่เกินเวลา
 
-import { getFlexTemplate } from "@/lib/line-flex-template-data";
+import { getFlexTemplateFromDB } from "@/lib/line-flex-template-data";
 import { buildFlexMessage } from "../builder";
 import type { LineFlexMessage } from "../types";
 import type { BuildFlexOptions } from "../builder";
@@ -12,11 +12,11 @@ export interface OfficerOverstayAlertParams {
   location: string;
 }
 
-export function buildOfficerOverstayAlertMessage(
+export async function buildOfficerOverstayAlertMessage(
   params: OfficerOverstayAlertParams,
   options?: BuildFlexOptions
-): LineFlexMessage {
-  const template = getFlexTemplate("officer-overstay-alert")!;
+): Promise<LineFlexMessage> {
+  const template = (await getFlexTemplateFromDB("officer-overstay-alert"))!;
   return buildFlexMessage(
     template,
     { ...params },

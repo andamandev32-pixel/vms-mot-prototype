@@ -1,6 +1,6 @@
 // officer-registered — Flex Message ยืนยันลงทะเบียน Officer สำเร็จ
 
-import { getFlexTemplate } from "@/lib/line-flex-template-data";
+import { getFlexTemplateFromDB } from "@/lib/line-flex-template-data";
 import { buildFlexMessage } from "../builder";
 import type { LineFlexMessage } from "../types";
 import type { BuildFlexOptions } from "../builder";
@@ -12,11 +12,11 @@ export interface OfficerRegisteredParams {
   date: string;
 }
 
-export function buildOfficerRegisteredMessage(
+export async function buildOfficerRegisteredMessage(
   params: OfficerRegisteredParams,
   options?: BuildFlexOptions
-): LineFlexMessage {
-  const template = getFlexTemplate("officer-registered")!;
+): Promise<LineFlexMessage> {
+  const template = (await getFlexTemplateFromDB("officer-registered"))!;
   return buildFlexMessage(
     template,
     { ...params, userType: "Officer" },

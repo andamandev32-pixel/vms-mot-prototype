@@ -28,15 +28,20 @@ import {
   getApiEndpointsForState,
   getDbTablesForState,
 } from "@/lib/line-oa-flow-data";
+import { ApiHealthList } from "@/components/mobile/ApiResponsePanel";
+import type { ApiHealthResult } from "@/lib/hooks/use-line-oa";
 
 interface LineStatePanelProps {
   currentStateId: LineFlowStateId;
   currentStepIndex: number;
   totalSteps: number;
+  apiHealthResults?: ApiHealthResult[];
+  apiHealthTesting?: boolean;
+  onTestApis?: () => void;
 }
 
-export default function LineStatePanel({ currentStateId, currentStepIndex, totalSteps }: LineStatePanelProps) {
-  const [openSections, setOpenSections] = useState<Set<string>>(new Set(["state", "api", "flow"]));
+export default function LineStatePanel({ currentStateId, currentStepIndex, totalSteps, apiHealthResults, apiHealthTesting, onTestApis }: LineStatePanelProps) {
+  const [openSections, setOpenSections] = useState<Set<string>>(new Set(["state", "health", "api", "flow"]));
   const state = getFlowState(currentStateId);
   const apis = getApiEndpointsForState(currentStateId);
   const tables = getDbTablesForState(currentStateId);
@@ -176,6 +181,20 @@ export default function LineStatePanel({ currentStateId, currentStepIndex, total
             {state.relatedChannels.includes("counter") && "Counter: officer ประมวลผลที่จุดรักษาความปลอดภัย → "}
             {state.relatedChannels.includes("web") && "Web: admin จัดการผ่าน dashboard"}
           </p>
+        </Section>
+
+        {/* Live API Health Check */}
+        <Section title="🩺 Live API Status" id="health" open={openSections.has("health")} onToggle={toggle}>
+          <ApiHealthList
+            results={apiHealthResults ?? []}
+            onTest={onTestApis}
+            testing={apiHealthTesting}
+          />
+          {(!apiHealthResults || apiHealthResults.length === 0) && !apiHealthTesting && (
+            <p className="text-[9px] text-gray-600 mt-1 italic">
+              Click &quot;Test All APIs&quot; to check endpoint availability
+            </p>
+          )}
         </Section>
 
         {/* API Endpoints */}

@@ -114,6 +114,7 @@ const pageIdToTag: Record<string, string> = {
   "email-system": "email",
   "line-oa-config": "line-oa",
   "line-message-templates": "line-oa",
+  "liff": "liff",
 };
 
 // ===== CONVERTERS =====
@@ -369,6 +370,7 @@ export function generateOpenAPISpec(): OpenAPISpec {
       { name: "kiosk", description: "Kiosk Device API — Device Token Auth" },
       { name: "counter", description: "Counter/Service Point API — Staff Cookie Auth" },
       { name: "line-oa", description: "LINE OA Integration — Webhook & Push Message" },
+      { name: "liff", description: "LIFF API — LINE Frontend Registration & Auth" },
       { name: "auth", description: "Authentication (Staff & Visitor)" },
       { name: "appointments", description: "Appointment Management" },
       { name: "entries", description: "Visit Entries (Check-in / Check-out)" },

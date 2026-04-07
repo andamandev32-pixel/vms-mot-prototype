@@ -1,6 +1,6 @@
 // visitor-registered — Flex Message ยืนยันการลงทะเบียน Visitor สำเร็จ
 
-import { getFlexTemplate } from "@/lib/line-flex-template-data";
+import { getFlexTemplateFromDB } from "@/lib/line-flex-template-data";
 import { buildFlexMessage } from "../builder";
 import type { LineFlexMessage } from "../types";
 import type { BuildFlexOptions } from "../builder";
@@ -12,11 +12,11 @@ export interface VisitorRegisteredParams {
   date: string;
 }
 
-export function buildVisitorRegisteredMessage(
+export async function buildVisitorRegisteredMessage(
   params: VisitorRegisteredParams,
   options?: BuildFlexOptions
-): LineFlexMessage {
-  const template = getFlexTemplate("visitor-registered")!;
+): Promise<LineFlexMessage> {
+  const template = (await getFlexTemplateFromDB("visitor-registered"))!;
   return buildFlexMessage(
     template,
     { ...params, userType: "Visitor" },

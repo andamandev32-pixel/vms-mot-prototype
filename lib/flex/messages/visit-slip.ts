@@ -1,6 +1,6 @@
 // visitor-slip-line — Digital Visit Slip ส่งทาง LINE + QR Code
 
-import { getFlexTemplate } from "@/lib/line-flex-template-data";
+import { getFlexTemplateFromDB } from "@/lib/line-flex-template-data";
 import { buildFlexMessage } from "../builder";
 import type { LineFlexMessage } from "../types";
 import type { BuildFlexOptions } from "../builder";
@@ -16,11 +16,11 @@ export interface VisitSlipParams {
   checkoutAt: string;
 }
 
-export function buildVisitSlipMessage(
+export async function buildVisitSlipMessage(
   params: VisitSlipParams,
   options?: BuildFlexOptions
-): LineFlexMessage {
-  const template = getFlexTemplate("visitor-slip-line")!;
+): Promise<LineFlexMessage> {
+  const template = (await getFlexTemplateFromDB("visitor-slip-line"))!;
   return buildFlexMessage(
     template,
     { ...params },

@@ -109,7 +109,7 @@ async function processLineNotification(payload: NotificationPayload) {
 
   switch (type) {
     case "booking-confirmed":
-      message = buildBookingConfirmedMessage({
+      message = await buildBookingConfirmedMessage({
         bookingCode: vars.bookingCode || "",
         purposeName: vars.purposeName || vars.purpose || "",
         date: vars.date || "",
@@ -120,7 +120,7 @@ async function processLineNotification(payload: NotificationPayload) {
       break;
 
     case "approval-needed":
-      message = buildOfficerNewRequestMessage({
+      message = await buildOfficerNewRequestMessage({
         visitorName: vars.visitorName || "",
         company: vars.company || "",
         purposeName: vars.purposeName || vars.purpose || "",
@@ -131,7 +131,7 @@ async function processLineNotification(payload: NotificationPayload) {
       break;
 
     case "booking-approved":
-      message = buildApprovalResultMessage({
+      message = await buildApprovalResultMessage({
         approved: true,
         bookingCode: vars.bookingCode || "",
         dateTime: vars.dateTime || "",
@@ -141,7 +141,7 @@ async function processLineNotification(payload: NotificationPayload) {
       break;
 
     case "booking-rejected":
-      message = buildApprovalResultMessage({
+      message = await buildApprovalResultMessage({
         approved: false,
         bookingCode: vars.bookingCode || "",
         dateTime: vars.dateTime || "",
@@ -152,7 +152,7 @@ async function processLineNotification(payload: NotificationPayload) {
       break;
 
     case "checkin-alert":
-      message = buildOfficerCheckinAlertMessage({
+      message = await buildOfficerCheckinAlertMessage({
         visitorName: vars.visitorName || "",
         company: vars.company || "",
         checkinInfo: vars.checkinTime || vars.checkinAt || "",
@@ -161,7 +161,7 @@ async function processLineNotification(payload: NotificationPayload) {
       break;
 
     case "checkin-welcome":
-      message = buildCheckinMessage({
+      message = await buildCheckinMessage({
         entryCode: vars.entryCode || "",
         checkinAt: vars.checkinAt || vars.checkinTime || "",
         checkoutAt: vars.checkoutAt || "",
@@ -170,7 +170,7 @@ async function processLineNotification(payload: NotificationPayload) {
       break;
 
     case "overstay-alert":
-      message = buildOfficerOverstayAlertMessage({
+      message = await buildOfficerOverstayAlertMessage({
         visitorName: vars.visitorName || "",
         timeSlot: vars.expectedCheckout || "",
         overstayMinutes: vars.overstayDuration || "",
@@ -179,7 +179,7 @@ async function processLineNotification(payload: NotificationPayload) {
       break;
 
     case "auto-cancelled":
-      message = buildAutoCancelledMessage({
+      message = await buildAutoCancelledMessage({
         bookingCode: vars.bookingCode || "",
         purposeName: vars.purposeName || "",
         dateTime: vars.dateTime || "",

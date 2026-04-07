@@ -1,6 +1,6 @@
 // visitor-booking-confirmed — Flex Message ยืนยันการจองนัดหมาย + QR Code
 
-import { getFlexTemplate } from "@/lib/line-flex-template-data";
+import { getFlexTemplateFromDB } from "@/lib/line-flex-template-data";
 import { buildFlexMessage } from "../builder";
 import type { LineFlexMessage } from "../types";
 import type { BuildFlexOptions } from "../builder";
@@ -14,11 +14,11 @@ export interface BookingConfirmedParams {
   location: string;
 }
 
-export function buildBookingConfirmedMessage(
+export async function buildBookingConfirmedMessage(
   params: BookingConfirmedParams,
   options?: BuildFlexOptions
-): LineFlexMessage {
-  const template = getFlexTemplate("visitor-booking-confirmed")!;
+): Promise<LineFlexMessage> {
+  const template = (await getFlexTemplateFromDB("visitor-booking-confirmed"))!;
   return buildFlexMessage(
     template,
     { ...params },

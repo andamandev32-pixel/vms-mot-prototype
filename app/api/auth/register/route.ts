@@ -22,6 +22,8 @@ export async function POST(request: NextRequest) {
       employeeId,
       departmentId,
       position,
+      // LINE LIFF fields
+      lineAccessToken,
     } = body as {
       userType?: string;
       email?: string;
@@ -36,6 +38,7 @@ export async function POST(request: NextRequest) {
       employeeId?: string;
       departmentId?: number;
       position?: string;
+      lineAccessToken?: string;
     };
 
     // ===== Validate common required fields =====
@@ -177,6 +180,31 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // ===== Link LINE account (if lineAccessToken provided from LIFF) =====
+    if (lineAccessToken?.trim()) {
+      try {
+        const profileRes = await fetch("https://api.line.me/v2/profile", {
+          headers: { Authorization: `Bearer ${lineAccessToken.trim()}` },
+        });
+        if (profileRes.ok) {
+          const profile = (await profileRes.json()) as {
+            userId: string;
+            displayName: string;
+          };
+          await prisma.userAccount.update({
+            where: { id: userAccount.id },
+            data: {
+              lineUserId: profile.userId,
+              lineDisplayName: profile.displayName,
+              lineLinkedAt: new Date(),
+            },
+          });
+        }
+      } catch {
+        // LINE linking is optional — don't fail registration
+      }
+    }
+
     // ===== Auto-login: create JWT & set cookie =====
     const authUser: AuthUser = {
       id: userAccount.id,
@@ -193,7 +221,7 @@ export async function POST(request: NextRequest) {
 
     const response = NextResponse.json({
       success: true,
-      data: { user: authUser },
+      data: { token, user: authUser },
     });
 
     response.cookies.set(SESSION_COOKIE, token, {

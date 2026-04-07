@@ -124,6 +124,17 @@ export async function getAuthUserOrKiosk(
     if (user) return { authType: "staff", user, device: null };
   }
 
+  // 1b. Try staff Bearer token (Authorization: Bearer <jwt>) — for mobile/API clients
+  const authHeader = request.headers.get("authorization");
+  if (authHeader?.startsWith("Bearer ")) {
+    const bearerToken = authHeader.slice(7);
+    // ถ้าไม่ใช่ kiosk token (kvms_) → ลอง verify เป็น staff JWT
+    if (!bearerToken.startsWith("kvms_")) {
+      const user = await verifyToken(bearerToken);
+      if (user) return { authType: "staff", user, device: null };
+    }
+  }
+
   // 2. Try visitor session cookie
   const visitorToken = request.cookies.get("evms_visitor_session")?.value;
   if (visitorToken) {
@@ -144,14 +155,14 @@ export async function getAuthUserOrKiosk(
     }
   }
 
-  // 3. Try kiosk device token (Authorization: Bearer <token>)
+  // 3. Try kiosk device token (Authorization: Bearer kvms_...)
   const device = await getKioskAuth(request);
   if (device) return { authType: "kiosk", user: null, device };
 
   return null;
 }
 
-/** ตรวจสอบ auth: staff cookie → kiosk device token (ไม่รวม visitor) */
+/** ตรวจสอบ auth: staff cookie → staff Bearer → kiosk device token (ไม่รวม visitor) */
 export async function getStaffOrKiosk(
   request: NextRequest
 ): Promise<AuthResult | null> {
@@ -159,6 +170,16 @@ export async function getStaffOrKiosk(
   if (staffToken) {
     const user = await verifyToken(staffToken);
     if (user) return { authType: "staff", user, device: null };
+  }
+
+  // Try staff Bearer token (Authorization: Bearer <jwt>)
+  const authHeader = request.headers.get("authorization");
+  if (authHeader?.startsWith("Bearer ")) {
+    const bearerToken = authHeader.slice(7);
+    if (!bearerToken.startsWith("kvms_")) {
+      const user = await verifyToken(bearerToken);
+      if (user) return { authType: "staff", user, device: null };
+    }
   }
 
   const device = await getKioskAuth(request);

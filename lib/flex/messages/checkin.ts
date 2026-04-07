@@ -1,6 +1,6 @@
 // visitor-checkin-kiosk — Flex Message แจ้ง Check-in สำเร็จ
 
-import { getFlexTemplate } from "@/lib/line-flex-template-data";
+import { getFlexTemplateFromDB } from "@/lib/line-flex-template-data";
 import { buildFlexMessage } from "../builder";
 import type { LineFlexMessage } from "../types";
 import type { BuildFlexOptions } from "../builder";
@@ -12,11 +12,11 @@ export interface CheckinParams {
   location: string;
 }
 
-export function buildCheckinMessage(
+export async function buildCheckinMessage(
   params: CheckinParams,
   options?: BuildFlexOptions
-): LineFlexMessage {
-  const template = getFlexTemplate("visitor-checkin-kiosk")!;
+): Promise<LineFlexMessage> {
+  const template = (await getFlexTemplateFromDB("visitor-checkin-kiosk"))!;
   return buildFlexMessage(
     template,
     { ...params },

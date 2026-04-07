@@ -1,6 +1,6 @@
 // visitor-reminder — Flex Message แจ้งเตือนนัดหมายล่วงหน้า
 
-import { getFlexTemplate } from "@/lib/line-flex-template-data";
+import { getFlexTemplateFromDB } from "@/lib/line-flex-template-data";
 import { buildFlexMessage } from "../builder";
 import type { LineFlexMessage } from "../types";
 import type { BuildFlexOptions } from "../builder";
@@ -12,11 +12,11 @@ export interface ReminderParams {
   location: string;
 }
 
-export function buildReminderMessage(
+export async function buildReminderMessage(
   params: ReminderParams,
   options?: BuildFlexOptions
-): LineFlexMessage {
-  const template = getFlexTemplate("visitor-reminder")!;
+): Promise<LineFlexMessage> {
+  const template = (await getFlexTemplateFromDB("visitor-reminder"))!;
   return buildFlexMessage(
     template,
     { ...params },

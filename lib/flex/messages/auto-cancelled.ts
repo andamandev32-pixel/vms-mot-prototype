@@ -1,6 +1,6 @@
 // visitor-auto-cancelled — Flex Message แจ้งยกเลิกอัตโนมัติ (หมดเวลาอนุมัติ)
 
-import { getFlexTemplate } from "@/lib/line-flex-template-data";
+import { getFlexTemplateFromDB } from "@/lib/line-flex-template-data";
 import { buildFlexMessage } from "../builder";
 import type { LineFlexMessage } from "../types";
 import type { BuildFlexOptions } from "../builder";
@@ -13,11 +13,11 @@ export interface AutoCancelledParams {
   timeoutHours: string;
 }
 
-export function buildAutoCancelledMessage(
+export async function buildAutoCancelledMessage(
   params: AutoCancelledParams,
   options?: BuildFlexOptions
-): LineFlexMessage {
-  const template = getFlexTemplate("visitor-auto-cancelled")!;
+): Promise<LineFlexMessage> {
+  const template = (await getFlexTemplateFromDB("visitor-auto-cancelled"))!;
   return buildFlexMessage(
     template,
     { ...params },

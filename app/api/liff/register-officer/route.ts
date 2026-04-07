@@ -135,7 +135,7 @@ export async function POST(request: NextRequest) {
 
     // --- 5. Send confirmation Flex Message ---
     if (config?.channelAccessToken) {
-      const flexMsg = buildOfficerRegisteredMessage({
+      const flexMsg = await buildOfficerRegisteredMessage({
         officerName: staff.name,
         position: staff.position || "-",
         department: staff.department?.name || "-",

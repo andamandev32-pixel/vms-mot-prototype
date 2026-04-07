@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyToken } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { invalidateTemplateCache } from "@/lib/line-flex-template-data";
 
 const ok = (data: unknown) =>
   NextResponse.json({ success: true, data });
@@ -164,6 +165,9 @@ export async function PATCH(
       where: { stateId },
       include: templateInclude,
     });
+
+    // Invalidate cache for this template
+    invalidateTemplateCache(stateId);
 
     return ok({ template });
   } catch (error) {

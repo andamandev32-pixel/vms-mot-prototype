@@ -1,13 +1,8 @@
-import { NextResponse } from "next/server";
-import { getSession } from "@/lib/auth";
+import { NextRequest } from "next/server";
+import { requireAuth, isAuthUser, apiSuccess } from "@/lib/api-utils";
 
-export async function GET() {
-  const user = await getSession();
-  if (!user) {
-    return NextResponse.json(
-      { success: false, error: { code: "UNAUTHORIZED", message: "กรุณาเข้าสู่ระบบ" } },
-      { status: 401 }
-    );
-  }
-  return NextResponse.json({ success: true, data: { user } });
+export async function GET(request: NextRequest) {
+  const result = await requireAuth(request);
+  if (!isAuthUser(result)) return result;
+  return apiSuccess({ user: result });
 }

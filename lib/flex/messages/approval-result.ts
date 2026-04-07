@@ -1,9 +1,8 @@
 // visitor-approval-result — Flex Message แจ้งผลอนุมัติ / ปฏิเสธ
 
-import { getFlexTemplate } from "@/lib/line-flex-template-data";
+import { getFlexTemplateFromDB } from "@/lib/line-flex-template-data";
 import { buildFlexBubble } from "../builder";
-import { interpolate } from "../builder";
-import type { LineFlexMessage, FlexBubble } from "../types";
+import type { LineFlexMessage } from "../types";
 import type { BuildFlexOptions } from "../builder";
 import type { FlexTemplateConfig } from "@/lib/line-flex-template-data";
 
@@ -16,11 +15,11 @@ export interface ApprovalResultParams {
   rejectedReason?: string;
 }
 
-export function buildApprovalResultMessage(
+export async function buildApprovalResultMessage(
   params: ApprovalResultParams,
   options?: BuildFlexOptions
-): LineFlexMessage {
-  const template = getFlexTemplate("visitor-approval-result")!;
+): Promise<LineFlexMessage> {
+  const template = (await getFlexTemplateFromDB("visitor-approval-result"))!;
 
   // Override template for rejection case
   const effectiveTemplate: FlexTemplateConfig = params.approved

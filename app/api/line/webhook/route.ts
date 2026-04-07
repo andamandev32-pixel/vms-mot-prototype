@@ -257,7 +257,7 @@ async function handlePostbackEvent(event: LineEvent, accessToken: string) {
             ? (await getProfile(event.source.userId, accessToken))?.displayName || "เจ้าหน้าที่"
             : "เจ้าหน้าที่";
 
-          const flexMsg = buildApprovalResultMessage({
+          const flexMsg = await buildApprovalResultMessage({
             approved: action === "approve",
             bookingCode: appointment.bookingCode || `#${appointmentId}`,
             dateTime: `${appointment.dateStart?.toLocaleDateString("th-TH") || ""} | ${appointment.timeStart || ""} - ${appointment.timeEnd || ""}`,
