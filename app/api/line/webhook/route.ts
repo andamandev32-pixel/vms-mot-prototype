@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
+import { buildWelcomeMessage } from "@/lib/flex/messages/welcome";
+import { buildApprovalResultMessage } from "@/lib/flex/messages/approval-result";
 
 // ─────────────────────────────────────────────────────
 // POST /api/line/webhook — LINE Webhook Handler
 // ─────────────────────────────────────────────────────
 
 const LINE_REPLY_URL = "https://api.line.me/v2/bot/message/reply";
+const LINE_PUSH_URL = "https://api.line.me/v2/bot/message/push";
 const LINE_PROFILE_URL = "https://api.line.me/v2/bot/profile";
 
 // ── Helpers ──────────────────────────────────────────
@@ -199,21 +202,9 @@ async function handleMessageEvent(event: LineEvent, accessToken: string) {
 async function handleFollowEvent(event: LineEvent, accessToken: string) {
   if (!event.replyToken) return;
 
-  const profile = event.source?.userId
-    ? await getProfile(event.source.userId, accessToken)
-    : null;
-  const name = profile?.displayName || "คุณ";
-
-  await replyMessage(
-    event.replyToken,
-    [
-      {
-        type: "text",
-        text: `ยินดีต้อนรับครับ ${name} 🎉\nขอบคุณที่เพิ่มเพื่อน eVMS!\n\nระบบนี้ช่วยจัดการผู้เข้าเยี่ยม\n• จองนัดหมาย\n• เช็คอิน/เช็คเอาท์\n• รับการแจ้งเตือน\n\nพิมพ์ "help" เพื่อดูคำสั่งครับ`,
-      },
-    ],
-    accessToken
-  );
+  // ส่งข้อความต้อนรับจาก Flex Message factory
+  const welcomeMsg = buildWelcomeMessage();
+  await replyMessage(event.replyToken, [welcomeMsg], accessToken);
 }
 
 async function handleUnfollowEvent(event: LineEvent) {
@@ -233,10 +224,22 @@ async function handlePostbackEvent(event: LineEvent, accessToken: string) {
 
     if (appointmentId) {
       try {
-        await prisma.appointment.update({
+        const now = new Date();
+        const appointment = await prisma.appointment.update({
           where: { id: parseInt(appointmentId) },
-          data: { status },
+          data: {
+            status,
+            ...(action === "approve"
+              ? { approvedAt: now }
+              : { rejectedAt: now }),
+          },
+          include: {
+            visitor: true,
+            hostStaff: true,
+          },
         });
+
+        // Reply to officer
         await replyMessage(
           event.replyToken,
           [
@@ -247,6 +250,35 @@ async function handlePostbackEvent(event: LineEvent, accessToken: string) {
           ],
           accessToken
         );
+
+        // Send Flex Message to visitor via push
+        if (appointment.visitor?.lineUserId) {
+          const officerName = event.source?.userId
+            ? (await getProfile(event.source.userId, accessToken))?.displayName || "เจ้าหน้าที่"
+            : "เจ้าหน้าที่";
+
+          const flexMsg = buildApprovalResultMessage({
+            approved: action === "approve",
+            bookingCode: appointment.bookingCode || `#${appointmentId}`,
+            dateTime: `${appointment.dateStart?.toLocaleDateString("th-TH") || ""} | ${appointment.timeStart || ""} - ${appointment.timeEnd || ""}`,
+            approverName: officerName,
+            approvedAt: now.toLocaleString("th-TH", { timeZone: "Asia/Bangkok" }),
+          });
+
+          await fetch(LINE_PUSH_URL, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${accessToken}`,
+            },
+            body: JSON.stringify({
+              to: appointment.visitor.lineUserId,
+              messages: [flexMsg],
+            }),
+          }).catch((err) =>
+            console.error("[LINE Postback] Push to visitor failed:", err)
+          );
+        }
       } catch (error) {
         console.error("[LINE Postback] DB error:", error);
         await replyMessage(
@@ -292,21 +324,36 @@ export async function POST(request: NextRequest) {
     const rawBody = await request.text();
     const signature = request.headers.get("x-line-signature");
 
-    const config = await getLineConfig();
+    let body: { events?: LineEvent[] };
+    try {
+      body = JSON.parse(rawBody);
+    } catch {
+      return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
+    }
+
+    const events: LineEvent[] = body.events || [];
+
+    // LINE sends empty events for webhook verification — respond immediately without DB
+    if (events.length === 0) {
+      return NextResponse.json({ status: "ok" });
+    }
+
+    if (!signature) {
+      console.warn("[LINE Webhook] No signature header");
+      return NextResponse.json({ error: "Invalid signature" }, { status: 403 });
+    }
+
+    let config: { channelSecret: string; channelAccessToken: string };
+    try {
+      config = await getLineConfig();
+    } catch (dbError) {
+      console.error("[LINE Webhook] DB connection failed:", dbError);
+      return NextResponse.json({ status: "error", message: "Database connection failed" }, { status: 500 });
+    }
 
     if (!config.channelSecret) {
       console.error("[LINE Webhook] No channel secret configured");
       return NextResponse.json({ status: "error", message: "Not configured" }, { status: 500 });
-    }
-
-    const body = JSON.parse(rawBody);
-    const events: LineEvent[] = body.events || [];
-
-    // For LINE webhook verification (empty events), be lenient with signature
-    // to handle edge cases where body encoding differs
-    if (!signature) {
-      console.warn("[LINE Webhook] No signature header");
-      return NextResponse.json({ error: "Invalid signature" }, { status: 403 });
     }
 
     if (!verifySignature(rawBody, signature, config.channelSecret)) {
@@ -316,11 +363,6 @@ export async function POST(request: NextRequest) {
         signatureLength: signature.length,
       });
       return NextResponse.json({ error: "Invalid signature" }, { status: 403 });
-    }
-
-    if (events.length === 0) {
-      // LINE sends empty events for webhook verification
-      return NextResponse.json({ status: "ok" });
     }
 
     // Process all events

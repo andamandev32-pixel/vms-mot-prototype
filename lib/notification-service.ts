@@ -5,6 +5,15 @@
 // ═══════════════════════════════════════════════════════════
 
 import { prisma } from "@/lib/prisma";
+import {
+  buildBookingConfirmedMessage,
+  buildOfficerNewRequestMessage,
+  buildApprovalResultMessage,
+  buildCheckinMessage,
+  buildOfficerCheckinAlertMessage,
+  buildOfficerOverstayAlertMessage,
+  buildAutoCancelledMessage,
+} from "@/lib/flex/messages";
 
 // ═══════ Types ═══════
 
@@ -52,8 +61,141 @@ const notificationQueue: NotificationPayload[] = [];
 
 function enqueue(payload: NotificationPayload) {
   notificationQueue.push(payload);
-  // In production: push to Redis/SQS/BullMQ queue
   console.log(`[NotificationService] Queued: ${payload.type} → ${payload.recipientStaffId ?? payload.recipientEmail ?? "visitor"}`);
+
+  // Auto-process LINE notifications
+  if (payload.channel === "line" && payload.recipientLineUserId) {
+    processLineNotification(payload).catch((err) =>
+      console.error("[NotificationService] LINE send error:", err)
+    );
+  }
+}
+
+// ═══════ LINE Push Integration ═══════
+
+const LINE_PUSH_URL = "https://api.line.me/v2/bot/message/push";
+
+async function getLineAccessToken(): Promise<string | null> {
+  const config = await prisma.lineOaConfig.findFirst({ where: { isActive: true } });
+  return config?.channelAccessToken || process.env.LINE_CHANNEL_ACCESS_TOKEN || null;
+}
+
+async function pushToLine(lineUserId: string, messages: unknown[]) {
+  const token = await getLineAccessToken();
+  if (!token) {
+    console.warn("[NotificationService] No LINE access token");
+    return;
+  }
+  const res = await fetch(LINE_PUSH_URL, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ to: lineUserId, messages }),
+  });
+  if (!res.ok) {
+    const errText = await res.text();
+    console.error("[NotificationService] LINE push failed:", res.status, errText);
+  }
+}
+
+/** Build and send LINE Flex Message based on notification type */
+async function processLineNotification(payload: NotificationPayload) {
+  const { type, recipientLineUserId, variables: vars } = payload;
+  if (!recipientLineUserId) return;
+
+  let message: unknown = null;
+
+  switch (type) {
+    case "booking-confirmed":
+      message = buildBookingConfirmedMessage({
+        bookingCode: vars.bookingCode || "",
+        purposeName: vars.purposeName || vars.purpose || "",
+        date: vars.date || "",
+        timeSlot: vars.timeSlot || "",
+        hostName: vars.hostName || "",
+        location: vars.location || "",
+      });
+      break;
+
+    case "approval-needed":
+      message = buildOfficerNewRequestMessage({
+        visitorName: vars.visitorName || "",
+        company: vars.company || "",
+        purposeName: vars.purposeName || vars.purpose || "",
+        dateTime: vars.dateTime || vars.date || "",
+        companions: vars.companions || "0 คน",
+        appointmentId: vars.appointmentId || "",
+      });
+      break;
+
+    case "booking-approved":
+      message = buildApprovalResultMessage({
+        approved: true,
+        bookingCode: vars.bookingCode || "",
+        dateTime: vars.dateTime || "",
+        approverName: vars.approverName || "",
+        approvedAt: vars.approvedAt || "",
+      });
+      break;
+
+    case "booking-rejected":
+      message = buildApprovalResultMessage({
+        approved: false,
+        bookingCode: vars.bookingCode || "",
+        dateTime: vars.dateTime || "",
+        approverName: vars.approverName || "",
+        approvedAt: vars.approvedAt || "",
+        rejectedReason: vars.rejectedReason,
+      });
+      break;
+
+    case "checkin-alert":
+      message = buildOfficerCheckinAlertMessage({
+        visitorName: vars.visitorName || "",
+        company: vars.company || "",
+        checkinInfo: vars.checkinTime || vars.checkinAt || "",
+        location: vars.location || "",
+      });
+      break;
+
+    case "checkin-welcome":
+      message = buildCheckinMessage({
+        entryCode: vars.entryCode || "",
+        checkinAt: vars.checkinAt || vars.checkinTime || "",
+        checkoutAt: vars.checkoutAt || "",
+        location: vars.location || "",
+      });
+      break;
+
+    case "overstay-alert":
+      message = buildOfficerOverstayAlertMessage({
+        visitorName: vars.visitorName || "",
+        timeSlot: vars.expectedCheckout || "",
+        overstayMinutes: vars.overstayDuration || "",
+        location: vars.location || "",
+      });
+      break;
+
+    case "auto-cancelled":
+      message = buildAutoCancelledMessage({
+        bookingCode: vars.bookingCode || "",
+        purposeName: vars.purposeName || "",
+        dateTime: vars.dateTime || "",
+        hostName: vars.hostName || "",
+        timeoutHours: vars.timeoutHours || "24",
+      });
+      break;
+
+    default:
+      console.warn(`[NotificationService] No LINE message builder for type: ${type}`);
+      return;
+  }
+
+  if (message) {
+    await pushToLine(recipientLineUserId, [message]);
+  }
 }
 
 // ═══════ Send Functions ═══════
