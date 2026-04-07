@@ -44,9 +44,8 @@ export default function LineMessageTemplatesPage() {
   const [showApiDoc, setShowApiDoc] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  const updateFlexMut = useUpdateLineFlexTemplates();
-
   const lineConfigSaveRef = useRef<(() => Promise<void>) | null>(null);
+  const flexTemplatesSaveRef = useRef<(() => Promise<void>) | null>(null);
   const emailConfigSaveRef = useRef<(() => Promise<void>) | null>(null);
 
   const schema = getSchemaByPageId("line-message-templates");
@@ -58,8 +57,8 @@ export default function LineMessageTemplatesPage() {
     try {
       if (activeMainTab === "line-config" && lineConfigSaveRef.current) {
         await lineConfigSaveRef.current();
-      } else if (activeMainTab === "line-templates") {
-        await updateFlexMut.mutateAsync({} as any);
+      } else if (activeMainTab === "line-templates" && flexTemplatesSaveRef.current) {
+        await flexTemplatesSaveRef.current();
       } else if (activeMainTab === "email-config" && emailConfigSaveRef.current) {
         await emailConfigSaveRef.current();
       }
@@ -118,7 +117,7 @@ export default function LineMessageTemplatesPage() {
       {/* Tab Content */}
       <div className="max-w-[1400px] mx-auto px-6 py-6">
         {activeMainTab === "line-config" && <LineOaConfigTab saveRef={lineConfigSaveRef} />}
-        {activeMainTab === "line-templates" && <LineFlexTemplatesTab />}
+        {activeMainTab === "line-templates" && <LineFlexTemplatesTab saveRef={flexTemplatesSaveRef} />}
         {activeMainTab === "email-config" && <EmailConfigTab saveRef={emailConfigSaveRef} />}
       </div>
     </div>
@@ -341,17 +340,46 @@ const headerVariants: { value: HeaderVariant; label: string }[] = [
   { value: "officer-overstay", label: "Overstay (Alert)" },
 ];
 
-function LineFlexTemplatesTab() {
+function LineFlexTemplatesTab({ saveRef }: { saveRef: MutableRefObject<(() => Promise<void>) | null> }) {
   const { data: flexData } = useLineFlexTemplates();
   const updateFlexMut = useUpdateLineFlexTemplates();
-  const apiTemplates = Array.isArray((flexData as any)?.templates) ? (flexData as any).templates : [];
-  const [templates, setTemplates] = useState<FlexTemplateConfig[]>(() => apiTemplates.length > 0 ? apiTemplates : JSON.parse(JSON.stringify(defaultFlexTemplates)));
+  const [templates, setTemplates] = useState<FlexTemplateConfig[]>(() => JSON.parse(JSON.stringify(defaultFlexTemplates)));
   const [activeTab, setActiveTab] = useState<"visitor" | "officer">("visitor");
   const [selectedStateId, setSelectedStateId] = useState<string>("visitor-registered");
   const [expandedSection, setExpandedSection] = useState<string | null>("header");
   const [editingField, setEditingField] = useState<string | null>(null);
   const [approvalTimeout, setApprovalTimeout] = useState(24);
   const [autoCancelOnDate, setAutoCancelOnDate] = useState(true);
+
+  // Sync templates from API when data arrives, merging with defaults
+  // so client-only fields (availableVariables, infoBox, etc.) are preserved
+  const [seeded, setSeeded] = useState(false);
+  useEffect(() => {
+    const apiTemplates = Array.isArray((flexData as any)?.templates) ? (flexData as any).templates : [];
+    if (!seeded && apiTemplates.length > 0) {
+      const defaultMap = new Map(defaultFlexTemplates.map(d => [d.stateId, d]));
+      const merged = apiTemplates.map((api: any) => {
+        const def = defaultMap.get(api.stateId);
+        return def ? { ...JSON.parse(JSON.stringify(def)), ...api } : api;
+      });
+      // Include any defaults not present in the API response
+      for (const def of defaultFlexTemplates) {
+        if (!merged.some((t: any) => t.stateId === def.stateId)) {
+          merged.push(JSON.parse(JSON.stringify(def)));
+        }
+      }
+      setTemplates(merged);
+      setSeeded(true);
+    }
+  }, [flexData, seeded]);
+
+  // Register save function for parent "บันทึก" button
+  useEffect(() => {
+    saveRef.current = async () => {
+      await updateFlexMut.mutateAsync({ templates } as any);
+    };
+    return () => { saveRef.current = null; };
+  });
 
   const currentTemplate = templates.find(t => t.stateId === selectedStateId);
   const visitorTemplates = templates.filter(t => t.stateId.startsWith("visitor-") || t.stateId === "new-friend");
