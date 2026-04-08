@@ -16,23 +16,20 @@ async function getAuthUser(request: NextRequest) {
 }
 
 // ─────────────────────────────────────────────────────
-// GET /api/service-points — รายการจุดบริการทั้งหมด (any authenticated user)
+// GET /api/service-points — รายการจุดบริการทั้งหมด (public — ไม่ต้อง auth สำหรับ Kiosk)
 // ─────────────────────────────────────────────────────
 export async function GET(request: NextRequest) {
   try {
-    const user = await getAuthUser(request);
-    if (!user) {
-      return err("UNAUTHORIZED", "กรุณาเข้าสู่ระบบ", 401);
-    }
-
     const { searchParams } = new URL(request.url);
     const type = searchParams.get("type") || "";
     const status = searchParams.get("status") || "";
+    const isActive = searchParams.get("is_active");
 
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const where: any = {};
     if (type) where.type = type;
     if (status) where.status = status;
+    if (isActive !== null) where.isActive = isActive === "true";
 
     const servicePoints = await prisma.servicePoint.findMany({
       where,
