@@ -1240,16 +1240,17 @@ model PdpaConsentVersion {
 
 model PdpaConsentLog {
   id             Int      @id @default(autoincrement())
-  visitorId      Int      @map("visitor_id")
+  visitorId      Int?     @map("visitor_id")
   configVersion  Int      @map("config_version")
   consentChannel String   @map("consent_channel") @db.VarChar(20)
+  servicePointId Int?     @map("service_point_id")
   ipAddress      String?  @map("ip_address") @db.VarChar(45)
   deviceId       String?  @map("device_id") @db.VarChar(100)
   consentedAt    DateTime @default(now()) @map("consented_at")
   expiresAt      DateTime @map("expires_at")
 
   // Relations
-  visitor Visitor @relation(fields: [visitorId], references: [id])
+  visitor Visitor? @relation(fields: [visitorId], references: [id])
 
   @@index([visitorId])
   @@index([consentChannel])
