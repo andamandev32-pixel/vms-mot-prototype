@@ -171,21 +171,142 @@ function objectToRequestBody(obj: Record<string, unknown> | undefined): unknown 
   };
 }
 
-/** Build response object from example */
-function buildResponse(example: unknown): Record<string, unknown> {
-  return {
+/** Build response object from example — includes error response examples */
+function buildResponse(
+  example: unknown,
+  options?: { auth?: string; method?: string },
+): Record<string, unknown> {
+  const auth = options?.auth ?? "user";
+  const method = options?.method?.toUpperCase() ?? "GET";
+
+  const successExample = example
+    ? { success: true, data: example }
+    : undefined;
+
+  const responses: Record<string, unknown> = {
     "200": {
       description: "Successful response",
       content: {
         "application/json": {
-          ...(example ? { schema: inferSchema(example), example } : { schema: { type: "object" } }),
+          schema: {
+            type: "object",
+            properties: {
+              success: { type: "boolean", example: true },
+              data: example ? inferSchema(example) : { type: "object" },
+            },
+          },
+          ...(successExample ? { example: successExample } : {}),
         },
       },
     },
-    "400": { description: "Bad Request" },
-    "401": { description: "Unauthorized" },
-    "404": { description: "Not Found" },
   };
+
+  // Add error responses based on method and auth
+  if (method === "POST" || method === "PUT" || method === "PATCH") {
+    responses["400"] = {
+      description: "Bad Request — ข้อมูลไม่ถูกต้องหรือไม่ครบ",
+      content: {
+        "application/json": {
+          schema: { $ref: "#/components/schemas/ErrorResponse" },
+          example: {
+            success: false,
+            error: {
+              code: "MISSING_FIELDS",
+              message: "กรุณากรอกข้อมูลที่จำเป็น",
+            },
+          },
+        },
+      },
+    };
+  } else {
+    responses["400"] = {
+      description: "Bad Request — พารามิเตอร์ไม่ถูกต้อง",
+      content: {
+        "application/json": {
+          schema: { $ref: "#/components/schemas/ErrorResponse" },
+          example: {
+            success: false,
+            error: {
+              code: "INVALID_ID",
+              message: "ID ไม่ถูกต้อง",
+            },
+          },
+        },
+      },
+    };
+  }
+
+  if (auth !== "public") {
+    responses["401"] = {
+      description: "Unauthorized — ไม่ได้เข้าสู่ระบบ",
+      content: {
+        "application/json": {
+          schema: { $ref: "#/components/schemas/ErrorResponse" },
+          example: {
+            success: false,
+            error: {
+              code: "UNAUTHORIZED",
+              message: "กรุณาเข้าสู่ระบบ",
+            },
+          },
+        },
+      },
+    };
+  }
+
+  if (auth === "admin") {
+    responses["403"] = {
+      description: "Forbidden — ไม่มีสิทธิ์ดำเนินการ",
+      content: {
+        "application/json": {
+          schema: { $ref: "#/components/schemas/ErrorResponse" },
+          example: {
+            success: false,
+            error: {
+              code: "FORBIDDEN",
+              message: "เฉพาะผู้ดูแลระบบเท่านั้น",
+            },
+          },
+        },
+      },
+    };
+  }
+
+  if (method === "GET" || method === "PUT" || method === "DELETE" || method === "PATCH") {
+    responses["404"] = {
+      description: "Not Found — ไม่พบข้อมูลที่ร้องขอ",
+      content: {
+        "application/json": {
+          schema: { $ref: "#/components/schemas/ErrorResponse" },
+          example: {
+            success: false,
+            error: {
+              code: "NOT_FOUND",
+              message: "ไม่พบข้อมูลที่ต้องการ",
+            },
+          },
+        },
+      },
+    };
+  }
+
+  responses["500"] = {
+    description: "Internal Server Error — เกิดข้อผิดพลาดภายในระบบ",
+    content: {
+      "application/json": {
+        schema: { $ref: "#/components/schemas/ErrorResponse" },
+        example: {
+          success: false,
+          error: {
+            code: "SERVER_ERROR",
+            message: "เกิดข้อผิดพลาด กรุณาลองใหม่",
+          },
+        },
+      },
+    },
+  };
+
+  return responses;
 }
 
 // ===== MAIN GENERATOR =====
@@ -233,7 +354,7 @@ export function generateOpenAPISpec(): OpenAPISpec {
         ...(ep.requestBody && ep.requestBody.length > 0
           ? { requestBody: apiParamsToRequestBody(ep.requestBody) }
           : {}),
-        responses: buildResponse(responseExample),
+        responses: buildResponse(responseExample, { auth: ep.auth, method }),
         security: authToSecurity(ep.auth),
       };
 
@@ -276,7 +397,7 @@ export function generateOpenAPISpec(): OpenAPISpec {
         operationId: `kiosk_${method}_${path.replace(/[^a-zA-Z0-9]/g, "_")}`,
         ...(parameters.length > 0 ? { parameters } : {}),
         ...(ep.request ? { requestBody: objectToRequestBody(ep.request as Record<string, unknown>) } : {}),
-        responses: buildResponse(ep.response),
+        responses: buildResponse(ep.response, { auth: isPublicEndpoint ? "public" : "user", method }),
         security: isPublicEndpoint ? [] : authToSecurity("user", "kiosk"),
       };
 
@@ -310,7 +431,7 @@ export function generateOpenAPISpec(): OpenAPISpec {
         operationId: `counter_${method}_${path.replace(/[^a-zA-Z0-9]/g, "_")}`,
         ...(parameters.length > 0 ? { parameters } : {}),
         ...(ep.request ? { requestBody: objectToRequestBody(ep.request as Record<string, unknown>) } : {}),
-        responses: buildResponse(ep.response),
+        responses: buildResponse(ep.response, { auth: "user", method }),
         security: authToSecurity("user", "counter"),
       };
 
@@ -349,7 +470,7 @@ export function generateOpenAPISpec(): OpenAPISpec {
       ...(ep.requestBody && ep.requestBody.length > 0
         ? { requestBody: apiParamsToRequestBody(ep.requestBody) }
         : {}),
-      responses: buildResponse(responseExample),
+      responses: buildResponse(responseExample, { auth: ep.auth, method }),
       security: authToSecurity(ep.auth, "line"),
     };
 
@@ -428,7 +549,56 @@ export function generateOpenAPISpec(): OpenAPISpec {
           description: "HMAC-SHA256 signature of request body (LINE Webhook)",
         },
       },
-      schemas: {},
+      schemas: {
+        SuccessResponse: {
+          type: "object",
+          properties: {
+            success: { type: "boolean", example: true },
+            data: { type: "object", description: "Response data (varies per endpoint)" },
+          },
+          required: ["success"],
+        },
+        ErrorResponse: {
+          type: "object",
+          properties: {
+            success: { type: "boolean", example: false },
+            error: {
+              type: "object",
+              properties: {
+                code: {
+                  type: "string",
+                  description: "Error code",
+                  enum: [
+                    "MISSING_FIELDS",
+                    "INVALID_ID",
+                    "NOT_FOUND",
+                    "UNAUTHORIZED",
+                    "FORBIDDEN",
+                    "DUPLICATE",
+                    "INVALID_DATA",
+                    "INVALID_CONFIG_VERSION",
+                    "CONSENT_REQUIRED",
+                    "SERVER_ERROR",
+                  ],
+                },
+                message: {
+                  type: "string",
+                  description: "Human-readable error message (Thai)",
+                },
+              },
+              required: ["code", "message"],
+            },
+          },
+          required: ["success", "error"],
+          example: {
+            success: false,
+            error: {
+              code: "MISSING_FIELDS",
+              message: "กรุณากรอกข้อมูลที่จำเป็น",
+            },
+          },
+        },
+      },
     },
   };
 }

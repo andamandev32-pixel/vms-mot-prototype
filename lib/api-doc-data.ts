@@ -679,7 +679,7 @@ const accessZonesApi: PageApiDoc = {
     },
     {
       method: "POST",
-      path: "/api/access-zones/:id/test-connection",
+      path: "/api/access-zones/:id/test",
       summary: "ทดสอบเชื่อมต่อ Hikvision",
       summaryEn: "Test Hikvision connection",
       auth: "admin",
@@ -784,13 +784,15 @@ const approverGroupsApi: PageApiDoc = {
     },
     {
       method: "DELETE",
-      path: "/api/approver-groups/:id/members/:userId",
+      path: "/api/approver-groups/:id/members",
       summary: "ลบสมาชิกออกจากกลุ่ม",
       summaryEn: "Remove member from group",
       auth: "admin",
       pathParams: [
         { name: "id", type: "number", required: true, description: "Approver Group ID" },
-        { name: "userId", type: "number", required: true, description: "User ID ที่ต้องการลบ" },
+      ],
+      queryParams: [
+        { name: "staffId", type: "number", required: true, description: "Staff ID ที่ต้องการลบ" },
       ],
       notes: ["ต้องมีสมาชิกอย่างน้อย 1 คนในกลุ่ม"],
     },
@@ -1138,11 +1140,11 @@ const businessHoursApi: PageApiDoc = {
     },
     {
       method: "DELETE",
-      path: "/api/business-hours/holidays/:date",
+      path: "/api/business-hours/holidays",
       summary: "ลบวันหยุดพิเศษ",
       summaryEn: "Remove holiday",
       auth: "admin",
-      pathParams: [
+      queryParams: [
         { name: "date", type: "string", required: true, description: "วันที่ (YYYY-MM-DD)" },
       ],
     },
@@ -1414,11 +1416,11 @@ const pdpaConsentApi: PageApiDoc = {
   pageId: "pdpa-consent",
   menuName: "แบบฟอร์ม PDPA Consent",
   menuNameEn: "PDPA Consent Settings",
-  baseUrl: "/api/pdpa-consent",
+  baseUrl: "/api/pdpa",
   endpoints: [
     {
       method: "GET",
-      path: "/api/pdpa-consent/config",
+      path: "/api/pdpa/config",
       summary: "ดึงฟอร์ม PDPA Consent ปัจจุบัน",
       summaryEn: "Get current PDPA consent form",
       auth: "user",
@@ -1437,7 +1439,7 @@ const pdpaConsentApi: PageApiDoc = {
     },
     {
       method: "PUT",
-      path: "/api/pdpa-consent/config",
+      path: "/api/pdpa/config",
       summary: "อัปเดตฟอร์ม PDPA Consent",
       summaryEn: "Update PDPA consent form",
       auth: "admin",
@@ -1455,7 +1457,7 @@ const pdpaConsentApi: PageApiDoc = {
     },
     {
       method: "POST",
-      path: "/api/pdpa-consent/accept",
+      path: "/api/pdpa/accept",
       summary: "ผู้เยี่ยมยินยอม PDPA",
       summaryEn: "Accept PDPA consent",
       auth: "public",
@@ -1468,7 +1470,7 @@ const pdpaConsentApi: PageApiDoc = {
     },
     {
       method: "GET",
-      path: "/api/pdpa-consent/logs",
+      path: "/api/pdpa/logs",
       summary: "ดึง log การยินยอม PDPA",
       summaryEn: "Get PDPA consent logs",
       auth: "admin",
