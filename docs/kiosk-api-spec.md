@@ -55,7 +55,8 @@ X-Kiosk-Id: <service_point_id>
 | Endpoint | Auth Required | หมายเหตุ |
 |----------|:------------:|----------|
 | `GET /api/kiosk/:servicePointId/config` | ❌ Public | โหลด config จุดบริการ (ไม่ต้อง auth — Kiosk ตอน boot ยังไม่มี token) |
-| `POST /api/pdpa/accept` | ❌ Public | ไม่ต้อง auth |
+| `GET /api/kiosk/pdpa/latest` | ❌ Public | ดึงข้อความ PDPA ล่าสุด |
+| `POST /api/kiosk/pdpa/consent` | ❌ Public | บันทึก consent (ก่อนระบุตัวตน) |
 | `GET /api/search/visitors` | ✅ Device Token | ค้นหาผู้เยี่ยม |
 | `POST /api/blocklist/check` | ✅ Device Token | ตรวจ blocklist |
 | `GET /api/visit-purposes` | ✅ Device Token | โหลดวัตถุประสงค์ |
@@ -133,7 +134,8 @@ X-Kiosk-Id: <service_point_id>
 | PENDING_APPROVAL | `usePollAppointmentStatus(id)` | GET /api/appointments/:id (poll 10s) | Device Token |
 | SUCCESS | `useKioskCheckin()` | POST /api/entries | Device Token |
 | QR_SCAN | `useAppointmentLookup()` | GET /api/search/appointments | Device Token |
-| PDPA_CONSENT | `useRecordPdpaConsent()` | POST /api/pdpa/accept | Public (ไม่ต้อง auth) |
+| PDPA_CONSENT | `useKioskPdpaLatest()` | GET /api/kiosk/pdpa/latest | Public (ไม่ต้อง auth) |
+| PDPA_CONSENT | `useRecordPdpaConsent()` | POST /api/kiosk/pdpa/consent | Public (ไม่ต้อง auth) |
 
 **Hooks file:** `lib/hooks/use-kiosk.ts`
 **Auth context:** `lib/kiosk/kiosk-auth-context.tsx` — `KioskAuthProvider` + `kioskApiFetch` / `kioskApiPost`
@@ -147,7 +149,8 @@ X-Kiosk-Id: <service_point_id>
 | # | State | Method | Actual Endpoint | Hook | Auth | สถานะ |
 |---|-------|--------|----------------|------|------|-------|
 | 1 | WELCOME | GET | `/api/kiosk/:servicePointId/config` | `useKioskConfig` | **Public** | ✅ Implemented |
-| 2 | PDPA_CONSENT | POST | `/api/pdpa/accept` | `useRecordPdpaConsent` | Public | ✅ Implemented |
+| 2a | PDPA_CONSENT | GET | `/api/kiosk/pdpa/latest` | `useKioskPdpaLatest` | Public | ✅ Implemented |
+| 2b | PDPA_CONSENT | POST | `/api/kiosk/pdpa/consent` | `useRecordPdpaConsent` | Public | ✅ Implemented |
 | 3 | SELECT_ID_METHOD | — | *(config จาก service-point, cached)* | — | — | ✅ Frontend-only |
 | 4 | ID_VERIFICATION | GET | `/api/search/visitors?q=` | `useSearchVisitor` | Device Token | ✅ Implemented |
 | 4b | ID_VERIFICATION | POST | `/api/blocklist/check` | `useKioskBlocklistCheck` | Device Token | ✅ Implemented |
@@ -164,8 +167,8 @@ X-Kiosk-Id: <service_point_id>
 | 12 | APPOINTMENT_VERIFY_ID | — | *(ใช้ search/visitors + blocklist/check)* | — | Device Token | ✅ Reuse existing |
 | — | ERROR | POST | *(ยังไม่มี endpoint)* | — | — | 🔲 Planned |
 
-> **Total: 9 Implemented API endpoints** — 1 dedicated kiosk endpoint + 8 reuse จาก Web App
-> **Auth: 7 endpoints ใช้ Device Token** (`Authorization: Bearer kvms_...`), **3 endpoints เป็น Public** (kiosk config + PDPA + visit-slips)
+> **Total: 11 Implemented API endpoints** — 3 dedicated kiosk endpoints + 8 reuse จาก Web App
+> **Auth: 7 endpoints ใช้ Device Token** (`Authorization: Bearer kvms_...`), **4 endpoints เป็น Public** (kiosk config + PDPA latest + PDPA consent + visit-slips)
 > **Planned: 3 endpoints** — face-photo, wifi, error-log (ต้องสร้างเพิ่มสำหรับ production)
 
 ---
@@ -245,21 +248,49 @@ X-Kiosk-Id: <service_point_id>
 
 ## 2. PDPA_CONSENT — ข้อความ PDPA
 
-### `POST /api/pdpa/accept`
+### `GET /api/kiosk/pdpa/latest`
+
+> **Hook:** `useKioskPdpaLatest()` from `lib/hooks/use-kiosk.ts`
+> **Status:** ✅ Implemented — Public endpoint (ไม่ต้อง auth)
+> **หมายเหตุ:** ดึงข้อความ PDPA เวอร์ชันล่าสุดสำหรับแสดงบน Kiosk — cacheable (max-age 3600)
+
+**Tables ที่ใช้:** `pdpa_consent_configs`, `pdpa_consent_versions`
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "data": {
+    "version": 1,
+    "titleTh": "นโยบายคุ้มครองข้อมูลส่วนบุคคล",
+    "titleEn": "Personal Data Protection Policy",
+    "bodyTh": "กระทรวงการท่องเที่ยวและกีฬา มีความจำเป็นต้องเก็บรวบรวม...",
+    "bodyEn": "The Ministry of Tourism and Sports needs to collect...",
+    "retentionDays": 90,
+    "requireScrollToBottom": true,
+    "effectiveDate": "2026-04-06"
+  }
+}
+```
+
+### `POST /api/kiosk/pdpa/consent`
 
 > **Hook:** `useRecordPdpaConsent()` from `lib/hooks/use-kiosk.ts`
 > **Status:** ✅ Implemented — Public endpoint (ไม่ต้อง auth)
-> **หมายเหตุ:** Spec เดิมออกแบบแยก `GET /kiosk/pdpa` + `POST /kiosk/pdpa/consent`
-> แต่ implementation รวมเป็น `POST /api/pdpa/accept` ตัวเดียว (ดึง config + บันทึก consent)
+> **หมายเหตุ:** บันทึก consent ก่อนระบุตัวตน — `visitorId` จะถูกผูกภายหลังตอน checkin โดยใช้ `consentId` อ้างอิง
+
+**Tables ที่ใช้:** `pdpa_consent_logs`
 
 **Request:**
 
 ```json
 {
-  "visitorId": 15,
+  "configVersion": 1,
   "consentChannel": "kiosk",
-  "ipAddress": "10.0.0.1",
-  "deviceId": "KIOSK-C1-L001"
+  "servicePointId": 1,
+  "consentGiven": true,
+  "locale": "th"
 }
 ```
 
@@ -269,62 +300,9 @@ X-Kiosk-Id: <service_point_id>
 {
   "success": true,
   "data": {
-    "consent": {
-      "id": 42,
-      "visitorId": 15,
-      "configVersion": 3,
-      "consentChannel": "kiosk",
-      "expiresAt": "2027-03-15T00:00:00Z"
-    },
-    "message": "PDPA consent recorded",
-    "alreadyConsented": false
+    "consentId": 42,
+    "recordedAt": "2026-04-08T08:29:11.767Z"
   }
-}
-```
-
-**Tables ที่ใช้:** `pdpa_consent_configs`, `pdpa_consent_logs`
-
-**Response:**
-
-```json
-{
-  "version": 3,
-  "titleTh": "นโยบายคุ้มครองข้อมูลส่วนบุคคล",
-  "titleEn": "Personal Data Protection Policy",
-  "bodyTh": "กระทรวงการท่องเที่ยวและกีฬา มีความจำเป็นต้องเก็บรวบรวม...",
-  "bodyEn": "The Ministry of Tourism and Sports needs to collect...",
-  "retentionDays": 90,
-  "requireScrollToBottom": true,
-  "showDetailedPurpose": true,
-  "effectiveDate": "2026-01-15"
-}
-```
-
-### `POST /kiosk/pdpa/consent` *(Original Design — now merged into `POST /api/pdpa/accept`)*
-
-บันทึกว่าผู้เยี่ยมกดยินยอมแล้ว (อาจบันทึกก่อนหรือหลัง verify ก็ได้ ขึ้นกับ design)
-
-**Tables ที่ใช้:** `pdpa_consent_logs`
-
-**Request:**
-
-```json
-{
-  "configVersion": 3,
-  "consentChannel": "kiosk",
-  "servicePointId": 1,
-  "visitorIdNumber": "1234567890123",
-  "consentGiven": true,
-  "ipAddress": "192.168.1.100"
-}
-```
-
-**Response:**
-
-```json
-{
-  "consentId": 42,
-  "recordedAt": "2026-03-15T09:01:00+07:00"
 }
 ```
 
@@ -1262,8 +1240,8 @@ Kiosk และ Counter จะเรียก endpoint นี้ตอน mount 
 | `service_point_documents` | `GET /api/service-points/:id` |
 | `service_point_purposes` | `GET /api/service-points/:id` |
 | `business_hours_rules` | `GET /api/service-points/:id` |
-| `pdpa_consent_configs` | `POST /api/pdpa/accept` |
-| `pdpa_consent_logs` | `POST /api/pdpa/accept` |
+| `pdpa_consent_configs` | `GET /api/kiosk/pdpa/latest` |
+| `pdpa_consent_logs` | `POST /api/kiosk/pdpa/consent` |
 | `identity_document_types` | (cached from service-point config) |
 | `visitors` | `GET /api/search/visitors` |
 | `blocklist` | `POST /api/blocklist/check` |
@@ -1333,9 +1311,13 @@ Kiosk App                Backend API                     Database               
    │   points/:id           ─│                              │                         │
    │◀── config + hours ──────│◀── result ──────────────────│                         │
    │                         │                              │                         │
+   │ [Load PDPA text]        │                              │                         │
+   │── GET /api/kiosk/     ─▶│── SELECT pdpa_consent_* ───▶│                         │
+   │   pdpa/latest           │◀── config ──────────────────│                         │
+   │◀── PDPA text ────────────│                              │                         │
    │ [User accepts PDPA]     │                              │                         │
-   │── POST /api/pdpa/     ─▶│── SELECT pdpa_consent_* ───▶│                         │
-   │   accept                │── INSERT pdpa_consent_logs ─▶│                         │
+   │── POST /api/kiosk/    ─▶│── INSERT pdpa_consent_logs ─▶│                         │
+   │   pdpa/consent          │◀── result ──────────────────│                         │
    │◀── consent ─────────────│◀── result ──────────────────│                         │
    │                         │                              │                         │
    │ [User inserts ID card]  │                              │                         │
@@ -1380,17 +1362,17 @@ Kiosk App                Backend API                     Database               
 
 ## หมายเหตุสำหรับ Dev
 
-1. **Device Token Auth**: Kiosk ใช้ `Authorization: Bearer kvms_...` ทุก API call (ยกเว้น PDPA + visit-slips ที่เป็น public) — token เก็บใน localStorage key `evms_kiosk_device_token`
+1. **Device Token Auth**: Kiosk ใช้ `Authorization: Bearer kvms_...` ทุก API call (ยกเว้น kiosk config + PDPA + visit-slips ที่เป็น public) — token เก็บใน localStorage key `evms_kiosk_device_token`
 2. **Token Security**: token แสดงครั้งเดียวตอน register, เก็บเป็น SHA-256 hash ใน DB, รองรับ revoke + rotation ผ่าน admin API
 3. **Auth Library**: `lib/kiosk-auth.ts` — ใช้ `getStaffOrKiosk()` หรือ `getAuthUserOrKiosk()` ใน API routes ที่ kiosk ต้องเข้าถึง
 4. **Kiosk Auth Context**: `lib/kiosk/kiosk-auth-context.tsx` — React context ที่ wrap kiosk layout, provide `kioskApiFetch` / `kioskApiPost` ที่ inject auth headers อัตโนมัติ
-5. **Caching**: `GET /api/service-points/:id`, `POST /api/pdpa/accept`, `GET /api/visit-purposes` สามารถ cache ฝั่ง Kiosk ได้ (refresh ทุก 5 นาที หรือเมื่อ reset)
+5. **Caching**: `GET /api/kiosk/pdpa/latest` (max-age 3600), `GET /api/service-points/:id`, `GET /api/visit-purposes` สามารถ cache ฝั่ง Kiosk ได้ (refresh ทุก 5 นาที หรือเมื่อ reset)
 6. **Offline Mode**: Kiosk ควรมี cached config เพื่อแสดง "offline" message ได้แม้ไม่มี internet
 7. **Retry Logic**: API ที่เป็น write (POST) ควรมี idempotency key เพื่อป้องกัน duplicate — ใช้ `booking_code` เป็น key
 8. **Photo Upload**: แนะนำ compress JPEG quality 80% ก่อนอัปโหลด เพื่อลด bandwidth
 9. **WiFi Generation**: อาจ generate ฝั่ง Kiosk ได้ตาม pattern จาก config (ไม่ต้องเรียก API) — แต่ถ้าต้องการ central control ใช้ API
 10. **Hikvision Sync**: ทำ async ฝั่ง backend — ไม่ต้องรอ response ก่อนตอบ Kiosk (eventual consistency)
-11. **PDPA Consent**: บันทึกก่อน verify-identity ได้ (ใช้ idNumber จาก card read — หรือบันทึกทีหลังพร้อม checkin)
+11. **PDPA Consent**: บันทึกก่อน verify-identity ได้ — ใช้ `POST /api/kiosk/pdpa/consent` ที่ไม่ต้องมี `visitorId` จะผูก visitor ภายหลังตอน checkin ผ่าน `consentId`
 12. **Blocklist Check**: ตรวจหลัง DATA_PREVIEW (ก่อน CONFIRM_DATA) — ถ้าพบ permanent block แสดง error ไม่ให้ดำเนินการต่อ
 
 ---
@@ -1455,7 +1437,8 @@ Kiosk App                Backend API                     Database               
 | # | Endpoint | Method | Auth | ผลทดสอบ |
 |---|----------|--------|------|---------|
 | 1 | `/api/service-points/:id` | GET | Device Token | ✅ โหลด config สำเร็จ |
-| 2 | `/api/pdpa/accept` | POST | Public | ✅ บันทึก consent สำเร็จ |
+| 2a | `/api/kiosk/pdpa/latest` | GET | Public | ✅ ดึงข้อความ PDPA ล่าสุดสำเร็จ |
+| 2b | `/api/kiosk/pdpa/consent` | POST | Public | ✅ บันทึก consent สำเร็จ |
 | 3 | `/api/search/visitors?q=` | GET | Device Token | ✅ ค้นหา visitor สำเร็จ |
 | 4 | `/api/blocklist/check` | POST | Device Token | ✅ ตรวจ blocklist สำเร็จ (not blocked) |
 | 5 | `/api/visit-purposes` | GET | Device Token | ✅ โหลด purposes สำเร็จ |
@@ -1507,7 +1490,8 @@ Kiosk App                Backend API                     Database               
 |---|----------|--------|------|---------|
 | 1 | `/api/search/appointments?q={bookingCode}` | GET | Device Token | ✅ ค้นหานัดหมายจาก QR code สำเร็จ |
 | 2 | `/api/appointments/:id` | GET | Device Token | ✅ ดึง detail (visitor, host, companions, statusLogs) |
-| 3 | `/api/pdpa/accept` | POST | Public | ✅ บันทึก PDPA consent |
+| 3a | `/api/kiosk/pdpa/latest` | GET | Public | ✅ ดึงข้อความ PDPA ล่าสุดสำเร็จ |
+| 3b | `/api/kiosk/pdpa/consent` | POST | Public | ✅ บันทึก PDPA consent |
 | 4 | `/api/entries` | POST | Device Token | ✅ check-in linked to appointment (channel=kiosk) |
 | 5 | `/api/visit-slips/template` | GET | Public | ✅ ดึง slip template (Thermal 80mm) |
 | 6 | `/api/entries/today` | GET | Staff Cookie | ✅ entry ปรากฏใน today list |

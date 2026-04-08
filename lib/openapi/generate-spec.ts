@@ -264,8 +264,10 @@ export function generateOpenAPISpec(): OpenAPISpec {
         schema: { type: pp.toLowerCase().includes("id") ? "integer" : "string" },
       }));
 
-      // /api/kiosk/{servicePointId}/config is public (no auth)
-      const isPublicEndpoint = path.includes("/kiosk/") && path.includes("/config");
+      // Public kiosk endpoints: config + PDPA (no auth required)
+      const isPublicEndpoint =
+        (path.includes("/kiosk/") && path.includes("/config")) ||
+        path.startsWith("/api/kiosk/pdpa/");
 
       const operation: Record<string, unknown> = {
         tags: ["kiosk"],
