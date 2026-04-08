@@ -90,6 +90,7 @@ model Visitor {
   registeredChannel String? @map("registered_channel") @db.VarChar(20)
   lastLoginAt     DateTime? @map("last_login_at")
   isBlocked       Boolean   @default(false) @map("is_blocked")
+  lastVerifiedAt  DateTime? @map("last_verified_at")
   createdAt       DateTime  @default(now()) @map("created_at")
   updatedAt       DateTime  @updatedAt @map("updated_at")
 
@@ -1256,6 +1257,26 @@ model PdpaConsentLog {
   @@index([consentChannel])
   @@index([consentedAt])
   @@map("pdpa_consent_logs")
+}
+
+// ════════════════════════════════════════════════════
+// Kiosk Error Logs
+// ════════════════════════════════════════════════════
+
+model KioskErrorLog {
+  id             Int      @id @default(autoincrement())
+  kioskDeviceId  Int?     @map("kiosk_device_id")
+  servicePointId Int?     @map("service_point_id")
+  errorType      String   @map("error_type") @db.VarChar(30)
+  device         String?  @db.VarChar(50)
+  stateAtError   String?  @map("state_at_error") @db.VarChar(50)
+  message        String   @db.Text
+  stackTrace     String?  @map("stack_trace") @db.Text
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([servicePointId])
+  @@index([createdAt])
+  @@map("kiosk_error_logs")
 }
 
 // ════════════════════════════════════════════════════

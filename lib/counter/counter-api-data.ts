@@ -41,7 +41,7 @@ const apiSpecs: CounterApiSpec[] = [
     endpoints: [
       {
         method: "GET",
-        path: "/counter/service-points",
+        path: "/api/counter/service-points",
         summary: "โหลดรายการจุดบริการ Counter ที่ว่าง (ต้อง Staff Auth)",
         summaryEn: "Load available counter service points (Staff Auth required)",
         tables: ["service_points", "business_hours_rules", "service_point_purposes", "service_point_documents"],
@@ -65,7 +65,7 @@ const apiSpecs: CounterApiSpec[] = [
       },
       {
         method: "POST",
-        path: "/counter/session",
+        path: "/api/counter/session",
         summary: "เจ้าหน้าที่เข้าประจำจุด Counter",
         summaryEn: "Officer starts counter session",
         tables: ["service_points", "staff"],
@@ -98,7 +98,7 @@ const apiSpecs: CounterApiSpec[] = [
     endpoints: [
       {
         method: "GET",
-        path: "/counter/dashboard",
+        path: "/api/counter/dashboard",
         summary: "โหลดสรุปสถิติประจำวัน + คิว (นับจาก visit_entries)",
         summaryEn: "Load daily summary stats + queue (counts from visit_entries)",
         tables: ["visit_entries", "appointments", "visitors", "service_points"],
@@ -123,7 +123,7 @@ const apiSpecs: CounterApiSpec[] = [
       },
       {
         method: "GET",
-        path: "/counter/entries/today",
+        path: "/api/counter/entries/today",
         summary: "ดึงรายการ visit_entries วันนี้ + filter ตาม status",
         summaryEn: "List today's visit entries with status filtering",
         tables: ["visit_entries", "visitors", "departments", "visit_purposes", "appointments"],
@@ -167,7 +167,7 @@ const apiSpecs: CounterApiSpec[] = [
     endpoints: [
       {
         method: "POST",
-        path: "/counter/identity/card-read",
+        path: "/api/counter/identity/card-read",
         summary: "อ่านบัตร + เช็ค blocklist + upsert visitor",
         summaryEn: "Read card + check blocklist + upsert visitor",
         tables: ["visitors", "blocklist", "visit_entries"],
@@ -201,7 +201,7 @@ const apiSpecs: CounterApiSpec[] = [
       },
       {
         method: "POST",
-        path: "/counter/identity/manual",
+        path: "/api/counter/identity/manual",
         summary: "กรอกข้อมูลด้วยมือ (manual entry)",
         summaryEn: "Manual identity input by officer",
         tables: ["visitors", "blocklist"],
@@ -236,7 +236,7 @@ const apiSpecs: CounterApiSpec[] = [
     endpoints: [
       {
         method: "GET",
-        path: "/counter/purposes",
+        path: "/api/counter/purposes",
         summary: "ดึงวัตถุประสงค์ที่ Counter รองรับ",
         summaryEn: "Get visit purposes for this counter",
         tables: ["visit_purposes", "visit_purpose_department_rules", "service_point_purposes"],
@@ -260,7 +260,7 @@ const apiSpecs: CounterApiSpec[] = [
     endpoints: [
       {
         method: "GET",
-        path: "/counter/departments",
+        path: "/api/counter/departments",
         summary: "ดึงหน่วยงานตาม purpose ที่เลือก",
         summaryEn: "Get departments filtered by selected purpose",
         tables: ["departments", "floors", "floor_departments", "visit_purpose_department_rules"],
@@ -296,7 +296,7 @@ const apiSpecs: CounterApiSpec[] = [
     endpoints: [
       {
         method: "POST",
-        path: "/counter/visitor-photo",
+        path: "/api/counter/visitor-photo",
         summary: "อัปโหลดภาพถ่ายผู้เยี่ยม (Webcam)",
         summaryEn: "Upload visitor photo from webcam",
         contentType: "multipart/form-data",
@@ -325,7 +325,7 @@ const apiSpecs: CounterApiSpec[] = [
     endpoints: [
       {
         method: "POST",
-        path: "/counter/walkin/checkin",
+        path: "/api/counter/walkin/checkin",
         summary: "สร้าง visit_entry สำหรับ walk-in (API หลัก) — appointment_id = NULL",
         summaryEn: "Create visit_entry for walk-in (main API) — appointment_id = NULL",
         tables: ["visit_entries", "access_groups", "access_group_zones", "department_access_mappings", "visit_slip_templates", "visit_slip_sections", "visit_slip_fields", "purpose_slip_mappings", "visitors"],
@@ -388,7 +388,7 @@ const apiSpecs: CounterApiSpec[] = [
     endpoints: [
       {
         method: "GET",
-        path: "/counter/appointments/today",
+        path: "/api/counter/appointments/today",
         summary: "ค้นหานัดหมายวันนี้",
         summaryEn: "Search today's appointments",
         tables: ["appointments", "visitors", "staff", "departments", "visit_purposes"],
@@ -419,7 +419,7 @@ const apiSpecs: CounterApiSpec[] = [
     endpoints: [
       {
         method: "POST",
-        path: "/counter/appointments/{id}/verify",
+        path: "/api/counter/appointments/{id}/verify",
         summary: "ยืนยันตัวตนกับนัดหมาย",
         summaryEn: "Verify identity against appointment",
         tables: ["visitors", "appointments", "blocklist"],
@@ -455,7 +455,7 @@ const apiSpecs: CounterApiSpec[] = [
     endpoints: [
       {
         method: "POST",
-        path: "/counter/appointments/{id}/checkin",
+        path: "/api/counter/appointments/{id}/checkin",
         summary: "เช็คอินจากนัดหมาย — สร้าง visit_entry ผูกกับ appointment",
         summaryEn: "Check-in from appointment — creates a visit_entry linked to the appointment",
         tables: ["visit_entries", "appointments", "access_groups", "access_group_zones", "department_access_mappings", "visit_slip_templates", "purpose_slip_mappings"],
@@ -507,7 +507,7 @@ const apiSpecs: CounterApiSpec[] = [
     endpoints: [
       {
         method: "GET",
-        path: "/counter/entries/active/{badgeCode}",
+        path: "/api/counter/entries/active/{badgeCode}",
         summary: "ค้นหา entry ผู้เยี่ยมจาก badge/QR",
         summaryEn: "Look up active visit entry by badge/QR code",
         tables: ["visit_entries", "visitors", "departments", "visit_purposes"],
@@ -545,7 +545,7 @@ const apiSpecs: CounterApiSpec[] = [
     endpoints: [
       {
         method: "POST",
-        path: "/counter/entries/{id}/checkout",
+        path: "/api/counter/entries/{id}/checkout",
         summary: "ยืนยัน checkout — อัปเดต entry status เป็น checked-out",
         summaryEn: "Confirm visitor checkout — updates entry status to checked-out",
         tables: ["visit_entries", "access_groups"],
@@ -580,7 +580,7 @@ const apiSpecs: CounterApiSpec[] = [
     endpoints: [
       {
         method: "POST",
-        path: "/counter/badge/print",
+        path: "/api/counter/badge/print",
         summary: "พิมพ์บัตรผู้เยี่ยม + ดึง slip layout",
         summaryEn: "Print visitor badge + get slip layout",
         tables: ["visit_slip_templates", "visit_slip_sections", "visit_slip_fields", "purpose_slip_mappings", "visit_entries"],
@@ -633,7 +633,7 @@ const apiSpecs: CounterApiSpec[] = [
     endpoints: [
       {
         method: "GET",
-        path: "/counter/entries/{id}/summary",
+        path: "/api/counter/entries/{id}/summary",
         summary: "ดึงสรุปข้อมูล check-in สำเร็จ",
         summaryEn: "Get check-in success summary",
         tables: ["visit_entries", "visitors", "departments", "visit_purposes"],
