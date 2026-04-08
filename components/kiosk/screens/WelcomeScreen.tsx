@@ -1,15 +1,16 @@
 "use client";
 
-import { UserPlus, Globe, QrCode } from "lucide-react";
+import { UserPlus, Globe, QrCode, AlertTriangle } from "lucide-react";
 
 interface WelcomeScreenProps {
   locale: "th" | "en";
+  isAuthenticated?: boolean;
   onSelectWalkin: () => void;
   onSelectAppointment: () => void;
   onChangeLocale?: () => void;
 }
 
-export default function WelcomeScreen({ locale, onSelectWalkin, onSelectAppointment, onChangeLocale }: WelcomeScreenProps) {
+export default function WelcomeScreen({ locale, isAuthenticated = true, onSelectWalkin, onSelectAppointment, onChangeLocale }: WelcomeScreenProps) {
   const now = new Date();
   const time = now.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" });
   const date = locale === "th"
@@ -65,12 +66,34 @@ export default function WelcomeScreen({ locale, onSelectWalkin, onSelectAppointm
           </p>
         </div>
 
+        {/* Token warning */}
+        {!isAuthenticated && (
+          <div className="w-full flex items-start gap-1.5 px-2 py-1.5 rounded-lg bg-red-50 border border-red-200">
+            <AlertTriangle size={12} className="text-red-500 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-[9px] font-bold text-red-600">
+                {locale === "th" ? "Device Token ไม่ถูกต้อง" : "Invalid Device Token"}
+              </p>
+              <p className="text-[8px] text-red-500 mt-0.5">
+                {locale === "th"
+                  ? "กรุณากดไอคอน ⚙️ ด้านล่างเพื่อตั้งค่า Device Token ก่อนใช้งาน"
+                  : "Please tap the ⚙️ icon below to configure Device Token"}
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Two buttons side by side */}
         <div className="w-full flex gap-1.5">
           {/* Appointment */}
           <button
             onClick={onSelectAppointment}
-            className="flex-1 flex items-center gap-1.5 py-2 px-1.5 rounded-xl bg-white border-2 border-[#2E3192]/20 shadow-sm hover:border-[#2E3192] hover:shadow-md transition-all active:scale-[0.97]"
+            disabled={!isAuthenticated}
+            className={`flex-1 flex items-center gap-1.5 py-2 px-1.5 rounded-xl bg-white border-2 border-[#2E3192]/20 shadow-sm transition-all ${
+              isAuthenticated
+                ? "hover:border-[#2E3192] hover:shadow-md active:scale-[0.97]"
+                : "opacity-40 cursor-not-allowed"
+            }`}
           >
             <div className="w-8 h-8 rounded-lg bg-[#2E3192]/10 flex items-center justify-center shrink-0 ">
               <QrCode size={16} className="text-[#2E3192]" />
@@ -86,7 +109,12 @@ export default function WelcomeScreen({ locale, onSelectWalkin, onSelectAppointm
           {/* Walk-in */}
           <button
             onClick={onSelectWalkin}
-            className="flex-1 flex items-center gap-1.5 py-2 px-1.5 rounded-xl bg-[#2E3192] text-white shadow-lg hover:bg-[#252880] hover:shadow-xl transition-all active:scale-[0.97]"
+            disabled={!isAuthenticated}
+            className={`flex-1 flex items-center gap-1.5 py-2 px-1.5 rounded-xl bg-[#2E3192] text-white shadow-lg transition-all ${
+              isAuthenticated
+                ? "hover:bg-[#252880] hover:shadow-xl active:scale-[0.97]"
+                : "opacity-40 cursor-not-allowed"
+            }`}
           >
             <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
               <UserPlus size={16} className="text-white" />

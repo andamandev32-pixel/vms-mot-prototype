@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useMemo, useReducer, useState } from "react";
+import { useKioskAuth } from "@/lib/kiosk/kiosk-auth-context";
 import { RotateCcw, Volume2, VolumeX, Globe, Settings, ChevronDown, ChevronUp, X, Lock, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -192,6 +193,7 @@ export default function KioskDemoPage() {
   const [selectedCase, setSelectedCase] = useState<DemoCase>("walkin");
   const [locale, setLocale] = useState<KioskLocale>("th");
   const [audioEnabled, setAudioEnabled] = useState(false);
+  const { isAuthenticated } = useKioskAuth();
 
   // === Kiosk Config State ===
   const kioskList = useMemo(() => getKioskServicePoints(), []);
@@ -274,6 +276,7 @@ export default function KioskDemoPage() {
         return (
           <WelcomeScreen
             locale={locale}
+            isAuthenticated={isAuthenticated}
             onSelectWalkin={() => {
               if (selectedCase === "walkin-verified") {
                 // Walk-in ที่ยืนยันตัวตนแล้ว — ส่ง identityVerified + mock visitor data
