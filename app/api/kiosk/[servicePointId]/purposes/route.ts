@@ -29,7 +29,10 @@ export async function GET(
               include: {
                 department: {
                   include: {
-                    floor: { include: { building: true } },
+                    floorDepartments: {
+                      include: { floor: { include: { building: true } } },
+                      take: 1,
+                    },
                   },
                 },
                 approverGroup: { select: { id: true, name: true } },
@@ -51,16 +54,19 @@ export async function GET(
           nameEn: p.nameEn,
           icon: p.icon || "📋",
           order: p.sortOrder,
-          departments: p.departmentRules.map((r) => ({
-            departmentId: r.department.id,
-            name: r.department.name,
-            nameEn: r.department.nameEn,
-            floor: r.department.floor?.name || "",
-            building: r.department.floor?.building?.name || "",
-            requireApproval: r.requireApproval,
-            approverGroupId: r.approverGroupId,
-            offerWifi: r.offerWifi,
-          })),
+          departments: p.departmentRules.map((r: typeof p.departmentRules[number]) => {
+            const fd = r.department.floorDepartments[0];
+            return {
+              departmentId: r.department.id,
+              name: r.department.name,
+              nameEn: r.department.nameEn,
+              floor: fd?.floor?.name || "",
+              building: fd?.floor?.building?.name || "",
+              requireApproval: r.requireApproval,
+              approverGroupId: r.approverGroupId,
+              offerWifi: r.offerWifi,
+            };
+          }),
         };
       });
 

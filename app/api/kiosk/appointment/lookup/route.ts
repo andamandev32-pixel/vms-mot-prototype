@@ -28,11 +28,11 @@ export async function POST(request: NextRequest) {
         visitor: { select: { id: true, name: true, nameEn: true, company: true } },
         hostStaff: { select: { id: true, name: true, nameEn: true, position: true } },
         department: {
-          select: {
-            id: true,
-            name: true,
-            nameEn: true,
-            floor: { select: { name: true, building: { select: { name: true } } } },
+          include: {
+            floorDepartments: {
+              include: { floor: { include: { building: true } } },
+              take: 1,
+            },
           },
         },
         visitPurpose: { select: { id: true, name: true, nameEn: true, icon: true } },
@@ -70,6 +70,8 @@ export async function POST(request: NextRequest) {
       });
     }
 
+    const fd = appointment.department?.floorDepartments?.[0];
+
     return ok({
       found: true,
       appointment: {
@@ -79,8 +81,8 @@ export async function POST(request: NextRequest) {
         visitorCompany: appointment.visitor?.company || "",
         hostName: appointment.hostStaff?.name || "",
         hostDepartment: appointment.department?.name || "",
-        hostFloor: appointment.department?.floor?.name || "",
-        location: appointment.department?.floor?.building?.name || "",
+        hostFloor: fd?.floor?.name || "",
+        location: fd?.floor?.building?.name || "",
         date: appointment.dateStart.toLocaleDateString("th-TH", { dateStyle: "long" }),
         timeSlot: `${appointment.timeStart || "—"} — ${appointment.timeEnd || "—"}`,
         purposeName: appointment.visitPurpose?.name || appointment.purpose || "",

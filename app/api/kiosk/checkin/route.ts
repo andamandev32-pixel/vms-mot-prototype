@@ -55,7 +55,12 @@ export async function POST(request: NextRequest) {
     const department = departmentId
       ? await prisma.department.findUnique({
           where: { id: departmentId },
-          include: { floor: { include: { building: true } } },
+          include: {
+            floorDepartments: {
+              include: { floor: { include: { building: true } } },
+              take: 1,
+            },
+          },
         })
       : null;
 
@@ -65,10 +70,10 @@ export async function POST(request: NextRequest) {
       const mapping = await prisma.departmentAccessMapping.findFirst({
         where: { departmentId },
         include: {
-          accessGroup: { include: { accessGroupZones: { include: { accessZone: true } } } },
+          defaultAccessGroup: { include: { accessGroupZones: { include: { accessZone: true } } } },
         },
       });
-      accessGroup = mapping?.accessGroup || null;
+      accessGroup = mapping?.defaultAccessGroup || null;
     }
 
     // Calculate expected checkout
@@ -89,9 +94,9 @@ export async function POST(request: NextRequest) {
         checkinChannel: "kiosk",
         visitType: type || "walkin",
         purpose: purpose?.name || "",
-        area: department?.floor?.building?.name || "",
-        building: department?.floor?.building?.name || "",
-        floor: department?.floor?.name || "",
+        area: department?.floorDepartments?.[0]?.floor?.building?.name || "",
+        building: department?.floorDepartments?.[0]?.floor?.building?.name || "",
+        floor: department?.floorDepartments?.[0]?.floor?.name || "",
         idMethod: idMethod || null,
         facePhotoPath: facePhotoPath || null,
         companionsCount: 0,
@@ -143,7 +148,7 @@ export async function POST(request: NextRequest) {
         accessGroupId: accessGroup?.id || null,
         accessGroupName: accessGroup?.name || "ทั่วไป",
         qrCodeData,
-        allowedZones: accessGroup?.accessGroupZones?.map((z) => z.accessZone.name) || [],
+        allowedZones: accessGroup?.accessGroupZones?.map((z: { accessZone: { name: string } }) => z.accessZone.name) || [],
         validityMinutes: accessGroup?.validityMinutes || 120,
         hikvisionSynced: false,
       },

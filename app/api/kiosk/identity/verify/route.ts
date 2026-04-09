@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
         status: "blocked",
         isBlocked: true,
         blockReason: blocked.reason || "อยู่ในรายการบล็อค",
-        blockedAt: blocked.createdAt?.toISOString(),
+        blockedAt: blocked.addedAt?.toISOString(),
         message: "ผู้เยี่ยมชมอยู่ในรายการที่ถูกบล็อค",
       });
     }
@@ -91,6 +91,7 @@ export async function POST(request: NextRequest) {
           lastName,
           firstNameEn,
           lastNameEn,
+          phone: "",
           ...(photo && { photo }),
           lastVerifiedAt: new Date(),
         },

@@ -879,6 +879,7 @@ model CounterStaffAssignment {
   servicePoint ServicePoint @relation(fields: [servicePointId], references: [id])
   staff        Staff        @relation(fields: [staffId], references: [id])
 
+  @@unique([servicePointId, staffId])
   @@index([servicePointId])
   @@index([staffId])
   @@map("counter_staff_assignments")

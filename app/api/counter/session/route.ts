@@ -78,8 +78,8 @@ export async function POST(request: NextRequest) {
         icon: spp.visitPurpose.icon,
       })),
       allowedDocuments: servicePoint.servicePointDocuments.map((spd) => ({
-        id: spd.id,
-        documentTypeId: spd.documentTypeId,
+        servicePointId: spd.servicePointId,
+        documentTypeId: spd.identityDocumentTypeId,
       })),
     };
 
