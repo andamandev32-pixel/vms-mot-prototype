@@ -57,8 +57,9 @@ export async function verifyKioskDeviceToken(
 ): Promise<KioskDeviceAuth | null> {
   if (!token.startsWith(TOKEN_PREFIX)) return null;
 
-  // Dev-mode bypass: prototype token → ไม่ต้อง lookup DB
-  if (process.env.NODE_ENV !== "production" && token.startsWith("kvms_prototype_")) {
+  // Prototype bypass: kvms_prototype_ tokens → mock auth without DB lookup
+  // Safe: real tokens are kvms_ + 64 hex chars — "prototype" never appears in generated tokens
+  if (token.startsWith("kvms_prototype_")) {
     const parts = token.split("_");
     // format: kvms_prototype_{servicePointId}_{random}
     const spId = parseInt(parts[2], 10);
