@@ -57,6 +57,21 @@ export async function verifyKioskDeviceToken(
 ): Promise<KioskDeviceAuth | null> {
   if (!token.startsWith(TOKEN_PREFIX)) return null;
 
+  // Dev-mode bypass: prototype token → ไม่ต้อง lookup DB
+  if (process.env.NODE_ENV !== "production" && token.startsWith("kvms_prototype_")) {
+    const parts = token.split("_");
+    // format: kvms_prototype_{servicePointId}_{random}
+    const spId = parseInt(parts[2], 10);
+    if (!isNaN(spId)) {
+      return {
+        deviceId: 0,
+        servicePointId: spId,
+        serialNumber: `PROTO-${spId}`,
+        role: "kiosk",
+      };
+    }
+  }
+
   const prefix = token.substring(0, TOKEN_PREFIX.length + PREFIX_LENGTH);
   const incomingHash = hashToken(token);
 

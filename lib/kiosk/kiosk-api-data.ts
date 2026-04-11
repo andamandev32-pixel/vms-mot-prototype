@@ -157,12 +157,14 @@ const apiSpecs: KioskApiSpec[] = [
       "เรียก API ตอน boot + ทุก 5 นาที (health check)",
       "ถ้า offline → แสดง error screen, retry ทุก 30 วินาที",
       "🔓 ใช้ apiFetch ปกติ (ไม่ต้อง device token) — Kiosk boot ได้โดยรู้แค่ servicePointId",
+      "🧪 Prototype: auto-generate device token (kvms_prototype_{spId}_{random}) ตอน boot — ไม่ต้อง lookup DB ใน dev mode",
     ],
     devNotesEn: [
       "Flutter: Create KioskConfigRepository to cache config in memory",
       "Call API on boot + every 5 min (health check)",
       "If offline → show error screen, retry every 30 seconds",
       "🔓 Use regular apiFetch (no device token needed) — Kiosk can boot knowing only servicePointId",
+      "🧪 Prototype: auto-generates device token (kvms_prototype_{spId}_{random}) on boot — no DB lookup in dev mode",
     ],
   },
 

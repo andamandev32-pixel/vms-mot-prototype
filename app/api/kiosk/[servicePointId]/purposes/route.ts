@@ -24,6 +24,7 @@ export async function GET(
       include: {
         visitPurpose: {
           include: {
+            channelConfigs: { where: { channel: "kiosk" } },
             departmentRules: {
               where: { isActive: true, acceptFromKiosk: true },
               include: {
@@ -48,12 +49,17 @@ export async function GET(
       .sort((a, b) => a.visitPurpose.sortOrder - b.visitPurpose.sortOrder)
       .map((sp) => {
         const p = sp.visitPurpose;
+        const kioskChannelCfg = p.channelConfigs[0];
+        const requirePhoto = kioskChannelCfg?.requirePhoto ?? true;
+        const wifiEnabled = p.departmentRules.some((r) => r.offerWifi);
         return {
           id: p.id,
           name: p.name,
           nameEn: p.nameEn,
           icon: p.icon || "📋",
           order: p.sortOrder,
+          requirePhoto,
+          wifiEnabled,
           departments: p.departmentRules.map((r: typeof p.departmentRules[number]) => {
             const fd = r.department.floorDepartments[0];
             return {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useReducer, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
 import { useKioskAuth } from "@/lib/kiosk/kiosk-auth-context";
 import { RotateCcw, Volume2, VolumeX, Globe, Settings, ChevronDown, ChevronUp, X, Lock, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -193,13 +193,21 @@ export default function KioskDemoPage() {
   const [selectedCase, setSelectedCase] = useState<DemoCase>("walkin");
   const [locale, setLocale] = useState<KioskLocale>("th");
   const [audioEnabled, setAudioEnabled] = useState(false);
-  const { isAuthenticated } = useKioskAuth();
+  const { isAuthenticated, setDeviceToken } = useKioskAuth();
 
   // === Kiosk Config State ===
   const kioskList = useMemo(() => getKioskServicePoints(), []);
   const [selectedKioskId, setSelectedKioskId] = useState<number>(kioskList[0]?.id ?? 1);
   const [showPinModal, setShowPinModal] = useState(false);
   const [showConfigPanel, setShowConfigPanel] = useState(false);
+
+  // Auto-simulate device token for prototype
+  useEffect(() => {
+    if (!isAuthenticated) {
+      const rand = Math.random().toString(36).substring(2, 10);
+      setDeviceToken(`kvms_prototype_${selectedKioskId}_${rand}`, selectedKioskId);
+    }
+  }, [isAuthenticated, selectedKioskId, setDeviceToken]);
 
   // === API Doc Modal ===
   const [showApiDocModal, setShowApiDocModal] = useState(false);
