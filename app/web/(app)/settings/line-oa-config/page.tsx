@@ -49,7 +49,7 @@ export default function LineOaConfigPage() {
   const [liffEndpointUrl, setLiffEndpointUrl] = useState("https://evms.mots.go.th/liff");
 
   /* ── Card 3: Webhook ── */
-  const webhookUrl = "https://vms-prototype-delta.vercel.app/api/line/webhook";
+  const webhookUrl = "https://vms-mot-prototype.vercel.app/api/line/webhook";
   const [webhookActive, setWebhookActive] = useState(true);
   const [copied, setCopied] = useState(false);
   const [webhookChecking, setWebhookChecking] = useState(false);

@@ -1429,7 +1429,7 @@ Kiosk App                Backend API                     Database               
 
 > ทดสอบ: 6 เมษายน 2569
 > Script: `scripts/test-walkin-flow.mjs`
-> Target: `https://vms-prototype-delta.vercel.app`
+> Target: `https://vms-mot-prototype.vercel.app`
 > ผลรวม: ✅ ผ่านทุกรายการ
 
 ### Kiosk Walk-in (requireApproval=false) — Phase 4
@@ -1481,7 +1481,7 @@ Kiosk App                Backend API                     Database               
 
 > ทดสอบ: 6 เมษายน 2569
 > Script: `scripts/test-appointment-checkin.mjs`
-> Target: `https://vms-prototype-delta.vercel.app`
+> Target: `https://vms-mot-prototype.vercel.app`
 > ผลรวม: ✅ ผ่านทุกรายการ (100/100 tests)
 
 ### Kiosk — Appointment Lookup & Check-in (QR Scan Flow) — Phase 4

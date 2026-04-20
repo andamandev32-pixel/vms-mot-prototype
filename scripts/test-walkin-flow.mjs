@@ -4,7 +4,7 @@
 // Run: node scripts/test-walkin-flow.mjs
 // ============================================================
 
-const BASE = process.env.TEST_BASE_URL || "https://vms-prototype-delta.vercel.app/api";
+const BASE = process.env.TEST_BASE_URL || "https://vms-mot-prototype.vercel.app/api";
 let cookie = "";
 let kioskToken = "";
 let kioskDeviceId = null;
