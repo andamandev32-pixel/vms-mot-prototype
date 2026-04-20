@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStaffOrKiosk } from "@/lib/kiosk-auth";
 import { prisma } from "@/lib/prisma";
+import { toDataUrl } from "@/lib/kiosk/photo-utils";
 
 const ok = (data: unknown) => NextResponse.json({ success: true, data });
 const err = (code: string, msg: string, status = 400) =>
@@ -15,7 +16,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const {
       type, visitorId, servicePointId, visitPurposeId, departmentId,
-      appointmentId, idMethod, facePhotoPath, wifiAccepted, pdpaConsentId,
+      appointmentId, idMethod, facePhotoBase64, wifiAccepted, pdpaConsentId,
     } = body as {
       type?: string;
       visitorId?: number;
@@ -24,7 +25,7 @@ export async function POST(request: NextRequest) {
       departmentId?: number;
       appointmentId?: number | null;
       idMethod?: string;
-      facePhotoPath?: string;
+      facePhotoBase64?: string;
       wifiAccepted?: boolean;
       pdpaConsentId?: number;
     };
@@ -98,7 +99,7 @@ export async function POST(request: NextRequest) {
         building: department?.floorDepartments?.[0]?.floor?.building?.name || "",
         floor: department?.floorDepartments?.[0]?.floor?.name || "",
         idMethod: idMethod || null,
-        facePhotoPath: facePhotoPath || null,
+        facePhotoPath: facePhotoBase64 ? toDataUrl(facePhotoBase64) : null,
         companionsCount: 0,
       },
     });

@@ -734,7 +734,6 @@ servicePointId: 1
 
 ```json
 {
-  "photoPath": "/photos/2026/03/15/visitor-15-face.jpg",
   "faceDetected": true,
   "faceCount": 1,
   "quality": "good"
@@ -814,7 +813,7 @@ servicePointId: 1
   "departmentId": 1,
   "hostStaffId": null,
   "idMethod": "thai-id-card",
-  "facePhotoPath": "/photos/2026/03/15/visitor-15-face.jpg",
+  "facePhotoBase64": "data:image/jpeg;base64,/9j/4AAQSkZJRg...",
   "wifiAccepted": true,
   "companionsCount": 0,
   "vehiclePlate": null,
@@ -833,7 +832,7 @@ servicePointId: 1
   "visitorId": 15,
   "servicePointId": 1,
   "idMethod": "thai-id-card",
-  "facePhotoPath": "/photos/2026/03/15/visitor-15-face.jpg",
+  "facePhotoBase64": "data:image/jpeg;base64,/9j/4AAQSkZJRg...",
   "wifiAccepted": true,
   "pdpaConsentId": 42
 }

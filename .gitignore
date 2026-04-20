@@ -43,3 +43,6 @@ next-env.d.ts
 /lib/generated/prisma
 
 .vercel
+
+# runtime-uploaded visitor photos (base64 in DB now)
+/public/photos/

@@ -299,16 +299,15 @@ const apiSpecs: CounterApiSpec[] = [
         path: "/api/counter/visitor-photo",
         summary: "อัปโหลดภาพถ่ายผู้เยี่ยม (Webcam)",
         summaryEn: "Upload visitor photo from webcam",
-        contentType: "multipart/form-data",
-        tables: ["visit_entries"],
+        contentType: "application/json",
+        tables: ["visitors"],
         request: {
-          photo: "<binary_jpeg>",
+          photo: "data:image/jpeg;base64,/9j/4AAQSkZJRg...",
           visitorId: 15,
           servicePointId: 3,
           capturedBy: "officer",
         },
         response: {
-          photoPath: "/photos/2026/03/15/visitor-15-counter.jpg",
           faceDetected: true,
           quality: "good",
         },
@@ -339,7 +338,7 @@ const apiSpecs: CounterApiSpec[] = [
           hostPhone: "02-123-4567 ต่อ 1234",
           idMethod: "card-reader",
           documentType: "thai-id-card",
-          facePhotoPath: "/photos/.../face.jpg",
+          facePhotoBase64: "data:image/jpeg;base64,/9j/4AAQSkZJRg...",
           officerId: 8,
         },
         response: {
@@ -464,7 +463,7 @@ const apiSpecs: CounterApiSpec[] = [
           servicePointId: 3,
           idMethod: "card-reader",
           documentType: "thai-id-card",
-          facePhotoPath: "/photos/.../face.jpg",
+          facePhotoBase64: "data:image/jpeg;base64,/9j/4AAQSkZJRg...",
           officerId: 8,
         },
         response: {

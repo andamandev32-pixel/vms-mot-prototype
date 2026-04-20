@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStaffOrKiosk } from "@/lib/kiosk-auth";
 import { prisma } from "@/lib/prisma";
+import { toDataUrl } from "@/lib/kiosk/photo-utils";
 
 function ok(data: unknown, status = 200) {
   return NextResponse.json(data, { status });
@@ -30,7 +31,7 @@ export async function POST(
     if (isNaN(appointmentId)) return err("Invalid appointment ID");
 
     const body = await request.json();
-    const { visitorId, servicePointId, idMethod, facePhotoPath, officerId } =
+    const { visitorId, servicePointId, idMethod, facePhotoBase64, officerId } =
       body;
 
     if (!visitorId || !servicePointId) {
@@ -72,7 +73,7 @@ export async function POST(
         floor: "",
         idMethod: idMethod || null,
         servicePointId,
-        facePhotoPath: facePhotoPath || null,
+        facePhotoPath: facePhotoBase64 ? toDataUrl(facePhotoBase64) : null,
       },
       include: {
         visitor: true,

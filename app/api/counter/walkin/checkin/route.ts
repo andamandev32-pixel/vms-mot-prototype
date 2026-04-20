@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStaffOrKiosk } from "@/lib/kiosk-auth";
 import { prisma } from "@/lib/prisma";
+import { toDataUrl } from "@/lib/kiosk/photo-utils";
 
 function ok(data: unknown, status = 200) {
   return NextResponse.json(data, { status });
@@ -30,7 +31,7 @@ export async function POST(request: NextRequest) {
       departmentId,
       hostContactName,
       idMethod,
-      facePhotoPath,
+      facePhotoBase64,
       officerId,
     } = body;
 
@@ -106,7 +107,7 @@ export async function POST(request: NextRequest) {
         floor: floorDept?.floor?.name || "",
         idMethod: idMethod || null,
         servicePointId,
-        facePhotoPath: facePhotoPath || null,
+        facePhotoPath: facePhotoBase64 ? toDataUrl(facePhotoBase64) : null,
       },
       include: {
         visitor: true,

@@ -588,7 +588,6 @@ capturedBy: "officer"
 
 ```json
 {
-  "photoPath": "/photos/2026/03/15/visitor-15-counter.jpg",
   "faceDetected": true,
   "quality": "good"
 }
@@ -679,7 +678,7 @@ capturedBy: "officer"
   "hostPhone": "02-123-4567 ต่อ 1234",
   "idMethod": "card-reader",
   "documentType": "thai-id-card",
-  "facePhotoPath": "/photos/2026/03/15/visitor-15-counter.jpg",
+  "facePhotoBase64": "data:image/jpeg;base64,/9j/4AAQSkZJRg...",
   "officerId": 8,
   "vehiclePlate": null,
   "companionsCount": 0,
@@ -934,7 +933,7 @@ capturedBy: "officer"
   "servicePointId": 3,
   "idMethod": "card-reader",
   "documentType": "thai-id-card",
-  "facePhotoPath": "/photos/2026/03/15/visitor-15-counter.jpg",
+  "facePhotoBase64": "data:image/jpeg;base64,/9j/4AAQSkZJRg...",
   "officerId": 8
 }
 ```
@@ -1426,7 +1425,7 @@ Officer              Counter App              Backend
   │  CAPTURE PHOTO       │                       │
   │─────────────────────>│  POST /visitor-photo  │
   │                      │──────────────────────>│
-  │                      │<──────────────────────│ photoPath
+  │                      │<──────────────────────│ { faceDetected }
   │                      │                       │
   │  CONFIRM             │                       │
   │                      │  [if requireApproval]  │
