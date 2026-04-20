@@ -160,12 +160,11 @@ LINE OA มี state flow ที่ครอบคลุมทั้ง conversa
 
 ```
 [WELCOME] ──SELECT_WALKIN──> [PDPA_CONSENT] ──ACCEPT──> [SELECT_PURPOSE]
-  ──SELECT_PURPOSE──> [SELECT_ID_METHOD]* ──CHOOSE_ID──> [ID_VERIFICATION]
+  ──SELECT_PURPOSE──> [SELECT_ID_METHOD] ──CHOOSE_ID──> [ID_VERIFICATION]
   ──ID_READ_SUCCESS──> [DATA_PREVIEW] ──CONFIRM──> [FACE_CAPTURE]
-  ──FACE_CAPTURED──> [WIFI_OFFER]** ──ACCEPT/DECLINE──> [SUCCESS]
+  ──FACE_CAPTURED──> [WIFI_OFFER]* ──ACCEPT/DECLINE──> [SUCCESS]
 
-*  ถ้า identityVerified = true (ผู้มาเคย): ข้าม ID steps ไปที่ FACE_CAPTURE
-** ถ้า offerWifi = false: ข้าม WIFI_OFFER ไปที่ SUCCESS
+* ถ้า offerWifi = false: ข้าม WIFI_OFFER ไปที่ SUCCESS
 ```
 
 ### Kiosk Appointment Flow

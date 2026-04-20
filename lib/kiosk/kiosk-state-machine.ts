@@ -25,7 +25,6 @@ export function kioskReducer(state: KioskState, event: KioskEvent): KioskState {
         return {
           type: "PDPA_CONSENT",
           case: "walkin",
-          identityVerified: event.identityVerified,
           visitorData: event.visitorData,
         };
       if (event.type === "SELECT_APPOINTMENT")
@@ -96,12 +95,8 @@ export function kioskReducer(state: KioskState, event: KioskEvent): KioskState {
 
     // ───────────── SELECT PURPOSE (Walk-in) ─────────────
     case "SELECT_PURPOSE":
-      if (event.type === "SELECT_VISIT_PURPOSE" && event.purpose) {
-        // If visitor already verified identity (returning walk-in), skip ID steps
-        if (state.identityVerified)
-          return { ...state, type: "FACE_CAPTURE", selectedPurpose: event.purpose };
+      if (event.type === "SELECT_VISIT_PURPOSE" && event.purpose)
         return { ...state, type: "SELECT_ID_METHOD", selectedPurpose: event.purpose };
-      }
       if (event.type === "GO_BACK")
         return { ...state, type: "PDPA_CONSENT" };
       if (event.type === "TIMEOUT") return { type: "TIMEOUT" };
@@ -138,9 +133,6 @@ export function kioskReducer(state: KioskState, event: KioskEvent): KioskState {
       if (event.type === "GO_BACK") {
         if (state.case === "appointment")
           return { ...state, type: "APPOINTMENT_VERIFY_ID" };
-        // Walk-in: if already verified, back to purpose; otherwise back to data preview
-        if (state.identityVerified)
-          return { ...state, type: "SELECT_PURPOSE" };
         return { ...state, type: "DATA_PREVIEW" };
       }
       if (event.type === "TIMEOUT") return { type: "TIMEOUT" };

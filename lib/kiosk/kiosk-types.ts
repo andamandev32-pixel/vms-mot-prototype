@@ -162,8 +162,6 @@ export interface KioskState {
   wifiAccepted?: boolean;
   wifiCredentials?: WifiCredentials;
   slipData?: SlipData;
-  /** Walk-in ที่ยืนยันตัวตนแล้ว (เคยมาแล้ว) — ข้ามขั้นตอนยืนยันตัวตนซ้ำ */
-  identityVerified?: boolean;
   /** ผู้เยี่ยมผูก LINE ไว้แล้ว — ถามก่อนพิมพ์ slip */
   lineLinked?: boolean;
   /** ผู้เยี่ยมเลือกพิมพ์ slip หรือไม่ (undefined = ยังไม่ถาม, กรณีไม่มี LINE จะพิมพ์อัตโนมัติ) */
@@ -226,8 +224,6 @@ export interface KioskEvent {
   wifiAccepted?: boolean;
   bookingCode?: string;
   errorMessage?: string;
-  /** Walk-in ที่ยืนยันตัวตนแล้ว — ข้ามขั้นตอนยืนยันซ้ำ */
-  identityVerified?: boolean;
 }
 
 // ===== STEP INFO (for Demo Panel) =====

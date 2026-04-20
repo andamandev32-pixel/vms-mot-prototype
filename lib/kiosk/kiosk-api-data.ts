@@ -337,36 +337,6 @@ const apiSpecs: KioskApiSpec[] = [
           "Cacheable — refresh on boot",
         ],
       },
-      {
-        method: "GET",
-        path: "/api/kiosk/visitor/{idNumber}/check-verified",
-        summary: "ตรวจสอบว่า walk-in เคยยืนยันตัวตนแล้วหรือไม่ (สำหรับระบบจริง)",
-        summaryEn: "Check if walk-in visitor was previously verified (for production)",
-        tables: ["visitors", "visit_entries"],
-        response: {
-          verified: true,
-          visitorId: 15,
-          lastVerifiedAt: "2026-03-26T08:30:00+07:00",
-          lastIdMethod: "thai-id-card",
-          fullNameTh: "นายสมชาย ใจดี",
-          fullNameEn: "MR. SOMCHAI JAIDEE",
-          photoPath: "/photos/visitor-15-face.jpg",
-        },
-        errorResponse: {
-          verified: false,
-          message: "ไม่พบข้อมูลยืนยันตัวตน",
-        },
-        notes: [
-          "ใช้กรณี walk-in ที่เคยมาแล้ววันนี้ — ข้ามขั้นตอนยืนยันตัวตนซ้ำ",
-          "ตรวจจาก visit_entries ที่สร้างภายในวันนี้ + status = checked-in",
-          "ถ้า verified = true → state machine จะข้ามไป FACE_CAPTURE โดยตรง",
-        ],
-        notesEn: [
-          "For walk-in visitors already verified today — skip re-verification",
-          "Check visit_entries created today with status = checked-in",
-          "If verified = true → state machine skips to FACE_CAPTURE directly",
-        ],
-      },
     ],
     configSources: [
       {
@@ -411,13 +381,11 @@ const apiSpecs: KioskApiSpec[] = [
       "★ Flow ใหม่: SELECT_PURPOSE มาก่อน ID verification",
       "ถ้า dept เดียว → auto-select ไม่ต้องแสดงหน้าเลือกแผนก",
       "เก็บ purposeId + departmentId ใน state → ใช้ตอน checkin",
-      "ถ้า identityVerified=true → ข้ามไป FACE_CAPTURE (ไม่ผ่าน ID verification)",
     ],
     devNotesEn: [
       "★ New flow: SELECT_PURPOSE comes before ID verification",
       "If single dept → auto-select, don't show department picker",
       "Store purposeId + departmentId in state → use during checkin",
-      "If identityVerified=true → skip to FACE_CAPTURE (bypass ID verification)",
     ],
   },
 
@@ -426,8 +394,8 @@ const apiSpecs: KioskApiSpec[] = [
     stateType: "SELECT_ID_METHOD",
     title: "เลือกวิธียืนยันตัวตน",
     titleEn: "Select ID Method",
-    description: "ขั้นตอนที่ 4 — เลือกเอกสารยืนยันตัวตน: บัตร ปชช. / Passport / ThaiID App — ข้ามขั้นตอนนี้ถ้า walk-in ที่ยืนยันแล้ว",
-    descriptionEn: "Step 4 — Select ID document: Thai ID / Passport / ThaiID App — skipped if walk-in already verified",
+    description: "ขั้นตอนที่ 4 — เลือกเอกสารยืนยันตัวตน: บัตร ปชช. / Passport / ThaiID App",
+    descriptionEn: "Step 4 — Select ID document: Thai ID / Passport / ThaiID App",
     hasApi: true,
     endpoints: [
       {
@@ -472,11 +440,9 @@ const apiSpecs: KioskApiSpec[] = [
       },
     ],
     devNotes: [
-      "ข้ามขั้นตอนนี้ทั้งหมดถ้า state.identityVerified = true",
       "GO_BACK → กลับไป SELECT_PURPOSE (ไม่ใช่ PDPA แล้ว)",
     ],
     devNotesEn: [
-      "Skip this entire step if state.identityVerified = true",
       "GO_BACK → goes back to SELECT_PURPOSE (not PDPA anymore)",
     ],
   },
@@ -486,8 +452,8 @@ const apiSpecs: KioskApiSpec[] = [
     stateType: "ID_VERIFICATION",
     title: "ยืนยันตัวตน",
     titleEn: "Verify Identity",
-    description: "ขั้นตอนที่ 5 — อ่านข้อมูลจากเครื่องอ่านบัตร/Passport/ThaiID + ตรวจ Blocklist — ข้ามถ้ายืนยันแล้ว",
-    descriptionEn: "Step 5 — Read data from card reader/Passport/ThaiID + check Blocklist — skipped if already verified",
+    description: "ขั้นตอนที่ 5 — อ่านข้อมูลจากเครื่องอ่านบัตร/Passport/ThaiID + ตรวจ Blocklist",
+    descriptionEn: "Step 5 — Read data from card reader/Passport/ThaiID + check Blocklist",
     hasApi: true,
     endpoints: [
       {
@@ -677,13 +643,13 @@ const apiSpecs: KioskApiSpec[] = [
       "Hardware: USB Camera — flutter plugin: camera / google_mlkit_face_detection",
       "WiFi password: ใช้ pattern จาก config (เช่น mots{year} → mots2026)",
       "WiFi validity: ตามเวลาปิดทำการ หรือ fixedDurationMinutes",
-      "GO_BACK → DATA_PREVIEW (ถ้า identityVerified=true → SELECT_PURPOSE)",
+      "GO_BACK → DATA_PREVIEW",
     ],
     devNotesEn: [
       "Hardware: USB Camera — flutter plugin: camera / google_mlkit_face_detection",
       "WiFi password: use pattern from config (e.g., mots{year} → mots2026)",
       "WiFi validity: until business hours close or fixedDurationMinutes",
-      "GO_BACK → DATA_PREVIEW (if identityVerified=true → SELECT_PURPOSE)",
+      "GO_BACK → DATA_PREVIEW",
     ],
   },
 

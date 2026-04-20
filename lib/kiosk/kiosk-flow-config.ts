@@ -143,79 +143,6 @@ export const walkinSteps: StepInfo[] = [
   },
 ];
 
-// ===== WALK-IN (ALREADY VERIFIED) FLOW: 5 Steps =====
-// สำหรับ walk-in ที่เคยยืนยันตัวตนแล้ว ข้ามขั้นตอนยืนยันซ้ำ
-export const walkinVerifiedSteps: StepInfo[] = [
-  {
-    id: "wv1",
-    stateType: "WELCOME",
-    title: "หน้าต้อนรับ",
-    titleEn: "Welcome",
-    description: "เลือก \"ไม่มีนัดหมาย/ผู้มาติดต่อ\" เพื่อเริ่ม walk-in",
-    descriptionEn: "Tap 'Walk-in / No Appointment' to begin",
-    activeDevice: null,
-    conditions: ["Kiosk ต้องอยู่ในสถานะ online", "อยู่ในเวลาทำการ"],
-    conditionsEn: ["Kiosk must be online", "Within business hours"],
-    possibleTransitions: [
-      { event: "SELECT_WALKIN", targetState: "PDPA_CONSENT", description: "กดปุ่มไม่มีนัดหมาย" },
-    ],
-    flutterHint: { bloc: "KioskBloc", state: "WelcomeState" },
-  },
-  {
-    id: "wv1b",
-    stateType: "PDPA_CONSENT",
-    title: "ยินยอม PDPA",
-    titleEn: "PDPA Consent",
-    description: "อ่านและยอมรับนโยบายคุ้มครองข้อมูลส่วนบุคคล",
-    descriptionEn: "Read and accept the privacy policy (PDPA)",
-    activeDevice: null,
-    conditions: ["ต้องกดยอมรับก่อนดำเนินการต่อ"],
-    conditionsEn: ["Must accept before proceeding"],
-    possibleTransitions: [
-      { event: "ACCEPT_PDPA", targetState: "SELECT_PURPOSE", description: "ยอมรับ PDPA → เลือกวัตถุประสงค์" },
-      { event: "GO_BACK", targetState: "WELCOME", description: "ปฏิเสธ → กลับหน้าแรก" },
-    ],
-    flutterHint: { bloc: "KioskBloc", state: "PdpaConsentState" },
-    timeoutSeconds: 120,
-  },
-  {
-    id: "wv2",
-    stateType: "SELECT_PURPOSE",
-    title: "เลือกวัตถุประสงค์",
-    titleEn: "Select Purpose",
-    description: "เลือกวัตถุประสงค์การเข้าพื้นที่ แล้วเลือกแผนก (ข้ามยืนยันตัวตน เพราะเคยยืนยันแล้ว)",
-    descriptionEn: "Select visit purpose + department (skip ID — already verified)",
-    activeDevice: null,
-    audioCue: { th: "เลือกรายการเข้าพื้นที่ คะ", en: "Please select your visit purpose." },
-    conditions: ["ยืนยันตัวตนแล้ว → ข้ามไปถ่ายภาพโดยตรง"],
-    conditionsEn: ["Identity already verified → skip to face capture"],
-    possibleTransitions: [
-      { event: "SELECT_VISIT_PURPOSE", targetState: "FACE_CAPTURE", description: "เลือกแล้ว → ถ่ายภาพ (ข้ามยืนยัน)" },
-      { event: "GO_BACK", targetState: "PDPA_CONSENT", description: "กลับ" },
-    ],
-    flutterHint: { bloc: "KioskBloc", state: "SelectPurposeState" },
-    timeoutSeconds: 60,
-  },
-  {
-    id: "wv3",
-    stateType: "FACE_CAPTURE",
-    title: "ถ่ายภาพ + WiFi",
-    titleEn: "Face Photo + WiFi",
-    description: "ถ่ายภาพใบหน้า + ถาม WiFi ในหน้าเดียว",
-    descriptionEn: "Capture face photo + WiFi offer in one screen",
-    activeDevice: "camera",
-    conditions: ["กล้องต้องพร้อมใช้งาน", "ตรวจจับใบหน้าอัตโนมัติ"],
-    conditionsEn: ["Camera must be available", "Auto face detection"],
-    possibleTransitions: [
-      { event: "FACE_CONFIRMED", targetState: "SUCCESS", description: "ยืนยันภาพ+WiFi → สำเร็จ" },
-      { event: "FACE_CAPTURE_FAILED", targetState: "ERROR", description: "ถ่ายไม่สำเร็จ" },
-      { event: "GO_BACK", targetState: "SELECT_PURPOSE", description: "กลับ" },
-    ],
-    flutterHint: { bloc: "KioskBloc", state: "FaceCaptureState", device: "USB Camera" },
-    timeoutSeconds: 60,
-  },
-];
-
 // ===== APPOINTMENT FLOW: 6 Steps =====
 export const appointmentSteps: StepInfo[] = [
   {
@@ -343,11 +270,10 @@ export const appointmentSteps: StepInfo[] = [
 
 // ===== STEP LOOKUP =====
 
-export type FlowCase = "walkin" | "walkin-verified" | "appointment";
+export type FlowCase = "walkin" | "appointment";
 
 export const flowSteps: Record<FlowCase, StepInfo[]> = {
   walkin: walkinSteps,
-  "walkin-verified": walkinVerifiedSteps,
   appointment: appointmentSteps,
 };
 
