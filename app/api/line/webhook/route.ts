@@ -319,58 +319,97 @@ async function routeEvent(event: LineEvent, accessToken: string) {
 
 // ── Main Handler ─────────────────────────────────────
 
+const PLACEHOLDER_SECRETS = new Set([
+  "placeholder-channel-secret",
+  "placeholder-access-token",
+  "",
+]);
+
 export async function POST(request: NextRequest) {
+  const startedAt = Date.now();
   try {
     const rawBody = await request.text();
     const signature = request.headers.get("x-line-signature");
 
-    let body: { events?: LineEvent[] };
+    let body: { events?: LineEvent[]; destination?: string };
     try {
       body = JSON.parse(rawBody);
     } catch {
+      console.warn("[LINE Webhook] Invalid JSON body", { bodyLength: rawBody.length });
       return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
     }
 
     const events: LineEvent[] = body.events || [];
 
-    // LINE sends empty events for webhook verification — respond immediately without DB
-    if (events.length === 0) {
-      return NextResponse.json({ status: "ok" });
-    }
-
-    if (!signature) {
-      console.warn("[LINE Webhook] No signature header");
-      return NextResponse.json({ error: "Invalid signature" }, { status: 403 });
-    }
-
+    // Load config FIRST so we can verify signature even for empty-events (LINE "Verify" button).
+    // This ensures a misconfigured Channel Secret shows up as a failure at Verify time
+    // instead of silently passing the handshake while real events fail with 403.
     let config: { channelSecret: string; channelAccessToken: string };
     try {
       config = await getLineConfig();
     } catch (dbError) {
       console.error("[LINE Webhook] DB connection failed:", dbError);
-      return NextResponse.json({ status: "error", message: "Database connection failed" }, { status: 500 });
+      return NextResponse.json(
+        { status: "error", message: "Database connection failed" },
+        { status: 500 }
+      );
     }
 
     if (!config.channelSecret) {
-      console.error("[LINE Webhook] No channel secret configured");
-      return NextResponse.json({ status: "error", message: "Not configured" }, { status: 500 });
+      console.error("[LINE Webhook] Channel secret not configured (DB + env both empty)");
+      return NextResponse.json(
+        { status: "error", message: "Channel secret not configured" },
+        { status: 500 }
+      );
+    }
+
+    if (PLACEHOLDER_SECRETS.has(config.channelSecret)) {
+      console.error(
+        "[LINE Webhook] Channel secret is still the seed placeholder — update via /web/settings/line-oa"
+      );
+      return NextResponse.json(
+        { status: "error", message: "Channel secret is placeholder — not configured" },
+        { status: 500 }
+      );
+    }
+
+    if (!signature) {
+      console.warn("[LINE Webhook] Missing x-line-signature header", {
+        eventCount: events.length,
+        userAgent: request.headers.get("user-agent"),
+      });
+      return NextResponse.json({ error: "Missing signature" }, { status: 403 });
     }
 
     if (!verifySignature(rawBody, signature, config.channelSecret)) {
-      console.warn("[LINE Webhook] Signature mismatch", {
+      console.warn("[LINE Webhook] Signature mismatch — check Channel Secret in /web/settings/line-oa matches LINE Console", {
         bodyLength: rawBody.length,
+        eventCount: events.length,
         secretLength: config.channelSecret.length,
-        signatureLength: signature.length,
+        secretPreview: `${config.channelSecret.slice(0, 4)}…${config.channelSecret.slice(-2)}`,
+        signaturePreview: `${signature.slice(0, 8)}…`,
       });
       return NextResponse.json({ error: "Invalid signature" }, { status: 403 });
     }
 
-    // Process all events
+    // "Verify" button in LINE Console sends POST with events=[] and a real signature.
+    // Reaching here means secret matches — respond 200 without further processing.
+    if (events.length === 0) {
+      console.log("[LINE Webhook] Verify handshake OK (empty events, signature valid)");
+      return NextResponse.json({ status: "ok" });
+    }
+
     await Promise.all(events.map((e) => routeEvent(e, config.channelAccessToken)));
+
+    console.log("[LINE Webhook] Processed events", {
+      eventCount: events.length,
+      types: events.map((e) => e.type),
+      durationMs: Date.now() - startedAt,
+    });
 
     return NextResponse.json({ status: "ok" });
   } catch (error) {
-    console.error("[LINE Webhook] Error:", error);
+    console.error("[LINE Webhook] Unhandled error:", error);
     return NextResponse.json({ status: "error" }, { status: 500 });
   }
 }
