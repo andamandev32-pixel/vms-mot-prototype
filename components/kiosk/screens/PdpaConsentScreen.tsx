@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft, Shield, Check } from "lucide-react";
+import { ChevronLeft, Shield, Check, Globe } from "lucide-react";
 import { useState } from "react";
 
 interface PdpaConsentScreenProps {
@@ -9,9 +9,10 @@ interface PdpaConsentScreenProps {
   onDecline: () => void;
   /** Data retention days from config (default 90) */
   retentionDays?: number;
+  onChangeLocale?: () => void;
 }
 
-export default function PdpaConsentScreen({ locale, onAccept, onDecline, retentionDays = 90 }: PdpaConsentScreenProps) {
+export default function PdpaConsentScreen({ locale, onAccept, onDecline, retentionDays = 90, onChangeLocale }: PdpaConsentScreenProps) {
   const [agreed, setAgreed] = useState(false);
 
   return (
@@ -22,9 +23,18 @@ export default function PdpaConsentScreen({ locale, onAccept, onDecline, retenti
           <ChevronLeft size={16} />
         </button>
         <Shield size={14} className="text-[#1B2B5E]" />
-        <h1 className="text-[11px] font-bold text-[#1B2B5E]">
+        <h1 className="flex-1 text-[11px] font-bold text-[#1B2B5E]">
           {locale === "th" ? "คุ้มครองข้อมูลส่วนบุคคล (PDPA)" : "Privacy Policy (PDPA)"}
         </h1>
+        {onChangeLocale && (
+          <button
+            onClick={onChangeLocale}
+            className="flex items-center gap-1 px-2 py-0.5 rounded-full border border-gray-300 text-[9px] font-bold text-[#2E3192] hover:bg-gray-50 transition-all"
+          >
+            <Globe size={9} />
+            {locale === "th" ? "EN" : "TH"}
+          </button>
+        )}
       </header>
 
       {/* Compact PDPA content */}

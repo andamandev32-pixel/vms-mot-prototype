@@ -300,6 +300,7 @@ export default function KioskDemoPage() {
             onAccept={() => fire({ type: "ACCEPT_PDPA" })}
             onDecline={() => fire({ type: "GO_BACK" })}
             retentionDays={kioskConfig?.pdpa.retentionDays}
+            onChangeLocale={toggleLocale}
           />
         );
       case "SELECT_ID_METHOD":
