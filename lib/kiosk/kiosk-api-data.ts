@@ -279,9 +279,9 @@ const apiSpecs: KioskApiSpec[] = [
               wifiEnabled: true,
               requirePhoto: true,
               departments: [
-                { departmentId: 1, name: "สำนักงานปลัดกระทรวง", nameEn: "Office of the Permanent Secretary", floor: "ชั้น 3", building: "อาคาร A", requireApproval: true, approverGroupId: 2, offerWifi: true },
-                { departmentId: 3, name: "กองการต่างประเทศ", nameEn: "Foreign Affairs Division", floor: "ชั้น 5", building: "อาคาร A", requireApproval: true, approverGroupId: 2, offerWifi: true },
-                { departmentId: 4, name: "กองกิจการท่องเที่ยว", nameEn: "Tourism Affairs Division", floor: "ชั้น 4", building: "อาคาร A", requireApproval: false, offerWifi: true },
+                { departmentId: 1, name: "สำนักงานปลัดกระทรวง", nameEn: "Office of the Permanent Secretary", floor: "ชั้น 3", floorEn: "Floor 3", building: "อาคาร A", buildingEn: "Building A", requireApproval: true, approverGroupId: 2, offerWifi: true },
+                { departmentId: 3, name: "กองการต่างประเทศ", nameEn: "Foreign Affairs Division", floor: "ชั้น 5", floorEn: "Floor 5", building: "อาคาร A", buildingEn: "Building A", requireApproval: true, approverGroupId: 2, offerWifi: true },
+                { departmentId: 4, name: "กองกิจการท่องเที่ยว", nameEn: "Tourism Affairs Division", floor: "ชั้น 4", floorEn: "Floor 4", building: "อาคาร A", buildingEn: "Building A", requireApproval: false, offerWifi: true },
               ],
             },
             {
@@ -293,7 +293,7 @@ const apiSpecs: KioskApiSpec[] = [
               wifiEnabled: true,
               requirePhoto: true,
               departments: [
-                { departmentId: 1, name: "สำนักงานปลัดกระทรวง", nameEn: "Office of the Permanent Secretary", floor: "ชั้น 3", building: "อาคาร A", requireApproval: true, offerWifi: true },
+                { departmentId: 1, name: "สำนักงานปลัดกระทรวง", nameEn: "Office of the Permanent Secretary", floor: "ชั้น 3", floorEn: "Floor 3", building: "อาคาร A", buildingEn: "Building A", requireApproval: true, offerWifi: true },
               ],
             },
             {
@@ -305,7 +305,7 @@ const apiSpecs: KioskApiSpec[] = [
               wifiEnabled: false,
               requirePhoto: true,
               departments: [
-                { departmentId: 2, name: "กองกลาง", nameEn: "General Administration Division", floor: "ชั้น 2", building: "อาคาร A", requireApproval: false, offerWifi: false },
+                { departmentId: 2, name: "กองกลาง", nameEn: "General Administration Division", floor: "ชั้น 2", floorEn: "Floor 2", building: "อาคาร A", buildingEn: "Building A", requireApproval: false, offerWifi: false },
               ],
             },
             {
@@ -317,7 +317,7 @@ const apiSpecs: KioskApiSpec[] = [
               wifiEnabled: false,
               requirePhoto: false,
               departments: [
-                { departmentId: 2, name: "กองกลาง", nameEn: "General Administration Division", floor: "ชั้น 2", building: "อาคาร A", requireApproval: false, offerWifi: false },
+                { departmentId: 2, name: "กองกลาง", nameEn: "General Administration Division", floor: "ชั้น 2", floorEn: "Floor 2", building: "อาคาร A", buildingEn: "Building A", requireApproval: false, offerWifi: false },
               ],
             },
           ],
