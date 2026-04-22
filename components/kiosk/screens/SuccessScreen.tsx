@@ -1,6 +1,6 @@
 "use client";
 
-import { CheckCircle, Home, Printer, MessageCircle, FileX } from "lucide-react";
+import { CheckCircle, Home, Printer, MessageCircle, FileX, Globe } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { SlipData, ThermalSection } from "@/lib/kiosk/kiosk-types";
 import ThermalSlipPreview from "@/components/kiosk/ThermalSlipPreview";
@@ -23,9 +23,10 @@ interface SuccessScreenProps {
   slipLogoUrl?: string;
   /** Logo size จาก template */
   slipLogoSize?: number;
+  onChangeLocale?: () => void;
 }
 
-export default function SuccessScreen({ locale, slipData, onDone, lineLinked, onChoosePrint, onSkipPrint, printSlip, slipSections, slipLogoUrl, slipLogoSize }: SuccessScreenProps) {
+export default function SuccessScreen({ locale, slipData, onDone, lineLinked, onChoosePrint, onSkipPrint, printSlip, slipSections, slipLogoUrl, slipLogoSize, onChangeLocale }: SuccessScreenProps) {
   const [countdown, setCountdown] = useState(lineLinked && printSlip === undefined ? 30 : 10);
 
   useEffect(() => {
@@ -50,7 +51,19 @@ export default function SuccessScreen({ locale, slipData, onDone, lineLinked, on
   const showSkipped = lineLinked && printSlip === false;
 
   return (
-    <div className="flex flex-col h-full bg-white">
+    <div className="relative flex flex-col h-full bg-white">
+      {/* Language toggle — top-right */}
+      {onChangeLocale && (
+        <div className="absolute top-2 right-2 z-10">
+          <button
+            onClick={onChangeLocale}
+            className="flex items-center gap-1 px-2 py-0.5 rounded-full border border-gray-300 bg-white text-[9px] font-bold text-[#2E3192] hover:bg-gray-50 transition-all"
+          >
+            <Globe size={9} />
+            {locale === "th" ? "EN" : "TH"}
+          </button>
+        </div>
+      )}
       {/* Content */}
       <main className="flex-1 flex flex-col items-center pt-4 px-4 gap-3 overflow-y-auto">
         {/* Success animation */}

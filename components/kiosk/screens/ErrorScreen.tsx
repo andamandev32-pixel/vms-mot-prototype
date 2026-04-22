@@ -1,17 +1,29 @@
 "use client";
 
-import { AlertTriangle, RotateCcw, Home } from "lucide-react";
+import { AlertTriangle, RotateCcw, Home, Globe } from "lucide-react";
 
 interface ErrorScreenProps {
   locale: "th" | "en";
   message?: string;
   onRetry: () => void;
   onHome: () => void;
+  onChangeLocale?: () => void;
 }
 
-export default function ErrorScreen({ locale, message, onRetry, onHome }: ErrorScreenProps) {
+export default function ErrorScreen({ locale, message, onRetry, onHome, onChangeLocale }: ErrorScreenProps) {
   return (
-    <div className="flex flex-col h-full bg-white">
+    <div className="relative flex flex-col h-full bg-white">
+      {onChangeLocale && (
+        <div className="absolute top-2 right-2 z-10">
+          <button
+            onClick={onChangeLocale}
+            className="flex items-center gap-1 px-2 py-0.5 rounded-full border border-gray-300 bg-white text-[9px] font-bold text-[#2E3192] hover:bg-gray-50 transition-all"
+          >
+            <Globe size={9} />
+            {locale === "th" ? "EN" : "TH"}
+          </button>
+        </div>
+      )}
       <main className="flex-1 flex flex-col items-center pt-8 px-4 gap-4">
         <div className="w-16 h-16 rounded-full bg-red-50 border-2 border-red-200 flex items-center justify-center">
           <AlertTriangle size={28} className="text-red-500" />

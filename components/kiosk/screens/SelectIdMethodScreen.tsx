@@ -1,6 +1,6 @@
 "use client";
 
-import { CreditCard, BookOpen, Smartphone, ChevronLeft } from "lucide-react";
+import { CreditCard, BookOpen, Smartphone, ChevronLeft, Globe } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { IdMethod } from "@/lib/kiosk/kiosk-types";
 
@@ -13,6 +13,7 @@ interface SelectIdMethodScreenProps {
   titleEn?: string;
   /** Allowed ID methods from kiosk config (filters which methods to show) */
   allowedMethods?: IdMethod[];
+  onChangeLocale?: () => void;
 }
 
 const idMethods: { id: IdMethod; icon: React.ReactNode; label: string; labelEn: string; desc: string; descEn: string }[] = [
@@ -29,6 +30,7 @@ export default function SelectIdMethodScreen({
   title,
   titleEn,
   allowedMethods,
+  onChangeLocale,
 }: SelectIdMethodScreenProps) {
   const filteredMethods = allowedMethods
     ? idMethods.filter((m) => allowedMethods.includes(m.id))
@@ -41,7 +43,7 @@ export default function SelectIdMethodScreen({
           <ChevronLeft size={16} />
         </button>
         <CreditCard size={14} className="text-[#1B2B5E]" />
-        <div>
+        <div className="flex-1">
           <h1 className="text-[11px] font-bold text-[#1B2B5E]">
             {locale === "th" ? (title || "เลือกวิธียืนยันตัวตน") : (titleEn || "Select ID Verification")}
           </h1>
@@ -49,6 +51,15 @@ export default function SelectIdMethodScreen({
             {locale === "th" ? "Select ID Verification" : "Choose your method"}
           </p>
         </div>
+        {onChangeLocale && (
+          <button
+            onClick={onChangeLocale}
+            className="flex items-center gap-1 px-2 py-0.5 rounded-full border border-gray-300 text-[9px] font-bold text-[#2E3192] hover:bg-gray-50 transition-all"
+          >
+            <Globe size={9} />
+            {locale === "th" ? "EN" : "TH"}
+          </button>
+        )}
       </header>
 
       <main className="flex flex-col items-center pt-3 px-3 gap-2">

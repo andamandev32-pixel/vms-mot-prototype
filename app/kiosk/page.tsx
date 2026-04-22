@@ -260,6 +260,11 @@ export default function KioskDemoPage() {
   const reset = useCallback(() => {
     stopSpeech();
     dispatch({ type: "RESET" });
+    setLocale("th");
+  }, []);
+
+  const toggleLocale = useCallback(() => {
+    setLocale((prev) => (prev === "th" ? "en" : "th"));
   }, []);
 
   const handleCaseChange = (c: DemoCase) => {
@@ -285,7 +290,7 @@ export default function KioskDemoPage() {
             isAuthenticated={isAuthenticated}
             onSelectWalkin={() => fire({ type: "SELECT_WALKIN" })}
             onSelectAppointment={() => fire({ type: "SELECT_APPOINTMENT" })}
-            onChangeLocale={() => setLocale(locale === "th" ? "en" : "th")}
+            onChangeLocale={toggleLocale}
           />
         );
       case "PDPA_CONSENT":
@@ -304,6 +309,7 @@ export default function KioskDemoPage() {
             onSelect={(method) => fire({ type: "CHOOSE_ID_METHOD", idMethod: method })}
             onBack={() => fire({ type: "GO_BACK" })}
             allowedMethods={allowedIdMethods}
+            onChangeLocale={toggleLocale}
           />
         );
       case "ID_VERIFICATION":
@@ -351,6 +357,7 @@ export default function KioskDemoPage() {
             onBack={() => fire({ type: "GO_BACK" })}
             purposes={kioskConfig?.purposes}
             purposeDeptMap={kioskConfig?.purposeDepartmentMap}
+            onChangeLocale={toggleLocale}
           />
         );
       case "FACE_CAPTURE": {
@@ -398,6 +405,7 @@ export default function KioskDemoPage() {
             slipSections={slipSections}
             slipLogoUrl={slipLogoUrl}
             slipLogoSize={slipLogoSize}
+            onChangeLocale={toggleLocale}
           />
         );
       case "QR_SCAN":
@@ -441,6 +449,7 @@ export default function KioskDemoPage() {
             message={state.errorMessage}
             onRetry={() => fire({ type: "GO_BACK" })}
             onHome={reset}
+            onChangeLocale={toggleLocale}
           />
         );
       case "TIMEOUT":
@@ -450,6 +459,7 @@ export default function KioskDemoPage() {
             message={locale === "th" ? "หมดเวลาทำรายการ" : "Session timed out"}
             onRetry={reset}
             onHome={reset}
+            onChangeLocale={toggleLocale}
           />
         );
       default:
@@ -552,7 +562,7 @@ export default function KioskDemoPage() {
             <FileText size={13} />
           </button>
           <button
-            onClick={() => setLocale(locale === "th" ? "en" : "th")}
+            onClick={toggleLocale}
             className="w-7 h-7 rounded-md border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-50"
             title={locale === "th" ? "Switch to English" : "เปลี่ยนเป็นภาษาไทย"}
           >

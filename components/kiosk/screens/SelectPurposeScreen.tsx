@@ -1,6 +1,6 @@
 "use client";
 
-import { ChevronLeft, Building2, Wifi } from "lucide-react";
+import { ChevronLeft, Building2, Wifi, Globe } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { VisitPurposeOption } from "@/lib/kiosk/kiosk-types";
 import { mockKioskPurposes, purposeDepartmentMap as defaultPurposeDeptMap } from "@/lib/kiosk/kiosk-mock-data";
@@ -15,11 +15,12 @@ interface SelectPurposeScreenProps {
   purposes?: VisitPurposeOption[];
   /** Purpose→dept mapping resolved from kiosk config */
   purposeDeptMap?: Record<number, number[]>;
+  onChangeLocale?: () => void;
 }
 
 const activeDepartments = departments.filter((d) => d.isActive);
 
-export default function SelectPurposeScreen({ locale, onSelect, onBack, purposes, purposeDeptMap }: SelectPurposeScreenProps) {
+export default function SelectPurposeScreen({ locale, onSelect, onBack, purposes, purposeDeptMap, onChangeLocale }: SelectPurposeScreenProps) {
   const [step, setStep] = useState<"purpose" | "department">("purpose");
   const [selectedPurpose, setSelectedPurpose] = useState<VisitPurposeOption | null>(null);
   const [selectedDept, setSelectedDept] = useState<number | null>(null);
@@ -80,7 +81,7 @@ export default function SelectPurposeScreen({ locale, onSelect, onBack, purposes
           <button onClick={onBack} className="w-7 h-7 rounded-full bg-gray-50 border border-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-100">
             <ChevronLeft size={16} />
           </button>
-          <div>
+          <div className="flex-1">
             <h1 className="text-[11px] font-bold text-[#1B2B5E]">
               {locale === "th" ? "เลือกรายการเข้าพื้นที่" : "Select Visit Purpose"}
             </h1>
@@ -88,6 +89,15 @@ export default function SelectPurposeScreen({ locale, onSelect, onBack, purposes
               {locale === "th" ? "Select Visit Purpose" : "Choose the purpose of your visit"}
             </p>
           </div>
+          {onChangeLocale && (
+            <button
+              onClick={onChangeLocale}
+              className="flex items-center gap-1 px-2 py-0.5 rounded-full border border-gray-300 text-[9px] font-bold text-[#2E3192] hover:bg-gray-50 transition-all"
+            >
+              <Globe size={9} />
+              {locale === "th" ? "EN" : "TH"}
+            </button>
+          )}
         </header>
 
         {/* Purpose grid */}
@@ -140,7 +150,7 @@ export default function SelectPurposeScreen({ locale, onSelect, onBack, purposes
           <ChevronLeft size={16} />
         </button>
         <Building2 size={14} className="text-[#1B2B5E]" />
-        <div>
+        <div className="flex-1">
           <h1 className="text-[11px] font-bold text-[#1B2B5E]">
             {locale === "th" ? "เลือกหน่วยงานที่ติดต่อ" : "Select Department"}
           </h1>
@@ -148,6 +158,15 @@ export default function SelectPurposeScreen({ locale, onSelect, onBack, purposes
             {locale === "th" ? "Select Department" : "Choose the department to visit"}
           </p>
         </div>
+        {onChangeLocale && (
+          <button
+            onClick={onChangeLocale}
+            className="flex items-center gap-1 px-2 py-0.5 rounded-full border border-gray-300 text-[9px] font-bold text-[#2E3192] hover:bg-gray-50 transition-all"
+          >
+            <Globe size={9} />
+            {locale === "th" ? "EN" : "TH"}
+          </button>
+        )}
       </header>
 
       {/* Selected purpose badge */}
