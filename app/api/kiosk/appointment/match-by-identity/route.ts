@@ -1,0 +1,89 @@
+import { NextRequest, NextResponse } from "next/server";
+import { getStaffOrKiosk } from "@/lib/kiosk-auth";
+import { prisma } from "@/lib/prisma";
+
+const ok = (data: unknown) => NextResponse.json({ success: true, data });
+const err = (code: string, msg: string, status = 400) =>
+  NextResponse.json({ success: false, error: { code, message: msg } }, { status });
+
+// POST /api/kiosk/appointment/match-by-identity
+// Auto-match walk-in visitor against today's appointments by ID number.
+export async function POST(request: NextRequest) {
+  try {
+    const auth = await getStaffOrKiosk(request);
+    if (!auth) return err("UNAUTHORIZED", "กรุณาเข้าสู่ระบบ", 401);
+
+    const body = await request.json();
+    const { idNumber, departmentId, visitPurposeId } = body as {
+      idNumber?: string;
+      servicePointId?: number;
+      departmentId?: number;
+      visitPurposeId?: number;
+    };
+
+    if (!idNumber?.trim()) return err("MISSING_FIELDS", "กรุณาระบุ idNumber");
+
+    const dayStart = new Date();
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(dayStart);
+    dayEnd.setDate(dayEnd.getDate() + 1);
+
+    const appointments = await prisma.appointment.findMany({
+      where: {
+        visitor: { idNumber: idNumber.trim() },
+        dateStart: { gte: dayStart, lt: dayEnd },
+        status: { in: ["approved", "confirmed"] },
+      },
+      include: {
+        visitor: { select: { id: true, name: true, company: true } },
+        hostStaff: { select: { id: true, name: true, position: true } },
+        department: { select: { id: true, name: true } },
+        visitPurpose: { select: { id: true, name: true, icon: true } },
+      },
+      orderBy: { timeStart: "asc" },
+    });
+
+    if (appointments.length === 0) {
+      return ok({ hasAppointment: false, suggestion: "proceed-walkin" });
+    }
+
+    const formatTime = (t: Date | null | undefined) =>
+      t ? t.toISOString().slice(11, 16) : "—";
+
+    const mapped = appointments.map((a) => {
+      const deptMatches = departmentId != null ? a.departmentId === departmentId : true;
+      const purposeMatches = visitPurposeId != null ? a.visitPurposeId === visitPurposeId : true;
+      return {
+        id: a.id,
+        bookingCode: a.bookingCode,
+        status: a.status,
+        type: a.type,
+        entryMode: a.entryMode,
+        timeStart: formatTime(a.timeStart),
+        timeEnd: formatTime(a.timeEnd),
+        visitorName: a.visitor?.name || "",
+        visitorCompany: a.visitor?.company || "",
+        hostName: a.hostStaff?.name || "",
+        hostPosition: a.hostStaff?.position || "",
+        departmentId: a.departmentId,
+        departmentName: a.department?.name || "",
+        visitPurposeId: a.visitPurposeId,
+        purposeName: a.visitPurpose?.name || a.purpose || "",
+        purposeIcon: a.visitPurpose?.icon || "📋",
+        matchesWalkinChoice: deptMatches && purposeMatches,
+      };
+    });
+
+    const anyMatchesChoice = mapped.some((m) => m.matchesWalkinChoice);
+
+    return ok({
+      hasAppointment: true,
+      matchesWalkinChoice: anyMatchesChoice,
+      suggestion: anyMatchesChoice ? "use-appointment" : "confirm-with-visitor",
+      appointments: mapped,
+    });
+  } catch (error) {
+    console.error("POST /api/kiosk/appointment/match-by-identity error:", error);
+    return err("SERVER_ERROR", "เกิดข้อผิดพลาด กรุณาลองใหม่", 500);
+  }
+}
