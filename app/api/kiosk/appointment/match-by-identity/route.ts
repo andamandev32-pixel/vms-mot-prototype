@@ -14,14 +14,42 @@ export async function POST(request: NextRequest) {
     if (!auth) return err("UNAUTHORIZED", "กรุณาเข้าสู่ระบบ", 401);
 
     const body = await request.json();
-    const { idNumber, departmentId, visitPurposeId } = body as {
+    const {
+      idNumber,
+      passportNumber,
+      firstName,
+      lastName,
+      departmentId,
+      visitPurposeId,
+    } = body as {
       idNumber?: string;
-      servicePointId?: number;
+      passportNumber?: string;
+      firstName?: string;
+      lastName?: string;
       departmentId?: number;
       visitPurposeId?: number;
     };
 
-    if (!idNumber?.trim()) return err("MISSING_FIELDS", "กรุณาระบุ idNumber");
+    const idTrim = idNumber?.trim();
+    const passTrim = passportNumber?.trim();
+    const fnTrim = firstName?.trim();
+    const lnTrim = lastName?.trim();
+    const hasName = !!(fnTrim && lnTrim);
+
+    if (!idTrim && !passTrim && !hasName) {
+      return err(
+        "MISSING_FIELDS",
+        "กรุณาระบุอย่างน้อย 1 อย่าง: idNumber, passportNumber, หรือ firstName + lastName"
+      );
+    }
+
+    const visitorOr: Record<string, unknown>[] = [];
+    if (idTrim) visitorOr.push({ idNumber: idTrim });
+    if (passTrim) visitorOr.push({ idNumber: passTrim });
+    if (hasName) {
+      visitorOr.push({ firstName: fnTrim, lastName: lnTrim });
+      visitorOr.push({ firstNameEn: fnTrim, lastNameEn: lnTrim });
+    }
 
     const dayStart = new Date();
     dayStart.setHours(0, 0, 0, 0);
@@ -30,7 +58,7 @@ export async function POST(request: NextRequest) {
 
     const appointments = await prisma.appointment.findMany({
       where: {
-        visitor: { idNumber: idNumber.trim() },
+        visitor: { OR: visitorOr },
         dateStart: { gte: dayStart, lt: dayEnd },
         status: { in: ["approved", "confirmed"] },
       },
