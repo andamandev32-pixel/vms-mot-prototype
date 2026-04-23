@@ -535,7 +535,6 @@ const apiSpecs: KioskApiSpec[] = [
           appointments: [
             {
               id: 42,
-              bookingCode: "BK-20260423-0042",
               status: "approved",
               type: "single",
               entryMode: "scheduled",

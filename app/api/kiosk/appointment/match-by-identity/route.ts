@@ -83,7 +83,6 @@ export async function POST(request: NextRequest) {
       const purposeMatches = visitPurposeId != null ? a.visitPurposeId === visitPurposeId : true;
       return {
         id: a.id,
-        bookingCode: a.bookingCode,
         status: a.status,
         type: a.type,
         entryMode: a.entryMode,
