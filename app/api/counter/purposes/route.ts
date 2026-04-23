@@ -18,6 +18,7 @@ export async function GET(request: NextRequest) {
     const purposes = await prisma.visitPurpose.findMany({
       where: { isActive: true },
       include: {
+        channelConfigs: { where: { channel: "counter" } },
         departmentRules: {
           where: { acceptFromCounter: true },
         },
@@ -30,6 +31,7 @@ export async function GET(request: NextRequest) {
       name: p.name,
       nameEn: p.nameEn,
       icon: p.icon,
+      requirePhoto: p.channelConfigs[0]?.requirePhoto ?? true,
       allowedDepartmentIds: p.departmentRules.map((r) => r.departmentId),
     }));
 
