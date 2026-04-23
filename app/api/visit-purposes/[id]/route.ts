@@ -45,7 +45,7 @@ export async function PUT(
     const {
       name, nameEn, icon, allowedEntryModes,
       showOnLine, showOnWeb, showOnKiosk, showOnCounter,
-      sortOrder, isActive,
+      sortOrder, isActive, channelConfigs,
     } = body as {
       name?: string;
       nameEn?: string;
@@ -57,6 +57,7 @@ export async function PUT(
       showOnCounter?: boolean;
       sortOrder?: number;
       isActive?: boolean;
+      channelConfigs?: Array<{ channel: string; requirePhoto?: boolean }>;
     };
 
     const visitPurpose = await prisma.visitPurpose.update({
@@ -74,6 +75,29 @@ export async function PUT(
         ...(isActive !== undefined && { isActive }),
       },
     });
+
+    if (Array.isArray(channelConfigs)) {
+      for (const cfg of channelConfigs) {
+        if (!cfg?.channel || cfg.requirePhoto === undefined) continue;
+        const existing = await prisma.visitPurposeChannelConfig.findFirst({
+          where: { visitPurposeId: purposeId, channel: cfg.channel },
+        });
+        if (existing) {
+          await prisma.visitPurposeChannelConfig.update({
+            where: { id: existing.id },
+            data: { requirePhoto: cfg.requirePhoto },
+          });
+        } else {
+          await prisma.visitPurposeChannelConfig.create({
+            data: {
+              visitPurposeId: purposeId,
+              channel: cfg.channel,
+              requirePhoto: cfg.requirePhoto,
+            },
+          });
+        }
+      }
+    }
 
     return ok({ visitPurpose });
   } catch (error) {

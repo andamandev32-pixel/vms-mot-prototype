@@ -184,6 +184,7 @@ export default function VisitPurposeSettingsPage() {
     id?: number; name: string; nameEn: string; icon: string; isActive: boolean;
     sortOrder: number; showOnLine: boolean; showOnWeb: boolean; showOnKiosk: boolean;
     showOnCounter: boolean; allowedEntryModes: string;
+    channelConfigs?: Array<{ channel: string; requirePhoto: boolean }>;
   }) => {
     try {
       if (data.id) {
@@ -797,6 +798,7 @@ function PurposeDrawer({
     id?: number; name: string; nameEn: string; icon: string; isActive: boolean;
     sortOrder: number; showOnLine: boolean; showOnWeb: boolean; showOnKiosk: boolean;
     showOnCounter: boolean; allowedEntryModes: string;
+    channelConfigs?: Array<{ channel: string; requirePhoto: boolean }>;
   }) => void;
   totalCount: number;
 }) {
@@ -1149,6 +1151,10 @@ function PurposeDrawer({
             showOnKiosk,
             showOnCounter,
             allowedEntryModes: allowedModes.join(","),
+            channelConfigs: [
+              { channel: "kiosk", requirePhoto: kioskPhoto },
+              { channel: "counter", requirePhoto: counterPhoto },
+            ],
           });
         }}>
           <Save size={16} className="mr-2" />
