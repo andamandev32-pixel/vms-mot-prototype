@@ -6,6 +6,7 @@
  */
 
 import type { CounterState } from "@/components/counter/CounterStatePanel";
+import type { ApiParam } from "@/lib/api-doc-data";
 
 // ===== TYPES =====
 
@@ -16,6 +17,7 @@ export interface CounterApiEndpoint {
   summaryEn: string;
   contentType?: string;
   tables: string[];
+  queryParams?: ApiParam[];
   request?: Record<string, unknown>;
   response: Record<string, unknown>;
   errorResponse?: Record<string, unknown>;
@@ -127,6 +129,14 @@ const apiSpecs: CounterApiSpec[] = [
         summary: "ดึงรายการ visit_entries วันนี้ + filter ตาม status",
         summaryEn: "List today's visit entries with status filtering",
         tables: ["visit_entries", "visitors", "departments", "visit_purposes", "appointments"],
+        queryParams: [
+          {
+            name: "status",
+            type: "string",
+            required: false,
+            description: "กรองตาม entry status — รองรับหลายค่าคั่นด้วย comma เช่น 'checked-in,checked-out,auto-checkout,overstay'",
+          },
+        ],
         response: {
           entries: [
             {
@@ -264,6 +274,14 @@ const apiSpecs: CounterApiSpec[] = [
         summary: "ดึงหน่วยงานตาม purpose ที่เลือก",
         summaryEn: "Get departments filtered by selected purpose",
         tables: ["departments", "floors", "floor_departments", "visit_purpose_department_rules"],
+        queryParams: [
+          {
+            name: "purposeId",
+            type: "number",
+            required: true,
+            description: "Visit purpose ID เพื่อกรอง departments ที่รองรับการรับผู้เยี่ยมจาก counter",
+          },
+        ],
         response: {
           departments: [
             { id: 1, name: "สำนักงานปลัดกระทรวง", nameEn: "Office of the Permanent Secretary", floor: "ชั้น 3", requireApproval: true, offerWifi: true },
@@ -391,6 +409,14 @@ const apiSpecs: CounterApiSpec[] = [
         summary: "ค้นหานัดหมายวันนี้",
         summaryEn: "Search today's appointments",
         tables: ["appointments", "visitors", "staff", "departments", "visit_purposes"],
+        queryParams: [
+          {
+            name: "q",
+            type: "string",
+            required: false,
+            description: "Keyword ค้นหา — ชื่อผู้เยี่ยม, เลขบัตร, booking code, หรือชื่อ host",
+          },
+        ],
         response: {
           appointments: [
             {

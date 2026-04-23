@@ -7,6 +7,7 @@
  */
 
 import type { KioskStateType } from "./kiosk-types";
+import type { ApiParam } from "@/lib/api-doc-data";
 
 // ===== TYPES =====
 
@@ -17,6 +18,7 @@ export interface KioskApiEndpoint {
   summaryEn: string;
   contentType?: string;
   tables: string[];
+  queryParams?: ApiParam[];
   request?: Record<string, unknown>;
   response: Record<string, unknown>;
   errorResponse?: Record<string, unknown>;

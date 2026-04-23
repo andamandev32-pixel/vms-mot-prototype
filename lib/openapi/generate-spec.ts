@@ -378,12 +378,15 @@ export function generateOpenAPISpec(): OpenAPISpec {
       processed.add(key);
 
       const pathParams = extractPathParams(path);
-      const parameters: unknown[] = pathParams.map((pp) => ({
-        name: pp,
-        in: "path",
-        required: true,
-        schema: { type: pp.toLowerCase().includes("id") ? "integer" : "string" },
-      }));
+      const parameters: unknown[] = [
+        ...pathParams.map((pp) => ({
+          name: pp,
+          in: "path",
+          required: true,
+          schema: { type: pp.toLowerCase().includes("id") ? "integer" : "string" },
+        })),
+        ...apiParamsToParameters(ep.queryParams, "query"),
+      ];
 
       // Public kiosk endpoints: config + PDPA (no auth required)
       const isPublicEndpoint =
@@ -417,12 +420,15 @@ export function generateOpenAPISpec(): OpenAPISpec {
       processed.add(key);
 
       const pathParams = extractPathParams(path);
-      const parameters: unknown[] = pathParams.map((pp) => ({
-        name: pp,
-        in: "path",
-        required: true,
-        schema: { type: pp.toLowerCase().includes("id") ? "integer" : "string" },
-      }));
+      const parameters: unknown[] = [
+        ...pathParams.map((pp) => ({
+          name: pp,
+          in: "path",
+          required: true,
+          schema: { type: pp.toLowerCase().includes("id") ? "integer" : "string" },
+        })),
+        ...apiParamsToParameters(ep.queryParams, "query"),
+      ];
 
       const operation: Record<string, unknown> = {
         tags: ["counter"],
