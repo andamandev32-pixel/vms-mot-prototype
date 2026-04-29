@@ -54,21 +54,7 @@ export async function POST(request: NextRequest) {
       return err("Visitor is blocked", 403);
     }
 
-    // Check no duplicate active entry
-    const activeEntry = await prisma.visitEntry.findFirst({
-      where: {
-        visitorId,
-        status: "checked-in",
-      },
-    });
-
-    if (activeEntry) {
-      return err(
-        "Visitor already has an active entry (checked-in). Please checkout first."
-      );
-    }
-
-    // Fetch purpose and department
+    // Fetch purpose and department (needed for duplicate check below)
     const [purpose, department] = await Promise.all([
       prisma.visitPurpose.findUnique({ where: { id: visitPurposeId } }),
       prisma.department.findUnique({
@@ -87,6 +73,28 @@ export async function POST(request: NextRequest) {
 
     if (!purpose) return err("Purpose not found", 404);
     if (!department) return err("Department not found", 404);
+
+    // Block only when an active entry exists today for the SAME department AND purpose
+    const startOfDay = new Date();
+    startOfDay.setHours(0, 0, 0, 0);
+    const startOfNextDay = new Date(startOfDay);
+    startOfNextDay.setDate(startOfNextDay.getDate() + 1);
+
+    const activeEntry = await prisma.visitEntry.findFirst({
+      where: {
+        visitorId,
+        status: "checked-in",
+        departmentId,
+        purpose: purpose.name,
+        checkinAt: { gte: startOfDay, lt: startOfNextDay },
+      },
+    });
+
+    if (activeEntry) {
+      return err(
+        "Visitor already has an active entry today for this department and purpose. Please checkout first."
+      );
+    }
 
     const floorDept = department.floorDepartments[0];
     const entryCode = generateEntryCode();
