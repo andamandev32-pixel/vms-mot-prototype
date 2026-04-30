@@ -1295,12 +1295,22 @@ function LiffBooking({ onSubmit, devMode, onApiLog }: { onSubmit: () => void; de
   const { data: deptData, isLoading: deptLoading } = useDepartmentsForLine();
   const { data: staffData } = useStaffSearch(hostSearch);
 
+  // API response shape: apiFetch คืน json.data → ต้อง unwrap key ตาม endpoint
+  // /api/visit-purposes → { visitPurposes: [...] }
+  // /api/locations/departments → { departments: [...] }
+  // /api/staff → { staff: [...] }
   const purposes = Array.isArray(purposesData) ? purposesData :
-    (purposesData as { items?: unknown[] })?.items ?? [];
+    ((purposesData as { visitPurposes?: unknown[]; items?: unknown[] })?.visitPurposes
+      ?? (purposesData as { items?: unknown[] })?.items
+      ?? []);
   const departments = Array.isArray(deptData) ? deptData :
-    (deptData as { items?: unknown[] })?.items ?? [];
+    ((deptData as { departments?: unknown[]; items?: unknown[] })?.departments
+      ?? (deptData as { items?: unknown[] })?.items
+      ?? []);
   const staffResults = Array.isArray(staffData) ? staffData :
-    (staffData as { items?: unknown[] })?.items ?? [];
+    ((staffData as { staff?: unknown[]; items?: unknown[] })?.staff
+      ?? (staffData as { items?: unknown[] })?.items
+      ?? []);
 
   const handleBook = async () => {
     if (!selectedPurpose || !selectedDate || !selectedHost) return;
