@@ -429,6 +429,24 @@ function AuthPanel({
     onRefresh();
   };
 
+  const [demoLoading, setDemoLoading] = useState<"visitor" | "staff" | null>(null);
+  const handleDemoLogin = async (kind: "visitor" | "staff") => {
+    setLoginError("");
+    setDemoLoading(kind);
+    try {
+      if (kind === "visitor") {
+        await visitorLogin.mutateAsync({ email: "wichai@siamtech.co.th", password: "pass1234" });
+      } else {
+        await staffLogin.mutateAsync({ username: "somsri.r", password: "pass1234" });
+      }
+      onRefresh();
+    } catch (err) {
+      setLoginError(err instanceof Error ? err.message : "Demo login failed");
+    } finally {
+      setDemoLoading(null);
+    }
+  };
+
   return (
     <div className="px-3 py-2 border-b border-gray-100">
       <p className="text-[9px] uppercase tracking-wider text-gray-400 font-semibold mb-1.5">Session</p>
@@ -470,6 +488,26 @@ function AuthPanel({
           </span>
         </div>
       </div>
+
+      {/* Quick Demo Login — กดปุ่มเดียว login ด้วย seed user (สำหรับ demo บน browser) */}
+      {!vUser && !sUser && (
+        <div className="flex gap-1 mt-1.5">
+          <button
+            onClick={() => handleDemoLogin("visitor")}
+            disabled={demoLoading !== null}
+            className="flex-1 flex items-center justify-center gap-1 px-2 py-1 rounded text-[9px] font-bold bg-[#06C755] hover:bg-[#05B048] text-white transition-colors disabled:opacity-50">
+            {demoLoading === "visitor" ? <Loader2 size={9} className="animate-spin" /> : <Users size={9} />}
+            Demo Visitor
+          </button>
+          <button
+            onClick={() => handleDemoLogin("staff")}
+            disabled={demoLoading !== null}
+            className="flex-1 flex items-center justify-center gap-1 px-2 py-1 rounded text-[9px] font-bold bg-blue-500 hover:bg-blue-600 text-white transition-colors disabled:opacity-50">
+            {demoLoading === "staff" ? <Loader2 size={9} className="animate-spin" /> : <Briefcase size={9} />}
+            Demo Staff
+          </button>
+        </div>
+      )}
 
       <div className="flex gap-1 mt-1.5">
         <button onClick={() => setShowLogin(!showLogin)}
