@@ -1,4 +1,7 @@
+"use client";
+
 import { QueryProvider } from "@/components/providers/QueryProvider";
+import { LiffProvider } from "@/lib/liff/provider";
 
 export default function LineOaLayout({
     children,
@@ -7,7 +10,9 @@ export default function LineOaLayout({
 }) {
     return (
         <div className="h-screen overflow-hidden">
-            <QueryProvider>{children}</QueryProvider>
+            <QueryProvider>
+                <LiffProvider>{children}</LiffProvider>
+            </QueryProvider>
         </div>
     );
 }

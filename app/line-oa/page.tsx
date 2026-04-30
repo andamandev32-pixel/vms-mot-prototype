@@ -7,7 +7,9 @@ import {
   User, ChevronDown, ChevronUp, Code2, LogIn, LogOut, Eye, EyeOff,
   AlertTriangle, CheckCircle2, XCircle, RefreshCw,
 } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { cn } from "@/lib/utils";
+import { useLiff } from "@/lib/liff/use-liff";
 import LineStatePanel from "@/components/mobile/LineStatePanel";
 import { getMessagesForState } from "@/components/mobile/LineChatMessages";
 import NewFriendRichMenu from "@/components/mobile/NewFriendRichMenu";
@@ -69,6 +71,53 @@ export default function LineOaFlowPage() {
   // Auth state detection
   const { data: visitorUser, refetch: refetchVisitor } = useVisitorMe();
   const { data: staffUser, refetch: refetchStaff } = useStaffMe();
+
+  // LIFF (LINE Login) — auto-exchange access token เป็น session cookie
+  const queryClient = useQueryClient();
+  const liff = useLiff();
+  const [liffAuthState, setLiffAuthState] = useState<"idle" | "authing" | "ok" | "error" | "skipped">("idle");
+  const [liffAuthError, setLiffAuthError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // ถ้ามี session อยู่แล้ว → mark ok
+    if (visitorUser || staffUser) {
+      setLiffAuthState("ok");
+      return;
+    }
+    // เปิดนอก LINE หรือไม่มี LIFF ID → ข้าม (fallback ไป Login button)
+    if (liff.loading) return;
+    if (!liff.accessToken) {
+      setLiffAuthState("skipped");
+      return;
+    }
+    if (liffAuthState !== "idle") return;
+
+    setLiffAuthState("authing");
+    fetch("/api/liff/auth", {
+      method: "POST",
+      credentials: "same-origin",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lineAccessToken: liff.accessToken }),
+    })
+      .then((r) => r.json())
+      .then((json) => {
+        if (json.success) {
+          setLiffAuthState("ok");
+          setLiffAuthError(null);
+          // invalidate ทุก query เพื่อให้ refetch ด้วย session cookie ใหม่
+          queryClient.invalidateQueries();
+          refetchVisitor();
+          refetchStaff();
+        } else {
+          setLiffAuthState("error");
+          setLiffAuthError(json.error?.message || "LIFF auth failed");
+        }
+      })
+      .catch((err) => {
+        setLiffAuthState("error");
+        setLiffAuthError(err instanceof Error ? err.message : "Network error");
+      });
+  }, [liff.loading, liff.accessToken, visitorUser, staffUser, liffAuthState, queryClient, refetchVisitor, refetchStaff]);
 
   // API Health
   const apiHealth = useManualApiHealthCheck();
@@ -167,6 +216,15 @@ export default function LineOaFlowPage() {
         <AuthPanel
           visitorUser={visitorUser}
           staffUser={staffUser}
+          liffStatus={{
+            isReady: liff.isReady,
+            isLoggedIn: liff.isLoggedIn,
+            isInClient: liff.isInClient,
+            displayName: liff.profile?.displayName ?? null,
+            initError: liff.error,
+            authState: liffAuthState,
+            authError: liffAuthError,
+          }}
           onRefresh={() => { refetchVisitor(); refetchStaff(); }}
         />
 
@@ -320,10 +378,20 @@ export default function LineOaFlowPage() {
 function AuthPanel({
   visitorUser,
   staffUser,
+  liffStatus,
   onRefresh,
 }: {
   visitorUser: unknown;
   staffUser: unknown;
+  liffStatus: {
+    isReady: boolean;
+    isLoggedIn: boolean;
+    isInClient: boolean;
+    displayName: string | null;
+    initError: string | null;
+    authState: "idle" | "authing" | "ok" | "error" | "skipped";
+    authError: string | null;
+  };
   onRefresh: () => void;
 }) {
   const [showLogin, setShowLogin] = useState(false);
@@ -365,6 +433,26 @@ function AuthPanel({
     <div className="px-3 py-2 border-b border-gray-100">
       <p className="text-[9px] uppercase tracking-wider text-gray-400 font-semibold mb-1.5">Session</p>
       <div className="space-y-1">
+        {/* LIFF status — LINE Login */}
+        <div className="flex items-center gap-1.5 text-[10px]">
+          <div className={cn("w-2 h-2 rounded-full shrink-0",
+            liffStatus.authState === "ok" ? "bg-[#06C755]" :
+            liffStatus.authState === "authing" ? "bg-yellow-400 animate-pulse" :
+            liffStatus.authState === "error" ? "bg-red-500" :
+            "bg-gray-300")} />
+          <span className="text-gray-500">LIFF:</span>
+          <span className={cn("font-medium truncate",
+            liffStatus.authState === "ok" ? "text-[#06C755]" :
+            liffStatus.authState === "error" ? "text-red-600" :
+            "text-gray-400")} title={liffStatus.authError || liffStatus.initError || undefined}>
+            {liffStatus.authState === "authing" ? "Authenticating..." :
+             liffStatus.authState === "ok" ? (liffStatus.displayName ? `✓ ${liffStatus.displayName}` : "✓ Authenticated") :
+             liffStatus.authState === "error" ? `✗ ${liffStatus.authError || "Auth failed"}` :
+             liffStatus.initError ? "Not configured" :
+             !liffStatus.isLoggedIn ? "Not in LINE" :
+             "—"}
+          </span>
+        </div>
         {/* Visitor session */}
         <div className="flex items-center gap-1.5 text-[10px]">
           <div className={cn("w-2 h-2 rounded-full shrink-0", vUser ? "bg-green-500" : "bg-gray-300")} />
@@ -1092,6 +1180,15 @@ function LiffOfficerRegister({ onSubmit, devMode, onApiLog }: { onSubmit: () => 
 // ===== LIFF: Booking — Real API =====
 
 function LiffBooking({ onSubmit, devMode, onApiLog }: { onSubmit: () => void; devMode: boolean; onApiLog: (log: ApiCallLog) => void }) {
+  const liff = useLiff();
+  const { data: visitorUser } = useVisitorMe();
+  const { data: staffUser } = useStaffMe();
+  const hasSession = Boolean(visitorUser || staffUser);
+  // ถ้าเปิดใน LINE และยังไม่มี session → กำลังรอ LIFF auth จาก root component
+  const liffAuthing = !hasSession && liff.isReady && liff.isLoggedIn && Boolean(liff.accessToken);
+  // ถ้าเปิดนอก LINE และยังไม่มี session → user ต้องกด Login ที่ sidebar
+  const needManualLogin = !hasSession && !liffAuthing && (!liff.accessToken);
+
   const [step, setStep] = useState(1);
   const [selectedPurpose, setSelectedPurpose] = useState<{ id: number; name: string; nameEn?: string; icon?: string } | null>(null);
   const [selectedDept, setSelectedDept] = useState<{ id: number; name: string } | null>(null);
@@ -1156,6 +1253,51 @@ function LiffBooking({ onSubmit, devMode, onApiLog }: { onSubmit: () => void; de
       setBookingResult({ success: false, message: err instanceof Error ? err.message : "Error" });
     }
   };
+
+  if (liffAuthing) {
+    return (
+      <>
+        <LiffHeader title="บันทึกนัดหมาย" subtitle="กำลังยืนยันตัวตนผ่าน LINE" />
+        <div className="flex flex-col items-center justify-center py-12 px-6 text-center">
+          <Loader2 size={28} className="animate-spin text-[#06C755] mb-3" />
+          <p className="text-xs font-bold text-gray-700">กำลัง Login ผ่าน LINE</p>
+          <p className="text-[10px] text-gray-500 mt-1">ระบบกำลังแลก LINE access token เป็น session</p>
+          {devMode && (
+            <div className="mt-3 p-2 bg-purple-50 border border-purple-200 rounded-lg text-[9px] text-left w-full">
+              <p className="font-bold text-purple-700">POST /api/liff/auth</p>
+              <p className="text-purple-600 font-mono">Body: {`{ lineAccessToken }`}</p>
+            </div>
+          )}
+        </div>
+      </>
+    );
+  }
+
+  if (needManualLogin) {
+    return (
+      <>
+        <LiffHeader title="บันทึกนัดหมาย" subtitle="ต้อง Login ก่อน" />
+        <div className="flex flex-col items-center justify-center py-10 px-6 text-center space-y-2">
+          <AlertTriangle size={28} className="text-yellow-500" />
+          <p className="text-xs font-bold text-gray-700">เปิด Demo นอก LINE</p>
+          <p className="text-[10px] text-gray-500 leading-relaxed">
+            ใน Production ผู้ใช้จะเข้าผ่าน LIFF (LINE Login) อัตโนมัติ
+            <br />
+            สำหรับ Demo บน browser → กด <b>Login</b> ที่ sidebar ซ้ายมือ
+          </p>
+          {devMode && (
+            <div className="mt-2 p-2 bg-gray-100 rounded-lg text-[9px] text-left w-full">
+              <p className="font-bold text-gray-600">Auth flow (Production):</p>
+              <p className="font-mono text-gray-500">1. liff.getAccessToken()</p>
+              <p className="font-mono text-gray-500">2. POST /api/liff/auth</p>
+              <p className="font-mono text-gray-500">3. cookie evms_session ถูก set</p>
+              <p className="font-mono text-gray-500">4. GET /api/visit-purposes ผ่าน</p>
+            </div>
+          )}
+        </div>
+      </>
+    );
+  }
 
   return (
     <>
