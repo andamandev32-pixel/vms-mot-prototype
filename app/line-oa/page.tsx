@@ -1278,8 +1278,28 @@ function LiffBooking({ onSubmit, devMode, onApiLog }: { onSubmit: () => void; de
   // (ดู Auto Demo Login useEffect ใน LineOaFlowPage) — แสดง spinner รอจนกว่า session จะมา
   const simulatingLiff = !hasSession && !liffAuthing && !liff.accessToken;
 
+  // ===== Types ของ rule และ purpose จาก /api/visit-purposes =====
+  type DepartmentRule = {
+    id: number;
+    departmentId: number;
+    requirePersonName: boolean;
+    requireApproval: boolean;
+    acceptFromLine?: boolean;
+    isActive?: boolean;
+    department?: { id: number; name: string; nameEn?: string };
+  };
+  type PurposeWithRules = {
+    id: number;
+    name: string;
+    nameEn?: string;
+    icon?: string;
+    isActive?: boolean;
+    showOnLine?: boolean;
+    departmentRules?: DepartmentRule[];
+  };
+
   const [step, setStep] = useState(1);
-  const [selectedPurpose, setSelectedPurpose] = useState<{ id: number; name: string; nameEn?: string; icon?: string } | null>(null);
+  const [selectedPurpose, setSelectedPurpose] = useState<PurposeWithRules | null>(null);
   const [selectedDept, setSelectedDept] = useState<{ id: number; name: string } | null>(null);
   const [selectedDate, setSelectedDate] = useState<number | null>(null);
   const [selectedHost, setSelectedHost] = useState<{ id: number; name: string; department?: { name: string; id: number } } | null>(null);
@@ -1292,36 +1312,51 @@ function LiffBooking({ onSubmit, devMode, onApiLog }: { onSubmit: () => void; de
 
   // Real API queries
   const { data: purposesData, isLoading: purposesLoading, error: purposesError } = useVisitPurposesForLine();
-  const { data: deptData, isLoading: deptLoading } = useDepartmentsForLine();
   const { data: staffData } = useStaffSearch(hostSearch);
 
   // API response shape: apiFetch คืน json.data → ต้อง unwrap key ตาม endpoint
   // /api/visit-purposes → { visitPurposes: [...] }
-  // /api/locations/departments → { departments: [...] }
   // /api/staff → { staff: [...] }
-  const purposes = Array.isArray(purposesData) ? purposesData :
+  const purposes = (Array.isArray(purposesData) ? purposesData :
     ((purposesData as { visitPurposes?: unknown[]; items?: unknown[] })?.visitPurposes
       ?? (purposesData as { items?: unknown[] })?.items
-      ?? []);
-  const departments = Array.isArray(deptData) ? deptData :
-    ((deptData as { departments?: unknown[]; items?: unknown[] })?.departments
-      ?? (deptData as { items?: unknown[] })?.items
-      ?? []);
+      ?? [])) as PurposeWithRules[];
   const staffResults = Array.isArray(staffData) ? staffData :
     ((staffData as { staff?: unknown[]; items?: unknown[] })?.staff
       ?? (staffData as { items?: unknown[] })?.items
       ?? []);
 
+  // Filter purposes ที่ active + showOnLine + มีกฎ acceptFromLine ที่ active อย่างน้อย 1 dept
+  const visiblePurposes = purposes.filter((p) => {
+    if (p.isActive === false) return false;
+    if (p.showOnLine === false) return false;
+    const lineRules = (p.departmentRules ?? []).filter((r) => r.isActive !== false && r.acceptFromLine !== false);
+    return lineRules.length > 0;
+  });
+
+  // Department options ของ purpose ที่เลือก (filter จาก rules ที่ acceptFromLine + active)
+  const availableDeptRules: DepartmentRule[] = (selectedPurpose?.departmentRules ?? [])
+    .filter((r) => r.isActive !== false && r.acceptFromLine !== false && r.department);
+
+  // Rule ปัจจุบัน (purpose+department ที่เลือก) — ใช้ตัดสิน requirePersonName / requireApproval
+  const currentRule: DepartmentRule | null = selectedDept
+    ? (availableDeptRules.find((r) => r.departmentId === selectedDept.id) ?? null)
+    : null;
+
+  const requirePersonName = currentRule?.requirePersonName === true;
+  const requireApproval = currentRule?.requireApproval === true;
+
   const handleBook = async () => {
-    if (!selectedPurpose || !selectedDate || !selectedHost) return;
+    if (!selectedPurpose || !selectedDept || !selectedDate) return;
+    if (requirePersonName && !selectedHost) return;
     const dateStr = `2569-04-${String(selectedDate).padStart(2, "0")}`;
     const body = {
       visitPurposeId: selectedPurpose.id,
-      departmentId: selectedDept?.id || selectedHost.department?.id,
+      departmentId: selectedDept.id,
       date: dateStr,
       timeStart,
       timeEnd,
-      hostStaffId: selectedHost.id,
+      hostStaffId: requirePersonName ? selectedHost?.id : null,
       purpose: purposeText,
       channel: "line",
     };
@@ -1394,7 +1429,7 @@ function LiffBooking({ onSubmit, devMode, onApiLog }: { onSubmit: () => void; de
           {[1, 2, 3, 4].map((s) => <div key={s} className={cn("flex-1 transition-all", s <= step ? "bg-[#06C755]" : "")} />)}
         </div>
 
-        {/* Step 1: Purpose Selection — Real API */}
+        {/* Step 1: Purpose Selection — Real API + filter acceptFromLine */}
         {step === 1 && (
           <div className="space-y-2">
             <h3 className="text-xs font-bold text-primary mb-1">เลือกวัตถุประสงค์</h3>
@@ -1405,20 +1440,32 @@ function LiffBooking({ onSubmit, devMode, onApiLog }: { onSubmit: () => void; de
                 <p>{purposesError instanceof Error ? purposesError.message : "Unknown error"}</p>
               </div>
             )}
-            {(purposes as Array<{ id: number; name: string; nameEn?: string; icon?: string; isActive?: boolean }>).filter((p) => p.isActive !== false).map((vt) => (
-              <button key={vt.id} onClick={() => setSelectedPurpose(vt)}
-                className={cn("w-full flex items-center p-2.5 rounded-xl border-2 text-left transition-all",
-                  selectedPurpose?.id === vt.id ? "border-[#06C755] bg-green-50" : "border-gray-200")}>
-                <span className="text-lg mr-2">{vt.icon || "📋"}</span>
-                <div className="flex-1"><p className="text-[11px] font-bold">{vt.name}</p><p className="text-[9px] text-text-muted">{vt.nameEn}</p></div>
-                {selectedPurpose?.id === vt.id && <Check size={14} className="text-[#06C755]" />}
-              </button>
-            ))}
+            {!purposesLoading && visiblePurposes.length === 0 && !purposesError && (
+              <div className="p-2 bg-yellow-50 border border-yellow-200 rounded-xl text-[10px] text-yellow-700">
+                ไม่มีวัตถุประสงค์ที่เปิดให้จองผ่าน LINE
+              </div>
+            )}
+            {visiblePurposes.map((vt) => {
+              const lineRules = (vt.departmentRules ?? []).filter((r) => r.isActive !== false && r.acceptFromLine !== false);
+              const deptCount = lineRules.length;
+              return (
+                <button key={vt.id} onClick={() => { setSelectedPurpose(vt); setSelectedDept(null); setSelectedHost(null); }}
+                  className={cn("w-full flex items-center p-2.5 rounded-xl border-2 text-left transition-all",
+                    selectedPurpose?.id === vt.id ? "border-[#06C755] bg-green-50" : "border-gray-200")}>
+                  <span className="text-lg mr-2">{vt.icon || "📋"}</span>
+                  <div className="flex-1">
+                    <p className="text-[11px] font-bold">{vt.name}</p>
+                    <p className="text-[9px] text-text-muted">{vt.nameEn} · รองรับ {deptCount} แผนก</p>
+                  </div>
+                  {selectedPurpose?.id === vt.id && <Check size={14} className="text-[#06C755]" />}
+                </button>
+              );
+            })}
             {devMode && (
               <div className="p-2 bg-purple-50 border border-purple-200 rounded-lg text-[9px]">
                 <p className="font-bold text-purple-700">API: GET /api/visit-purposes?channel=line</p>
                 <p className={purposesError ? "text-red-500" : "text-green-600"}>
-                  {purposesError ? "Error" : `OK — ${purposes.length} items`}
+                  {purposesError ? "Error" : `OK — ${visiblePurposes.length}/${purposes.length} ผ่าน filter (acceptFromLine)`}
                 </p>
               </div>
             )}
@@ -1427,70 +1474,136 @@ function LiffBooking({ onSubmit, devMode, onApiLog }: { onSubmit: () => void; de
           </div>
         )}
 
-        {/* Step 2: Date, Time, Host — Real API for staff search */}
+        {/* Step 2: Department + Date/Time + Host (conditional ตาม rule) */}
         {step === 2 && (
           <div className="space-y-2.5">
-            <h3 className="text-xs font-bold text-primary mb-1">วัน เวลา ผู้รับพบ</h3>
-            <div className="bg-gray-50 p-2.5 rounded-xl border border-gray-200">
-              <p className="text-[10px] font-bold text-center mb-1.5">เมษายน 2569</p>
-              <div className="grid grid-cols-7 text-center text-[8px] text-text-muted mb-0.5">{["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"].map((d) => <span key={d}>{d}</span>)}</div>
-              <div className="grid grid-cols-7 gap-0.5 text-center">
-                {[0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30].map((d, i) =>
-                  d === 0 ? <span key={`e-${i}`} /> :
-                    <button key={d} onClick={() => setSelectedDate(d)} disabled={d < 2}
-                      className={cn("w-6 h-6 mx-auto rounded-full flex items-center justify-center text-[9px]",
-                        selectedDate === d ? "bg-[#06C755] text-white font-bold" : d < 2 ? "text-gray-300" : "hover:bg-gray-200")}>{d}</button>
-                )}
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div>
-                <label className="text-[9px] font-bold text-text-secondary block mb-0.5">เริ่ม</label>
-                <select value={timeStart} onChange={(e) => setTimeStart(e.target.value)}
-                  className="w-full h-8 px-2 rounded-lg border border-gray-200 text-[10px]">
-                  {["08:00", "08:30", "09:00", "09:30", "10:00", "10:30", "11:00", "13:00", "13:30", "14:00", "14:30", "15:00"].map((t) => <option key={t}>{t}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="text-[9px] font-bold text-text-secondary block mb-0.5">สิ้นสุด</label>
-                <select value={timeEnd} onChange={(e) => setTimeEnd(e.target.value)}
-                  className="w-full h-8 px-2 rounded-lg border border-gray-200 text-[10px]">
-                  {["09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "12:00", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30"].map((t) => <option key={t}>{t}</option>)}
-                </select>
-              </div>
-            </div>
+            <h3 className="text-xs font-bold text-primary mb-1">เลือกแผนก วัน เวลา</h3>
+
+            {/* Department Selection */}
             <div>
-              <label className="text-[9px] font-bold text-text-secondary block mb-0.5">ผู้รับพบ</label>
-              {selectedHost ? (
-                <div className="bg-primary-50 border border-primary-200 rounded-xl p-2 flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center"><User size={12} className="text-primary" /></div>
-                  <div className="flex-1"><p className="text-[10px] font-bold">{selectedHost.name}</p><p className="text-[8px] text-text-muted">{selectedHost.department?.name}</p></div>
-                  <button onClick={() => setSelectedHost(null)} className="text-[9px] text-primary font-bold">เปลี่ยน</button>
+              <label className="text-[9px] font-bold text-text-secondary block mb-0.5">แผนก</label>
+              {availableDeptRules.length === 0 ? (
+                <div className="p-2 bg-yellow-50 border border-yellow-200 rounded-xl text-[10px] text-yellow-700">
+                  ไม่มีแผนกที่เปิดรับวัตถุประสงค์นี้ผ่าน LINE
                 </div>
               ) : (
-                <div className="relative">
-                  <Input placeholder="ค้นหาเจ้าหน้าที่ (Real API)" leftIcon={<Search size={12} />} value={hostSearch} onChange={(e) => setHostSearch(e.target.value)} />
-                  {(staffResults as Array<{ id: number; name?: string; firstName?: string; lastName?: string; department?: { name: string; id: number } }>).length > 0 && (
-                    <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded-xl shadow-lg z-30 max-h-[120px] overflow-y-auto">
-                      {(staffResults as Array<{ id: number; name?: string; firstName?: string; lastName?: string; department?: { name: string; id: number } }>).slice(0, 5).map((s) => (
-                        <button key={s.id} onClick={() => { setSelectedHost({ id: s.id, name: s.name || `${s.firstName} ${s.lastName}`, department: s.department }); setHostSearch(""); }}
-                          className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 text-left border-b last:border-0">
-                          <p className="text-[10px] font-bold">{s.name || `${s.firstName} ${s.lastName}`}</p>
-                          <p className="text-[8px] text-text-muted">{s.department?.name}</p>
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
+                <select
+                  value={selectedDept?.id ?? ""}
+                  onChange={(e) => {
+                    const id = Number(e.target.value);
+                    const r = availableDeptRules.find((x) => x.departmentId === id);
+                    if (r?.department) {
+                      setSelectedDept({ id: r.department.id, name: r.department.name });
+                      setSelectedHost(null); // reset host เมื่อเปลี่ยนแผนก
+                    } else {
+                      setSelectedDept(null);
+                    }
+                  }}
+                  className="w-full h-8 px-2 rounded-lg border border-gray-200 text-[10px] bg-white"
+                >
+                  <option value="">-- เลือกแผนก --</option>
+                  {availableDeptRules.map((r) => (
+                    <option key={r.id} value={r.departmentId}>{r.department?.name}</option>
+                  ))}
+                </select>
               )}
             </div>
-            {devMode && (
-              <div className="p-2 bg-purple-50 border border-purple-200 rounded-lg text-[9px]">
-                <p className="font-bold text-purple-700">API: GET /api/staff?search={hostSearch}</p>
-                <p className="text-purple-600">{(staffResults as unknown[]).length} results</p>
+
+            {/* Rule badge — แสดงทันทีหลังเลือกแผนก */}
+            {currentRule && (
+              <div className="space-y-1.5">
+                <div className={cn("flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] border",
+                  requireApproval ? "bg-orange-50 border-orange-200 text-orange-700" : "bg-green-50 border-green-200 text-green-700")}>
+                  {requireApproval ? <AlertTriangle size={12} /> : <CheckCircle2 size={12} />}
+                  <span className="font-bold">{requireApproval ? "ต้องรอเจ้าหน้าที่อนุมัติ" : "อนุมัติอัตโนมัติ"}</span>
+                </div>
+                <div className={cn("flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] border",
+                  requirePersonName ? "bg-blue-50 border-blue-200 text-blue-700" : "bg-gray-50 border-gray-200 text-gray-600")}>
+                  <User size={12} />
+                  <span className="font-bold">
+                    {requirePersonName ? "ต้องระบุผู้รับพบ" : "ไม่ต้องระบุผู้รับพบ (ติดต่อแผนก)"}
+                  </span>
+                </div>
               </div>
             )}
-            <button onClick={() => selectedDate && selectedHost && setStep(3)} disabled={!selectedDate || !selectedHost}
+
+            {/* Date / Time / Host (เปิดเฉพาะหลังเลือกแผนกแล้ว) */}
+            {selectedDept && (
+              <>
+                <div className="bg-gray-50 p-2.5 rounded-xl border border-gray-200">
+                  <p className="text-[10px] font-bold text-center mb-1.5">เมษายน 2569</p>
+                  <div className="grid grid-cols-7 text-center text-[8px] text-text-muted mb-0.5">{["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"].map((d) => <span key={d}>{d}</span>)}</div>
+                  <div className="grid grid-cols-7 gap-0.5 text-center">
+                    {[0, 0, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30].map((d, i) =>
+                      d === 0 ? <span key={`e-${i}`} /> :
+                        <button key={d} onClick={() => setSelectedDate(d)} disabled={d < 2}
+                          className={cn("w-6 h-6 mx-auto rounded-full flex items-center justify-center text-[9px]",
+                            selectedDate === d ? "bg-[#06C755] text-white font-bold" : d < 2 ? "text-gray-300" : "hover:bg-gray-200")}>{d}</button>
+                    )}
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[9px] font-bold text-text-secondary block mb-0.5">เริ่ม</label>
+                    <select value={timeStart} onChange={(e) => setTimeStart(e.target.value)}
+                      className="w-full h-8 px-2 rounded-lg border border-gray-200 text-[10px]">
+                      {["08:00", "08:30", "09:00", "09:30", "10:00", "10:30", "11:00", "13:00", "13:30", "14:00", "14:30", "15:00"].map((t) => <option key={t}>{t}</option>)}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[9px] font-bold text-text-secondary block mb-0.5">สิ้นสุด</label>
+                    <select value={timeEnd} onChange={(e) => setTimeEnd(e.target.value)}
+                      className="w-full h-8 px-2 rounded-lg border border-gray-200 text-[10px]">
+                      {["09:00", "09:30", "10:00", "10:30", "11:00", "11:30", "12:00", "14:00", "14:30", "15:00", "15:30", "16:00", "16:30"].map((t) => <option key={t}>{t}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                {/* Host search — แสดงเฉพาะ requirePersonName=true */}
+                {requirePersonName && (
+                  <div>
+                    <label className="text-[9px] font-bold text-text-secondary block mb-0.5">ผู้รับพบ <span className="text-red-500">*</span></label>
+                    {selectedHost ? (
+                      <div className="bg-primary-50 border border-primary-200 rounded-xl p-2 flex items-center gap-2">
+                        <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center"><User size={12} className="text-primary" /></div>
+                        <div className="flex-1"><p className="text-[10px] font-bold">{selectedHost.name}</p><p className="text-[8px] text-text-muted">{selectedHost.department?.name}</p></div>
+                        <button onClick={() => setSelectedHost(null)} className="text-[9px] text-primary font-bold">เปลี่ยน</button>
+                      </div>
+                    ) : (
+                      <div className="relative">
+                        <Input placeholder="ค้นหาเจ้าหน้าที่ (Real API)" leftIcon={<Search size={12} />} value={hostSearch} onChange={(e) => setHostSearch(e.target.value)} />
+                        {(staffResults as Array<{ id: number; name?: string; firstName?: string; lastName?: string; department?: { name: string; id: number } }>).length > 0 && (
+                          <div className="absolute top-full left-0 right-0 mt-1 bg-white border rounded-xl shadow-lg z-30 max-h-[120px] overflow-y-auto">
+                            {(staffResults as Array<{ id: number; name?: string; firstName?: string; lastName?: string; department?: { name: string; id: number } }>).slice(0, 5).map((s) => (
+                              <button key={s.id} onClick={() => { setSelectedHost({ id: s.id, name: s.name || `${s.firstName} ${s.lastName}`, department: s.department }); setHostSearch(""); }}
+                                className="w-full flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 text-left border-b last:border-0">
+                                <p className="text-[10px] font-bold">{s.name || `${s.firstName} ${s.lastName}`}</p>
+                                <p className="text-[8px] text-text-muted">{s.department?.name}</p>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+
+            {devMode && (
+              <div className="p-2 bg-purple-50 border border-purple-200 rounded-lg text-[9px] space-y-0.5">
+                <p className="font-bold text-purple-700">Rule lookup (purpose+department)</p>
+                <p className="text-purple-600 font-mono">
+                  {currentRule
+                    ? `requirePersonName=${currentRule.requirePersonName}, requireApproval=${currentRule.requireApproval}`
+                    : "(เลือกแผนกเพื่อโหลด rule)"}
+                </p>
+                {requirePersonName && <p className="text-purple-600 font-mono">GET /api/staff?search={hostSearch} → {(staffResults as unknown[]).length} results</p>}
+              </div>
+            )}
+            <button
+              onClick={() => setStep(3)}
+              disabled={!selectedDept || !selectedDate || (requirePersonName && !selectedHost)}
               className="w-full h-9 bg-[#06C755] text-white font-bold rounded-xl text-xs disabled:opacity-40">ถัดไป</button>
           </div>
         )}
@@ -1513,12 +1626,35 @@ function LiffBooking({ onSubmit, devMode, onApiLog }: { onSubmit: () => void; de
         {step === 4 && (
           <div className="space-y-2.5">
             <h3 className="text-xs font-bold text-primary mb-1">ตรวจสอบและยืนยัน</h3>
+
+            {/* Approval badge ตาม rule */}
+            {currentRule && (
+              <div className={cn("flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[10px] border",
+                requireApproval ? "bg-orange-50 border-orange-200 text-orange-700" : "bg-green-50 border-green-200 text-green-700")}>
+                {requireApproval ? <AlertTriangle size={12} /> : <CheckCircle2 size={12} />}
+                <span className="font-bold">
+                  {requireApproval ? "นัดหมายนี้ต้องรอเจ้าหน้าที่อนุมัติ" : "นัดหมายนี้จะอนุมัติอัตโนมัติเมื่อยืนยัน"}
+                </span>
+              </div>
+            )}
+
             <div className="bg-gray-50 rounded-xl p-2.5 space-y-1 text-[10px] border border-gray-200">
               <div className="flex justify-between"><span className="text-text-muted">วัตถุประสงค์</span><span className="font-bold">{selectedPurpose?.name}</span></div>
+              <div className="flex justify-between"><span className="text-text-muted">แผนก</span><span className="font-bold">{selectedDept?.name || "-"}</span></div>
               <div className="flex justify-between"><span className="text-text-muted">วันที่</span><span className="font-bold">{selectedDate} เม.ย. 2569</span></div>
               <div className="flex justify-between"><span className="text-text-muted">เวลา</span><span className="font-bold">{timeStart} - {timeEnd}</span></div>
-              <div className="flex justify-between"><span className="text-text-muted">ผู้รับพบ</span><span className="font-bold">{selectedHost?.name || "-"}</span></div>
-              <div className="flex justify-between"><span className="text-text-muted">แผนก</span><span className="font-bold">{selectedHost?.department?.name || selectedDept?.name || "-"}</span></div>
+              <div className="flex justify-between">
+                <span className="text-text-muted">ผู้รับพบ</span>
+                <span className="font-bold">
+                  {requirePersonName ? (selectedHost?.name || "-") : <span className="text-gray-400 font-normal">ไม่ระบุ (ติดต่อแผนก)</span>}
+                </span>
+              </div>
+              {purposeText && (
+                <div className="pt-1 border-t border-gray-200">
+                  <p className="text-text-muted mb-0.5">หมายเหตุ</p>
+                  <p className="text-[9px]">{purposeText}</p>
+                </div>
+              )}
             </div>
             <div onClick={() => setAgreed(!agreed)} className={cn("flex items-start gap-2 p-2.5 rounded-xl border cursor-pointer", agreed ? "bg-green-50 border-green-200" : "border-gray-200")}>
               <div className={cn("mt-0.5 w-4 h-4 rounded border-2 flex items-center justify-center shrink-0", agreed ? "bg-[#06C755] border-[#06C755]" : "border-gray-300")}>
