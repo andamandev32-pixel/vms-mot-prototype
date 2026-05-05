@@ -391,6 +391,89 @@ const apiSpecs: KioskApiSpec[] = [
     ],
   },
 
+  // ─── SELECT_HOST ───
+  {
+    stateType: "SELECT_HOST",
+    title: "เลือกผู้ที่ต้องการพบ",
+    titleEn: "Select Host Staff",
+    description: "ขั้นตอนที่ 3.5 (หลังเลือกแผนก) — เลือกเจ้าหน้าที่ที่ต้องการพบ หรือกรอกชื่อเองกรณีไม่พบในระบบ | ถ้า requirePersonName = true → บังคับระบุ ข้ามไม่ได้",
+    descriptionEn: "Step 3.5 (after selecting department) — Pick a staff member to visit, or type a name if not found in list | If requirePersonName = true → required, cannot skip",
+    hasApi: true,
+    endpoints: [
+      {
+        method: "GET",
+        path: "/api/kiosk/staff",
+        summary: "ดึงรายชื่อเจ้าหน้าที่ในหน่วยงาน (Kiosk Device Token)",
+        summaryEn: "Get staff list by department — Kiosk Device Token auth",
+        tables: ["staff", "departments"],
+        queryParams: [
+          { name: "departmentId", type: "number", required: false, description: "กรองตาม department id" },
+          { name: "status", type: "string", required: false, description: "default: active" },
+          { name: "limit", type: "number", required: false, description: "default: 200, max: 500" },
+          { name: "search", type: "string", required: false, description: "ค้นหาชื่อ / ตำแหน่ง" },
+        ],
+        response: {
+          staff: [
+            {
+              id: 12,
+              name: "นายสมชาย ใจดี",
+              nameEn: "Somchai Jaidee",
+              position: "นักวิชาการ",
+              email: "somchai@mots.go.th",
+              avatarUrl: null,
+              departmentId: 3,
+              department: { id: 3, name: "กองการต่างประเทศ", nameEn: "Foreign Affairs Division" },
+            },
+          ],
+        },
+        notes: [
+          "ใช้ departmentId ที่เลือกไว้ใน SELECT_PURPOSE step เพื่อกรองรายชื่อ",
+          "ถ้า requirePersonName = true (จาก purpose×dept rule) → ซ่อนปุ่มข้าม",
+          "ถ้าผู้ที่ต้องการพบไม่อยู่ในระบบ → กรอกชื่อใน hostContactName input",
+          "เก็บ hostStaffId (ถ้าเลือก) + hostContactName (ถ้ากรอก) ใน state → ส่งตอน checkin",
+          "ถ้าเลือก staff → hostStaffId ถูก set, hostContactName = null",
+          "ถ้าข้าม → ทั้ง hostStaffId และ hostContactName = null (เว้นแต่กรอกชื่อไว้)",
+        ],
+        notesEn: [
+          "Use departmentId from SELECT_PURPOSE to filter staff list",
+          "If requirePersonName = true (from purpose×dept rule) → hide skip button",
+          "If host not in system → enter name in hostContactName free-text input",
+          "Store hostStaffId (if picked) + hostContactName (if typed) in state → send at checkin",
+          "If staff picked → hostStaffId set, hostContactName = null",
+          "If skipped → both hostStaffId and hostContactName = null (unless name was typed)",
+        ],
+      },
+    ],
+    configSources: [
+      {
+        settingsPage: "พนักงาน / เจ้าหน้าที่",
+        settingsPageEn: "Staff",
+        settingsPath: "/web/settings/staff",
+        fields: ["staff.name", "staff.name_en", "staff.position", "staff.department_id", "staff.status"],
+        usage: "รายชื่อเจ้าหน้าที่ที่แสดงให้ผู้มาเยือนเลือก",
+        usageEn: "List of staff shown to visitors for selection",
+      },
+      {
+        settingsPage: "กฎวัตถุประสงค์ × แผนก",
+        settingsPageEn: "Purpose × Department Rules",
+        settingsPath: "/web/settings/visit-purposes",
+        fields: ["visit_purpose_department_rules.require_person_name"],
+        usage: "กำหนดว่าต้องระบุผู้ที่ต้องการพบหรือไม่ (requirePersonName)",
+        usageEn: "Define whether visitor must specify a host (requirePersonName)",
+      },
+    ],
+    devNotes: [
+      "hostStaffId + hostContactName ส่งไปตอน POST /api/kiosk/checkin",
+      "ถ้า requirePersonName = true และไม่ได้เลือก/กรอก → server จะ reject checkin",
+      "Flutter: SelectHostScreen อยู่หลัง SelectPurpose/Department และก่อน SelectIdMethod",
+    ],
+    devNotesEn: [
+      "hostStaffId + hostContactName are sent in POST /api/kiosk/checkin",
+      "If requirePersonName = true and nothing provided → server will reject checkin",
+      "Flutter: SelectHostScreen is shown after SelectPurpose/Department and before SelectIdMethod",
+    ],
+  },
+
   // ─── SELECT_ID_METHOD ───
   {
     stateType: "SELECT_ID_METHOD",
