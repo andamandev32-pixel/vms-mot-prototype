@@ -60,7 +60,19 @@ export async function GET(
           order: p.sortOrder,
           requirePhoto,
           wifiEnabled,
-          departments: p.departmentRules.map((r: typeof p.departmentRules[number]) => {
+          departments: Array.from(
+            p.departmentRules.reduce(
+              (map: Map<number, (typeof p.departmentRules)[number]>, r: (typeof p.departmentRules)[number]) => {
+                const existing = map.get(r.department.id);
+                // ถ้าซ้ำ: เอา rule ที่ requirePersonName=true หรือ requireApproval=true ไว้
+                if (!existing || r.requirePersonName || r.requireApproval) {
+                  map.set(r.department.id, r);
+                }
+                return map;
+              },
+              new Map<number, (typeof p.departmentRules)[number]>()
+            ).values()
+          ).map((r: (typeof p.departmentRules)[number]) => {
             const fd = r.department.floorDepartments[0];
             return {
               departmentId: r.department.id,
