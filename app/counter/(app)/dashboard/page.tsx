@@ -312,6 +312,9 @@ export default function CounterDashboard() {
   const [lastName, setLastName] = useState("");
   const [idNumber, setIdNumber] = useState("");
   const [contactHost, setContactHost] = useState("");
+  const [hostStaffId, setHostStaffId] = useState<number | null>(null);
+  const [hostSearchQuery, setHostSearchQuery] = useState("");
+  const [showHostDropdown, setShowHostDropdown] = useState(false);
   const [selectedDepartmentId, setSelectedDepartmentId] = useState<number | null>(null);
   const [floorFilter, setFloorFilter] = useState<string | null>(null);
   const [phoneNumber, setPhoneNumber] = useState("");
@@ -474,7 +477,9 @@ export default function CounterDashboard() {
         department: selectedDepartment?.name ?? "-",
         method: inputMethod,
         company: "-",
-        host: contactHost || "-",
+        host: hostStaffId
+          ? (staffMembers.find(s => s.id === hostStaffId)?.name || contactHost || "-")
+          : (contactHost || "-"),
         type: (purposeName === "ประชุม / สัมมนา" ? "meeting"
           : purposeName === "ส่งเอกสาร" ? "document"
           : "official") as keyof typeof APPOINTMENT_TYPES,
@@ -981,7 +986,67 @@ export default function CounterDashboard() {
                     <Users size={13} className="text-primary" /> ข้อมูลการติดต่อ
                   </h3>
                   <div className="grid grid-cols-2 gap-3">
-                    <Input label="ผู้ที่มาพบ" placeholder="ค้นหาชื่อ..." value={contactHost} onChange={(e) => setContactHost(e.target.value)} leftIcon={<Search size={14} />} className="text-sm" />
+                    {/* Host Staff combobox — กรองตาม department ที่เลือก */}
+                    <div className="relative">
+                      <label className="text-[11px] font-medium text-text-secondary mb-1 block">
+                        ผู้ที่มาพบ
+                        {selectedDepartmentId && (() => {
+                          const rule = visitPurposeConfigs
+                            .find(p => p.id === selectedPurposeId)
+                            ?.departmentRules.find(r => r.departmentId === selectedDepartmentId);
+                          return rule?.requirePersonName ? <span className="text-red-500 ml-1" title="บังคับเลือก">*</span> : null;
+                        })()}
+                      </label>
+                      <Input
+                        placeholder="ค้นหาชื่อเจ้าหน้าที่..."
+                        value={hostSearchQuery || contactHost}
+                        onChange={(e) => {
+                          setHostSearchQuery(e.target.value);
+                          setContactHost(e.target.value);
+                          setHostStaffId(null);
+                          setShowHostDropdown(true);
+                        }}
+                        onFocus={() => setShowHostDropdown(true)}
+                        onBlur={() => setTimeout(() => setShowHostDropdown(false), 150)}
+                        leftIcon={<Search size={14} />}
+                        className="text-sm"
+                      />
+                      {showHostDropdown && (() => {
+                        const q = hostSearchQuery.trim().toLowerCase();
+                        const list = staffMembers
+                          .filter(s => s.status === "active")
+                          .filter(s => !selectedDepartmentId || s.department.id === selectedDepartmentId)
+                          .filter(s => !q || s.name.toLowerCase().includes(q) || s.nameEn.toLowerCase().includes(q) || s.position.toLowerCase().includes(q))
+                          .slice(0, 8);
+                        if (list.length === 0) return null;
+                        return (
+                          <div className="absolute z-20 mt-1 w-full bg-white rounded-lg border border-border shadow-lg max-h-64 overflow-y-auto">
+                            {list.map(s => (
+                              <button
+                                key={s.id}
+                                type="button"
+                                onMouseDown={(e) => e.preventDefault()}
+                                onClick={() => {
+                                  setHostStaffId(s.id);
+                                  setContactHost(s.name);
+                                  setHostSearchQuery("");
+                                  setShowHostDropdown(false);
+                                }}
+                                className="w-full text-left px-3 py-2 hover:bg-primary-50 border-b border-border/50 last:border-0"
+                              >
+                                <p className="text-xs font-bold text-text-primary truncate">{s.name}</p>
+                                <p className="text-[10px] text-text-muted truncate">{s.position} · {s.department.name}</p>
+                              </button>
+                            ))}
+                          </div>
+                        );
+                      })()}
+                      {hostStaffId && (
+                        <p className="text-[10px] text-emerald-600 mt-1">
+                          ✓ เลือก staffId={hostStaffId}
+                        </p>
+                      )}
+                    </div>
                     <Input label="เบอร์โทรศัพท์" placeholder="08x-xxx-xxxx" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} leftIcon={<Phone size={14} />} className="text-sm" />
                   </div>
                 </div>

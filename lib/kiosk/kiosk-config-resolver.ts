@@ -33,6 +33,9 @@ export interface ResolvedKioskConfig {
   /** purpose ID → department IDs ที่ kiosk นี้แสดง (กรองเฉพาะ acceptFromKiosk=true) */
   purposeDepartmentMap: Record<number, number[]>;
 
+  /** กฎ requirePersonName ต่อคู่ (purpose × department) — key: `${purposeId}:${departmentId}` */
+  requirePersonNameMap: Record<string, boolean>;
+
   /** ID methods ที่ kiosk นี้รับ (กรองจาก allowedDocumentIds → map เป็น IdMethod) */
   allowedIdMethods: { id: IdMethod; docId: number; name: string; nameEn: string; icon: string }[];
 
@@ -206,6 +209,7 @@ export function resolveKioskConfig(servicePointId: number): ResolvedKioskConfig 
   const purposes: VisitPurposeOption[] = [];
   const purposeDeptMap: Record<number, number[]> = {};
   const purposeRequirePhoto: Record<number, boolean> = {};
+  const requirePersonNameMap: Record<string, boolean> = {};
 
   for (const config of visitPurposeConfigs) {
     if (!config.isActive) continue;
@@ -231,6 +235,10 @@ export function resolveKioskConfig(servicePointId: number): ResolvedKioskConfig 
 
     purposeDeptMap[config.id] = kioskDeptRules.map((r: DepartmentRule) => r.departmentId);
     purposeRequirePhoto[config.id] = config.kioskConfig.requirePhoto;
+
+    for (const r of kioskDeptRules) {
+      requirePersonNameMap[`${config.id}:${r.departmentId}`] = r.requirePersonName;
+    }
   }
 
   // Sort by order
@@ -287,6 +295,7 @@ export function resolveKioskConfig(servicePointId: number): ResolvedKioskConfig 
     servicePoint: sp,
     purposes,
     purposeDepartmentMap: purposeDeptMap,
+    requirePersonNameMap,
     allowedIdMethods,
     timeouts,
     wifi,
@@ -298,6 +307,16 @@ export function resolveKioskConfig(servicePointId: number): ResolvedKioskConfig 
     accessZoneLabel,
     idMaskingPattern,
   };
+}
+
+/** ตรวจว่า (purpose × department) ต้องระบุชื่อบุคคลที่ต้องการพบไหม */
+export function isHostRequired(
+  config: ResolvedKioskConfig | null | undefined,
+  purposeId: number | undefined,
+  departmentId: number | undefined,
+): boolean {
+  if (!config || purposeId == null || departmentId == null) return false;
+  return config.requirePersonNameMap[`${purposeId}:${departmentId}`] === true;
 }
 
 /** Get all kiosk-type service points for selection */

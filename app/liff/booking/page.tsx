@@ -69,6 +69,7 @@ export default function LiffBookingPage() {
   const [hostResults, setHostResults] = useState<StaffResult[]>([]);
   const [selectedHost, setSelectedHost] = useState<StaffResult | null>(null);
   const [searchingHost, setSearchingHost] = useState(false);
+  const [hostContactName, setHostContactName] = useState("");
 
   // Step 3: Details
   const [companions, setCompanions] = useState("0");
@@ -141,6 +142,7 @@ export default function LiffBookingPage() {
           timeStart,
           timeEnd,
           hostStaffId: selectedHost?.id,
+          hostContactName: hostContactName.trim() || null,
           companionCount: parseInt(companions) || 0,
           purposeNote,
           notes,
@@ -357,6 +359,14 @@ export default function LiffBookingPage() {
                 ))}
               </div>
             )}
+            <div className="mt-2">
+              <Input
+                placeholder="ชื่อผู้ที่ต้องการพบ (ถ้าไม่พบในระบบ)"
+                value={hostContactName}
+                onChange={(e) => setHostContactName(e.target.value)}
+                maxLength={120}
+              />
+            </div>
           </div>
 
           <Button
@@ -414,7 +424,7 @@ export default function LiffBookingPage() {
             <SummaryRow icon={<MapPin className="w-4 h-4" />} label="แผนก" value={selectedDept?.name || "-"} />
             <SummaryRow icon={<CalendarDays className="w-4 h-4" />} label="วันที่" value={selectedDate} />
             <SummaryRow icon={<Clock className="w-4 h-4" />} label="เวลา" value={`${timeStart} - ${timeEnd}`} />
-            <SummaryRow icon={<Users className="w-4 h-4" />} label="ผู้รับพบ" value={selectedHost ? `${selectedHost.firstName} ${selectedHost.lastName}` : "-"} />
+            <SummaryRow icon={<Users className="w-4 h-4" />} label="ผู้รับพบ" value={selectedHost ? `${selectedHost.firstName} ${selectedHost.lastName}` : (hostContactName.trim() || "-")} />
             <SummaryRow icon={<Users className="w-4 h-4" />} label="ผู้ติดตาม" value={`${companions} คน`} />
           </div>
 

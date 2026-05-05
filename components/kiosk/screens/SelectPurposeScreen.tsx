@@ -9,7 +9,7 @@ import { useState, useCallback } from "react";
 
 interface SelectPurposeScreenProps {
   locale: "th" | "en";
-  onSelect: (purpose: VisitPurposeOption) => void;
+  onSelect: (purpose: VisitPurposeOption, departmentId?: number) => void;
   onBack: () => void;
   /** Purposes resolved from kiosk config (overrides default mockKioskPurposes) */
   purposes?: VisitPurposeOption[];
@@ -41,8 +41,9 @@ export default function SelectPurposeScreen({ locale, onSelect, onBack, purposes
     const availableDepts = getDepartmentsForPurpose(p.id);
     // Auto-select if only 1 department
     if (availableDepts.length === 1) {
-      setSelectedDept(availableDepts[0].id);
-      setTimeout(() => onSelect(p), 200);
+      const onlyDeptId = availableDepts[0].id;
+      setSelectedDept(onlyDeptId);
+      setTimeout(() => onSelect(p, onlyDeptId), 200);
     } else {
       setTimeout(() => setStep("department"), 150);
     }
@@ -51,7 +52,7 @@ export default function SelectPurposeScreen({ locale, onSelect, onBack, purposes
   const handleSelectDept = (deptId: number) => {
     setSelectedDept(deptId);
     if (selectedPurpose) {
-      setTimeout(() => onSelect(selectedPurpose), 200);
+      setTimeout(() => onSelect(selectedPurpose, deptId), 200);
     }
   };
 

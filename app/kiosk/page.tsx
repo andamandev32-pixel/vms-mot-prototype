@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { useKioskAuth } from "@/lib/kiosk/kiosk-auth-context";
 import { RotateCcw, Volume2, VolumeX, Globe, Settings, ChevronDown, ChevronUp, X, Lock, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -12,8 +12,8 @@ import { walkinSteps, appointmentSteps } from "@/lib/kiosk/kiosk-flow-config";
 import { getActiveDevice } from "@/lib/kiosk/kiosk-device-map";
 import { getAudioCue, speakText, stopSpeech } from "@/lib/kiosk/kiosk-audio-config";
 import { mockVisitorIdCard, mockVisitorPassport, mockVisitorThaiId, mockAppointment } from "@/lib/kiosk/kiosk-mock-data";
-import { resolveKioskConfig, getKioskServicePoints, resolveWifiPassword, resolveWifiValidity, getStateConfigInfo, type ResolvedKioskConfig } from "@/lib/kiosk/kiosk-config-resolver";
-import type { KioskEvent, KioskLocale, StepInfo, IdMethod, SlipData, ThermalSection } from "@/lib/kiosk/kiosk-types";
+import { resolveKioskConfig, getKioskServicePoints, resolveWifiPassword, resolveWifiValidity, getStateConfigInfo, isHostRequired, type ResolvedKioskConfig } from "@/lib/kiosk/kiosk-config-resolver";
+import type { KioskEvent, KioskLocale, StepInfo, IdMethod, SlipData, ThermalSection, HostStaffOption } from "@/lib/kiosk/kiosk-types";
 import { maskIdNumber } from "@/lib/kiosk/kiosk-mock-data";
 import { useVisitSlipTemplate } from "@/lib/hooks";
 
@@ -28,6 +28,7 @@ import SelectIdMethodScreen from "@/components/kiosk/screens/SelectIdMethodScree
 import IdVerificationScreen from "@/components/kiosk/screens/IdVerificationScreen";
 import DataPreviewScreen from "@/components/kiosk/screens/DataPreviewScreen";
 import SelectPurposeScreen from "@/components/kiosk/screens/SelectPurposeScreen";
+import SelectHostScreen from "@/components/kiosk/screens/SelectHostScreen";
 import FaceCaptureScreen from "@/components/kiosk/screens/FaceCaptureScreen";
 import WifiOfferScreen from "@/components/kiosk/screens/WifiOfferScreen";
 import SuccessScreen from "@/components/kiosk/screens/SuccessScreen";
@@ -40,7 +41,7 @@ import KioskApiDocModal from "@/components/kiosk/KioskApiDocModal";
 type DemoCase = "walkin" | "appointment";
 
 const demoCases: { id: DemoCase; label: string; labelEn: string }[] = [
-  { id: "walkin", label: "Walk-in (7 ขั้นตอน)", labelEn: "Walk-in (7 steps)" },
+  { id: "walkin", label: "Walk-in (8 ขั้นตอน)", labelEn: "Walk-in (8 steps)" },
   { id: "appointment", label: "นัดหมาย (6 ขั้นตอน)", labelEn: "Appointment (6 steps)" },
 ];
 
@@ -65,6 +66,7 @@ function generateSlipFromConfig(
   config: ResolvedKioskConfig,
   purpose?: { name: string; nameEn: string },
   wifiAccepted?: boolean,
+  host?: HostStaffOption | null,
 ): SlipData {
   const now = new Date();
   const wifiPassword = resolveWifiPassword(config.wifi.passwordPattern);
@@ -76,8 +78,8 @@ function generateSlipFromConfig(
     idNumber: maskIdNumber(visitor.idNumber),
     visitPurpose: purpose?.name || "ติดต่อราชการ",
     visitPurposeEn: purpose?.nameEn || "Official Business",
-    hostName: "คุณสมศรี รักงาน",
-    department: "กองกิจการท่องเที่ยว",
+    hostName: host?.name || "ไม่ระบุ",
+    department: host?.departmentName || "กองกิจการท่องเที่ยว",
     accessZone: "ชั้น 3 อาคาร C",
     date: now.toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" }),
     timeIn: now.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" }),
@@ -261,7 +263,65 @@ export default function KioskDemoPage() {
     stopSpeech();
     dispatch({ type: "RESET" });
     setLocale("th");
+    setApiCheckinResult({ status: "idle" });
   }, []);
+
+  // === Real API call when reaching SUCCESS state ===
+  const [apiCheckinResult, setApiCheckinResult] = useState<
+    | { status: "idle" }
+    | { status: "loading" }
+    | { status: "ok"; entryCode: string; hostStaffId: number | null }
+    | { status: "error"; message: string }
+  >({ status: "idle" });
+
+  const checkinFiredRef = useRef(false);
+  useEffect(() => {
+    if (state.type !== "SUCCESS") {
+      checkinFiredRef.current = false;
+      return;
+    }
+    if (checkinFiredRef.current) return;
+    if (selectedCase !== "walkin") return; // appointment flow handles separately
+    if (!kioskConfig) return;
+
+    checkinFiredRef.current = true;
+    setApiCheckinResult({ status: "loading" });
+
+    const token = `kvms_prototype_${selectedKioskId}_demo`;
+    const body = {
+      type: "walkin",
+      visitorId: 15, // prototype: ใช้ visitor seed
+      servicePointId: selectedKioskId,
+      visitPurposeId: state.selectedPurpose?.id ?? 1,
+      departmentId: state.selectedDepartmentId ?? 1,
+      hostStaffId: state.selectedHostStaff?.id ?? null,
+      hostContactName: state.hostContactName ?? null,
+      idMethod: state.idMethod ?? "thai-id-card",
+      wifiAccepted: !!state.wifiAccepted,
+    };
+
+    fetch("/api/kiosk/checkin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify(body),
+    })
+      .then(async (r) => {
+        const j = await r.json().catch(() => ({}));
+        if (r.ok && j?.success) {
+          setApiCheckinResult({
+            status: "ok",
+            entryCode: j.data?.entry?.entryCode ?? "—",
+            hostStaffId: body.hostStaffId,
+          });
+        } else {
+          setApiCheckinResult({
+            status: "error",
+            message: j?.error?.message || j?.error || `HTTP ${r.status}`,
+          });
+        }
+      })
+      .catch((e) => setApiCheckinResult({ status: "error", message: String(e?.message || e) }));
+  }, [state.type, state.selectedPurpose, state.selectedDepartmentId, state.selectedHostStaff, state.hostContactName, state.idMethod, state.wifiAccepted, selectedCase, selectedKioskId, kioskConfig]);
 
   const toggleLocale = useCallback(() => {
     setLocale((prev) => (prev === "th" ? "en" : "th"));
@@ -354,10 +414,23 @@ export default function KioskDemoPage() {
         return (
           <SelectPurposeScreen
             locale={locale}
-            onSelect={(purpose) => fire({ type: "SELECT_VISIT_PURPOSE", purpose })}
+            onSelect={(purpose, departmentId) => fire({ type: "SELECT_VISIT_PURPOSE", purpose, departmentId })}
             onBack={() => fire({ type: "GO_BACK" })}
             purposes={kioskConfig?.purposes}
             purposeDeptMap={kioskConfig?.purposeDepartmentMap}
+            onChangeLocale={toggleLocale}
+          />
+        );
+      case "SELECT_HOST":
+        return (
+          <SelectHostScreen
+            locale={locale}
+            selectedPurpose={state.selectedPurpose}
+            selectedDepartmentId={state.selectedDepartmentId}
+            required={isHostRequired(kioskConfig, state.selectedPurpose?.id, state.selectedDepartmentId)}
+            onSelect={(host) => fire({ type: "SELECT_HOST_STAFF", hostStaff: host })}
+            onSkip={(contactName) => fire({ type: "SKIP_HOST", contactName })}
+            onBack={() => fire({ type: "GO_BACK" })}
             onChangeLocale={toggleLocale}
           />
         );
@@ -395,6 +468,7 @@ export default function KioskDemoPage() {
                   kioskConfig,
                   state.selectedPurpose ? { name: state.selectedPurpose.name, nameEn: state.selectedPurpose.nameEn } : undefined,
                   state.wifiAccepted,
+                  state.selectedHostStaff,
                 )
               : undefined
             }
@@ -752,7 +826,7 @@ export default function KioskDemoPage() {
       </div>
 
       {/* Right: State Panel */}
-      <div className="w-[340px] border-l border-gray-800 shrink-0">
+      <div className="w-[340px] border-l border-gray-800 shrink-0 flex flex-col">
         <StatePanel
           state={state}
           stepInfo={currentStep}
@@ -760,6 +834,23 @@ export default function KioskDemoPage() {
           currentStepIndex={currentStepIndex}
           totalSteps={steps.length}
         />
+        {state.type === "SUCCESS" && (
+          <div className="px-3 py-2 border-t border-gray-700 bg-gray-900 text-[10px] text-gray-300">
+            <p className="text-[9px] uppercase tracking-wider text-amber-400 font-bold mb-1">API: POST /api/kiosk/checkin</p>
+            {apiCheckinResult.status === "loading" && <p className="text-gray-400">⏳ กำลังบันทึก…</p>}
+            {apiCheckinResult.status === "ok" && (
+              <div className="space-y-0.5">
+                <p className="text-emerald-400">✓ บันทึกสำเร็จ</p>
+                <p className="text-gray-300">entryCode: <span className="font-mono text-[9px]">{apiCheckinResult.entryCode}</span></p>
+                <p className="text-gray-300">hostStaffId: <span className="font-mono text-[9px]">{apiCheckinResult.hostStaffId ?? "null"}</span></p>
+              </div>
+            )}
+            {apiCheckinResult.status === "error" && (
+              <p className="text-red-400">✗ {apiCheckinResult.message}</p>
+            )}
+            {apiCheckinResult.status === "idle" && <p className="text-gray-500">—</p>}
+          </div>
+        )}
       </div>
     </div>
   );

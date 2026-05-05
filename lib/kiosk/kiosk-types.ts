@@ -70,6 +70,17 @@ export interface VisitPurposeOption {
   wifiEnabled?: boolean;
 }
 
+/** Host staff selection (ผู้ที่ต้องการพบ) */
+export interface HostStaffOption {
+  id: number;
+  name: string;
+  nameEn: string;
+  position?: string;
+  departmentId?: number;
+  departmentName?: string;
+  avatarUrl?: string;
+}
+
 /** WiFi credentials */
 export interface WifiCredentials {
   ssid: string;
@@ -139,6 +150,7 @@ export type KioskStateType =
   | "SUCCESS"
   // Walk-in specific
   | "SELECT_PURPOSE"
+  | "SELECT_HOST"
   | "FACE_CAPTURE"
   // Appointment specific
   | "QR_SCAN"
@@ -158,6 +170,11 @@ export interface KioskState {
   visitorData?: VisitorIdentity;
   appointmentData?: AppointmentData;
   selectedPurpose?: VisitPurposeOption;
+  selectedDepartmentId?: number;
+  /** ผู้ที่ต้องการพบ — null = ไม่ระบุ (ผู้ใช้กดข้าม) */
+  selectedHostStaff?: HostStaffOption | null;
+  /** ชื่อผู้ที่ต้องการพบแบบ free-text — ใช้กรณีไม่พบใน Staff DB */
+  hostContactName?: string | null;
   capturedPhoto?: string;
   wifiAccepted?: boolean;
   wifiCredentials?: WifiCredentials;
@@ -190,6 +207,8 @@ export type KioskEventType =
   | "CONFIRM_DATA"
   // Walk-in
   | "SELECT_VISIT_PURPOSE"
+  | "SELECT_HOST_STAFF"
+  | "SKIP_HOST"
   | "FACE_CAPTURED"
   | "FACE_CONFIRMED"
   | "FACE_CAPTURE_FAILED"
@@ -220,6 +239,10 @@ export interface KioskEvent {
   visitorData?: VisitorIdentity;
   appointmentData?: AppointmentData;
   purpose?: VisitPurposeOption;
+  departmentId?: number;
+  hostStaff?: HostStaffOption;
+  /** ชื่อผู้ที่ต้องการพบแบบ free-text (ใช้กับ SKIP_HOST เมื่อกรอกชื่อแต่ไม่พบใน Staff DB) */
+  contactName?: string;
   photo?: string;
   wifiAccepted?: boolean;
   bookingCode?: string;

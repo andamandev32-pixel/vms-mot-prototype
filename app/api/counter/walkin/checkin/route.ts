@@ -29,6 +29,7 @@ export async function POST(request: NextRequest) {
       servicePointId,
       visitPurposeId,
       departmentId,
+      hostStaffId,
       hostContactName,
       idMethod,
       facePhotoBase64,
@@ -74,6 +75,21 @@ export async function POST(request: NextRequest) {
     if (!purpose) return err("Purpose not found", 404);
     if (!department) return err("Department not found", 404);
 
+    if (hostStaffId != null) {
+      const hostStaff = await prisma.staff.findUnique({ where: { id: hostStaffId } });
+      if (!hostStaff) return err("Host staff not found", 404);
+    }
+
+    // Validate requirePersonName rule for the (purpose, department) pair
+    const purposeDeptRule = await prisma.visitPurposeDepartmentRule.findFirst({
+      where: { visitPurposeId, departmentId, isActive: true },
+    });
+    if (purposeDeptRule?.requirePersonName && hostStaffId == null) {
+      return err(
+        "hostStaffId is required for this purpose and department (requirePersonName=true)"
+      );
+    }
+
     // Block only when an active entry exists today for the SAME department AND purpose
     const startOfDay = new Date();
     startOfDay.setHours(0, 0, 0, 0);
@@ -115,6 +131,8 @@ export async function POST(request: NextRequest) {
         floor: floorDept?.floor?.name || "",
         idMethod: idMethod || null,
         servicePointId,
+        hostStaffId: hostStaffId ?? null,
+        hostContactName: typeof hostContactName === "string" && hostContactName.trim() ? hostContactName.trim() : null,
         facePhotoPath: facePhotoBase64 ? toDataUrl(facePhotoBase64) : null,
       },
       include: {

@@ -152,7 +152,7 @@ export async function POST(request: NextRequest) {
 
     const body = await request.json();
     const {
-      visitorId, hostStaffId, visitPurposeId, departmentId,
+      visitorId, hostStaffId, hostContactName, visitPurposeId, departmentId,
       type, entryMode, date, dateEnd, timeStart, timeEnd,
       purpose, companions, companionNames, offerWifi,
       equipment, area, building, floor, room, notes,
@@ -160,6 +160,7 @@ export async function POST(request: NextRequest) {
     } = body as {
       visitorId: number;
       hostStaffId?: number | null;
+      hostContactName?: string | null;
       visitPurposeId: number;
       departmentId: number;
       type: string;
@@ -315,6 +316,7 @@ export async function POST(request: NextRequest) {
         bookingCode,
         visitorId,
         hostStaffId: hostStaffId || null,
+        hostContactName: hostContactName?.trim() || null,
         visitPurposeId,
         departmentId,
         type,
