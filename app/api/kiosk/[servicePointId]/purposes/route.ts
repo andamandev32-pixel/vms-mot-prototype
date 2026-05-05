@@ -25,7 +25,7 @@ export async function GET(
         visitPurpose: {
           include: {
             channelConfigs: { where: { channel: "kiosk" } },
-            departmentRules: {
+              departmentRules: {
               where: { isActive: true, acceptFromKiosk: true },
               include: {
                 department: {
@@ -73,6 +73,7 @@ export async function GET(
               requireApproval: r.requireApproval,
               approverGroupId: r.approverGroupId,
               offerWifi: r.offerWifi,
+              requirePersonName: r.requirePersonName ?? false,
             };
           }),
         };
