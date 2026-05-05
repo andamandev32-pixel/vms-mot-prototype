@@ -65,6 +65,7 @@ export async function POST(
         purpose: appointment.purpose,
         visitType: "appointment",
         hostStaffId: appointment.hostStaffId,
+        hostContactName: appointment.hostContactName,
         departmentId: appointment.departmentId,
         checkinAt: now,
         checkinChannel: "counter",

@@ -173,6 +173,8 @@ export interface KioskState {
   selectedDepartmentId?: number;
   /** ผู้ที่ต้องการพบ — null = ไม่ระบุ (ผู้ใช้กดข้าม) */
   selectedHostStaff?: HostStaffOption | null;
+  /** ชื่อผู้ที่ต้องการพบแบบ free-text — ใช้กรณีไม่พบใน Staff DB */
+  hostContactName?: string | null;
   capturedPhoto?: string;
   wifiAccepted?: boolean;
   wifiCredentials?: WifiCredentials;
@@ -239,6 +241,8 @@ export interface KioskEvent {
   purpose?: VisitPurposeOption;
   departmentId?: number;
   hostStaff?: HostStaffOption;
+  /** ชื่อผู้ที่ต้องการพบแบบ free-text (ใช้กับ SKIP_HOST เมื่อกรอกชื่อแต่ไม่พบใน Staff DB) */
+  contactName?: string;
   photo?: string;
   wifiAccepted?: boolean;
   bookingCode?: string;

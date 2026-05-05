@@ -295,6 +295,7 @@ export default function KioskDemoPage() {
       visitPurposeId: state.selectedPurpose?.id ?? 1,
       departmentId: state.selectedDepartmentId ?? 1,
       hostStaffId: state.selectedHostStaff?.id ?? null,
+      hostContactName: state.hostContactName ?? null,
       idMethod: state.idMethod ?? "thai-id-card",
       wifiAccepted: !!state.wifiAccepted,
     };
@@ -320,7 +321,7 @@ export default function KioskDemoPage() {
         }
       })
       .catch((e) => setApiCheckinResult({ status: "error", message: String(e?.message || e) }));
-  }, [state.type, state.selectedPurpose, state.selectedDepartmentId, state.selectedHostStaff, state.idMethod, state.wifiAccepted, selectedCase, selectedKioskId, kioskConfig]);
+  }, [state.type, state.selectedPurpose, state.selectedDepartmentId, state.selectedHostStaff, state.hostContactName, state.idMethod, state.wifiAccepted, selectedCase, selectedKioskId, kioskConfig]);
 
   const toggleLocale = useCallback(() => {
     setLocale((prev) => (prev === "th" ? "en" : "th"));
@@ -428,7 +429,7 @@ export default function KioskDemoPage() {
             selectedDepartmentId={state.selectedDepartmentId}
             required={isHostRequired(kioskConfig, state.selectedPurpose?.id, state.selectedDepartmentId)}
             onSelect={(host) => fire({ type: "SELECT_HOST_STAFF", hostStaff: host })}
-            onSkip={() => fire({ type: "SKIP_HOST" })}
+            onSkip={(contactName) => fire({ type: "SKIP_HOST", contactName })}
             onBack={() => fire({ type: "GO_BACK" })}
             onChangeLocale={toggleLocale}
           />

@@ -110,9 +110,9 @@ export function kioskReducer(state: KioskState, event: KioskEvent): KioskState {
     // ───────────── SELECT HOST STAFF (Walk-in, optional) ─────────────
     case "SELECT_HOST":
       if (event.type === "SELECT_HOST_STAFF" && event.hostStaff)
-        return { ...state, type: "SELECT_ID_METHOD", selectedHostStaff: event.hostStaff };
+        return { ...state, type: "SELECT_ID_METHOD", selectedHostStaff: event.hostStaff, hostContactName: null };
       if (event.type === "SKIP_HOST")
-        return { ...state, type: "SELECT_ID_METHOD", selectedHostStaff: null };
+        return { ...state, type: "SELECT_ID_METHOD", selectedHostStaff: null, hostContactName: event.contactName?.trim() || null };
       if (event.type === "GO_BACK")
         return { ...state, type: "SELECT_PURPOSE" };
       if (event.type === "TIMEOUT") return { type: "TIMEOUT" };

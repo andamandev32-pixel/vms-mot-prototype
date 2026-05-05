@@ -132,6 +132,7 @@ export async function POST(request: NextRequest) {
         idMethod: idMethod || null,
         servicePointId,
         hostStaffId: hostStaffId ?? null,
+        hostContactName: typeof hostContactName === "string" && hostContactName.trim() ? hostContactName.trim() : null,
         facePhotoPath: facePhotoBase64 ? toDataUrl(facePhotoBase64) : null,
       },
       include: {

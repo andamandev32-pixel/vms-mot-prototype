@@ -13,7 +13,8 @@ interface SelectHostScreenProps {
   /** บังคับเลือก host (จากกฎ purpose×department.requirePersonName) — ถ้า true จะซ่อนปุ่มข้าม */
   required?: boolean;
   onSelect: (host: HostStaffOption) => void;
-  onSkip: () => void;
+  /** ผู้ใช้กดข้ามขั้น host staff — `contactName` คือชื่อผู้ที่ต้องการพบที่ผู้ใช้กรอกไว้ (ถ้ามี) */
+  onSkip: (contactName?: string) => void;
   onBack: () => void;
   onChangeLocale?: () => void;
 }
@@ -42,6 +43,7 @@ export default function SelectHostScreen({
 }: SelectHostScreenProps) {
   const [query, setQuery] = useState("");
   const [pickedId, setPickedId] = useState<number | null>(null);
+  const [contactName, setContactName] = useState("");
 
   const allHosts = useMemo(
     () => staffMembers.filter((s) => s.status === "active").map(toHostOption),
@@ -126,6 +128,17 @@ export default function SelectHostScreen({
         </div>
       </div>
 
+      {/* Free-text contact name (ไม่บังคับ) — ใช้เมื่อไม่พบเจ้าหน้าที่ในรายการ */}
+      <div className="px-3 mt-1">
+        <input
+          value={contactName}
+          onChange={(e) => setContactName(e.target.value)}
+          placeholder={locale === "th" ? "ชื่อผู้ที่ต้องการพบ (ถ้าไม่พบในระบบ)" : "Host name (if not in directory)"}
+          maxLength={120}
+          className="w-full px-2 py-1 rounded-lg border border-gray-200 bg-white text-[10px] text-[#1B2B5E] placeholder:text-gray-300 focus:outline-none focus:border-[#2E3192]"
+        />
+      </div>
+
       {/* Host list */}
       <main className="flex-1 px-3 py-1.5 overflow-y-auto">
         {filtered.length === 0 ? (
@@ -186,11 +199,13 @@ export default function SelectHostScreen({
       ) : (
         <footer className="px-3 py-2 border-t border-gray-100 bg-gray-50">
           <button
-            onClick={onSkip}
+            onClick={() => onSkip(contactName.trim() || undefined)}
             className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-300 bg-white text-[10px] font-bold text-gray-500 hover:bg-gray-100 active:scale-[0.99]"
           >
             <SkipForward size={11} />
-            {locale === "th" ? "ข้าม (ไม่ระบุผู้ที่ต้องการพบ)" : "Skip (no specific host)"}
+            {contactName.trim()
+              ? locale === "th" ? `ใช้ชื่อ "${contactName.trim()}"` : `Use name "${contactName.trim()}"`
+              : locale === "th" ? "ข้าม (ไม่ระบุผู้ที่ต้องการพบ)" : "Skip (no specific host)"}
           </button>
         </footer>
       )}

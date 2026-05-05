@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const {
       type, visitorId, servicePointId, visitPurposeId, departmentId,
-      appointmentId, hostStaffId, idMethod, facePhotoBase64, wifiAccepted, pdpaConsentId,
+      appointmentId, hostStaffId, hostContactName, idMethod, facePhotoBase64, wifiAccepted, pdpaConsentId,
     } = body as {
       type?: string;
       visitorId?: number;
@@ -25,6 +25,7 @@ export async function POST(request: NextRequest) {
       departmentId?: number;
       appointmentId?: number | null;
       hostStaffId?: number | null;
+      hostContactName?: string | null;
       idMethod?: string;
       facePhotoBase64?: string;
       wifiAccepted?: boolean;
@@ -108,6 +109,7 @@ export async function POST(request: NextRequest) {
         appointmentId: appointmentId || null,
         servicePointId,
         hostStaffId: hostStaffId ?? null,
+        hostContactName: typeof hostContactName === "string" && hostContactName.trim() ? hostContactName.trim() : null,
         departmentId: departmentId || null,
         status: "checked-in",
         checkinAt: now,
