@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useReducer, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { useKioskAuth } from "@/lib/kiosk/kiosk-auth-context";
 import { RotateCcw, Volume2, VolumeX, Globe, Settings, ChevronDown, ChevronUp, X, Lock, FileText } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -263,7 +263,64 @@ export default function KioskDemoPage() {
     stopSpeech();
     dispatch({ type: "RESET" });
     setLocale("th");
+    setApiCheckinResult({ status: "idle" });
   }, []);
+
+  // === Real API call when reaching SUCCESS state ===
+  const [apiCheckinResult, setApiCheckinResult] = useState<
+    | { status: "idle" }
+    | { status: "loading" }
+    | { status: "ok"; entryCode: string; hostStaffId: number | null }
+    | { status: "error"; message: string }
+  >({ status: "idle" });
+
+  const checkinFiredRef = useRef(false);
+  useEffect(() => {
+    if (state.type !== "SUCCESS") {
+      checkinFiredRef.current = false;
+      return;
+    }
+    if (checkinFiredRef.current) return;
+    if (selectedCase !== "walkin") return; // appointment flow handles separately
+    if (!kioskConfig) return;
+
+    checkinFiredRef.current = true;
+    setApiCheckinResult({ status: "loading" });
+
+    const token = `kvms_prototype_${selectedKioskId}_demo`;
+    const body = {
+      type: "walkin",
+      visitorId: 15, // prototype: ใช้ visitor seed
+      servicePointId: selectedKioskId,
+      visitPurposeId: state.selectedPurpose?.id ?? 1,
+      departmentId: state.selectedDepartmentId ?? 1,
+      hostStaffId: state.selectedHostStaff?.id ?? null,
+      idMethod: state.idMethod ?? "thai-id-card",
+      wifiAccepted: !!state.wifiAccepted,
+    };
+
+    fetch("/api/kiosk/checkin", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+      body: JSON.stringify(body),
+    })
+      .then(async (r) => {
+        const j = await r.json().catch(() => ({}));
+        if (r.ok && j?.success) {
+          setApiCheckinResult({
+            status: "ok",
+            entryCode: j.data?.entry?.entryCode ?? "—",
+            hostStaffId: body.hostStaffId,
+          });
+        } else {
+          setApiCheckinResult({
+            status: "error",
+            message: j?.error?.message || j?.error || `HTTP ${r.status}`,
+          });
+        }
+      })
+      .catch((e) => setApiCheckinResult({ status: "error", message: String(e?.message || e) }));
+  }, [state.type, state.selectedPurpose, state.selectedDepartmentId, state.selectedHostStaff, state.idMethod, state.wifiAccepted, selectedCase, selectedKioskId, kioskConfig]);
 
   const toggleLocale = useCallback(() => {
     setLocale((prev) => (prev === "th" ? "en" : "th"));
@@ -768,7 +825,7 @@ export default function KioskDemoPage() {
       </div>
 
       {/* Right: State Panel */}
-      <div className="w-[340px] border-l border-gray-800 shrink-0">
+      <div className="w-[340px] border-l border-gray-800 shrink-0 flex flex-col">
         <StatePanel
           state={state}
           stepInfo={currentStep}
@@ -776,6 +833,23 @@ export default function KioskDemoPage() {
           currentStepIndex={currentStepIndex}
           totalSteps={steps.length}
         />
+        {state.type === "SUCCESS" && (
+          <div className="px-3 py-2 border-t border-gray-700 bg-gray-900 text-[10px] text-gray-300">
+            <p className="text-[9px] uppercase tracking-wider text-amber-400 font-bold mb-1">API: POST /api/kiosk/checkin</p>
+            {apiCheckinResult.status === "loading" && <p className="text-gray-400">⏳ กำลังบันทึก…</p>}
+            {apiCheckinResult.status === "ok" && (
+              <div className="space-y-0.5">
+                <p className="text-emerald-400">✓ บันทึกสำเร็จ</p>
+                <p className="text-gray-300">entryCode: <span className="font-mono text-[9px]">{apiCheckinResult.entryCode}</span></p>
+                <p className="text-gray-300">hostStaffId: <span className="font-mono text-[9px]">{apiCheckinResult.hostStaffId ?? "null"}</span></p>
+              </div>
+            )}
+            {apiCheckinResult.status === "error" && (
+              <p className="text-red-400">✗ {apiCheckinResult.message}</p>
+            )}
+            {apiCheckinResult.status === "idle" && <p className="text-gray-500">—</p>}
+          </div>
+        )}
       </div>
     </div>
   );
