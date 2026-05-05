@@ -25,6 +25,10 @@ export const audioCues: Partial<Record<KioskStateType, AudioCue>> = {
     th: "เลือกรายการเข้าพื้นที่ คะ",
     en: "Please select your visit purpose.",
   },
+  SELECT_HOST: {
+    th: "เลือกเจ้าหน้าที่ที่ต้องการพบ คะ",
+    en: "Please select the staff you'd like to meet.",
+  },
   FACE_CAPTURE: {
     th: "กรุณาถ่ายภาพใบหน้า คะ",
     en: "Please look at the camera for face photo.",

@@ -796,6 +796,7 @@ const apiSpecs: KioskApiSpec[] = [
           visitPurposeId: 1,
           departmentId: 4,
           appointmentId: null,
+          hostStaffId: 12,
           idMethod: "thai-id-card",
           facePhotoBase64: "data:image/jpeg;base64,/9j/4AAQSkZJRg...",
           wifiAccepted: true,

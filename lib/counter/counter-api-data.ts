@@ -360,6 +360,7 @@ const apiSpecs: CounterApiSpec[] = [
           servicePointId: 3,
           visitPurposeId: 1,
           departmentId: 1,
+          hostStaffId: 12,
           hostContactName: "คุณสมหวัง สุขสมบูรณ์",
           hostPhone: "02-123-4567 ต่อ 1234",
           idMethod: "card-reader",

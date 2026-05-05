@@ -8,7 +8,7 @@
 import type { StepInfo, KioskStateType } from "./kiosk-types";
 
 // ===== WALK-IN FLOW: 8 Steps =====
-// ลำดับใหม่: เลือกวัตถุประสงค์+แผนก ก่อน แล้วค่อยยืนยันตัวตน
+// ลำดับ: PDPA → Purpose+Dept → Host (optional) → ID Method → ID Verify → Preview → Face+WiFi
 export const walkinSteps: StepInfo[] = [
   {
     id: "w1",
@@ -56,10 +56,29 @@ export const walkinSteps: StepInfo[] = [
     conditions: ["แสดงเฉพาะ purpose ที่ showOnKiosk = true", "หากยืนยันตัวตนแล้ว → ข้ามไปถ่ายภาพ"],
     conditionsEn: ["Show only purposes where showOnKiosk = true", "If already verified → skip to face capture"],
     possibleTransitions: [
-      { event: "SELECT_VISIT_PURPOSE", targetState: "SELECT_ID_METHOD", description: "เลือกแล้ว → ยืนยันตัวตน" },
+      { event: "SELECT_VISIT_PURPOSE", targetState: "SELECT_HOST", description: "เลือกแล้ว → เลือกผู้ที่ต้องการพบ" },
       { event: "GO_BACK", targetState: "PDPA_CONSENT", description: "กลับ" },
     ],
     flutterHint: { bloc: "KioskBloc", state: "SelectPurposeState" },
+    timeoutSeconds: 60,
+  },
+  {
+    id: "w2b",
+    stateType: "SELECT_HOST",
+    title: "เลือกผู้ที่ต้องการพบ",
+    titleEn: "Select Host Staff",
+    description: "เลือกเจ้าหน้าที่ผู้ที่ต้องการพบ (กรองตามแผนก) — กดข้ามได้ถ้าไม่ระบุ",
+    descriptionEn: "Select host staff to visit (filtered by department) — tap Skip if not specified",
+    activeDevice: null,
+    audioCue: { th: "เลือกเจ้าหน้าที่ที่ต้องการพบ คะ", en: "Please select the staff you'd like to meet." },
+    conditions: ["รายชื่อกรองตามแผนกที่เลือก", "เป็นขั้นตอนเสริม — กดข้ามได้"],
+    conditionsEn: ["Staff list filtered by selected department", "Optional step — Skip is allowed"],
+    possibleTransitions: [
+      { event: "SELECT_HOST_STAFF", targetState: "SELECT_ID_METHOD", description: "เลือก host → ยืนยันตัวตน" },
+      { event: "SKIP_HOST", targetState: "SELECT_ID_METHOD", description: "ข้าม → ยืนยันตัวตน" },
+      { event: "GO_BACK", targetState: "SELECT_PURPOSE", description: "กลับ" },
+    ],
+    flutterHint: { bloc: "KioskBloc", state: "SelectHostState" },
     timeoutSeconds: 60,
   },
   {
@@ -75,7 +94,7 @@ export const walkinSteps: StepInfo[] = [
     conditionsEn: ["Show only documents supported by this kiosk"],
     possibleTransitions: [
       { event: "CHOOSE_ID_METHOD", targetState: "ID_VERIFICATION", description: "เลือกวิธียืนยัน" },
-      { event: "GO_BACK", targetState: "SELECT_PURPOSE", description: "ย้อนกลับ" },
+      { event: "GO_BACK", targetState: "SELECT_HOST", description: "ย้อนกลับ" },
     ],
     flutterHint: { bloc: "KioskBloc", state: "SelectIdMethodState" },
     timeoutSeconds: 60,

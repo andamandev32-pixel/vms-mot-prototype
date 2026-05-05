@@ -12,8 +12,8 @@ import { walkinSteps, appointmentSteps } from "@/lib/kiosk/kiosk-flow-config";
 import { getActiveDevice } from "@/lib/kiosk/kiosk-device-map";
 import { getAudioCue, speakText, stopSpeech } from "@/lib/kiosk/kiosk-audio-config";
 import { mockVisitorIdCard, mockVisitorPassport, mockVisitorThaiId, mockAppointment } from "@/lib/kiosk/kiosk-mock-data";
-import { resolveKioskConfig, getKioskServicePoints, resolveWifiPassword, resolveWifiValidity, getStateConfigInfo, type ResolvedKioskConfig } from "@/lib/kiosk/kiosk-config-resolver";
-import type { KioskEvent, KioskLocale, StepInfo, IdMethod, SlipData, ThermalSection } from "@/lib/kiosk/kiosk-types";
+import { resolveKioskConfig, getKioskServicePoints, resolveWifiPassword, resolveWifiValidity, getStateConfigInfo, isHostRequired, type ResolvedKioskConfig } from "@/lib/kiosk/kiosk-config-resolver";
+import type { KioskEvent, KioskLocale, StepInfo, IdMethod, SlipData, ThermalSection, HostStaffOption } from "@/lib/kiosk/kiosk-types";
 import { maskIdNumber } from "@/lib/kiosk/kiosk-mock-data";
 import { useVisitSlipTemplate } from "@/lib/hooks";
 
@@ -28,6 +28,7 @@ import SelectIdMethodScreen from "@/components/kiosk/screens/SelectIdMethodScree
 import IdVerificationScreen from "@/components/kiosk/screens/IdVerificationScreen";
 import DataPreviewScreen from "@/components/kiosk/screens/DataPreviewScreen";
 import SelectPurposeScreen from "@/components/kiosk/screens/SelectPurposeScreen";
+import SelectHostScreen from "@/components/kiosk/screens/SelectHostScreen";
 import FaceCaptureScreen from "@/components/kiosk/screens/FaceCaptureScreen";
 import WifiOfferScreen from "@/components/kiosk/screens/WifiOfferScreen";
 import SuccessScreen from "@/components/kiosk/screens/SuccessScreen";
@@ -40,7 +41,7 @@ import KioskApiDocModal from "@/components/kiosk/KioskApiDocModal";
 type DemoCase = "walkin" | "appointment";
 
 const demoCases: { id: DemoCase; label: string; labelEn: string }[] = [
-  { id: "walkin", label: "Walk-in (7 ขั้นตอน)", labelEn: "Walk-in (7 steps)" },
+  { id: "walkin", label: "Walk-in (8 ขั้นตอน)", labelEn: "Walk-in (8 steps)" },
   { id: "appointment", label: "นัดหมาย (6 ขั้นตอน)", labelEn: "Appointment (6 steps)" },
 ];
 
@@ -65,6 +66,7 @@ function generateSlipFromConfig(
   config: ResolvedKioskConfig,
   purpose?: { name: string; nameEn: string },
   wifiAccepted?: boolean,
+  host?: HostStaffOption | null,
 ): SlipData {
   const now = new Date();
   const wifiPassword = resolveWifiPassword(config.wifi.passwordPattern);
@@ -76,8 +78,8 @@ function generateSlipFromConfig(
     idNumber: maskIdNumber(visitor.idNumber),
     visitPurpose: purpose?.name || "ติดต่อราชการ",
     visitPurposeEn: purpose?.nameEn || "Official Business",
-    hostName: "คุณสมศรี รักงาน",
-    department: "กองกิจการท่องเที่ยว",
+    hostName: host?.name || "ไม่ระบุ",
+    department: host?.departmentName || "กองกิจการท่องเที่ยว",
     accessZone: "ชั้น 3 อาคาร C",
     date: now.toLocaleDateString("th-TH", { day: "numeric", month: "short", year: "numeric" }),
     timeIn: now.toLocaleTimeString("th-TH", { hour: "2-digit", minute: "2-digit" }),
@@ -354,10 +356,23 @@ export default function KioskDemoPage() {
         return (
           <SelectPurposeScreen
             locale={locale}
-            onSelect={(purpose) => fire({ type: "SELECT_VISIT_PURPOSE", purpose })}
+            onSelect={(purpose, departmentId) => fire({ type: "SELECT_VISIT_PURPOSE", purpose, departmentId })}
             onBack={() => fire({ type: "GO_BACK" })}
             purposes={kioskConfig?.purposes}
             purposeDeptMap={kioskConfig?.purposeDepartmentMap}
+            onChangeLocale={toggleLocale}
+          />
+        );
+      case "SELECT_HOST":
+        return (
+          <SelectHostScreen
+            locale={locale}
+            selectedPurpose={state.selectedPurpose}
+            selectedDepartmentId={state.selectedDepartmentId}
+            required={isHostRequired(kioskConfig, state.selectedPurpose?.id, state.selectedDepartmentId)}
+            onSelect={(host) => fire({ type: "SELECT_HOST_STAFF", hostStaff: host })}
+            onSkip={() => fire({ type: "SKIP_HOST" })}
+            onBack={() => fire({ type: "GO_BACK" })}
             onChangeLocale={toggleLocale}
           />
         );
@@ -395,6 +410,7 @@ export default function KioskDemoPage() {
                   kioskConfig,
                   state.selectedPurpose ? { name: state.selectedPurpose.name, nameEn: state.selectedPurpose.nameEn } : undefined,
                   state.wifiAccepted,
+                  state.selectedHostStaff,
                 )
               : undefined
             }

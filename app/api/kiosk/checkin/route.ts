@@ -16,7 +16,7 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const {
       type, visitorId, servicePointId, visitPurposeId, departmentId,
-      appointmentId, idMethod, facePhotoBase64, wifiAccepted, pdpaConsentId,
+      appointmentId, hostStaffId, idMethod, facePhotoBase64, wifiAccepted, pdpaConsentId,
     } = body as {
       type?: string;
       visitorId?: number;
@@ -24,6 +24,7 @@ export async function POST(request: NextRequest) {
       visitPurposeId?: number;
       departmentId?: number;
       appointmentId?: number | null;
+      hostStaffId?: number | null;
       idMethod?: string;
       facePhotoBase64?: string;
       wifiAccepted?: boolean;
@@ -32,6 +33,24 @@ export async function POST(request: NextRequest) {
 
     if (!visitorId) return err("MISSING_FIELDS", "กรุณาระบุ visitorId");
     if (!servicePointId) return err("MISSING_FIELDS", "กรุณาระบุ servicePointId");
+
+    if (hostStaffId != null) {
+      const hostStaff = await prisma.staff.findUnique({ where: { id: hostStaffId } });
+      if (!hostStaff) return err("NOT_FOUND", "ไม่พบ host staff", 404);
+    }
+
+    // Validate requirePersonName rule for the (purpose, department) pair
+    if (visitPurposeId && departmentId) {
+      const rule = await prisma.visitPurposeDepartmentRule.findFirst({
+        where: { visitPurposeId, departmentId, isActive: true },
+      });
+      if (rule?.requirePersonName && hostStaffId == null) {
+        return err(
+          "MISSING_FIELDS",
+          "วัตถุประสงค์/แผนกที่เลือกบังคับให้ระบุ hostStaffId"
+        );
+      }
+    }
 
     // Verify visitor
     const visitor = await prisma.visitor.findUnique({ where: { id: visitorId } });
@@ -88,7 +107,7 @@ export async function POST(request: NextRequest) {
         visitorId,
         appointmentId: appointmentId || null,
         servicePointId,
-        hostStaffId: null,
+        hostStaffId: hostStaffId ?? null,
         departmentId: departmentId || null,
         status: "checked-in",
         checkinAt: now,

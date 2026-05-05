@@ -48,7 +48,7 @@ export function kioskReducer(state: KioskState, event: KioskEvent): KioskState {
       if (event.type === "CHOOSE_ID_METHOD" && event.idMethod)
         return { ...state, type: "ID_VERIFICATION", idMethod: event.idMethod };
       if (event.type === "GO_BACK") {
-        if (state.case === "walkin") return { ...state, type: "SELECT_PURPOSE" };
+        if (state.case === "walkin") return { ...state, type: "SELECT_HOST" };
         // Appointment no-QR path: back to QR scan
         return { ...state, type: "QR_SCAN" };
       }
@@ -96,9 +96,25 @@ export function kioskReducer(state: KioskState, event: KioskEvent): KioskState {
     // ───────────── SELECT PURPOSE (Walk-in) ─────────────
     case "SELECT_PURPOSE":
       if (event.type === "SELECT_VISIT_PURPOSE" && event.purpose)
-        return { ...state, type: "SELECT_ID_METHOD", selectedPurpose: event.purpose };
+        return {
+          ...state,
+          type: "SELECT_HOST",
+          selectedPurpose: event.purpose,
+          selectedDepartmentId: event.departmentId,
+        };
       if (event.type === "GO_BACK")
         return { ...state, type: "PDPA_CONSENT" };
+      if (event.type === "TIMEOUT") return { type: "TIMEOUT" };
+      break;
+
+    // ───────────── SELECT HOST STAFF (Walk-in, optional) ─────────────
+    case "SELECT_HOST":
+      if (event.type === "SELECT_HOST_STAFF" && event.hostStaff)
+        return { ...state, type: "SELECT_ID_METHOD", selectedHostStaff: event.hostStaff };
+      if (event.type === "SKIP_HOST")
+        return { ...state, type: "SELECT_ID_METHOD", selectedHostStaff: null };
+      if (event.type === "GO_BACK")
+        return { ...state, type: "SELECT_PURPOSE" };
       if (event.type === "TIMEOUT") return { type: "TIMEOUT" };
       break;
 
@@ -274,6 +290,9 @@ export function getValidEvents(state: KioskState): KioskEvent["type"][] {
       break;
     case "SELECT_PURPOSE":
       events.push("SELECT_VISIT_PURPOSE", "GO_BACK", "TIMEOUT");
+      break;
+    case "SELECT_HOST":
+      events.push("SELECT_HOST_STAFF", "SKIP_HOST", "GO_BACK", "TIMEOUT");
       break;
     case "FACE_CAPTURE":
       events.push("FACE_CAPTURED", "FACE_CAPTURE_FAILED", "SKIP_WIFI", "GO_BACK", "TIMEOUT");
