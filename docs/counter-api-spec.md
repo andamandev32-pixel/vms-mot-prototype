@@ -40,21 +40,23 @@ https://evms.mots.go.th    (Prototype — Next.js App Router)
 
 ## API Reuse Strategy — การใช้ API ร่วมกับ Web App
 
-> **หมายเหตุ:** Counter ไม่ได้สร้าง API routes เฉพาะ (`/api/counter/*`) แต่ reuse existing endpoints
-> โดยใช้ React hooks จาก `lib/hooks/use-counter.ts`
+> **หมายเหตุ:** Counter reuse existing endpoints ส่วนใหญ่ โดยใช้ React hooks จาก `lib/hooks/use-counter.ts`
+> มี dedicated counter endpoints บางตัวที่สร้างเพิ่มเติม (`/api/counter/*`)
 
 | Counter State | Hook | Existing API Endpoint |
 |--------------|------|----------------------|
 | COUNTER_SELECTION | `useCounterConfig(servicePointId)` | GET /api/service-points/:id (Staff Auth) |
 | IDLE | `useCounterDashboard()` | GET /api/dashboard/kpis + GET /api/entries/today |
 | WALKIN_PURPOSE | `useCounterPurposes()` | GET /api/visit-purposes |
+| WALKIN_DEPARTMENT | `useCounterDepartments(purposeId)` | GET /api/counter/departments?purposeId= (Staff Auth) |
+| WALKIN_CONTACT (host staff) | `useCounterStaff(departmentId)` | GET /api/kiosk/staff?departmentId= (Staff/Kiosk Auth) |
 | WALKIN_IDENTITY | `useCounterSearchVisitor()` | GET /api/search/visitors |
 | WALKIN_IDENTITY | `useCounterBlocklistCheck()` | POST /api/blocklist/check |
 | WALKIN_REVIEW (approve) | `useCounterCreateAppointment()` | POST /api/appointments |
-| WALKIN_REVIEW (checkin) | `useCounterCheckin()` | POST /api/entries |
+| WALKIN_REVIEW (checkin) | `useCounterCheckin()` | POST /api/counter/walkin/checkin |
 | WALKIN_REVIEW (inline approve) | `useInlineApprove()` | POST /api/appointments/:id/approve |
 | APPOINTMENT_SEARCH | `useTodayAppointments(search)` | GET /api/appointments?date=today |
-| APPOINTMENT_REVIEW | `useCounterCheckin()` | POST /api/entries |
+| APPOINTMENT_REVIEW | `useCounterCheckin()` | POST /api/counter/appointments/:id/checkin |
 | CHECKOUT_CONFIRM | `useCounterCheckout(entryId)` | POST /api/entries/:id/checkout |
 
 **Hooks file:** `lib/hooks/use-counter.ts`
@@ -75,27 +77,29 @@ https://evms.mots.go.th    (Prototype — Next.js App Router)
 | 3 | WALKIN_IDENTITY | GET | `/api/search/visitors?q=` | `useCounterSearchVisitor` | ✅ Implemented |
 | 3b | WALKIN_IDENTITY | POST | `/api/blocklist/check` | `useCounterBlocklistCheck` | ✅ Implemented |
 | 4 | WALKIN_PURPOSE | GET | `/api/visit-purposes` | `useCounterPurposes` | ✅ Implemented |
-| 5 | WALKIN_DEPARTMENT | — | *(ใช้ข้อมูลจาก visit-purposes response)* | — | ✅ Frontend-only |
-| 6 | WALKIN_CONTACT | — | *(ใช้ข้อมูลจาก state)* | — | ✅ Frontend-only |
+| 5 | WALKIN_DEPARTMENT | GET | `/api/counter/departments?purposeId=` | `useCounterDepartments` | Staff Auth | ✅ Implemented |
+| 5b | WALKIN_CONTACT (host) | GET | `/api/kiosk/staff?departmentId=` | `useCounterStaff` | Staff/Kiosk Auth | ✅ Implemented |
+| 6 | WALKIN_CONTACT | — | *(form data เก็บใน state)* | — | ✅ Frontend-only |
 | 7 | WALKIN_PHOTO | POST | *(ยังไม่มี endpoint)* | — | 🔲 Planned |
-| 8 | WALKIN_REVIEW | POST | `/api/entries` | `useCounterCheckin` | ✅ Implemented |
-| 8b | WALKIN_REVIEW | POST | `/api/appointments` | `useCounterCreateAppointment` | ✅ Implemented |
-| 8c | WALKIN_REVIEW | POST | `/api/appointments/:id/approve` | `useInlineApprove` | ✅ Implemented |
-| 8d | WALKIN_REVIEW | POST | `/api/appointments/:id/reject` | `useInlineReject` | ✅ Implemented |
+| 8 | WALKIN_REVIEW | POST | `/api/counter/walkin/checkin` | `useCounterCheckin` | Staff Auth | ✅ Implemented |
+| 8b | WALKIN_REVIEW | POST | `/api/appointments` | `useCounterCreateAppointment` | Staff Auth | ✅ Implemented |
+| 8c | WALKIN_REVIEW | POST | `/api/appointments/:id/approve` | `useInlineApprove` | Staff Auth | ✅ Implemented |
+| 8d | WALKIN_REVIEW | POST | `/api/appointments/:id/reject` | `useInlineReject` | Staff Auth | ✅ Implemented |
 | 9 | APPOINTMENT_SEARCH | GET | `/api/appointments?date=today&search=` | `useTodayAppointments` | ✅ Implemented |
 | 10 | APPOINTMENT_IDENTITY | — | *(ใช้ search/visitors + blocklist/check)* | — | ✅ Reuse existing |
-| 11 | APPOINTMENT_REVIEW | POST | `/api/entries` | `useCounterCheckin` | ✅ Implemented |
+| 11 | APPOINTMENT_REVIEW | POST | `/api/counter/appointments/:id/checkin` | `useCounterCheckin` | Staff Auth | ✅ Implemented |
 | 12 | CHECKOUT_SCAN | — | *(ยังไม่มี badge lookup endpoint)* | — | 🔲 Planned |
 | 13 | CHECKOUT_CONFIRM | POST | `/api/entries/:id/checkout` | `useCounterCheckout` | ✅ Implemented |
 | 14 | PRINT_SLIP | GET | `/api/visit-slips/template` | `useVisitSlipTemplate` | ✅ Implemented |
 | 15 | SUCCESS | — | *(ใช้ข้อมูลจาก checkin response)* | — | ✅ Frontend-only |
 | 16 | — | GET | `/api/entries/today` | `useCounterDashboard` | ✅ Implemented |
 
-> **Total: 11 Implemented API endpoints** — reuse จาก Web App ผ่าน hooks ใน `lib/hooks/use-counter.ts`
+> **Total: 13 Implemented API endpoints**
 > **Planned: 3 endpoints** — session, visitor-photo, badge-lookup (ต้องสร้างเพิ่มสำหรับ production)
 
 > **หมายเหตุ API Summary:**
-> - **Rule Enforcement:** State 5 (WALKIN_DEPARTMENT) → fetch `visit_purpose_department_rules` เพื่อกำหนด requireApproval + requirePersonName ก่อนดำเนินการต่อ
+> - **Rule Enforcement:** State 5 (WALKIN_DEPARTMENT) → `GET /api/counter/departments` คืนค่า `requirePersonName` + `requireApproval` จาก `visit_purpose_department_rules` โดยตรง
+> - **Host Staff:** State 5b — ถ้า `requirePersonName = true` แสดง combobox เลือก staff (`GET /api/kiosk/staff`) หรือพิมพ์ชื่อเอง (`hostContactName`) — ส่งทั้ง `hostStaffId` และ `hostContactName` ไปพร้อม checkin
 > - **Period Handling:** State 9 (APPOINTMENT_SEARCH) + State 11 (APPOINTMENT_REVIEW) รองรับ `entryMode = "period"` — นัดหมายหลายวัน, ตรวจ duplicate, แสดง history
 > - **Inline Approval:** State 8 (WALKIN_REVIEW) + State 11 (APPOINTMENT_REVIEW) รองรับการอนุมัติ inline ที่หน้า Counter สำหรับเจ้าหน้าที่ที่มี canApprove = true
 > - **notifyOnCheckin:** State 8 + State 11 — เมื่อ check-in สำเร็จ ถ้า appointment.notifyOnCheckin = true → แจ้งเตือน createdByStaff + hostStaff ผ่าน LINE/Email
@@ -456,17 +460,19 @@ https://evms.mots.go.th    (Prototype — Next.js App Router)
 
 ## 5. WALKIN_DEPARTMENT — เลือกหน่วยงาน
 
-### *ใช้ข้อมูลจาก visit-purposes response* — `GET /counter/departments` *(Original Design)*
+### `GET /api/counter/departments`
 
-> **Status:** ✅ Frontend-only — departments ดึงจาก `departmentRules` ใน `GET /api/visit-purposes` response
+> **Hook:** `useCounterDepartments(purposeId)` from `lib/hooks/use-counter.ts`
+> **Status:** ✅ Implemented — **dedicated counter endpoint**
+> **Auth:** Staff Cookie หรือ Bearer Token
 
-ดึงหน่วยงานตาม purpose ที่เลือก — filter ตาม `visit_purpose_department_rules`
+ดึงหน่วยงานตาม purpose ที่เลือก — filter ตาม `visit_purpose_department_rules` (acceptFromCounter = true)
+Response รวม `requirePersonName` + `requireApproval` จาก rule โดยตรง — ไม่ต้อง fetch rules แยก
 
 **Tables ที่ใช้:** `departments`, `floors`, `floor_departments`, `visit_purpose_department_rules`
 
 **Query Parameters:**
-- `purposeId=1` — วัตถุประสงค์ที่เลือก
-- `servicePointId=3`
+- `purposeId=1` — วัตถุประสงค์ที่เลือก (required)
 
 **Response:**
 
@@ -518,7 +524,21 @@ https://evms.mots.go.th    (Prototype — Next.js App Router)
 }
 ```
 
-### 5b. *ใช้ข้อมูลจาก visit-purposes response* — `GET /counter/purpose-department-rules` *(Original Design)*
+### 5b. WALKIN_CONTACT — เลือก Host Staff (combobox)
+
+> **Status:** ✅ Implemented — reuse `GET /api/kiosk/staff`
+> ถ้า `requirePersonName = true` (จาก GET /api/counter/departments response) → แสดง combobox ค้นหา staff พร้อม badge สีแดง "(จำเป็น)"
+> ถ้า `requirePersonName = false` → combobox เป็น optional
+
+**Hook:** `useCounterStaff(departmentId)` — `GET /api/kiosk/staff?departmentId=<id>`
+
+**การเก็บข้อมูลใน state:**
+- เลือก staff จาก combobox → `hostStaffId` = staff.id, `hostContactName = null`
+- พิมพ์ชื่อเอง (free-text) → `hostContactName` = ชื่อที่พิมพ์, `hostStaffId = null`
+- ข้าม (requirePersonName = false) → ทั้ง 2 = null
+- ทั้ง `hostStaffId` + `hostContactName` ถูกส่งไปใน request body ของ checkin / create appointment
+
+### *ใช้ข้อมูลจาก visit-purposes response* — `GET /counter/purpose-department-rules` *(Original Design — deprecated)*
 
 > **Status:** ✅ Frontend-only — rules ดึงจาก `departmentRules` ใน `GET /api/visit-purposes` response
 
@@ -556,12 +576,10 @@ https://evms.mots.go.th    (Prototype — Next.js App Router)
 
 ## 6. WALKIN_CONTACT — ข้อมูลการติดต่อ
 
-**ไม่ต้องเรียก API** — เจ้าหน้าที่กรอกชื่อผู้ที่มาพบ / เบอร์โทร ในฟอร์ม แล้วเก็บไว้ใน state
-
-> **Dynamic Form Rules (จาก `visit_purpose_department_rules`):**
-> - ถ้า `requirePersonName = true` → WALKIN_CONTACT **จำเป็น** (ต้องกรอกชื่อผู้ที่มาพบ / host info)
-> - ถ้า `requirePersonName = false` → WALKIN_CONTACT **เป็น optional** (ข้ามได้ ไม่บังคับกรอก host info)
-> - UI ควรแสดง label "(จำเป็น)" หรือ "(ไม่บังคับ)" ตาม rules
+> **Dynamic Form Rules (จาก `GET /api/counter/departments` response):**
+> - ถ้า `requirePersonName = true` → combobox host staff **จำเป็น** (badge แดง, ซ่อน Skip) — ดู section 5b
+> - ถ้า `requirePersonName = false` → combobox host staff **optional** (มีปุ่ม Skip)
+> - เจ้าหน้าที่กรอกชื่อผู้ที่มาพบ / เบอร์โทร เก็บไว้ใน state (`hostStaffId` หรือ `hostContactName`)
 
 ---
 
@@ -623,13 +641,17 @@ capturedBy: "officer"
   "visitorId": 15,
   "visitPurposeId": 1,
   "departmentId": 1,
-  "hostContactName": "คุณสมหวัง สุขสมบูรณ์",
+  "hostStaffId": 2,
+  "hostContactName": null,
   "hostPhone": "02-123-4567 ต่อ 1234",
   "servicePointId": 3,
   "officerId": 8,
   "requestedDate": "2026-03-15",
   "note": "Walk-in ที่ต้องรออนุมัติ"
 }
+```
+
+> **หมายเหตุ `hostStaffId` / `hostContactName`:** เลือกอย่างใดอย่างหนึ่ง — ถ้าเลือก staff จาก combobox → `hostStaffId` ≠ null, `hostContactName = null` / ถ้าพิมพ์ชื่อเอง → `hostContactName` ≠ null, `hostStaffId = null`
 ```
 
 **Response:**
@@ -674,7 +696,8 @@ capturedBy: "officer"
   "visitPurposeId": 1,
   "departmentId": 1,
   "appointmentId": 99,
-  "hostContactName": "คุณสมหวัง สุขสมบูรณ์",
+  "hostStaffId": 2,
+  "hostContactName": null,
   "hostPhone": "02-123-4567 ต่อ 1234",
   "idMethod": "card-reader",
   "documentType": "thai-id-card",
@@ -687,6 +710,7 @@ capturedBy: "officer"
 ```
 
 > **หมายเหตุ:** `appointmentId` เป็น optional — ส่งเฉพาะกรณีที่สร้าง appointment ก่อน (requireApproval = true)
+> `hostStaffId` / `hostContactName` — เลือกอย่างใดอย่างหนึ่ง ขึ้นอยู่กับว่าเลือก staff จาก combobox หรือพิมพ์ชื่อเอง
 
 **Response:**
 

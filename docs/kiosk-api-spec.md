@@ -59,11 +59,12 @@ X-Kiosk-Id: <service_point_id>
 | `POST /api/kiosk/pdpa/consent` | ❌ Public | บันทึก consent (ก่อนระบุตัวตน) |
 | `GET /api/search/visitors` | ✅ Device Token | ค้นหาผู้เยี่ยม |
 | `POST /api/blocklist/check` | ✅ Device Token | ตรวจ blocklist |
-| `GET /api/visit-purposes` | ✅ Device Token | โหลดวัตถุประสงค์ |
+| `GET /api/kiosk/:servicePointId/purposes` | ✅ Device Token | โหลดวัตถุประสงค์ + แผนก (พร้อม requirePersonName) |
+| `GET /api/kiosk/staff` | ✅ Device Token | ดึงรายชื่อ staff ตาม department (SELECT_HOST step) |
 | `POST /api/appointments` | ✅ Device Token | สร้าง walk-in appointment |
 | `GET /api/appointments/:id` | ✅ Device Token | Poll สถานะอนุมัติ |
 | `GET /api/search/appointments` | ✅ Device Token | ค้นหานัดหมาย (QR) |
-| `POST /api/entries` | ✅ Device Token | Check-in |
+| `POST /api/kiosk/checkin` | ✅ Device Token | Check-in (dedicated kiosk endpoint) |
 | `GET /api/visit-slips/template` | ❌ Public | ไม่ต้อง auth |
 
 ### Admin API สำหรับจัดการ Kiosk Devices
@@ -127,12 +128,13 @@ X-Kiosk-Id: <service_point_id>
 | Kiosk State | Hook | Actual API Endpoint | Auth |
 |------------|------|----------------------|------|
 | WELCOME | `useKioskConfig(servicePointId)` | GET /api/kiosk/:servicePointId/config | **Public** (ไม่ต้อง auth) |
-| SELECT_PURPOSE | `useKioskPurposes()` | GET /api/visit-purposes | Device Token |
+| SELECT_PURPOSE | `useKioskPurposes(servicePointId)` | GET /api/kiosk/:servicePointId/purposes | Device Token |
+| SELECT_HOST | `useKioskStaff(departmentId)` | GET /api/kiosk/staff | Device Token |
 | ID_VERIFICATION | `useSearchVisitor()` | GET /api/search/visitors | Device Token |
 | ID_VERIFICATION | `useKioskBlocklistCheck()` | POST /api/blocklist/check | Device Token |
 | PENDING_APPROVAL | `useCreatePendingAppointment()` | POST /api/appointments | Device Token |
 | PENDING_APPROVAL | `usePollAppointmentStatus(id)` | GET /api/appointments/:id (poll 10s) | Device Token |
-| SUCCESS | `useKioskCheckin()` | POST /api/entries | Device Token |
+| SUCCESS | `useKioskCheckin()` | POST /api/kiosk/checkin | Device Token |
 | QR_SCAN | `useAppointmentLookup()` | GET /api/search/appointments | Device Token |
 | PDPA_CONSENT | `useKioskPdpaLatest()` | GET /api/kiosk/pdpa/latest | Public (ไม่ต้อง auth) |
 | PDPA_CONSENT | `useRecordPdpaConsent()` | POST /api/kiosk/pdpa/consent | Public (ไม่ต้อง auth) |
@@ -155,20 +157,21 @@ X-Kiosk-Id: <service_point_id>
 | 4 | ID_VERIFICATION | GET | `/api/search/visitors?q=` | `useSearchVisitor` | Device Token | ✅ Implemented |
 | 4b | ID_VERIFICATION | POST | `/api/blocklist/check` | `useKioskBlocklistCheck` | Device Token | ✅ Implemented |
 | 5 | DATA_PREVIEW | — | *(ใช้ข้อมูลจาก state)* | — | — | ✅ Frontend-only |
-| 6 | SELECT_PURPOSE | GET | `/api/visit-purposes` | `useKioskPurposes` | Device Token | ✅ Implemented |
+| 6 | SELECT_PURPOSE | GET | `/api/kiosk/:servicePointId/purposes` | `useKioskPurposes` | Device Token | ✅ Implemented |
 | 6b | PENDING_APPROVAL | POST | `/api/appointments` | `useCreatePendingAppointment` | Device Token | ✅ Implemented |
 | 6c | PENDING_APPROVAL | GET | `/api/appointments/:id` | `usePollAppointmentStatus` | Device Token | ✅ Implemented (poll 10s) |
+| 6d | SELECT_HOST | GET | `/api/kiosk/staff?departmentId=` | `useKioskStaff` | Device Token | ✅ Implemented |
 | 7 | FACE_CAPTURE | POST | *(ยังไม่มี endpoint)* | — | — | 🔲 Planned |
 | 8 | WIFI_OFFER | POST | *(ยังไม่มี endpoint)* | — | — | 🔲 Planned |
-| 9 | SUCCESS | POST | `/api/entries` | `useKioskCheckin` | Device Token | ✅ Implemented |
+| 9 | SUCCESS | POST | `/api/kiosk/checkin` | `useKioskCheckin` | Device Token | ✅ Implemented |
 | 9b | SUCCESS | GET | `/api/visit-slips/template` | `useVisitSlipTemplate` | Public | ✅ Implemented |
 | 10 | QR_SCAN | GET | `/api/search/appointments?q=` | `useAppointmentLookup` | Device Token | ✅ Implemented |
 | 11 | APPOINTMENT_PREVIEW | — | *(ใช้ข้อมูลจาก lookup)* | — | — | ✅ Frontend-only |
 | 12 | APPOINTMENT_VERIFY_ID | — | *(ใช้ search/visitors + blocklist/check)* | — | Device Token | ✅ Reuse existing |
 | — | ERROR | POST | *(ยังไม่มี endpoint)* | — | — | 🔲 Planned |
 
-> **Total: 11 Implemented API endpoints** — 3 dedicated kiosk endpoints + 8 reuse จาก Web App
-> **Auth: 7 endpoints ใช้ Device Token** (`Authorization: Bearer kvms_...`), **4 endpoints เป็น Public** (kiosk config + PDPA latest + PDPA consent + visit-slips)
+> **Total: 12 Implemented API endpoints** — 5 dedicated kiosk endpoints + 7 reuse จาก Web App
+> **Auth: 8 endpoints ใช้ Device Token** (`Authorization: Bearer kvms_...`), **4 endpoints เป็น Public** (kiosk config + PDPA latest + PDPA consent + visit-slips)
 > **Planned: 3 endpoints** — face-photo, wifi, error-log (ต้องสร้างเพิ่มสำหรับ production)
 
 ---
@@ -485,14 +488,13 @@ X-Kiosk-Id: <service_point_id>
 
 ## 6. SELECT_PURPOSE — เลือกวัตถุประสงค์
 
-### `GET /api/visit-purposes`
+### `GET /api/kiosk/:servicePointId/purposes`
 
-> **Hook:** `useKioskPurposes()` from `lib/hooks/use-kiosk.ts`
-> **Status:** ✅ Implemented
+> **Hook:** `useKioskPurposes(servicePointId)` from `lib/hooks/use-kiosk.ts`
+> **Status:** ✅ Implemented — **dedicated kiosk endpoint** (ไม่ใช่ `/api/visit-purposes` ทั่วไป)
+> **หมายเหตุ:** ใช้ endpoint เฉพาะ kiosk แทน generic endpoint เพื่อ filter เฉพาะ purpose+department ที่เปิดสำหรับ kiosk และ deduplicate departments อัตโนมัติ
 
-**Query Parameters:** ไม่มี — ดึงทั้งหมด, frontend filter `showOnKiosk = true`
-
-**Tables ที่ใช้:** `visit_purposes`, `visit_purpose_department_rules` (where `show_on_kiosk = true`), `visit_purpose_channel_configs` (where `channel = 'kiosk'`), `service_point_purposes`
+**Tables ที่ใช้:** `visit_purposes`, `visit_purpose_department_rules` (where `show_on_kiosk = true`), `visit_purpose_channel_configs` (where `channel = 'kiosk'`), `service_point_purposes`, `departments`, `floors`
 
 **Response:**
 
@@ -588,13 +590,83 @@ X-Kiosk-Id: <service_point_id>
 
 เมื่อผู้เยี่ยม walk-in เลือก purpose + department แล้ว ระบบจะ fetch `visit_purpose_department_rules` เพื่อตรวจสอบ:
 
-1. **`requireApproval`**:
+1. **`requirePersonName`**:
+   - ถ้า `true` → transition ไป **SELECT_HOST** (state 6d) — แสดงหน้าค้นหา/เลือก staff ที่ต้องการพบ (บังคับ ซ่อนปุ่ม Skip)
+   - ถ้า `false` → ข้ามขั้นตอน SELECT_HOST ได้ (ปุ่ม Skip แสดง)
+
+2. **`requireApproval`**:
    - ถ้า `true` → transition ไป **PENDING_APPROVAL** (ไม่ไป FACE_CAPTURE โดยตรง) — ระบบสร้าง appointment (status=pending) แล้วรอการอนุมัติ
    - ถ้า `false` → transition ไป **FACE_CAPTURE** / **ID_VERIFICATION** ตามปกติ (auto-approve, check-in ได้เลย)
 
-2. **`requirePersonName`**:
-   - ถ้า `true` → แสดงหน้าเลือก host staff (ผู้ที่จะไปพบ) ก่อน transition ถัดไป
-   - ถ้า `false` → ข้ามขั้นตอนเลือก host staff
+---
+
+## 6d. SELECT_HOST — เลือกพนักงานที่ต้องการพบ
+
+State นี้แสดงหลัง SELECT_PURPOSE เมื่อ rule.`requirePersonName = true` — ให้ผู้เยี่ยมค้นหา/เลือก staff ที่ต้องการพบ หรือพิมพ์ชื่อเองถ้าไม่อยู่ใน list
+
+### `GET /api/kiosk/staff`
+
+> **Hook:** `useKioskStaff(departmentId)` from `lib/hooks/use-kiosk.ts`
+> **Status:** ✅ Implemented — Auth: Kiosk Device Token
+
+**Query Parameters:**
+- `departmentId` (number, required) — กรองตามแผนกที่เลือกใน SELECT_PURPOSE
+- `search` (string, optional) — ค้นหาชื่อ / ตำแหน่ง
+- `status` (string, optional) — default `active`
+- `limit` (number, optional) — default 200, max 500
+
+**Tables ที่ใช้:** `staff`, `departments`
+
+**Response:**
+
+```json
+{
+  "staff": [
+    {
+      "id": 2,
+      "name": "คุณประวิทย์ ศรีสุข",
+      "nameEn": "Prawit Srisuk",
+      "position": "หัวหน้าฝ่ายบริหารทั่วไป",
+      "email": "prawit.s@mots.go.th",
+      "avatarUrl": null,
+      "departmentId": 2,
+      "department": {
+        "id": 2,
+        "name": "กองกลาง",
+        "nameEn": "General Administration Division"
+      }
+    },
+    {
+      "id": 5,
+      "name": "คุณอรพิณ วรรณภา",
+      "nameEn": "Orapin Wannapa",
+      "position": "ผู้อำนวยการ",
+      "email": "orapin.w@mots.go.th",
+      "avatarUrl": null,
+      "departmentId": 2,
+      "department": {
+        "id": 2,
+        "name": "กองกลาง",
+        "nameEn": "General Administration Division"
+      }
+    }
+  ]
+}
+```
+
+### State Transitions
+
+| Event | Next State | เงื่อนไข |
+|-------|-----------|---------|
+| SELECT_STAFF | (ถัดไปตาม flow) | ผู้เยี่ยมเลือก staff จาก list → เก็บ `hostStaffId`, `hostContactName = null` |
+| SKIP_HOST | (ถัดไปตาม flow) | กด Skip — แสดงเฉพาะเมื่อ `requirePersonName = false` |
+| TYPE_NAME | (ถัดไปตาม flow) | ผู้เยี่ยมพิมพ์ชื่อเอง → เก็บ `hostContactName`, `hostStaffId = null` |
+
+> **หมายเหตุการเก็บข้อมูล:**
+> - เลือก staff จาก list → `hostStaffId` = staff.id, `hostContactName = null`
+> - พิมพ์ชื่อเอง (free-text) → `hostContactName` = ชื่อที่พิมพ์, `hostStaffId = null`
+> - ข้าม → ทั้ง `hostStaffId` และ `hostContactName` = null (เฉพาะกรณี requirePersonName = false)
+> - ทั้ง `hostStaffId` และ `hostContactName` จะถูกส่งไปพร้อม `POST /api/kiosk/checkin`
 
 ---
 
@@ -776,10 +848,11 @@ servicePointId: 1
 
 ## 9. SUCCESS — สร้าง Visit Entry + ออก QR/Slip
 
-### `POST /api/entries`
+### `POST /api/kiosk/checkin`
 
 > **Hook:** `useKioskCheckin()` from `lib/hooks/use-kiosk.ts`
-> **Status:** ✅ Implemented
+> **Status:** ✅ Implemented — **dedicated kiosk checkin endpoint** (ไม่ใช่ generic `/api/entries`)
+> **Auth:** Kiosk Device Token
 
 **นี่คือ API หลัก** — สร้าง `visit_entry` + assign access
 
@@ -811,7 +884,8 @@ servicePointId: 1
   "servicePointId": 1,
   "visitPurposeId": 1,
   "departmentId": 1,
-  "hostStaffId": null,
+  "hostStaffId": 2,
+  "hostContactName": null,
   "idMethod": "thai-id-card",
   "facePhotoBase64": "data:image/jpeg;base64,/9j/4AAQSkZJRg...",
   "wifiAccepted": true,
@@ -819,6 +893,13 @@ servicePointId: 1
   "vehiclePlate": null,
   "pdpaConsentId": 42
 }
+```
+
+> **หมายเหตุ `hostStaffId` / `hostContactName`:**
+> - เลือก staff จาก SELECT_HOST → ส่ง `hostStaffId` = id, `hostContactName = null`
+> - พิมพ์ชื่อเอง (free-text) → ส่ง `hostContactName` = ชื่อที่พิมพ์, `hostStaffId = null`
+> - ข้ามทั้งคู่ (requirePersonName = false) → ทั้ง 2 field = null
+> - ถ้า `requirePersonName = true` และ `hostStaffId = null` → API จะ reject ด้วย `MISSING_FIELDS`
 ```
 
 ### Appointment Check-in

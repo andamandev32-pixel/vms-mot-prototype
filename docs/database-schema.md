@@ -1403,6 +1403,7 @@ API Endpoints:
 | booking_code 🔒 | VARCHAR(30) | ✗ | รหัสนัดหมาย format: eVMS-YYYYMMDD-XXXX (running 4 หลัก reset ทุกวัน) |
 | visitor_id 🔗 | INT | ✗ | FK → visitors.id ผู้มาติดต่อ |
 | host_staff_id 🔗 | INT | ✓ | FK → staff.id ผู้ที่ต้องการพบ (null ถ้า require_person_name=false) |
+| host_contact_name | VARCHAR(120) | ✓ | ชื่อผู้ที่ต้องการพบ (free-text) — กรณีไม่อยู่ใน Staff DB หรือพิมพ์ชื่อเอง (ถ้า host_staff_id ≠ null ให้ใช้ host_staff_id แทน) |
 | visit_purpose_id 🔗 | INT | ✗ | FK → visit_purposes.id วัตถุประสงค์ |
 | department_id 🔗 | INT | ✗ | FK → departments.id แผนกที่ไป |
 | type | ENUM('official','meeting','document','contractor','delivery','other') | ✗ | ประเภทการนัดหมาย (VisitType) |
@@ -1553,6 +1554,7 @@ API Endpoints:
 | purpose | VARCHAR(200) | ✓ | Walk-in only: วัตถุประสงค์ |
 | visit_type | ENUM('official','meeting','document','contractor','delivery','other') | ✓ | Walk-in only: ประเภทการเข้าพื้นที่ |
 | host_staff_id 🔗 | INT | ✓ | Walk-in only: FK → staff.id |
+| host_contact_name | VARCHAR(120) | ✓ | Walk-in only: ชื่อผู้ที่ต้องการพบ (free-text) — snapshot จาก appointment.host_contact_name ตอน check-in |
 | department_id 🔗 | INT | ✓ | Walk-in only: FK → departments.id |
 | checkin_at | TIMESTAMP | ✗ | เวลาเข้าจริง |
 | checkin_channel | ENUM('kiosk','counter') | ✗ | ช่องทาง check-in |
