@@ -45,19 +45,31 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    // Return unique departments
-    const departmentMap = new Map<number, (typeof rules)[0]["department"]>();
+    // Return unique departments — เก็บ rule fields ด้วย (requirePersonName, requireApproval)
+    // ถ้ามีหลาย rule ต่อ department เดียวกัน (กรณีหายาก) ใช้ OR — ถ้า rule ใดบอกต้องระบุ ก็ถือว่าต้องระบุ
+    const departmentMap = new Map<number, { dept: (typeof rules)[0]["department"]; requirePersonName: boolean; requireApproval: boolean }>();
     for (const rule of rules) {
-      if (!departmentMap.has(rule.department.id)) {
-        departmentMap.set(rule.department.id, rule.department);
+      const existing = departmentMap.get(rule.department.id);
+      if (!existing) {
+        departmentMap.set(rule.department.id, {
+          dept: rule.department,
+          requirePersonName: rule.requirePersonName,
+          requireApproval: rule.requireApproval,
+        });
+      } else {
+        // OR logic: ถ้ามี rule ใดบังคับ → บังคับ
+        existing.requirePersonName = existing.requirePersonName || rule.requirePersonName;
+        existing.requireApproval = existing.requireApproval || rule.requireApproval;
       }
     }
 
-    const departments = Array.from(departmentMap.values()).map((dept) => ({
+    const departments = Array.from(departmentMap.values()).map(({ dept, requirePersonName, requireApproval }) => ({
       id: dept.id,
       name: dept.name,
       nameEn: dept.nameEn,
-      floors: dept.floorDepartments.map((fd) => ({
+      requirePersonName,
+      requireApproval,
+      floors: dept.floorDepartments.map((fd: (typeof dept.floorDepartments)[number]) => ({
         floorId: fd.floor.id,
         floorName: fd.floor.name,
         floorNameEn: fd.floor.nameEn,
