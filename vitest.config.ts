@@ -7,6 +7,9 @@ export default defineConfig({
     environment: 'node',
     include: ['tests/**/*.test.ts'],
     setupFiles: ['tests/setup.ts'],
+    // Integration tests share a single dev server + DB; parallel files surface
+    // a pre-existing bookingCode generation race. Run files sequentially.
+    fileParallelism: false,
   },
   resolve: {
     alias: { '@': path.resolve(__dirname, '.') },
