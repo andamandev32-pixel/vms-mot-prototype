@@ -102,9 +102,13 @@ export async function POST(request: NextRequest) {
 
     const autoApprove = !rule.requireApproval;
     const initialStatus = autoApprove ? "approved" : "pending";
+    // Group-level approver overrides rule-level approver when explicitly set
+    const effectiveApproverGroupId = group.approverGroupId ?? rule.approverGroupId;
 
     const parseDateOnly = (d: string) => new Date(d + "T00:00:00.000Z");
     const parseTime = (t: string) => new Date(`1970-01-01T${t}:00.000Z`);
+
+    const warnings: Array<{ type: string; message: string }> = [];
 
     // ═══════ Create Group + DaySchedules + Visitors + Appointments in transaction ═══════
     const result = await prisma.$transaction(async (tx) => {
@@ -163,6 +167,16 @@ export async function POST(request: NextRequest) {
           visitor = await tx.visitor.findFirst({
             where: { phone: v.phone, firstName: v.firstName, lastName: v.lastName },
           });
+          // No exact match — check if phone exists with a different name (potential typo)
+          if (!visitor) {
+            const byPhone = await tx.visitor.findFirst({ where: { phone: v.phone } });
+            if (byPhone) {
+              warnings.push({
+                type: "PHONE_MATCH_NAME_DIFF",
+                message: `เบอร์ ${v.phone} มีในระบบแล้วในชื่อ "${byPhone.firstName} ${byPhone.lastName}" — สร้างเป็นบุคคลใหม่ในชื่อ "${v.firstName} ${v.lastName}"`,
+              });
+            }
+          }
         }
         if (!visitor) {
           visitor = await tx.visitor.create({
@@ -236,7 +250,7 @@ export async function POST(request: NextRequest) {
         createdAppointments.push(appointment);
       }
 
-      return { group: appointmentGroup, appointments: createdAppointments, skipped };
+      return { group: appointmentGroup, appointments: createdAppointments, skipped, warnings };
     });
 
     // ═══════ Post-transaction: Send emails & notifications (async, non-blocking) ═══════
@@ -289,11 +303,11 @@ export async function POST(request: NextRequest) {
     }
 
     // Send approval notifications if required
-    if (!autoApprove && rule.approverGroupId) {
+    if (!autoApprove && effectiveApproverGroupId) {
       for (const appt of result.appointments) {
         sendApprovalNotification({
           appointmentId: appt.id,
-          approverGroupId: rule.approverGroupId,
+          approverGroupId: effectiveApproverGroupId,
         }).catch((err) => console.error("[BatchCreate] Approval notification error:", err));
       }
     }
@@ -304,6 +318,7 @@ export async function POST(request: NextRequest) {
       skipped: result.skipped,
       autoApproved: autoApprove,
       appointments: result.appointments,
+      warnings: result.warnings,
     });
   } catch (error) {
     console.error("POST /api/appointments/batch error:", error);

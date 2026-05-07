@@ -312,7 +312,10 @@ export default function CreateEventPage() {
 
       if (json.success) {
         addToast(`สร้างกิจกรรมสำเร็จ — ${json.data.created} นัดหมาย${json.data.autoApproved ? " (อนุมัติอัตโนมัติ)" : ""}`, "success");
-        setTimeout(() => router.push("/web/appointments/groups"), 1200);
+        if (Array.isArray(json.data.warnings)) {
+          json.data.warnings.forEach((w: { message: string }) => addToast(w.message, "info"));
+        }
+        setTimeout(() => router.push("/web/appointments/groups"), json.data.warnings?.length > 0 ? 3000 : 1200);
       } else {
         addToast(json.error?.message || "สร้างกิจกรรมไม่สำเร็จ", "error");
       }

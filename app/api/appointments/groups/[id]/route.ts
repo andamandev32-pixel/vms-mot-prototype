@@ -225,12 +225,48 @@ export async function PATCH(
       });
     }
 
-    // Cascade cancel to all appointments
+    // Cascade status change with statusLogs for traceability
     if (status === "cancelled") {
-      await prisma.appointment.updateMany({
+      const toCancel = await prisma.appointment.findMany({
         where: { groupId, status: { in: ["pending", "approved"] } },
-        data: { status: "cancelled" },
+        select: { id: true, status: true },
       });
+      if (toCancel.length > 0) {
+        await prisma.appointment.updateMany({
+          where: { id: { in: toCancel.map((a) => a.id) } },
+          data: { status: "cancelled" },
+        });
+        await prisma.appointmentStatusLog.createMany({
+          data: toCancel.map((a) => ({
+            appointmentId: a.id,
+            fromStatus: a.status,
+            toStatus: "cancelled",
+            changedBy: user.id,
+            reason: `Cascade จากการยกเลิกกลุ่ม "${group.name}"`,
+          })),
+        });
+      }
+    } else if (status === "active") {
+      // Revive cancelled appointments → set to pending (force re-approval)
+      const toRevive = await prisma.appointment.findMany({
+        where: { groupId, status: "cancelled" },
+        select: { id: true },
+      });
+      if (toRevive.length > 0) {
+        await prisma.appointment.updateMany({
+          where: { id: { in: toRevive.map((a) => a.id) } },
+          data: { status: "pending", approvedBy: null, approvedAt: null },
+        });
+        await prisma.appointmentStatusLog.createMany({
+          data: toRevive.map((a) => ({
+            appointmentId: a.id,
+            fromStatus: "cancelled",
+            toStatus: "pending",
+            changedBy: user.id,
+            reason: `Cascade จากการเปิดกลุ่ม "${group.name}" — ต้องอนุมัติใหม่`,
+          })),
+        });
+      }
     }
 
     return ok({ group: updated });
