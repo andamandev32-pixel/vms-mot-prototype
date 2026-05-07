@@ -116,6 +116,9 @@ POST /api/appointments/batch
     "timeStart": "09:00",
     "timeEnd": "16:00",
     "notifyOnCheckin": true,
+    "approverGroupId": 7,
+    "sendVisitorEmail": true,
+    "staffNotifyConfig": { "onCheckin": true, "onApproval": true, "onCancel": false },
     "daySchedules": [
       { "date": "2026-04-10", "timeStart": "09:00", "timeEnd": "12:00", "notes": "ช่วงเช้า" },
       { "date": "2026-04-11", "timeStart": "13:00", "timeEnd": "16:00", "notes": "ช่วงบ่าย" }
@@ -131,11 +134,19 @@ POST /api/appointments/batch
 ### Processing Flow
 
 1. ตรวจสอบ rule enforcement เดียวกับ single appointment
-2. สร้าง `AppointmentGroup` record
-3. สร้าง `AppointmentGroupDaySchedule` records (ถ้ามี)
-4. สำหรับแต่ละ visitor: upsert visitor record -> สร้าง Appointment ผูกกับ group
-5. ทั้งหมดอยู่ใน Prisma `$transaction` -- ถ้า fail จะ rollback ทั้งหมด
-6. Visitor ที่ไม่มีชื่อจะถูก skip
+2. **Resolve approver**: `effectiveApproverGroupId = group.approverGroupId ?? rule.approverGroupId` (group-level override rule-level)
+3. สร้าง `AppointmentGroup` record
+4. สร้าง `AppointmentGroupDaySchedule` records (ถ้ามี)
+5. สำหรับแต่ละ visitor:
+   - lookup ด้วย `phone + firstName + lastName` (exact match) → ใช้ record เดิม
+   - ถ้า no match แต่ `phone` เดียวกันมีในระบบ (ชื่อต่าง) → push warning `PHONE_MATCH_NAME_DIFF` + สร้าง record ใหม่
+   - ถ้า no match → สร้าง record ใหม่
+6. สร้าง Appointment ผูกกับ group
+7. ทั้งหมดอยู่ใน Prisma `$transaction` -- ถ้า fail จะ rollback ทั้งหมด
+8. Visitor ที่ไม่มีชื่อจะถูก skip
+9. หลัง transaction (async, non-blocking):
+   - ส่ง invitation email ให้ visitors ที่มี email (ถ้า `sendVisitorEmail=true`)
+   - ส่ง approval notification ไปที่ `effectiveApproverGroupId` (ถ้า rule.requireApproval=true)
 
 ### Response
 
@@ -147,10 +158,22 @@ POST /api/appointments/batch
     "created": 15,
     "skipped": 0,
     "autoApproved": true,
-    "appointments": [...]
+    "appointments": [...],
+    "warnings": [
+      {
+        "type": "PHONE_MATCH_NAME_DIFF",
+        "message": "เบอร์ 0812345678 มีในระบบแล้วในชื่อ \"สมชาย ใจดี\" — สร้างเป็นบุคคลใหม่ในชื่อ \"สมชัย ใจดี\""
+      }
+    ]
   }
 }
 ```
+
+### Warning Types
+
+| Type | Trigger | Action |
+|---|---|---|
+| `PHONE_MATCH_NAME_DIFF` | ผู้ใช้ป้อนเบอร์ที่มีในระบบ แต่ชื่อ-นามสกุลต่างจากเดิม | สร้าง visitor record ใหม่ + แสดง warning ให้ FE โชว์ toast |
 
 ---
 
@@ -213,10 +236,12 @@ IF rule.requireApproval = false
 ### Approval via Notification
 
 เมื่อ `rule.requireApproval = true` ระบบจะ:
-1. ค้นหา `approverGroupId` จาก rule
+1. **Resolve approver group**: ใช้ `group.approverGroupId` (ถ้ามี — กรณี batch) หรือ `appointment.approverGroupId` ก่อน; ถ้าไม่มีจึง fallback ไป `rule.approverGroupId`
 2. ค้นหาสมาชิกใน `ApproverGroup` ที่ `receiveNotification = true`
 3. ส่ง notification type `approval-needed` ผ่าน LINE / Email ตาม `notifyChannels`
 4. ผู้อนุมัติกดอนุมัติ/ปฏิเสธผ่าน LINE Rich Menu หรือ Web Dashboard
+
+> **Group-level override** (batch): ถ้าผู้สร้าง batch ระบุ `group.approverGroupId` ในฟอร์ม → ใช้ค่านั้น override `rule.approverGroupId` สำหรับทุก appointment ใน group นั้น
 
 ---
 
@@ -337,10 +362,23 @@ GET /api/appointments/groups
 ### AppointmentGroup Lifecycle
 
 ```
+[active] --- PATCH status:cancelled ---> [cancelled]
+   ^                                         |
+   |                                         |
+   +-- PATCH status:active ------------------+
+                                             |
 [active] --- (all appointments expired/cancelled) ---> [completed]
 ```
 
-ตรวจสอบโดย `autoExpireAppointments()` ใน `lib/overstay-checker.ts`
+ตรวจสอบ auto-expire โดย `autoExpireAppointments()` ใน `lib/overstay-checker.ts`
+
+### Group Status Cascade (PATCH /api/appointments/groups/:id)
+
+| Group transition | Cascade to appointments | StatusLog |
+|---|---|---|
+| `active → cancelled` | `pending`/`approved` → `cancelled` (ข้าม cancelled เดิม) | `Cascade จากการยกเลิกกลุ่ม "..."` |
+| `cancelled → active` | `cancelled` → `pending` (clear `approvedBy`/`approvedAt` → ต้องอนุมัติใหม่) | `Cascade จากการเปิดกลุ่ม "..." — ต้องอนุมัติใหม่` |
+| toggle `notifyOnCheckin` | cascade ค่าใหม่ไปทุก appointment ใน group | — |
 
 ---
 

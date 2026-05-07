@@ -1646,6 +1646,8 @@ const appointmentGroupsApi: PageApiDoc = {
       auth: "user",
       requestBody: [
         { name: "group.name", type: "string", required: true, description: "ชื่อกลุ่ม" },
+        { name: "group.nameEn", type: "string", required: false, description: "ชื่อภาษาอังกฤษ" },
+        { name: "group.description", type: "string", required: false, description: "รายละเอียดกิจกรรม" },
         { name: "group.visitPurposeId", type: "number", required: true, description: "FK → visit_purposes.id" },
         { name: "group.departmentId", type: "number", required: true, description: "FK → departments.id" },
         { name: "group.hostStaffId", type: "number", required: false, description: "FK → staff.id (optional ถ้า require_person_name=false)" },
@@ -1654,11 +1656,40 @@ const appointmentGroupsApi: PageApiDoc = {
         { name: "group.dateEnd", type: "string", required: false, description: "วันสิ้นสุด (required ถ้า period)" },
         { name: "group.timeStart", type: "string", required: true, description: "เวลาเริ่ม (HH:MM)" },
         { name: "group.timeEnd", type: "string", required: true, description: "เวลาสิ้นสุด (HH:MM)" },
+        { name: "group.building", type: "string", required: false, description: "อาคาร" },
+        { name: "group.floor", type: "string", required: false, description: "ชั้น" },
+        { name: "group.room", type: "string", required: false, description: "ห้อง" },
         { name: "group.notifyOnCheckin", type: "boolean", required: false, description: "แจ้งเตือน check-in (default: false สำหรับ batch)" },
+        { name: "group.approverGroupId", type: "number", required: false, description: "FK → approver_groups.id — override rule.approverGroupId เมื่อระบุ (ถ้า null ใช้จาก rule)" },
+        { name: "group.sendVisitorEmail", type: "boolean", required: false, description: "ส่งอีเมลเชิญให้ผู้เข้าร่วมที่มี email (default: false)" },
+        { name: "group.staffNotifyConfig", type: "object", required: false, description: "{onCheckin, onApproval, onCancel} เก็บเป็น JSON" },
         { name: "group.daySchedules", type: "object[]", required: false, description: "เวลาแยกรายวัน [{date, timeStart, timeEnd, notes}]" },
-        { name: "visitors", type: "object[]", required: true, description: "รายชื่อ [{firstName, lastName, company, phone}]" },
+        { name: "visitors", type: "object[]", required: true, description: "รายชื่อ [{firstName, lastName, company, phone, email, idNumber, idType}]" },
       ],
-      notes: ["ใช้ visit_purpose_department_rules enforce rules", "auto-approve ถ้า requireApproval=false", "สร้าง AppointmentGroup + N Appointments ใน transaction"],
+      responseExample: `{
+  "success": true,
+  "data": {
+    "group": { "id": 42, "name": "สัมมนา IT 2026", "entryMode": "period", "totalExpected": 3 },
+    "created": 3,
+    "skipped": 0,
+    "autoApproved": true,
+    "appointments": [{ "id": 101, "bookingCode": "eVMS-20260507-0001", "status": "approved" }],
+    "warnings": [
+      {
+        "type": "PHONE_MATCH_NAME_DIFF",
+        "message": "เบอร์ 0812345678 มีในระบบแล้วในชื่อ \\"สมชาย ใจดี\\" — สร้างเป็นบุคคลใหม่ในชื่อ \\"สมชัย ใจดี\\""
+      }
+    ]
+  }
+}`,
+      notes: [
+        "ใช้ visit_purpose_department_rules enforce rules (active rules only)",
+        "auto-approve ถ้า rule.requireApproval=false; ถ้า true ต้องมี approver group → ส่ง notification",
+        "Approver resolution: group.approverGroupId ?? rule.approverGroupId (group-level override rule-level)",
+        "สร้าง AppointmentGroup + AppointmentGroupDaySchedule + Visitors (upsert) + N Appointments ใน 1 transaction",
+        "Visitor dedup: lookup ด้วย phone+firstName+lastName ก่อน; ถ้า phone ตรงแต่ name ต่าง → push warning PHONE_MATCH_NAME_DIFF + สร้างใหม่",
+        "Email + approval notification ส่งหลัง transaction (async, non-blocking)",
+      ],
     },
     {
       method: "GET",
@@ -1707,17 +1738,22 @@ const appointmentGroupsApi: PageApiDoc = {
     {
       method: "PATCH",
       path: "/api/appointments/groups/:id",
-      summary: "แก้ไข group (toggle แจ้งเตือน / ยกเลิก)",
-      summaryEn: "Update group notification toggle or cancel",
+      summary: "แก้ไข group (toggle แจ้งเตือน / ยกเลิก / เปิดใช้งานใหม่)",
+      summaryEn: "Update group notification toggle, cancel, or reactivate",
       auth: "user",
       pathParams: [
         { name: "id", type: "number", required: true, description: "Group ID" },
       ],
       requestBody: [
         { name: "notifyOnCheckin", type: "boolean", required: false, description: "เปิด/ปิดแจ้งเตือน (cascade ทุก appointment)" },
-        { name: "status", type: "string", required: false, description: "cancelled = ยกเลิกทั้ง group" },
+        { name: "status", type: "string", required: false, description: "cancelled | active — cancelled ยกเลิกทุก appointment ที่ pending/approved → cancelled; active เปิดกลุ่มกลับ + reset cancelled appointments → pending (ต้องอนุมัติใหม่)" },
       ],
-      notes: ["เฉพาะ creator หรือ admin", "cascade notifyOnCheckin ไปทุก appointment ใน group"],
+      notes: [
+        "เฉพาะ creator หรือ admin",
+        "cascade notifyOnCheckin ไปทุก appointment ใน group",
+        "cancel cascade: pending/approved → cancelled (ข้าม cancelled เดิม) + create AppointmentStatusLog",
+        "reactivate cascade (cancelled→active): cancelled → pending (clear approvedBy/approvedAt) + create AppointmentStatusLog",
+      ],
     },
     {
       method: "PATCH",

@@ -201,3 +201,80 @@
 - API: `PATCH /api/appointments/groups/:groupId/notify`
 - Rule: Cascade notify toggle
 - File: `src/api/appointments/groups.ts`, `src/services/notificationService.ts`
+
+---
+
+### TC-BG-09: เปิดกลุ่มกลับ (PATCH status=active) — cascade cancelled → pending
+
+**Preconditions:**
+- มี Group ที่ `status="cancelled"` (จาก TC-BG-07) — appointments ทั้งหมดเป็น `cancelled`
+
+**Steps:**
+1. ส่ง `PATCH /api/appointments/groups/:groupId` พร้อม body `{ "status": "active" }`
+2. ตรวจสอบ response, appointments ทุกตัว, และ AppointmentStatusLog
+
+**Expected Result:**
+- Response status `200 OK`
+- Group `status` = `"active"`
+- ทุก appointment ที่เคย `cancelled` กลับเป็น `status="pending"` (force re-approval)
+- `approvedBy` และ `approvedAt` ถูก clear เป็น `null`
+- มี AppointmentStatusLog entry ใหม่ `from: cancelled, to: pending, reason: "Cascade จากการเปิดกลุ่ม "..." — ต้องอนุมัติใหม่"`
+- ผู้อนุมัติได้รับ notification ใหม่ (ถ้า rule.requireApproval=true)
+
+**Related:**
+- API: `PATCH /api/appointments/groups/:groupId`
+- Rule: Bidirectional status cascade (Track 2 fix)
+- File: `app/api/appointments/groups/[id]/route.ts`
+
+---
+
+### TC-BG-10: Visitor dedup — เบอร์ตรง ชื่อต่าง → emit warning PHONE_MATCH_NAME_DIFF
+
+**Preconditions:**
+- ในระบบมี Visitor record `{ firstName: "สมชาย", lastName: "ใจดี", phone: "0812345678" }` แล้ว
+
+**Steps:**
+1. ส่ง `POST /api/appointments/batch` พร้อม visitor ใหม่ที่ใช้เบอร์เดียวกันแต่ชื่อต่าง:
+   ```json
+   { "firstName": "สมชัย", "lastName": "ใจดี", "phone": "0812345678" }
+   ```
+2. ตรวจสอบ response
+
+**Expected Result:**
+- Response status `200 OK` (ไม่ block การสร้าง)
+- สร้าง Visitor record ใหม่ (`สมชัย ใจดี`) — ไม่ใช้ record เดิม
+- `data.warnings` เป็น array มี element ลักษณะ:
+  ```json
+  {
+    "type": "PHONE_MATCH_NAME_DIFF",
+    "message": "เบอร์ 0812345678 มีในระบบแล้วในชื่อ \"สมชาย ใจดี\" — สร้างเป็นบุคคลใหม่ในชื่อ \"สมชัย ใจดี\""
+  }
+  ```
+- FE หน้า create page แสดง warning เป็น toast info พร้อมยืดเวลา redirect 3s ให้อ่านได้ทัน
+
+**Related:**
+- API: `POST /api/appointments/batch`
+- Rule: Visitor dedup conflict surfacing (Track 2 fix)
+- File: `app/api/appointments/batch/route.ts`, `app/web/(app)/appointments/groups/create/page.tsx`
+
+---
+
+### TC-BG-11: Group-level approverGroupId override rule-level
+
+**Preconditions:**
+- มี VisitPurposeDepartmentRule ที่ `requireApproval=true` และ `approverGroupId=10` (กลุ่มผู้อนุมัติเริ่มต้น)
+- มี ApproverGroup id=20 (กลุ่มอื่นที่อยากให้รับนัดหมายนี้แทน)
+
+**Steps:**
+1. ส่ง `POST /api/appointments/batch` พร้อม `group.approverGroupId=20`
+2. ตรวจสอบว่า approval notification ถูกส่งไป group id=20 (ไม่ใช่ 10)
+
+**Expected Result:**
+- Response status `200 OK`, `autoApproved=false`
+- Approval notification ถูกส่งไปสมาชิกของ ApproverGroup id=20 (override จาก rule)
+- ถ้าไม่ระบุ `group.approverGroupId` (หรือ null) → fallback ไปใช้ `rule.approverGroupId=10` ตามเดิม
+
+**Related:**
+- API: `POST /api/appointments/batch`
+- Rule: Group-level approver override (Track 2 fix)
+- File: `app/api/appointments/batch/route.ts:104,292`
