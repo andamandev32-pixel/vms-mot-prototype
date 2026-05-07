@@ -163,8 +163,50 @@ export interface Appointment {
   lastEntryStatus?: string | null;  // status of the latest visit entry
   visitPurposeId?: number;          // for group-based filtering
   departmentId?: number;            // for group-based filtering
+  groupId?: number | null;          // link to AppointmentGroup เมื่อสร้างเป็นหมู่คณะ
   // Linked entries (populated for UI display):
   entries?: VisitEntry[];
+}
+
+export interface AppointmentGroupDaySchedule {
+  id?: number;
+  groupId?: number;
+  date: string;
+  timeStart: string;
+  timeEnd: string;
+  notes?: string | null;
+}
+
+export interface AppointmentGroup {
+  id: number;
+  name: string;
+  nameEn?: string | null;
+  description?: string | null;
+  visitPurposeId: number;
+  departmentId: number;
+  hostStaffId?: number | null;
+  entryMode: "single" | "period";
+  dateStart: string;
+  dateEnd?: string | null;
+  timeStart: string;
+  timeEnd: string;
+  room?: string | null;
+  building?: string | null;
+  floor?: string | null;
+  totalExpected: number;
+  notifyOnCheckin: boolean;
+  approverGroupId?: number | null;
+  sendVisitorEmail: boolean;
+  staffNotifyConfig?: string | null;
+  createdByStaffId: number;
+  status: "active" | "cancelled" | "completed";
+  createdAt: string;
+  updatedAt: string;
+  // Optional populated relations (UI display)
+  daySchedules?: AppointmentGroupDaySchedule[];
+  visitPurpose?: { id: number; name: string; icon?: string };
+  department?: { id: number; name: string };
+  createdByStaff?: { id: number; name: string };
 }
 
 export interface VisitNotification {

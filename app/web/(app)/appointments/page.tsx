@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useMemo, useCallback, useEffect } from "react";
+import Link from "next/link";
 import Topbar from "@/components/web/Topbar";
 import { DatabaseSchemaModal, DbSchemaButton } from "@/components/web/DatabaseSchemaModal";
 import { FlowchartModal, FlowRulesButton } from "@/components/web/FlowchartModal";
@@ -196,6 +197,7 @@ export default function AppointmentsPage() {
   const [dateFilter, setDateFilter] = useState("");
   const [dateSortDir, setDateSortDir] = useState<"desc" | "asc">("desc");
   const [showModal, setShowModal] = useState(false);
+  const [showCreateMenu, setShowCreateMenu] = useState(false);
   const [showDetailModal, setShowDetailModal] = useState<Appointment | null>(null);
   const [editAppointment, setEditAppointment] = useState<Appointment | null>(null);
   const [slipModalApt, setSlipModalApt] = useState<Appointment | null>(null);
@@ -427,11 +429,52 @@ export default function AppointmentsPage() {
             <div className="flex gap-2 w-full md:w-auto">
               <Button variant="ghost" className="h-10 px-4 text-text-muted" onClick={clearFilters}>ล้างตัวกรอง</Button>
             </div>
-            <div className="ml-auto">
-              <Button variant="secondary" className="h-10 shadow-sm" onClick={() => setShowModal(true)}>
-                <Plus size={18} className="mr-2" />
-                สร้างนัดหมาย
-              </Button>
+            <div className="ml-auto relative">
+              {isVisitor ? (
+                <Button variant="secondary" className="h-10 shadow-sm" onClick={() => setShowModal(true)}>
+                  <Plus size={18} className="mr-2" />
+                  สร้างนัดหมาย
+                </Button>
+              ) : (
+                <>
+                  <Button variant="secondary" className="h-10 shadow-sm" onClick={() => setShowCreateMenu(v => !v)}>
+                    <Plus size={18} className="mr-2" />
+                    สร้างนัดหมาย
+                    <ChevronDown size={14} className="ml-2" />
+                  </Button>
+                  {showCreateMenu && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setShowCreateMenu(false)} />
+                      <div className="absolute right-0 top-full mt-1 w-72 rounded-lg border border-border bg-white shadow-lg z-50 overflow-hidden">
+                        <button
+                          type="button"
+                          onClick={() => { setShowCreateMenu(false); setShowModal(true); }}
+                          className="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-start gap-3 transition-colors"
+                        >
+                          <UserPlus size={18} className="text-primary mt-0.5 shrink-0" />
+                          <div>
+                            <p className="text-sm font-semibold text-text-primary">รายบุคคล</p>
+                            <p className="text-xs text-text-muted">ผู้ติดต่อหลัก + ผู้ติดตาม</p>
+                          </div>
+                        </button>
+                        <Link
+                          href="/web/appointments/groups/create"
+                          onClick={() => setShowCreateMenu(false)}
+                          className="block px-4 py-3 hover:bg-gray-50 border-t border-border transition-colors"
+                        >
+                          <div className="flex items-start gap-3">
+                            <Users size={18} className="text-purple-700 mt-0.5 shrink-0" />
+                            <div>
+                              <p className="text-sm font-semibold text-text-primary">หมู่คณะ</p>
+                              <p className="text-xs text-text-muted">หลายคนพร้อมกัน + import Excel</p>
+                            </div>
+                          </div>
+                        </Link>
+                      </div>
+                    </>
+                  )}
+                </>
+              )}
             </div>
           </CardContent>
         </Card>
@@ -619,6 +662,12 @@ function AppointmentRow({ apt, isVisitor, onView, onEdit, onNotify, onApprove, o
           <div>
             <p className="font-bold text-text-primary">{apt.visitor.name}</p>
             <p className="text-xs text-text-secondary">{apt.visitor.company}</p>
+            {apt.groupId && (
+              <span className="inline-flex items-center gap-1 mt-1 text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
+                <Users size={10} />
+                หมู่คณะ #{apt.groupId}
+              </span>
+            )}
           </div>
         </div>
       </td>
@@ -2057,6 +2106,24 @@ function CreateAppointmentDrawer({ open, onClose }: { open: boolean; onClose: ()
       width="w-[640px]"
     >
       <div className="p-6 space-y-6">
+
+          {/* Group appointment shortcut banner */}
+          <Link
+            href="/web/appointments/groups/create"
+            onClick={onClose}
+            className="flex items-center justify-between gap-3 p-3 rounded-xl border border-purple-200 bg-purple-50 hover:bg-purple-100 transition-colors group"
+          >
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-purple-100 flex items-center justify-center text-purple-700 shrink-0">
+                <Users size={18} />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-purple-900">มาแบบหมู่คณะ?</p>
+                <p className="text-xs text-purple-700">สร้างรายการแบบกลุ่ม + import รายชื่อจาก Excel</p>
+              </div>
+            </div>
+            <ChevronRight size={16} className="text-purple-700 group-hover:translate-x-0.5 transition-transform shrink-0" />
+          </Link>
 
           {/* Blacklist Alerts */}
           {blacklistAlerts.length > 0 && (
