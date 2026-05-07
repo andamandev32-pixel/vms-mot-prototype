@@ -112,17 +112,17 @@ export default function CreateEventPage() {
   useEffect(() => {
     fetch("/api/visit-purposes?limit=100", { credentials: "include" })
       .then((r) => r.json())
-      .then((j) => { if (j.success) setPurposes(j.data.purposes ?? j.data ?? []); })
+      .then((j) => { if (j.success) setPurposes(j.data.visitPurposes ?? j.data.purposes ?? []); })
       .catch(() => {});
 
     fetch("/api/locations/departments?limit=100", { credentials: "include" })
       .then((r) => r.json())
-      .then((j) => { if (j.success) setDepartments(j.data.departments ?? j.data ?? []); })
+      .then((j) => { if (j.success) setDepartments(j.data.departments ?? []); })
       .catch(() => {});
 
     fetch("/api/approver-groups?limit=100", { credentials: "include" })
       .then((r) => r.json())
-      .then((j) => { if (j.success) setApproverGroups(j.data.approverGroups ?? j.data ?? []); })
+      .then((j) => { if (j.success) setApproverGroups(j.data.groups ?? j.data.approverGroups ?? []); })
       .catch(() => {});
   }, []);
 
