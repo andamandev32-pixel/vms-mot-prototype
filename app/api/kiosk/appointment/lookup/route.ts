@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     if (!auth) return err("UNAUTHORIZED", "กรุณาเข้าสู่ระบบ", 401);
 
     const body = await request.json();
-    const { qrCodeData } = body as { qrCodeData?: string; servicePointId?: number };
+    const { qrCodeData } = body as { qrCodeData?: string };
 
     if (!qrCodeData?.trim()) return err("MISSING_FIELDS", "กรุณาระบุ qrCodeData");
 
@@ -78,14 +78,19 @@ export async function POST(request: NextRequest) {
         id: appointment.id,
         bookingCode: appointment.bookingCode,
         visitorName: appointment.visitor?.name || "",
+        visitorNameEn: appointment.visitor?.nameEn || "",
         visitorCompany: appointment.visitor?.company || "",
         hostName: appointment.hostStaff?.name || "",
         hostDepartment: appointment.department?.name || "",
         hostFloor: fd?.floor?.name || "",
         location: fd?.floor?.building?.name || "",
+        locationEn: fd?.floor?.building?.name || "",
         date: appointment.dateStart.toLocaleDateString("th-TH", { dateStyle: "long" }),
+        timeStart: appointment.timeStart || "—",
+        timeEnd: appointment.timeEnd || "—",
         timeSlot: `${appointment.timeStart || "—"} — ${appointment.timeEnd || "—"}`,
         purposeName: appointment.visitPurpose?.name || appointment.purpose || "",
+        purposeNameEn: appointment.visitPurpose?.nameEn || appointment.visitPurpose?.name || appointment.purpose || "",
         purposeIcon: appointment.visitPurpose?.icon || "📋",
         status: appointment.status,
         wifiRequested: appointment.wifiRequested || false,
