@@ -1067,74 +1067,92 @@ Kiosk และ Counter จะเรียก endpoint นี้ตอน mount 
 
 ## 10. QR_SCAN — ค้นหานัดหมายจาก QR Code
 
-### `GET /api/search/appointments?q={bookingCode}`
+### `POST /api/kiosk/appointment/lookup`
 
-> **Hook:** `useAppointmentLookup()` from `lib/hooks/use-kiosk.ts`
+> **Auth:** Device Token (Kiosk) หรือ Staff Token
 > **Status:** ✅ Implemented
-> **หมายเหตุ:** Spec เดิมออกแบบเป็น `POST /kiosk/appointment/lookup-qr` แต่ implementation ใช้ search endpoint
 
-**Query Parameters:**
-- `q` — bookingCode, visitor name, purpose name
-
-**Request:**
+**Request Body:**
 
 ```json
 {
-  "qrCodeData": "eVMS-20260315-0042",
-  "servicePointId": 1
+  "qrCodeData": "eVMS-20260315-0042"
 }
 ```
 
-**Response — พบนัดหมาย:**
+> **หมายเหตุ:** ไม่ต้องส่ง `servicePointId` — auth token ระบุ device/kiosk ได้เองแล้ว
+
+**Response — พบนัดหมาย (approved/confirmed):**
 
 ```json
 {
-  "found": true,
-  "appointment": {
-    "bookingCode": "eVMS-20260315-0042",
-    "visitorName": "นายสมชาย ใจดี",
-    "visitorCompany": "บริษัท ABC จำกัด",
-    "hostName": "นางสาวพิมพา เกษมศรี",
-    "hostDepartment": "กองการต่างประเทศ",
-    "hostFloor": "ชั้น 5",
-    "location": "ศูนย์ราชการ อาคาร C",
-    "locationEn": "Government Center Building C",
-    "date": "2026-03-15",
-    "dateEnd": null,
-    "timeSlot": "10:00-11:30",
-    "entryMode": "single",
-    "purposeName": "ประชุม / สัมมนา",
-    "purposeNameEn": "Meeting / Seminar",
-    "purposeIcon": "📋",
-    "status": "approved",
-    "wifiRequested": true,
-    "lineLinked": true,
-    "requirePhoto": true
+  "success": true,
+  "data": {
+    "found": true,
+    "appointment": {
+      "id": 42,
+      "bookingCode": "eVMS-20260315-0042",
+      "visitorName": "นายสมชาย ใจดี",
+      "visitorNameEn": "Mr. Somchai Jaidee",
+      "visitorCompany": "บริษัท ABC จำกัด",
+      "hostName": "นางสาวพิมพา เกษมศรี",
+      "hostDepartment": "กองการต่างประเทศ",
+      "hostFloor": "ชั้น 5",
+      "location": "กระทรวงการท่องเที่ยวและกีฬา",
+      "locationEn": "Ministry of Tourism and Sports",
+      "date": "15 มีนาคม 2569",
+      "timeStart": "10:00",
+      "timeEnd": "11:30",
+      "timeSlot": "10:00 — 11:30",
+      "purposeName": "ประชุม / สัมมนา",
+      "purposeNameEn": "Meeting / Seminar",
+      "purposeIcon": "📋",
+      "status": "approved",
+      "wifiRequested": true
+    }
   }
 }
 ```
 
-**Response — ไม่พบ:**
+**Response — ไม่พบนัดหมาย:**
 
 ```json
 {
-  "found": false,
-  "reason": "not-found",
-  "message": "ไม่พบนัดหมายที่ตรงกับ QR Code นี้",
-  "messageEn": "No appointment found for this QR code"
+  "success": true,
+  "data": {
+    "found": false,
+    "reason": "not-found",
+    "message": "ไม่พบนัดหมายจาก QR Code ที่สแกน"
+  }
 }
 ```
 
-**Response — นัดหมายยังไม่ได้อนุมัติ:**
+**Response — ไม่ตรงวันที่:**
 
 ```json
 {
-  "found": true,
-  "canCheckin": false,
-  "reason": "pending-approval",
-  "message": "นัดหมายนี้ยังรอการอนุมัติ",
-  "messageEn": "This appointment is still pending approval",
-  "appointment": { "..." : "..." }
+  "success": true,
+  "data": {
+    "found": false,
+    "reason": "wrong-date",
+    "message": "นัดหมายนี้ไม่ใช่วันนี้"
+  }
+}
+```
+
+**Response — สถานะไม่ใช่ approved (pending/rejected/cancelled):**
+
+```json
+{
+  "success": true,
+  "data": {
+    "found": true,
+    "appointment": {
+      "bookingCode": "eVMS-20260315-0042",
+      "status": "pending",
+      "message": "นัดหมายรอการอนุมัติ"
+    }
+  }
 }
 ```
 
