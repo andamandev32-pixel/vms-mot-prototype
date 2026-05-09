@@ -270,8 +270,14 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Determine creator (used for auth, auto-approve rule, and DB write)
+    const createdBy = auth.authType === "kiosk" ? "kiosk" : (auth.user.role === "visitor" ? "visitor" : "staff");
+
     // Auto-approve logic
-    const autoApprove = !rule.requireApproval;
+    const ruleAllowsAuto = !rule.requireApproval;
+    // Staff adding an appointment under an existing group = pre-approved (group is staff-curated)
+    const staffWithGroup = createdBy === "staff" && groupId;
+    const autoApprove = ruleAllowsAuto || !!staffWithGroup;
     const initialStatus = autoApprove ? "approved" : "pending";
 
     // ═══════ Validate entities ═══════
@@ -304,8 +310,6 @@ export async function POST(request: NextRequest) {
     const seq = lastAppt ? parseInt(lastAppt.bookingCode.slice(-4)) + 1 : 1;
     const bookingCode = `eVMS-${today}-${String(seq).padStart(4, "0")}`;
 
-    // Determine createdBy
-    const createdBy = auth.authType === "kiosk" ? "kiosk" : (auth.user.role === "visitor" ? "visitor" : "staff");
 
     // Parse time fields — Prisma @db.Time expects a Date with time portion
     const parseDateOnly = (d: string) => new Date(d + "T00:00:00.000Z");

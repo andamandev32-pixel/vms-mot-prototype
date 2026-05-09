@@ -48,8 +48,10 @@ export async function POST(request: NextRequest) {
         notifyOnCheckin?: boolean;
         approverGroupId?: number | null;
         sendVisitorEmail?: boolean;
-        staffNotifyConfig?: Record<string, boolean>;
+        staffNotifyConfig?: Record<string, boolean | number | number[]>;
         daySchedules?: Array<{ date: string; timeStart: string; timeEnd: string; notes?: string }>;
+        approveOnCreate?: boolean;
+        approvalNotifyTargets?: { creator?: boolean; responsibleGroup?: boolean };
       };
       visitors: Array<{
         firstName: string;
@@ -100,7 +102,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const autoApprove = !rule.requireApproval;
+    // Approval logic: rule decides by default; staff can self-approve via approveOnCreate
+    const ruleAllowsAuto = !rule.requireApproval;
+    const autoApprove = ruleAllowsAuto || group.approveOnCreate === true;
     const initialStatus = autoApprove ? "approved" : "pending";
     // Group-level approver overrides rule-level approver when explicitly set
     const effectiveApproverGroupId = group.approverGroupId ?? rule.approverGroupId;
@@ -237,7 +241,9 @@ export async function POST(request: NextRequest) {
                 toStatus: initialStatus,
                 changedBy: user.id,
                 reason: autoApprove
-                  ? `สร้างจาก batch "${group.name}" — อนุมัติอัตโนมัติ`
+                  ? (group.approveOnCreate
+                      ? `สร้างจาก batch "${group.name}" — เจ้าหน้าที่อนุมัติเอง`
+                      : `สร้างจาก batch "${group.name}" — อนุมัติอัตโนมัติ (rule)`)
                   : `สร้างจาก batch "${group.name}" — รอการอนุมัติ`,
               },
             },
@@ -302,13 +308,20 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Send approval notifications if required
+    // Approval notifications — only when not auto-approved; targets controlled by approvalNotifyTargets
     if (!autoApprove && effectiveApproverGroupId) {
+      const targets = group.approvalNotifyTargets ?? { creator: true, responsibleGroup: true };
       for (const appt of result.appointments) {
-        sendApprovalNotification({
-          appointmentId: appt.id,
-          approverGroupId: effectiveApproverGroupId,
-        }).catch((err) => console.error("[BatchCreate] Approval notification error:", err));
+        if (targets.responsibleGroup) {
+          sendApprovalNotification({
+            appointmentId: appt.id,
+            approverGroupId: effectiveApproverGroupId,
+          }).catch((e) => console.error("[BatchCreate] Approval notification (group):", e));
+        }
+        if (targets.creator) {
+          // Creator-targeted approval notification dispatcher not yet wired (config-only).
+          console.log(`[BatchCreate] notify creator (staff.id=${user.id}) for appt ${appt.id} — TODO`);
+        }
       }
     }
 
