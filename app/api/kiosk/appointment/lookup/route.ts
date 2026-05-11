@@ -28,9 +28,21 @@ export async function POST(request: NextRequest) {
         visitor: { select: { id: true, name: true, nameEn: true, company: true } },
         hostStaff: { select: { id: true, name: true, nameEn: true, position: true } },
         department: {
-          include: {
+          select: {
+            id: true,
+            name: true,
+            nameEn: true,
             floorDepartments: {
-              include: { floor: { include: { building: true } } },
+              include: {
+                floor: {
+                  select: {
+                    id: true,
+                    name: true,
+                    nameEn: true,
+                    building: { select: { id: true, name: true, nameEn: true } },
+                  },
+                },
+              },
               take: 1,
             },
           },
@@ -55,12 +67,50 @@ export async function POST(request: NextRequest) {
 
     // Check status
     const validStatuses = ["approved", "confirmed"];
+    const fd = appointment.department?.floorDepartments?.[0];
+    const floor = fd?.floor;
+    const building = floor?.building;
+
+    // ── format location string ────────────────────────────────────────────
+    // TH: "ห้อง 301 ชั้น 3 อาคาร C"  EN: "Room 301 Floor 3 Building C"
+    const locationTh = [
+      floor?.name,
+      building?.name,
+    ].filter(Boolean).join(" ");
+    const locationEn = [
+      floor?.nameEn,
+      building?.nameEn,
+    ].filter(Boolean).join(" ");
+
+    const appointmentDetails = {
+      id: appointment.id,
+      bookingCode: appointment.bookingCode,
+      status: appointment.status,
+      visitorName: appointment.visitor?.name || "",
+      visitorNameEn: appointment.visitor?.nameEn || "",
+      visitorCompany: appointment.visitor?.company || "",
+      hostName: appointment.hostStaff?.name || "",
+      hostNameEn: appointment.hostStaff?.nameEn || "",
+      hostDepartment: appointment.department?.name || "",
+      hostDepartmentEn: appointment.department?.nameEn || "",
+      location: locationTh,
+      locationEn: locationEn || locationTh,
+      date: appointment.dateStart.toLocaleDateString("th-TH", { dateStyle: "long" }),
+      dateEn: appointment.dateStart.toLocaleDateString("en-GB", { dateStyle: "long" }),
+      timeStart: appointment.timeStart || "—",
+      timeEnd: appointment.timeEnd || "—",
+      timeSlot: `${appointment.timeStart || "—"} — ${appointment.timeEnd || "—"}`,
+      purposeName: appointment.visitPurpose?.name || appointment.purpose || "",
+      purposeNameEn: appointment.visitPurpose?.nameEn || appointment.visitPurpose?.name || appointment.purpose || "",
+      purposeIcon: appointment.visitPurpose?.icon || "📋",
+      wifiRequested: appointment.wifiRequested || false,
+    };
+
     if (!validStatuses.includes(appointment.status)) {
       return ok({
         found: true,
         appointment: {
-          bookingCode: appointment.bookingCode,
-          status: appointment.status,
+          ...appointmentDetails,
           message:
             appointment.status === "pending" ? "นัดหมายรอการอนุมัติ" :
             appointment.status === "rejected" ? "นัดหมายถูกปฏิเสธ" :
@@ -70,31 +120,9 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const fd = appointment.department?.floorDepartments?.[0];
-
     return ok({
       found: true,
-      appointment: {
-        id: appointment.id,
-        bookingCode: appointment.bookingCode,
-        visitorName: appointment.visitor?.name || "",
-        visitorNameEn: appointment.visitor?.nameEn || "",
-        visitorCompany: appointment.visitor?.company || "",
-        hostName: appointment.hostStaff?.name || "",
-        hostDepartment: appointment.department?.name || "",
-        hostFloor: fd?.floor?.name || "",
-        location: fd?.floor?.building?.name || "",
-        locationEn: fd?.floor?.building?.name || "",
-        date: appointment.dateStart.toLocaleDateString("th-TH", { dateStyle: "long" }),
-        timeStart: appointment.timeStart || "—",
-        timeEnd: appointment.timeEnd || "—",
-        timeSlot: `${appointment.timeStart || "—"} — ${appointment.timeEnd || "—"}`,
-        purposeName: appointment.visitPurpose?.name || appointment.purpose || "",
-        purposeNameEn: appointment.visitPurpose?.nameEn || appointment.visitPurpose?.name || appointment.purpose || "",
-        purposeIcon: appointment.visitPurpose?.icon || "📋",
-        status: appointment.status,
-        wifiRequested: appointment.wifiRequested || false,
-      },
+      appointment: appointmentDetails,
     });
   } catch (error) {
     console.error("POST /api/kiosk/appointment/lookup error:", error);
