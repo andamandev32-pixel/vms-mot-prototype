@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getStaffOrKiosk } from "@/lib/kiosk-auth";
 import { prisma } from "@/lib/prisma";
 import { toDataUrl } from "@/lib/kiosk/photo-utils";
+import { sendCheckinNotification } from "@/lib/notification-service";
 
 const ok = (data: unknown) => NextResponse.json({ success: true, data });
 const err = (code: string, msg: string, status = 400) =>
@@ -156,6 +157,18 @@ export async function POST(request: NextRequest) {
     }).catch(() => null);
 
     const qrCodeData = `eVMS-${entryCode}`;
+
+    // Fire-and-forget: notify creator/host/configured staff for appointment check-ins
+    // (walk-ins have no appointmentId — skip)
+    if (appointmentId) {
+      sendCheckinNotification({
+        appointmentId,
+        visitorName: visitor.name,
+        checkinTime: now,
+        entryCode,
+        location: `${entry.building ?? ""} ${entry.floor ?? ""}`.trim(),
+      }).catch((e) => console.error("[KioskCheckin] notification error:", e));
+    }
 
     return ok({
       entry: {

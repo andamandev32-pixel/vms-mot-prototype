@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getStaffOrKiosk } from "@/lib/kiosk-auth";
 import { prisma } from "@/lib/prisma";
 import { toDataUrl } from "@/lib/kiosk/photo-utils";
+import { sendCheckinNotification } from "@/lib/notification-service";
 
 function ok(data: unknown, status = 200) {
   return NextResponse.json(data, { status });
@@ -87,6 +88,15 @@ export async function POST(
       where: { id: appointmentId },
       data: { status: "checked-in" },
     });
+
+    // Fire-and-forget: notify creator/host/configured staff (gated by appointment.notifyOnCheckin)
+    sendCheckinNotification({
+      appointmentId,
+      visitorName: entry.visitor.name,
+      checkinTime: now,
+      entryCode,
+      location: `${entry.building ?? ""} ${entry.floor ?? ""}`.trim(),
+    }).catch((e) => console.error("[CounterCheckin] notification error:", e));
 
     return ok({
       entry,

@@ -200,7 +200,7 @@ async function processLineNotification(payload: NotificationPayload) {
 
 // ═══════ Send Functions ═══════
 
-/** Send check-in notification to appointment creator and/or host staff */
+/** Send check-in notification to creator + host + everyone listed in group.staffNotifyConfig */
 export async function sendCheckinNotification(params: CheckinNotificationParams) {
   try {
     const appointment = await prisma.appointment.findUnique({
@@ -208,7 +208,23 @@ export async function sendCheckinNotification(params: CheckinNotificationParams)
       include: {
         createdByStaff: { select: { id: true, name: true, lineUserId: true, email: true } },
         hostStaff: { select: { id: true, name: true, lineUserId: true, email: true } },
-        group: { select: { id: true, name: true } },
+        group: {
+          select: {
+            id: true,
+            name: true,
+            staffNotifyConfig: true,
+            approverGroup: {
+              include: {
+                members: {
+                  where: { receiveNotification: true },
+                  include: {
+                    staff: { select: { id: true, name: true, lineUserId: true, email: true } },
+                  },
+                },
+              },
+            },
+          },
+        },
       },
     });
 
@@ -223,9 +239,11 @@ export async function sendCheckinNotification(params: CheckinNotificationParams)
       groupName: appointment.group?.name ?? "",
     };
 
-    // Notify creator
-    if (appointment.createdByStaff) {
-      const staff = appointment.createdByStaff;
+    // Deduplicated dispatcher — same staff id never gets notified twice
+    const notified = new Set<number>();
+    const notifyStaff = (staff: { id: number; lineUserId: string | null; email: string | null }) => {
+      if (notified.has(staff.id)) return;
+      notified.add(staff.id);
       if (staff.lineUserId) {
         enqueue({
           type: "checkin-alert",
@@ -244,19 +262,56 @@ export async function sendCheckinNotification(params: CheckinNotificationParams)
           variables,
         });
       }
+    };
+
+    // Always: creator + host (if different)
+    if (appointment.createdByStaff) notifyStaff(appointment.createdByStaff);
+    if (appointment.hostStaff && appointment.hostStaffId !== appointment.createdByStaffId) {
+      notifyStaff(appointment.hostStaff);
     }
 
-    // Notify host (if different from creator)
-    if (appointment.hostStaff && appointment.hostStaffId !== appointment.createdByStaffId) {
-      const host = appointment.hostStaff;
-      if (host.lineUserId) {
-        enqueue({
-          type: "checkin-alert",
-          recipientStaffId: host.id,
-          recipientLineUserId: host.lineUserId,
-          channel: "line",
-          variables,
+    // Group only: parse staffNotifyConfig and resolve to staff
+    if (appointment.group?.staffNotifyConfig) {
+      let config: {
+        responsibleGroup?: boolean;
+        additionalStaff?: number[];
+        additionalApproverGroups?: number[];
+      } = {};
+      try {
+        config = JSON.parse(appointment.group.staffNotifyConfig);
+      } catch (e) {
+        console.error("[NotificationService] invalid staffNotifyConfig JSON:", e);
+      }
+
+      if (config.responsibleGroup && appointment.group.approverGroup) {
+        for (const member of appointment.group.approverGroup.members) {
+          notifyStaff(member.staff);
+        }
+      }
+
+      if (Array.isArray(config.additionalStaff) && config.additionalStaff.length > 0) {
+        const staffList = await prisma.staff.findMany({
+          where: { id: { in: config.additionalStaff } },
+          select: { id: true, name: true, lineUserId: true, email: true },
         });
+        for (const s of staffList) notifyStaff(s);
+      }
+
+      if (Array.isArray(config.additionalApproverGroups) && config.additionalApproverGroups.length > 0) {
+        const extraGroups = await prisma.approverGroup.findMany({
+          where: { id: { in: config.additionalApproverGroups } },
+          include: {
+            members: {
+              where: { receiveNotification: true },
+              include: {
+                staff: { select: { id: true, name: true, lineUserId: true, email: true } },
+              },
+            },
+          },
+        });
+        for (const g of extraGroups) {
+          for (const m of g.members) notifyStaff(m.staff);
+        }
       }
     }
   } catch (error) {
