@@ -1292,6 +1292,24 @@ Kiosk และ Counter จะเรียก endpoint นี้ตอน mount 
 
 ---
 
+## Group Appointment Compatibility
+
+ระบบรองรับการ check-in สำหรับ **นัดหมายแบบกลุ่ม (batch group)** ที่สร้างผ่านหน้า `/web/appointments/groups/create` โดย **ไม่ต้องมี endpoint แยก** เพราะตอนสร้างกลุ่มผ่าน `POST /api/appointments/batch` ระบบจะ materialize visitor แต่ละคนเป็น `Appointment` record รายบุคคล ที่มี `bookingCode` ของตัวเอง และมี `groupId` (FK → `AppointmentGroup`) เป็น metadata อ้างอิงกลุ่มเท่านั้น
+
+| Lookup endpoint | พฤติกรรมกับ group recipient |
+|---|---|
+| `POST /api/kiosk/appointment/lookup` | สแกน QR ด้วย `bookingCode` เฉพาะของคนนั้น → คืน Appointment ของตัวเอง (ดู Section 10) |
+| `POST /api/kiosk/appointment/match-by-identity` | walk-in match `idNumber` / `passportNumber` / `name` + วันนี้ → คืน Appointment ของตัวเอง |
+| `GET /api/search/appointments?q={idNumber}` | No-QR path → list นัดหมายของบุคคลนั้นวันนี้ (ดู Section 13) |
+
+**เงื่อนไข:**
+- Appointment ต้องมี `status ∈ {approved, confirmed}` — กลุ่มที่ยัง `pending` อยู่จะหาไม่เจอจนกว่าจะอนุมัติ (หรือ creator กด self-approve ตอนสร้างกลุ่ม)
+- `dateStart` ตรงกับวันปัจจุบัน
+
+> **อ้างอิง:** [appointment-flow-spec.md § AppointmentGroup Lifecycle](./appointment-flow-spec.md#appointmentgroup-lifecycle) และ [test-cases/batch-group.md](./test-cases/batch-group.md)
+
+---
+
 ## ERROR — รายงาน Error (Optional)
 
 > **Status:** 🔲 Planned — ยังไม่มี API endpoint (ต้องสร้างสำหรับ production)

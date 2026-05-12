@@ -380,6 +380,19 @@ GET /api/appointments/groups
 | `cancelled → active` | `cancelled` → `pending` (clear `approvedBy`/`approvedAt` → ต้องอนุมัติใหม่) | `Cascade จากการเปิดกลุ่ม "..." — ต้องอนุมัติใหม่` |
 | toggle `notifyOnCheckin` | cascade ค่าใหม่ไปทุก appointment ใน group | — |
 
+### Check-in Flow สำหรับ Group Appointment
+
+แต่ละ visitor ใน group ถูกสร้างเป็น `Appointment` record แยก (มี `bookingCode` ของตัวเอง, มี `groupId` ชี้กลับ `AppointmentGroup`) จึง **check-in ผ่าน kiosk หรือ counter ได้ทันทีเหมือนนัดเดี่ยว** โดย downstream ไม่ต้องมี logic พิเศษสำหรับ group:
+
+- **Kiosk QR scan** — ใช้ `bookingCode` ของตัวเอง → `POST /api/kiosk/appointment/lookup`
+- **Kiosk walk-in match** — match identity → `POST /api/kiosk/appointment/match-by-identity`
+- **Kiosk No-QR path** — ค้นจากเลขบัตร → `GET /api/search/appointments?q={idNumber}`
+- **Counter** — `GET /api/appointments?date=today&search={keyword}` list รวม group recipients
+
+เงื่อนไข: `status ∈ {approved, confirmed}` + `dateStart` ครอบคลุมวันปัจจุบัน ถ้ากลุ่มยัง `pending` จะ check-in ไม่ได้จนกว่าจะอนุมัติ (หรือ creator กด self-approve ตอนสร้างผ่าน flag `approveOnCreate` ใน batch endpoint)
+
+> ดูรายละเอียดใน [kiosk-api-spec.md § Group Appointment Compatibility](./kiosk-api-spec.md#group-appointment-compatibility) และ [counter-api-spec.md § Group Appointment Compatibility](./counter-api-spec.md#9b-group-appointment-compatibility)
+
 ---
 
 ## API Reference Summary

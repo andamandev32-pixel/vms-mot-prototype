@@ -862,6 +862,20 @@ capturedBy: "officer"
 
 ---
 
+## 9b. Group Appointment Compatibility
+
+นัดหมายแบบกลุ่ม (batch group) ที่สร้างผ่านหน้า `/web/appointments/groups/create` ใช้ flow เดียวกับนัดเดี่ยว เพราะ visitor แต่ละคนถูกบันทึกเป็น `Appointment` record รายบุคคล (มี `bookingCode` แยก, มี `groupId` (FK → `AppointmentGroup`) อ้างอิงกลุ่ม)
+
+`GET /api/appointments?date=today&search={keyword}` (Section 9) query ตาราง `appointments` ตรงๆ จึง list ผู้เยี่ยมชมจากกลุ่มออกมาเหมือนนัดเดี่ยว — counter staff ค้นด้วย `bookingCode` / ชื่อ / เลขบัตร / โทร ได้ปกติ
+
+**เงื่อนไข:**
+- `status ∈ {approved, confirmed}` (กลุ่มที่ยัง `pending` ต้องอนุมัติก่อน หรือใช้ inline approve ใน Section 11)
+- `dateStart` ครอบคลุมวันปัจจุบัน (`dateStart <= TODAY AND (dateEnd >= TODAY OR dateEnd IS NULL)`)
+
+> **อ้างอิง:** [appointment-flow-spec.md § AppointmentGroup Lifecycle](./appointment-flow-spec.md#appointmentgroup-lifecycle) และ [test-cases/batch-group.md](./test-cases/batch-group.md)
+
+---
+
 ## 10. APPOINTMENT_IDENTITY — ยืนยันตัวตน (นัดหมาย)
 
 ### *ใช้ API จาก Section 3* — `POST /counter/appointments/{id}/verify` *(Original Design)*
