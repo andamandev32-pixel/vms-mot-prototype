@@ -284,9 +284,25 @@ Counter Staff             Counter App                    Backend
 
 ### Side Effects
 
-- **`notifyOnCheckin`** — ค่านี้ถ่าย cascade มาจาก `AppointmentGroup` ตอนสร้างกลุ่ม → ถ้า `true` ส่ง notification ให้ host staff
+- **`notifyOnCheckin` notification** — ทั้ง [`/api/kiosk/checkin`](../app/api/kiosk/checkin/route.ts) (เฉพาะ checkin ที่มี `appointmentId`) และ [`/api/counter/appointments/[id]/checkin`](../app/api/counter/appointments/[id]/checkin/route.ts) เรียก [`sendCheckinNotification()`](../lib/notification-service.ts) แบบ fire-and-forget หลังสร้าง `visit_entries` สำเร็จ
 - **WiFi credentials** — สร้าง (ถ้า `wifiRequested`)
 - **Slip / badge print** — kiosk ออก slip, counter พิมพ์ badge
+
+### Notification Recipients (เมื่อ `appointment.notifyOnCheckin = true`)
+
+`sendCheckinNotification()` ส่ง LINE + email ให้ทุกคนต่อไปนี้ (deduplicate ด้วย `staff.id`):
+
+| Source | กระตุ้นเมื่อ | Resolve เป็น staff ยังไง |
+|---|---|---|
+| Creator | เสมอ | `appointment.createdByStaff` |
+| Host | เสมอ (ถ้าต่างจาก creator) | `appointment.hostStaff` |
+| `staffNotifyConfig.responsibleGroup` | flag = true | members ของ `group.approverGroup.members` (filter `receiveNotification = true`) |
+| `staffNotifyConfig.additionalStaff[]` | array มี id | `prisma.staff.findMany({ id: in [...] })` |
+| `staffNotifyConfig.additionalApproverGroups[]` | array มี id | members ของแต่ละ `ApproverGroup` (filter `receiveNotification = true`) |
+
+> ถ้า `appointment.notifyOnCheckin = false` → return ทันที ไม่ส่งให้ใครเลยแม้ตั้ง config
+
+> Variables ที่ส่งใน Flex template: `visitorName`, `checkinTime`, `entryCode`, `location`, `groupName` (ว่างถ้าไม่ใช่นัดกลุ่ม)
 
 ---
 

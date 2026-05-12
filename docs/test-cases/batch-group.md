@@ -278,3 +278,74 @@
 - API: `POST /api/appointments/batch`
 - Rule: Group-level approver override (Track 2 fix)
 - File: `app/api/appointments/batch/route.ts:104,292`
+
+---
+
+### TC-BG-12: Group recipient check-in ผ่าน kiosk QR → notification ไป creator + host
+
+**Preconditions:**
+- มี approved group appointment 1 คน (`notifyOnCheckin=true`, `staffNotifyConfig={}` ว่าง)
+- creator มี `lineUserId`, host มี `lineUserId` (คนละคนกับ creator)
+
+**Steps:**
+1. ส่ง `POST /api/kiosk/appointment/lookup` ด้วย `bookingCode` ของ visitor → ได้ appointment detail
+2. ส่ง `POST /api/kiosk/checkin` ด้วย `appointmentId`, `visitorId`, `servicePointId`
+3. ตรวจ `notificationQueue` หรือ console log ของ `[NotificationService] Queued: checkin-alert`
+
+**Expected Result:**
+- `visit_entries` ถูกสร้าง, `checkinChannel="kiosk"`
+- มี enqueue `checkin-alert` ให้ creator (LINE + email ถ้ามี)
+- มี enqueue `checkin-alert` ให้ host (LINE + email ถ้ามี)
+- Walk-in check-in (ไม่มี `appointmentId`) → ไม่ส่ง notification
+
+**Related:**
+- API: `POST /api/kiosk/checkin` → calls `sendCheckinNotification()`
+- File: `app/api/kiosk/checkin/route.ts`, `lib/notification-service.ts`
+
+---
+
+### TC-BG-13: Group recipient check-in ผ่าน counter → ทุกคนใน `additionalStaff[]` ได้ LINE
+
+**Preconditions:**
+- มี approved group appointment (`notifyOnCheckin=true`)
+- `staffNotifyConfig = { "additionalStaff": [12, 18], "additionalApproverGroups": [9], "responsibleGroup": true }`
+- staff id 12, 18 มี `lineUserId`; ApproverGroup id 9 มี 2 members ที่ `receiveNotification=true`
+- `group.approverGroupId=7` มี 3 members
+
+**Steps:**
+1. ส่ง `POST /api/counter/appointments/[id]/verify` (ผ่าน)
+2. ส่ง `POST /api/counter/appointments/[id]/checkin` ด้วย `visitorId`, `servicePointId`
+3. ตรวจ console log ของ enqueue events
+
+**Expected Result:**
+- `visit_entries` ถูกสร้าง, `checkinChannel="counter"`, `appointment.status="checked-in"`
+- enqueue `checkin-alert` ให้: creator + host + 3 members ของ approverGroup 7 (responsibleGroup) + staff 12, 18 + 2 members ของ ApproverGroup 9
+- Deduplicate: ถ้าคนเดียวกันอยู่หลาย list (เช่น creator อยู่ใน `additionalStaff` ด้วย) → ส่งแค่ครั้งเดียว
+- Notification variables มี `groupName` ถูกต้อง
+
+**Related:**
+- API: `POST /api/counter/appointments/[id]/checkin` → calls `sendCheckinNotification()`
+- File: `app/api/counter/appointments/[id]/checkin/route.ts`, `lib/notification-service.ts`
+
+---
+
+### TC-BG-14: `notifyOnCheckin = false` → silent mode (ไม่ส่งใครเลยแม้ตั้ง config)
+
+**Preconditions:**
+- มี approved group appointment (`notifyOnCheckin=false`)
+- `staffNotifyConfig = { "additionalStaff": [12, 18], "responsibleGroup": true }` (มีค่า)
+
+**Steps:**
+1. ส่ง `POST /api/kiosk/checkin` หรือ `POST /api/counter/appointments/[id]/checkin`
+2. ตรวจ console log
+
+**Expected Result:**
+- `visit_entries` ถูกสร้างปกติ
+- `sendCheckinNotification()` return ทันทีที่บรรทัด `if (!appointment.notifyOnCheckin) return`
+- ไม่มี enqueue ใดๆ — เงียบสนิท
+- Toggle `notifyOnCheckin=true` ภายหลังผ่าน `PATCH /api/appointments/:id/notify` แล้วรอบหน้าจึงทำงาน
+
+**Related:**
+- API: kiosk/counter checkin
+- Rule: master switch `notifyOnCheckin` ตัดสินใจก่อน parse `staffNotifyConfig`
+- File: `lib/notification-service.ts:204-265`

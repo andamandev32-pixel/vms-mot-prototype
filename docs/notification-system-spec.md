@@ -128,14 +128,27 @@ export async function sendCheckinNotification(params: CheckinNotificationParams)
 #### Check-in Alert Routing
 
 ```
-1. Load appointment -> include createdByStaff, hostStaff
-2. ถ้า notifyOnCheckin = false -> STOP
-3. สำหรับ createdByStaff:
-   a. ถ้ามี lineUserId -> enqueue (channel: line)
-   b. ถ้ามี email -> enqueue (channel: email)
-4. สำหรับ hostStaff (ถ้าคนละคนกับ creator):
-   a. ถ้ามี lineUserId -> enqueue (channel: line)
+1. Load appointment -> include createdByStaff, hostStaff,
+                       group { staffNotifyConfig, approverGroup.members.staff }
+2. ถ้า appointment.notifyOnCheckin = false -> STOP (silent mode)
+3. สร้าง notifyStaff(s) helper ที่ deduplicate ด้วย Set<staffId>:
+     - ถ้ามี lineUserId -> enqueue (channel: line)
+     - ถ้ามี email     -> enqueue (channel: email)
+4. notifyStaff(createdByStaff)
+5. notifyStaff(hostStaff) -- เฉพาะถ้าต่างจาก creator
+6. ถ้านัดอยู่ใน group และ group.staffNotifyConfig:
+     parse JSON
+     6a. ถ้า responsibleGroup === true:
+           for each member of group.approverGroup.members:
+             notifyStaff(member.staff)
+     6b. ถ้า additionalStaff[].length > 0:
+           prisma.staff.findMany({ id: in [...] }) -> for each: notifyStaff(s)
+     6c. ถ้า additionalApproverGroups[].length > 0:
+           for each groupId: prisma.approverGroup.findUnique include members
+             for each member: notifyStaff(member.staff)
 ```
+
+> **Triggers:** เรียกจาก [`POST /api/entries`](../app/api/entries/route.ts) (generic), [`POST /api/kiosk/checkin`](../app/api/kiosk/checkin/route.ts) (เฉพาะ checkin ที่มี `appointmentId`), และ [`POST /api/counter/appointments/[id]/checkin`](../app/api/counter/appointments/[id]/checkin/route.ts) — ทุกตัวเรียกแบบ fire-and-forget (`.catch()` log error)
 
 #### Approval Notification Routing
 
