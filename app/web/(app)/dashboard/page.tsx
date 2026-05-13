@@ -11,9 +11,9 @@ import { getApiDocByPageId } from "@/lib/api-doc-data";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/Card";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import {
-  Users, Clock, ArrowUpRight, ArrowDown, AlertTriangle, Ban,
+  Users, Clock, ArrowUpRight, ArrowDown, AlertTriangle,
   Building2, Briefcase, FileText, Wrench, Package, MoreHorizontal,
-  CalendarClock, CheckCircle2, XCircle, Timer, UserCheck, LogOut, Bookmark,
+  CalendarClock, Bookmark,
   ChevronLeft, ChevronRight, Search, X, Database, Code2
 } from "lucide-react";
 import { useDashboardKPIs, useDashboardToday } from "@/lib/hooks";
@@ -22,8 +22,6 @@ import {
   statusConfig,
   type VisitType,
   type VisitStatus,
-  type AppointmentStatus,
-  type EntryStatus,
 } from "@/lib/mock-data";
 
 // Format time value from DB (Date or string) to "HH:MM"
@@ -56,29 +54,6 @@ const visitTypeColors: Record<VisitType, { bg: string; icon: string; border: str
   contractor: { bg: "bg-orange-50", icon: "text-orange-600", border: "border-orange-200" },
   delivery: { bg: "bg-cyan-50", icon: "text-cyan-600", border: "border-cyan-200" },
   other: { bg: "bg-gray-50", icon: "text-gray-600", border: "border-gray-200" },
-};
-
-// All statuses for overview — appointment + entry statuses
-const appointmentStatusKeys: AppointmentStatus[] = [
-  "pending", "approved", "confirmed", "cancelled", "expired", "rejected",
-];
-const entryStatusKeys: EntryStatus[] = [
-  "checked-in", "checked-out", "auto-checkout", "overstay",
-];
-const statusKeys: VisitStatus[] = [...appointmentStatusKeys, ...entryStatusKeys, "blocked"];
-
-const statusIcons: Record<string, React.ReactNode> = {
-  pending: <Clock size={16} />,
-  approved: <CheckCircle2 size={16} />,
-  confirmed: <UserCheck size={16} />,
-  cancelled: <Ban size={16} />,
-  expired: <Timer size={16} />,
-  rejected: <XCircle size={16} />,
-  "checked-in": <ArrowUpRight size={16} />,
-  "checked-out": <LogOut size={16} />,
-  "auto-checkout": <Timer size={16} />,
-  overstay: <AlertTriangle size={16} />,
-  blocked: <Ban size={16} />,
 };
 
 // ===== API/DB Info Tag =====
@@ -141,14 +116,6 @@ export default function WebDashboard() {
   const todayAppts: any[] = td?.appointments ?? [];
   const todayEntries: any[] = td?.entries ?? [];
   const pendingAppts = todayAppts.filter((a) => a.status === "pending");
-
-  function countByStatus(status: VisitStatus) {
-    const entryStatuses: string[] = ["checked-in", "checked-out", "auto-checkout", "overstay"];
-    if (entryStatuses.includes(status)) {
-      return todayEntries.filter((e: any) => e.status === status).length;
-    }
-    return todayAppts.filter((a) => a.status === status).length;
-  }
 
   function typeStatusBreakdown(type: VisitType) {
     const ofType = todayAppts.filter((a) => a.type === type);
@@ -257,41 +224,6 @@ export default function WebDashboard() {
           />
         </div>
 
-        {/* ===== Section 2: Status Overview Bar ===== */}
-        <Card className="border-0 shadow-md rounded-2xl overflow-hidden">
-          <CardHeader className="bg-gradient-to-r from-primary-50 to-white border-b border-primary-100 px-6 py-4">
-            <CardTitle className="text-base font-bold text-primary flex items-center gap-2">
-              สถานะทั้งหมดวันนี้ — Status Overview
-              <ApiDbTag
-                api="GET /api/dashboard/status-overview"
-                tables="appointments"
-                query={`SELECT status, COUNT(*) AS count\nFROM appointments\nWHERE date_start = CURDATE()\nGROUP BY status`}
-              />
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-5">
-            <div className="flex flex-wrap gap-3">
-              {statusKeys.map((s) => {
-                const count = countByStatus(s);
-                const cfg = statusConfig[s];
-                return (
-                  <div
-                    key={s}
-                    className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border ${cfg.bgColor} ${cfg.borderColor} min-w-[140px]`}
-                  >
-                    <span className={cfg.color}>{statusIcons[s]}</span>
-                    <div className="flex flex-col">
-                      <span className="text-xs text-text-muted">{cfg.label}</span>
-                      <span className={`text-lg font-extrabold ${cfg.color}`}>{count}</span>
-                    </div>
-                    <span className="text-[10px] text-text-muted ml-auto">{cfg.labelEn}</span>
-                  </div>
-                );
-              })}
-            </div>
-          </CardContent>
-        </Card>
-
         {/* ===== Section 3: By Visit Type ===== */}
         <div>
           <h2 className="text-lg font-bold text-text-primary mb-4 flex items-center gap-2">
@@ -341,74 +273,7 @@ export default function WebDashboard() {
         </div>
 
         {/* ===== Section 4: Pending Approval Table ===== */}
-        {pendingAppts.length > 0 && (
-          <Card className="border-0 shadow-lg rounded-2xl overflow-hidden border-l-4 border-l-warning">
-            <CardHeader className="bg-gradient-to-r from-warning-light to-white border-b border-warning/20 px-6 py-4">
-              <div className="flex justify-between items-center">
-                <CardTitle className="text-base font-bold text-warning flex items-center gap-2">
-                  <Clock size={18} />
-                  รายการรออนุมัติ — Pending Approval
-                  <span className="ml-2 inline-flex items-center justify-center w-6 h-6 rounded-full bg-warning text-white text-xs font-bold">
-                    {pendingAppts.length}
-                  </span>
-                  <ApiDbTag
-                    api="GET /api/dashboard/pending"
-                    tables="appointments JOIN visitors JOIN staff JOIN departments"
-                    query={`SELECT a.*, v.name, v.company,\n  s.name AS host_name, d.name AS dept_name\nFROM appointments a\nJOIN visitors v ON a.visitor_id = v.id\nJOIN staff s ON a.host_id = s.id\nJOIN departments d ON s.department_id = d.id\nWHERE a.date_start = CURDATE()\n  AND a.status = 'pending'`}
-                  />
-                </CardTitle>
-              </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              <table className="w-full text-sm">
-                <thead className="bg-warning-light/50 border-b border-warning/10">
-                  <tr className="text-left text-text-muted font-semibold text-xs uppercase tracking-wider">
-                    <th className="py-3 px-6">ผู้มาติดต่อ</th>
-                    <th className="py-3 px-4">ประเภท</th>
-                    <th className="py-3 px-4">วัน-เวลา</th>
-                    <th className="py-3 px-4">ผู้พบ / แผนก</th>
-                    <th className="py-3 px-4">ผู้ติดตาม</th>
-                    <th className="py-3 px-4">สถานะ</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-warning/10">
-                  {pendingAppts.map((a) => (
-                    <tr key={a.id} className="hover:bg-warning-light/30 transition-colors">
-                      <td className="py-3.5 px-6">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-full bg-gradient-to-br from-warning to-amber-600 text-white flex items-center justify-center text-xs font-bold shadow-sm">
-                            {a.visitor.name.charAt(0)}
-                          </div>
-                          <div>
-                            <span className="font-semibold text-text-primary block">{a.visitor.name}</span>
-                            <span className="text-xs text-text-muted">{a.visitor.company}</span>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <span className="text-xs font-medium">{visitTypes[a.type as VisitType]?.label}</span>
-                      </td>
-                      <td className="py-3.5 px-4 text-text-secondary font-mono text-xs">
-                        {fmtTime(a.timeStart)}–{fmtTime(a.timeEnd)} น.
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <span className="text-text-secondary text-xs">{a.hostStaff?.name ?? "—"}</span>
-                      </td>
-                      <td className="py-3.5 px-4 text-center">
-                        <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 text-xs font-bold text-text-secondary">
-                          {a.companionsCount}
-                        </span>
-                      </td>
-                      <td className="py-3.5 px-4">
-                        <StatusBadge status={a.status} size="sm" showDot />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </CardContent>
-          </Card>
-        )}
+        {pendingAppts.length > 0 && <PendingApprovalTable appointments={pendingAppts} />}
 
         {/* ===== Section 5: All Visitors Today (Real-time) ===== */}
         <AllVisitorsTodayTable appointments={todayAppts} />
@@ -482,9 +347,145 @@ function MiniStat({ label, count, color, bg }: { label: string; count: number; c
   );
 }
 
-// ===== Paginated All Visitors Table =====
+// ===== Paginated Pending Approval Table =====
 
 const PAGE_SIZE_OPTIONS = [5, 10, 20, 50];
+
+function PendingApprovalTable({ appointments: appts }: { appointments: any[] }) {
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
+
+  const totalPages = Math.max(1, Math.ceil(appts.length / pageSize));
+  const safeCurrentPage = Math.min(page, totalPages);
+  const startIdx = (safeCurrentPage - 1) * pageSize;
+  const paged = appts.slice(startIdx, startIdx + pageSize);
+  const startRow = appts.length > 0 ? startIdx + 1 : 0;
+  const endRow = Math.min(startIdx + pageSize, appts.length);
+
+  const goTo = (p: number) => setPage(Math.max(1, Math.min(p, totalPages)));
+
+  return (
+    <Card className="border-0 shadow-lg rounded-2xl overflow-hidden border-l-4 border-l-warning">
+      <CardHeader className="bg-gradient-to-r from-warning-light to-white border-b border-warning/20 px-6 py-4">
+        <div className="flex justify-between items-center">
+          <CardTitle className="text-base font-bold text-warning flex items-center gap-2">
+            <Clock size={18} />
+            รายการรออนุมัติ — Pending Approval
+            <span className="ml-2 inline-flex items-center justify-center w-6 h-6 rounded-full bg-warning text-white text-xs font-bold">
+              {appts.length}
+            </span>
+            <ApiDbTag
+              api="GET /api/dashboard/pending"
+              tables="appointments JOIN visitors JOIN staff JOIN departments"
+              query={`SELECT a.*, v.name, v.company,\n  s.name AS host_name, d.name AS dept_name\nFROM appointments a\nJOIN visitors v ON a.visitor_id = v.id\nJOIN staff s ON a.host_id = s.id\nJOIN departments d ON s.department_id = d.id\nWHERE a.date_start = CURDATE()\n  AND a.status = 'pending'`}
+            />
+          </CardTitle>
+        </div>
+      </CardHeader>
+      <CardContent className="p-0">
+        <table className="w-full text-sm">
+          <thead className="bg-warning-light/50 border-b border-warning/10">
+            <tr className="text-left text-text-muted font-semibold text-xs uppercase tracking-wider">
+              <th className="py-3 px-6">ผู้มาติดต่อ</th>
+              <th className="py-3 px-4">ประเภท</th>
+              <th className="py-3 px-4">วัน-เวลา</th>
+              <th className="py-3 px-4">ผู้พบ / แผนก</th>
+              <th className="py-3 px-4">ผู้ติดตาม</th>
+              <th className="py-3 px-4">สถานะ</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-warning/10">
+            {paged.map((a) => (
+              <tr key={a.id} className="hover:bg-warning-light/30 transition-colors">
+                <td className="py-3.5 px-6">
+                  <div className="flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-warning to-amber-600 text-white flex items-center justify-center text-xs font-bold shadow-sm">
+                      {a.visitor.name.charAt(0)}
+                    </div>
+                    <div>
+                      <span className="font-semibold text-text-primary block">{a.visitor.name}</span>
+                      <span className="text-xs text-text-muted">{a.visitor.company}</span>
+                    </div>
+                  </div>
+                </td>
+                <td className="py-3.5 px-4">
+                  <span className="text-xs font-medium">{visitTypes[a.type as VisitType]?.label}</span>
+                </td>
+                <td className="py-3.5 px-4 text-text-secondary font-mono text-xs">
+                  {fmtTime(a.timeStart)}–{fmtTime(a.timeEnd)} น.
+                </td>
+                <td className="py-3.5 px-4">
+                  <span className="text-text-secondary text-xs">{a.hostStaff?.name ?? "—"}</span>
+                </td>
+                <td className="py-3.5 px-4 text-center">
+                  <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gray-100 text-xs font-bold text-text-secondary">
+                    {a.companionsCount}
+                  </span>
+                </td>
+                <td className="py-3.5 px-4">
+                  <StatusBadge status={a.status} size="sm" showDot />
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        {/* Pagination Footer */}
+        <div className="flex items-center justify-between px-6 py-3 border-t border-warning/10 bg-warning-light/20">
+          <div className="flex items-center gap-2 text-xs text-text-muted">
+            <span>แสดง</span>
+            <select
+              value={pageSize}
+              onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}
+              className="border border-gray-200 rounded-lg px-2 py-1 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-warning/30"
+            >
+              {PAGE_SIZE_OPTIONS.map((s) => (
+                <option key={s} value={s}>{s}</option>
+              ))}
+            </select>
+            <span>รายการ / หน้า</span>
+          </div>
+
+          <span className="text-xs text-text-muted">
+            {startRow}–{endRow} จาก {appts.length} รายการ
+          </span>
+
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => goTo(safeCurrentPage - 1)}
+              disabled={safeCurrentPage <= 1}
+              className="p-1.5 rounded-lg hover:bg-warning-light disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-text-muted"
+            >
+              <ChevronLeft size={16} />
+            </button>
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+              <button
+                key={p}
+                onClick={() => goTo(p)}
+                className={`min-w-[28px] h-7 rounded-lg text-xs font-semibold transition-colors ${
+                  p === safeCurrentPage
+                    ? "bg-warning text-white shadow-sm"
+                    : "text-text-muted hover:bg-warning-light"
+                }`}
+              >
+                {p}
+              </button>
+            ))}
+            <button
+              onClick={() => goTo(safeCurrentPage + 1)}
+              disabled={safeCurrentPage >= totalPages}
+              className="p-1.5 rounded-lg hover:bg-warning-light disabled:opacity-30 disabled:cursor-not-allowed transition-colors text-text-muted"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// ===== Paginated All Visitors Table =====
 
 function AllVisitorsTodayTable({ appointments: appts }: { appointments: any[] }) {
   const [page, setPage] = useState(1);
