@@ -354,20 +354,34 @@ const PAGE_SIZE_OPTIONS = [5, 10, 20, 50];
 function PendingApprovalTable({ appointments: appts }: { appointments: any[] }) {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
+  const [search, setSearch] = useState("");
 
-  const totalPages = Math.max(1, Math.ceil(appts.length / pageSize));
+  const filtered = appts.filter((a) => {
+    const q = search.trim().toLowerCase();
+    if (!q) return true;
+    return (
+      a.visitor.name.toLowerCase().includes(q) ||
+      (a.visitor.nameEn?.toLowerCase().includes(q)) ||
+      (a.visitor.company ?? "").toLowerCase().includes(q) ||
+      (a.hostStaff?.name ?? "").toLowerCase().includes(q) ||
+      (a.department?.name ?? "").toLowerCase().includes(q) ||
+      (a.bookingCode ?? "").toLowerCase().includes(q)
+    );
+  });
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const safeCurrentPage = Math.min(page, totalPages);
   const startIdx = (safeCurrentPage - 1) * pageSize;
-  const paged = appts.slice(startIdx, startIdx + pageSize);
-  const startRow = appts.length > 0 ? startIdx + 1 : 0;
-  const endRow = Math.min(startIdx + pageSize, appts.length);
+  const paged = filtered.slice(startIdx, startIdx + pageSize);
+  const startRow = filtered.length > 0 ? startIdx + 1 : 0;
+  const endRow = Math.min(startIdx + pageSize, filtered.length);
 
   const goTo = (p: number) => setPage(Math.max(1, Math.min(p, totalPages)));
 
   return (
     <Card className="border-0 shadow-lg rounded-2xl overflow-hidden border-l-4 border-l-warning">
       <CardHeader className="bg-gradient-to-r from-warning-light to-white border-b border-warning/20 px-6 py-4">
-        <div className="flex justify-between items-center">
+        <div className="flex justify-between items-center mb-3">
           <CardTitle className="text-base font-bold text-warning flex items-center gap-2">
             <Clock size={18} />
             รายการรออนุมัติ — Pending Approval
@@ -380,6 +394,30 @@ function PendingApprovalTable({ appointments: appts }: { appointments: any[] }) 
               query={`SELECT a.*, v.name, v.company,\n  s.name AS host_name, d.name AS dept_name\nFROM appointments a\nJOIN visitors v ON a.visitor_id = v.id\nJOIN staff s ON a.host_id = s.id\nJOIN departments d ON s.department_id = d.id\nWHERE a.date_start = CURDATE()\n  AND a.status = 'pending'`}
             />
           </CardTitle>
+          {search.trim() && (
+            <span className="text-xs text-text-muted bg-warning-light px-2.5 py-1 rounded-full">
+              พบ {filtered.length} จาก {appts.length} รายการ
+            </span>
+          )}
+        </div>
+        {/* Search box */}
+        <div className="relative max-w-xs">
+          <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-text-muted" />
+          <input
+            type="text"
+            placeholder="ค้นหาชื่อ, บริษัท, ผู้พบ, รหัสจอง..."
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+            className="w-full pl-9 pr-8 py-2 text-sm border border-warning/20 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-warning/20 focus:border-warning/40 placeholder:text-text-muted/60"
+          />
+          {search && (
+            <button
+              onClick={() => { setSearch(""); setPage(1); }}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-text-muted hover:text-text-primary"
+            >
+              <X size={14} />
+            </button>
+          )}
         </div>
       </CardHeader>
       <CardContent className="p-0">
@@ -395,6 +433,20 @@ function PendingApprovalTable({ appointments: appts }: { appointments: any[] }) 
             </tr>
           </thead>
           <tbody className="divide-y divide-warning/10">
+            {paged.length === 0 && (
+              <tr>
+                <td colSpan={6} className="py-10 text-center">
+                  <Search size={28} className="mx-auto text-text-muted/40 mb-2" />
+                  <p className="text-sm text-text-muted">ไม่พบรายการที่ตรงกับเงื่อนไข</p>
+                  <button
+                    onClick={() => { setSearch(""); setPage(1); }}
+                    className="text-xs text-warning hover:underline mt-1"
+                  >
+                    ล้างคำค้นหา
+                  </button>
+                </td>
+              </tr>
+            )}
             {paged.map((a) => (
               <tr key={a.id} className="hover:bg-warning-light/30 transition-colors">
                 <td className="py-3.5 px-6">
@@ -447,7 +499,7 @@ function PendingApprovalTable({ appointments: appts }: { appointments: any[] }) 
           </div>
 
           <span className="text-xs text-text-muted">
-            {startRow}–{endRow} จาก {appts.length} รายการ
+            {startRow}–{endRow} จาก {filtered.length} รายการ
           </span>
 
           <div className="flex items-center gap-1">
