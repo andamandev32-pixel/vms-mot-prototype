@@ -9,6 +9,8 @@ export interface CheckinParams {
   entryCode: string;
   checkinAt: string;
   checkoutAt: string;
+  purposeName: string;
+  departmentName: string;
   location: string;
 }
 

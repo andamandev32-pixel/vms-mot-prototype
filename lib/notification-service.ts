@@ -158,6 +158,8 @@ async function processLineNotification(payload: NotificationPayload) {
         visitorName: vars.visitorName || "",
         company: vars.company || "",
         checkinInfo: vars.checkinTime || vars.checkinAt || "",
+        purposeName: vars.purposeName || "",
+        departmentName: vars.departmentName || "",
         location: vars.location || "",
       });
       break;
@@ -167,6 +169,8 @@ async function processLineNotification(payload: NotificationPayload) {
         entryCode: vars.entryCode || "",
         checkinAt: vars.checkinAt || vars.checkinTime || "",
         checkoutAt: vars.checkoutAt || "",
+        purposeName: vars.purposeName || "",
+        departmentName: vars.departmentName || "",
         location: vars.location || "",
       });
       break;
@@ -176,6 +180,8 @@ async function processLineNotification(payload: NotificationPayload) {
         visitorName: vars.visitorName || "",
         timeSlot: vars.expectedCheckout || "",
         overstayMinutes: vars.overstayDuration || "",
+        purposeName: vars.purposeName || "",
+        departmentName: vars.departmentName || "",
         location: vars.location || "",
       });
       break;
@@ -185,6 +191,8 @@ async function processLineNotification(payload: NotificationPayload) {
         checkinAt: vars.checkinAt || "",
         expectedCheckout: vars.expectedCheckout || "",
         overstayDuration: vars.overstayDuration || "",
+        purposeName: vars.purposeName || "",
+        departmentName: vars.departmentName || "",
         location: vars.location || "",
       });
       break;
@@ -346,6 +354,8 @@ export async function sendCheckinNotification(params: CheckinNotificationParams)
       where: { id: params.appointmentId },
       include: {
         ...APPOINTMENT_FAN_OUT_INCLUDE,
+        visitPurpose: { select: { name: true } },
+        department: { select: { name: true } },
         group: {
           select: {
             ...APPOINTMENT_FAN_OUT_INCLUDE.group.select,
@@ -364,6 +374,8 @@ export async function sendCheckinNotification(params: CheckinNotificationParams)
       entryCode: params.entryCode,
       location: params.location ?? "",
       groupName: appointment.group?.name ?? "",
+      purposeName: appointment.visitPurpose?.name ?? "",
+      departmentName: appointment.department?.name ?? "",
     };
 
     await fanOutAppointmentStaff(appointment, "checkin-alert", variables);
@@ -497,9 +509,21 @@ export async function sendOverstayAlert(params: OverstayAlertParams) {
       where: { id: params.entryId },
       include: {
         visitor: { select: { id: true, lineUserId: true } },
-        appointment: { include: APPOINTMENT_FAN_OUT_INCLUDE },
+        department: { select: { name: true } },
+        appointment: {
+          include: {
+            ...APPOINTMENT_FAN_OUT_INCLUDE,
+            visitPurpose: { select: { name: true } },
+            department: { select: { name: true } },
+          },
+        },
       },
     });
+
+    const purposeName =
+      entry?.appointment?.visitPurpose?.name ?? entry?.purpose ?? "";
+    const departmentName =
+      entry?.appointment?.department?.name ?? entry?.department?.name ?? "";
 
     const baseVars: Record<string, string> = {
       visitorName: params.visitorName,
@@ -509,6 +533,8 @@ export async function sendOverstayAlert(params: OverstayAlertParams) {
       overstayDuration: params.overstayDuration,
       location: params.location ?? "",
       groupName: params.groupName ?? "",
+      purposeName,
+      departmentName,
     };
 
     // ─── Visitor side (LINE only) ───

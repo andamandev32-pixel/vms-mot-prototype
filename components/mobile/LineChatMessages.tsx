@@ -293,6 +293,8 @@ export function CheckinNotificationCard() {
         <CardRow label="เลข Slip" value="eVMS-25690402-0099" />
         <CardRow label="เวลาเข้า" value="09:45 น." />
         <CardRow label="เวลาออก" value="ภายใน 11:00 น." />
+        <CardRow label="วัตถุประสงค์" value="🏛️ ติดต่อราชการ" />
+        <CardRow label="แผนก" value="สำนักนโยบายฯ" />
         <CardRow label="สถานที่" value="อาคาร C ชั้น 4" />
       </div>
       <div className="px-4 pb-3">
@@ -537,6 +539,8 @@ export function OfficerCheckinAlertCard() {
         <CardRow label="ชื่อ" value="พุทธิพงษ์ คาดสนิท" />
         <CardRow label="บริษัท" value="บริษัท สยามเทค จำกัด" />
         <CardRow label="Check-in" value="09:45 น. | Kiosk K-01" />
+        <CardRow label="วัตถุประสงค์" value="🏛️ ติดต่อราชการ" />
+        <CardRow label="แผนก" value="สำนักนโยบายฯ" />
         <CardRow label="สถานที่" value="อาคาร C ชั้น 4" />
       </div>
       <div className="px-4 pb-3">
@@ -562,6 +566,8 @@ export function OfficerOverstayAlertCard() {
         <CardRow label="ชื่อ" value="พุทธิพงษ์ คาดสนิท" />
         <CardRow label="นัดหมาย" value="10:00 - 11:00 น." />
         <CardRow label="เกินเวลา" value="45 นาที" />
+        <CardRow label="วัตถุประสงค์" value="🏛️ ติดต่อราชการ" />
+        <CardRow label="แผนก" value="สำนักนโยบายฯ" />
         <CardRow label="สถานที่" value="อาคาร C ชั้น 4" />
       </div>
       <div className="px-4 pb-3 space-y-2">
@@ -588,6 +594,8 @@ export function VisitorOverstayAlertCard() {
         <CardRow label="เข้าเมื่อ" value="09:30 น." />
         <CardRow label="ครบกำหนด" value="16:00 น." />
         <CardRow label="เกินเวลา" value="1 ชม. 15 นาที" />
+        <CardRow label="วัตถุประสงค์" value="🏛️ ติดต่อราชการ" />
+        <CardRow label="แผนก" value="สำนักนโยบายฯ" />
         <CardRow label="สถานที่" value="อาคาร A ชั้น 3" />
       </div>
       <div className="px-4 pb-1">

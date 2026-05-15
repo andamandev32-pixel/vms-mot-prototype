@@ -341,13 +341,15 @@ export const defaultFlexTemplates: FlexTemplateConfig[] = [
       { id: "r1", label: "เลข Entry", variable: "entryCode", previewValue: "eVMS-25690402-0099", enabled: true, sortOrder: 1 },
       { id: "r2", label: "เวลาเข้า", variable: "checkinAt", previewValue: "09:45 น.", enabled: true, sortOrder: 2 },
       { id: "r3", label: "เวลาออก", variable: "checkoutAt", previewValue: "ภายใน 11:00 น.", enabled: true, sortOrder: 3 },
-      { id: "r4", label: "สถานที่", variable: "location", previewValue: "อาคาร C ชั้น 4", enabled: true, sortOrder: 4 },
+      { id: "r4", label: "วัตถุประสงค์", variable: "purposeName", previewValue: "🏛️ ติดต่อราชการ", enabled: true, sortOrder: 4 },
+      { id: "r5", label: "แผนก", variable: "departmentName", previewValue: "สำนักนโยบายฯ", enabled: true, sortOrder: 5 },
+      { id: "r6", label: "สถานที่", variable: "location", previewValue: "อาคาร C ชั้น 4", enabled: true, sortOrder: 6 },
     ],
     buttons: [
       { id: "b1", label: "ดู Visit Slip", variant: "primary", enabled: true, sortOrder: 1 },
     ],
     showQrCode: false,
-    availableVariables: ["entryCode", "checkinAt", "checkoutAt", "location"],
+    availableVariables: ["entryCode", "checkinAt", "checkoutAt", "purposeName", "departmentName", "location"],
   },
 
   // ─── visitor-wifi-credentials ───
@@ -440,14 +442,16 @@ export const defaultFlexTemplates: FlexTemplateConfig[] = [
       { id: "r1", label: "เข้าเมื่อ", variable: "checkinAt", previewValue: "09:30 น.", enabled: true, sortOrder: 1 },
       { id: "r2", label: "ครบกำหนด", variable: "expectedCheckout", previewValue: "16:00 น.", enabled: true, sortOrder: 2 },
       { id: "r3", label: "เกินเวลา", variable: "overstayDuration", previewValue: "1 ชม. 15 นาที", enabled: true, sortOrder: 3 },
-      { id: "r4", label: "สถานที่", variable: "location", previewValue: "อาคาร A ชั้น 3", enabled: true, sortOrder: 4 },
+      { id: "r4", label: "วัตถุประสงค์", variable: "purposeName", previewValue: "🏛️ ติดต่อราชการ", enabled: true, sortOrder: 4 },
+      { id: "r5", label: "แผนก", variable: "departmentName", previewValue: "สำนักนโยบายฯ", enabled: true, sortOrder: 5 },
+      { id: "r6", label: "สถานที่", variable: "location", previewValue: "อาคาร A ชั้น 3", enabled: true, sortOrder: 6 },
     ],
     buttons: [
       { id: "b1", label: "Check-out ที่ Counter", variant: "red", enabled: true, sortOrder: 1 },
     ],
     infoBox: { text: "กรุณาติดต่อ Counter เพื่อ Check-out หรือขอขยายเวลา", color: "orange", enabled: true },
     showQrCode: false,
-    availableVariables: ["checkinAt", "expectedCheckout", "overstayDuration", "location"],
+    availableVariables: ["checkinAt", "expectedCheckout", "overstayDuration", "purposeName", "departmentName", "location"],
   },
 
   // ─── officer-register (LIFF) ───
@@ -560,13 +564,15 @@ export const defaultFlexTemplates: FlexTemplateConfig[] = [
       { id: "r1", label: "ชื่อ", variable: "visitorName", previewValue: "พุทธิพงษ์ คาดสนิท", enabled: true, sortOrder: 1 },
       { id: "r2", label: "บริษัท", variable: "company", previewValue: "บริษัท สยามเทค จำกัด", enabled: true, sortOrder: 2 },
       { id: "r3", label: "Check-in", variable: "checkinInfo", previewValue: "09:45 น. | Kiosk K-01", enabled: true, sortOrder: 3 },
-      { id: "r4", label: "สถานที่", variable: "location", previewValue: "อาคาร C ชั้น 4", enabled: true, sortOrder: 4 },
+      { id: "r4", label: "วัตถุประสงค์", variable: "purposeName", previewValue: "🏛️ ติดต่อราชการ", enabled: true, sortOrder: 4 },
+      { id: "r5", label: "แผนก", variable: "departmentName", previewValue: "สำนักนโยบายฯ", enabled: true, sortOrder: 5 },
+      { id: "r6", label: "สถานที่", variable: "location", previewValue: "อาคาร C ชั้น 4", enabled: true, sortOrder: 6 },
     ],
     buttons: [
       { id: "b1", label: "ดูรายละเอียด", variant: "primary", enabled: true, sortOrder: 1 },
     ],
     showQrCode: false,
-    availableVariables: ["visitorName", "company", "checkinInfo", "location"],
+    availableVariables: ["visitorName", "company", "checkinInfo", "purposeName", "departmentName", "location"],
   },
 
   // ─── officer-overstay-alert ───
@@ -585,14 +591,16 @@ export const defaultFlexTemplates: FlexTemplateConfig[] = [
       { id: "r1", label: "ชื่อ", variable: "visitorName", previewValue: "พุทธิพงษ์ คาดสนิท", enabled: true, sortOrder: 1 },
       { id: "r2", label: "นัดหมาย", variable: "timeSlot", previewValue: "10:00 - 11:00 น.", enabled: true, sortOrder: 2 },
       { id: "r3", label: "เกินเวลา", variable: "overstayMinutes", previewValue: "45 นาที", enabled: true, sortOrder: 3 },
-      { id: "r4", label: "สถานที่", variable: "location", previewValue: "อาคาร C ชั้น 4", enabled: true, sortOrder: 4 },
+      { id: "r4", label: "วัตถุประสงค์", variable: "purposeName", previewValue: "🏛️ ติดต่อราชการ", enabled: true, sortOrder: 4 },
+      { id: "r5", label: "แผนก", variable: "departmentName", previewValue: "สำนักนโยบายฯ", enabled: true, sortOrder: 5 },
+      { id: "r6", label: "สถานที่", variable: "location", previewValue: "อาคาร C ชั้น 4", enabled: true, sortOrder: 6 },
     ],
     buttons: [
       { id: "b1", label: "ติดต่อ Visitor", variant: "primary", enabled: true, sortOrder: 1 },
       { id: "b2", label: "แจ้ง Security", variant: "red", enabled: true, sortOrder: 2 },
     ],
     showQrCode: false,
-    availableVariables: ["visitorName", "timeSlot", "overstayMinutes", "location"],
+    availableVariables: ["visitorName", "timeSlot", "overstayMinutes", "purposeName", "departmentName", "location"],
   },
 ];
 

@@ -9,6 +9,8 @@ export interface OfficerCheckinAlertParams {
   visitorName: string;
   company: string;
   checkinInfo: string;
+  purposeName: string;
+  departmentName: string;
   location: string;
 }
 

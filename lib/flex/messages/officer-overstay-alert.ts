@@ -9,6 +9,8 @@ export interface OfficerOverstayAlertParams {
   visitorName: string;
   timeSlot: string;
   overstayMinutes: string;
+  purposeName: string;
+  departmentName: string;
   location: string;
 }
 

@@ -9,6 +9,8 @@ export interface VisitorOverstayAlertParams {
   checkinAt: string;
   expectedCheckout: string;
   overstayDuration: string;
+  purposeName: string;
+  departmentName: string;
   location: string;
 }
 
