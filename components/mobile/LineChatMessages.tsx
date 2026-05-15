@@ -220,6 +220,33 @@ export function ApprovalApprovedCard() {
   );
 }
 
+export function ApprovalRejectedCard() {
+  return (
+    <FlexCard time="10:35">
+      <CardHeader title="นัดหมายถูกปฏิเสธ ❌" color="red" />
+      <div className="px-4 py-3 space-y-1.5">
+        <div className="flex items-center justify-between mb-1">
+          <span className="text-xs text-text-muted">สถานะ</span>
+          <StatusBadge status="rejected" />
+        </div>
+        <CardRow label="Booking" value="#eVMS-20260402-1042" />
+        <CardRow label="วันที่" value="2 เม.ย. 2569 | 10:00 - 11:00 น." />
+        <CardRow label="ผู้พิจารณา" value="คุณสมศรี รักษ์ดี" />
+        <CardRow label="เมื่อ" value="30 มี.ค. 2569 10:35 น." />
+        <CardRow label="เหตุผล" value="ผู้รับพบไม่ว่าง" />
+      </div>
+      <div className="px-4 pb-1">
+        <div className="bg-orange-50 border border-orange-200 rounded-xl p-2.5 text-center">
+          <p className="text-[10px] text-orange-700">หากต้องการเข้าพบ กรุณาสร้างนัดหมายใหม่</p>
+        </div>
+      </div>
+      <div className="px-4 pb-3 pt-2 space-y-2">
+        <CardButton label="สร้างนัดหมายใหม่" variant="green" />
+      </div>
+    </FlexCard>
+  );
+}
+
 export function ReminderMessage() {
   return (
     <BotBubble time="08:00">
@@ -545,6 +572,36 @@ export function OfficerOverstayAlertCard() {
   );
 }
 
+export function VisitorOverstayAlertCard() {
+  return (
+    <FlexCard time="11:45">
+      <div className="bg-red-50 px-4 py-3 border-b border-red-100">
+        <div className="flex items-center gap-2">
+          <AlertTriangle size={18} className="text-red-600" />
+          <div>
+            <p className="text-sm font-bold text-red-700">แจ้งเตือน: อยู่เกินเวลานัด</p>
+            <p className="text-[10px] text-red-500">Overstay 1 ชม. 15 นาที</p>
+          </div>
+        </div>
+      </div>
+      <div className="px-4 py-3 space-y-1.5">
+        <CardRow label="เข้าเมื่อ" value="09:30 น." />
+        <CardRow label="ครบกำหนด" value="16:00 น." />
+        <CardRow label="เกินเวลา" value="1 ชม. 15 นาที" />
+        <CardRow label="สถานที่" value="อาคาร A ชั้น 3" />
+      </div>
+      <div className="px-4 pb-1">
+        <div className="bg-orange-50 border border-orange-200 rounded-xl p-2.5 text-center">
+          <p className="text-[10px] text-orange-700">กรุณาติดต่อ Counter เพื่อ Check-out หรือขอขยายเวลา</p>
+        </div>
+      </div>
+      <div className="px-4 pb-3 pt-2 space-y-2">
+        <CardButton label="Check-out ที่ Counter" variant="red" />
+      </div>
+    </FlexCard>
+  );
+}
+
 // ===== State-to-Messages Mapper =====
 
 export function getMessagesForState(
@@ -588,6 +645,12 @@ export function getMessagesForState(
         <ApprovalApprovedCard key="approved" />,
       ];
 
+    case "visitor-approval-rejected":
+      return [
+        <BookingConfirmedCard key="booking" />,
+        <ApprovalRejectedCard key="rejected" />,
+      ];
+
     case "visitor-auto-cancelled":
       return [
         <BookingConfirmedCard key="booking" />,
@@ -616,6 +679,12 @@ export function getMessagesForState(
       return [
         <WifiCredentialsCard key="wifi" />,
         <VisitSlipLineCard key="slip" />,
+      ];
+
+    case "visitor-overstay-alert":
+      return [
+        <VisitSlipLineCard key="slip" />,
+        <VisitorOverstayAlertCard key="visitor-overstay" />,
       ];
 
     case "visitor-checkout":
