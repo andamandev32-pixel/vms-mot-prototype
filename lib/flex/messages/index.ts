@@ -30,3 +30,5 @@ export { buildOfficerCheckinAlertMessage } from "./officer-checkin-alert";
 export type { OfficerCheckinAlertParams } from "./officer-checkin-alert";
 export { buildOfficerOverstayAlertMessage } from "./officer-overstay-alert";
 export type { OfficerOverstayAlertParams } from "./officer-overstay-alert";
+export { buildVisitorOverstayAlertMessage } from "./visitor-overstay-alert";
+export type { VisitorOverstayAlertParams } from "./visitor-overstay-alert";

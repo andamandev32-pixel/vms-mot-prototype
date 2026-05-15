@@ -12,6 +12,7 @@ import {
   buildCheckinMessage,
   buildOfficerCheckinAlertMessage,
   buildOfficerOverstayAlertMessage,
+  buildVisitorOverstayAlertMessage,
   buildAutoCancelledMessage,
 } from "@/lib/flex/messages";
 
@@ -26,6 +27,7 @@ export interface NotificationPayload {
     | "checkin-alert"
     | "checkin-welcome"
     | "overstay-alert"
+    | "visitor-overstay-alert"
     | "auto-cancelled"
     | "batch-summary";
   recipientStaffId?: number;
@@ -174,6 +176,15 @@ async function processLineNotification(payload: NotificationPayload) {
         visitorName: vars.visitorName || "",
         timeSlot: vars.expectedCheckout || "",
         overstayMinutes: vars.overstayDuration || "",
+        location: vars.location || "",
+      });
+      break;
+
+    case "visitor-overstay-alert":
+      message = await buildVisitorOverstayAlertMessage({
+        checkinAt: vars.checkinAt || "",
+        expectedCheckout: vars.expectedCheckout || "",
+        overstayDuration: vars.overstayDuration || "",
         location: vars.location || "",
       });
       break;
@@ -432,11 +443,30 @@ export async function sendApprovalResultNotification(params: {
   }
 }
 
-/** Send overstay alert */
+/**
+ * Send overstay alert
+ * - Visitor (LINE only): "you are overstaying — please check out"
+ * - Creator + Host staff (LINE + email): officer overstay alert
+ * Deduplicated by staff id so creator/host overlap is not double-notified.
+ */
 export async function sendOverstayAlert(params: OverstayAlertParams) {
-  enqueue({
-    type: "overstay-alert",
-    variables: {
+  try {
+    const entry = await prisma.visitEntry.findUnique({
+      where: { id: params.entryId },
+      include: {
+        visitor: { select: { id: true, lineUserId: true } },
+        appointment: {
+          select: {
+            createdByStaff: { select: { id: true, lineUserId: true, email: true } },
+            hostStaff: { select: { id: true, lineUserId: true, email: true } },
+            createdByStaffId: true,
+            hostStaffId: true,
+          },
+        },
+      },
+    });
+
+    const baseVars: Record<string, string> = {
       visitorName: params.visitorName,
       company: params.company ?? "",
       checkinAt: params.checkinAt,
@@ -444,8 +474,58 @@ export async function sendOverstayAlert(params: OverstayAlertParams) {
       overstayDuration: params.overstayDuration,
       location: params.location ?? "",
       groupName: params.groupName ?? "",
-    },
-  });
+    };
+
+    // ─── Visitor side (LINE only) ───
+    if (entry?.visitor?.lineUserId) {
+      enqueue({
+        type: "visitor-overstay-alert",
+        recipientVisitorId: entry.visitor.id,
+        recipientLineUserId: entry.visitor.lineUserId,
+        channel: "line",
+        variables: baseVars,
+      });
+    }
+
+    // ─── Officer side (creator + host, deduped) ───
+    const notified = new Set<number>();
+    const notifyStaff = (
+      staff: { id: number; lineUserId: string | null; email: string | null } | null | undefined
+    ) => {
+      if (!staff || notified.has(staff.id)) return;
+      notified.add(staff.id);
+      if (staff.lineUserId) {
+        enqueue({
+          type: "overstay-alert",
+          recipientStaffId: staff.id,
+          recipientLineUserId: staff.lineUserId,
+          channel: "line",
+          variables: baseVars,
+        });
+      }
+      if (staff.email) {
+        enqueue({
+          type: "overstay-alert",
+          recipientStaffId: staff.id,
+          recipientEmail: staff.email,
+          channel: "email",
+          variables: baseVars,
+        });
+      }
+    };
+
+    if (entry?.appointment) {
+      notifyStaff(entry.appointment.createdByStaff);
+      if (
+        entry.appointment.hostStaffId &&
+        entry.appointment.hostStaffId !== entry.appointment.createdByStaffId
+      ) {
+        notifyStaff(entry.appointment.hostStaff);
+      }
+    }
+  } catch (error) {
+    console.error("[NotificationService] sendOverstayAlert error:", error);
+  }
 }
 
 /** Get queued notifications (for debugging/testing) */

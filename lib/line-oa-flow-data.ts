@@ -22,6 +22,7 @@ export type LineFlowStateId =
   | "visitor-wifi-credentials"
   | "visitor-slip-line"
   | "visitor-checkout"
+  | "visitor-overstay-alert"
   // Officer Flow
   | "officer-register"
   | "officer-registered"

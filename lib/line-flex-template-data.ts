@@ -422,6 +422,34 @@ export const defaultFlexTemplates: FlexTemplateConfig[] = [
     availableVariables: ["entryCode", "checkinAt", "checkoutAt", "duration"],
   },
 
+  // ─── visitor-overstay-alert ───
+  {
+    stateId: "visitor-overstay-alert",
+    name: "แจ้งเตือน Visitor อยู่เกินเวลา",
+    nameEn: "Visitor Overstay Reminder",
+    type: "flex",
+    isActive: true,
+    headerTitle: "แจ้งเตือน: อยู่เกินเวลานัด",
+    headerSubtitle: "Overstay {{overstayDuration}}",
+    headerColor: "red",
+    headerVariant: "officer-overstay",
+    showStatusBadge: true,
+    statusBadgeText: "เกินเวลา",
+    statusBadgeType: "overstay",
+    rows: [
+      { id: "r1", label: "เข้าเมื่อ", variable: "checkinAt", previewValue: "09:30 น.", enabled: true, sortOrder: 1 },
+      { id: "r2", label: "ครบกำหนด", variable: "expectedCheckout", previewValue: "16:00 น.", enabled: true, sortOrder: 2 },
+      { id: "r3", label: "เกินเวลา", variable: "overstayDuration", previewValue: "1 ชม. 15 นาที", enabled: true, sortOrder: 3 },
+      { id: "r4", label: "สถานที่", variable: "location", previewValue: "อาคาร A ชั้น 3", enabled: true, sortOrder: 4 },
+    ],
+    buttons: [
+      { id: "b1", label: "Check-out ที่ Counter", variant: "red", enabled: true, sortOrder: 1 },
+    ],
+    infoBox: { text: "กรุณาติดต่อ Counter เพื่อ Check-out หรือขอขยายเวลา", color: "orange", enabled: true },
+    showQrCode: false,
+    availableVariables: ["checkinAt", "expectedCheckout", "overstayDuration", "location"],
+  },
+
   // ─── officer-register (LIFF) ───
   {
     stateId: "officer-register",
