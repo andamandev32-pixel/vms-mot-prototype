@@ -211,29 +211,145 @@ async function processLineNotification(payload: NotificationPayload) {
 
 // ═══════ Send Functions ═══════
 
+interface StaffRecipient {
+  id: number;
+  lineUserId: string | null;
+  email: string | null;
+}
+
+interface AppointmentForFanOut {
+  createdByStaff: StaffRecipient | null;
+  hostStaff: StaffRecipient | null;
+  createdByStaffId: number | null;
+  hostStaffId: number | null;
+  group: {
+    staffNotifyConfig: string | null;
+    approverGroup: {
+      members: Array<{ staff: StaffRecipient }>;
+    } | null;
+  } | null;
+}
+
+/** Prisma include shape for fan-out — keep both callers in sync */
+const APPOINTMENT_FAN_OUT_INCLUDE = {
+  createdByStaff: { select: { id: true, lineUserId: true, email: true } },
+  hostStaff: { select: { id: true, lineUserId: true, email: true } },
+  group: {
+    select: {
+      staffNotifyConfig: true,
+      approverGroup: {
+        include: {
+          members: {
+            where: { receiveNotification: true },
+            include: { staff: { select: { id: true, lineUserId: true, email: true } } },
+          },
+        },
+      },
+    },
+  },
+} as const;
+
+/**
+ * Fan out a notification to: creator + host (deduped) + group's responsible/additional staff.
+ * Each recipient gets LINE (if lineUserId) and email (if email). Caller passes the loaded
+ * appointment (use APPOINTMENT_FAN_OUT_INCLUDE), the event type, and variables.
+ */
+async function fanOutAppointmentStaff(
+  appointment: AppointmentForFanOut,
+  type: NotificationPayload["type"],
+  variables: Record<string, string>
+): Promise<void> {
+  const notified = new Set<number>();
+  const notifyStaff = (staff: StaffRecipient | null | undefined) => {
+    if (!staff || notified.has(staff.id)) return;
+    notified.add(staff.id);
+    if (staff.lineUserId) {
+      enqueue({
+        type,
+        recipientStaffId: staff.id,
+        recipientLineUserId: staff.lineUserId,
+        channel: "line",
+        variables,
+      });
+    }
+    if (staff.email) {
+      enqueue({
+        type,
+        recipientStaffId: staff.id,
+        recipientEmail: staff.email,
+        channel: "email",
+        variables,
+      });
+    }
+  };
+
+  // Creator + host (deduped if same person)
+  notifyStaff(appointment.createdByStaff);
+  if (
+    appointment.hostStaffId &&
+    appointment.hostStaffId !== appointment.createdByStaffId
+  ) {
+    notifyStaff(appointment.hostStaff);
+  }
+
+  // Group-level recipients from staffNotifyConfig
+  if (appointment.group?.staffNotifyConfig) {
+    let config: {
+      responsibleGroup?: boolean;
+      additionalStaff?: number[];
+      additionalApproverGroups?: number[];
+    } = {};
+    try {
+      config = JSON.parse(appointment.group.staffNotifyConfig);
+    } catch (e) {
+      console.error("[NotificationService] invalid staffNotifyConfig JSON:", e);
+    }
+
+    if (config.responsibleGroup && appointment.group.approverGroup) {
+      for (const member of appointment.group.approverGroup.members) {
+        notifyStaff(member.staff);
+      }
+    }
+
+    if (Array.isArray(config.additionalStaff) && config.additionalStaff.length > 0) {
+      const staffList = await prisma.staff.findMany({
+        where: { id: { in: config.additionalStaff } },
+        select: { id: true, lineUserId: true, email: true },
+      });
+      for (const s of staffList) notifyStaff(s);
+    }
+
+    if (
+      Array.isArray(config.additionalApproverGroups) &&
+      config.additionalApproverGroups.length > 0
+    ) {
+      const extraGroups = await prisma.approverGroup.findMany({
+        where: { id: { in: config.additionalApproverGroups } },
+        include: {
+          members: {
+            where: { receiveNotification: true },
+            include: { staff: { select: { id: true, lineUserId: true, email: true } } },
+          },
+        },
+      });
+      for (const g of extraGroups) {
+        for (const m of g.members) notifyStaff(m.staff);
+      }
+    }
+  }
+}
+
 /** Send check-in notification to creator + host + everyone listed in group.staffNotifyConfig */
 export async function sendCheckinNotification(params: CheckinNotificationParams) {
   try {
     const appointment = await prisma.appointment.findUnique({
       where: { id: params.appointmentId },
       include: {
-        createdByStaff: { select: { id: true, name: true, lineUserId: true, email: true } },
-        hostStaff: { select: { id: true, name: true, lineUserId: true, email: true } },
+        ...APPOINTMENT_FAN_OUT_INCLUDE,
         group: {
           select: {
-            id: true,
+            ...APPOINTMENT_FAN_OUT_INCLUDE.group.select,
             name: true,
-            staffNotifyConfig: true,
-            approverGroup: {
-              include: {
-                members: {
-                  where: { receiveNotification: true },
-                  include: {
-                    staff: { select: { id: true, name: true, lineUserId: true, email: true } },
-                  },
-                },
-              },
-            },
           },
         },
       },
@@ -250,81 +366,7 @@ export async function sendCheckinNotification(params: CheckinNotificationParams)
       groupName: appointment.group?.name ?? "",
     };
 
-    // Deduplicated dispatcher — same staff id never gets notified twice
-    const notified = new Set<number>();
-    const notifyStaff = (staff: { id: number; lineUserId: string | null; email: string | null }) => {
-      if (notified.has(staff.id)) return;
-      notified.add(staff.id);
-      if (staff.lineUserId) {
-        enqueue({
-          type: "checkin-alert",
-          recipientStaffId: staff.id,
-          recipientLineUserId: staff.lineUserId,
-          channel: "line",
-          variables,
-        });
-      }
-      if (staff.email) {
-        enqueue({
-          type: "checkin-alert",
-          recipientStaffId: staff.id,
-          recipientEmail: staff.email,
-          channel: "email",
-          variables,
-        });
-      }
-    };
-
-    // Always: creator + host (if different)
-    if (appointment.createdByStaff) notifyStaff(appointment.createdByStaff);
-    if (appointment.hostStaff && appointment.hostStaffId !== appointment.createdByStaffId) {
-      notifyStaff(appointment.hostStaff);
-    }
-
-    // Group only: parse staffNotifyConfig and resolve to staff
-    if (appointment.group?.staffNotifyConfig) {
-      let config: {
-        responsibleGroup?: boolean;
-        additionalStaff?: number[];
-        additionalApproverGroups?: number[];
-      } = {};
-      try {
-        config = JSON.parse(appointment.group.staffNotifyConfig);
-      } catch (e) {
-        console.error("[NotificationService] invalid staffNotifyConfig JSON:", e);
-      }
-
-      if (config.responsibleGroup && appointment.group.approverGroup) {
-        for (const member of appointment.group.approverGroup.members) {
-          notifyStaff(member.staff);
-        }
-      }
-
-      if (Array.isArray(config.additionalStaff) && config.additionalStaff.length > 0) {
-        const staffList = await prisma.staff.findMany({
-          where: { id: { in: config.additionalStaff } },
-          select: { id: true, name: true, lineUserId: true, email: true },
-        });
-        for (const s of staffList) notifyStaff(s);
-      }
-
-      if (Array.isArray(config.additionalApproverGroups) && config.additionalApproverGroups.length > 0) {
-        const extraGroups = await prisma.approverGroup.findMany({
-          where: { id: { in: config.additionalApproverGroups } },
-          include: {
-            members: {
-              where: { receiveNotification: true },
-              include: {
-                staff: { select: { id: true, name: true, lineUserId: true, email: true } },
-              },
-            },
-          },
-        });
-        for (const g of extraGroups) {
-          for (const m of g.members) notifyStaff(m.staff);
-        }
-      }
-    }
+    await fanOutAppointmentStaff(appointment, "checkin-alert", variables);
   } catch (error) {
     console.error("[NotificationService] sendCheckinNotification error:", error);
   }
@@ -446,8 +488,8 @@ export async function sendApprovalResultNotification(params: {
 /**
  * Send overstay alert
  * - Visitor (LINE only): "you are overstaying — please check out"
- * - Creator + Host staff (LINE + email): officer overstay alert
- * Deduplicated by staff id so creator/host overlap is not double-notified.
+ * - Creator + host + group's responsibleGroup / additionalStaff / additionalApproverGroups
+ *   (LINE + email, deduped by staff id)
  */
 export async function sendOverstayAlert(params: OverstayAlertParams) {
   try {
@@ -455,14 +497,7 @@ export async function sendOverstayAlert(params: OverstayAlertParams) {
       where: { id: params.entryId },
       include: {
         visitor: { select: { id: true, lineUserId: true } },
-        appointment: {
-          select: {
-            createdByStaff: { select: { id: true, lineUserId: true, email: true } },
-            hostStaff: { select: { id: true, lineUserId: true, email: true } },
-            createdByStaffId: true,
-            hostStaffId: true,
-          },
-        },
+        appointment: { include: APPOINTMENT_FAN_OUT_INCLUDE },
       },
     });
 
@@ -487,41 +522,9 @@ export async function sendOverstayAlert(params: OverstayAlertParams) {
       });
     }
 
-    // ─── Officer side (creator + host, deduped) ───
-    const notified = new Set<number>();
-    const notifyStaff = (
-      staff: { id: number; lineUserId: string | null; email: string | null } | null | undefined
-    ) => {
-      if (!staff || notified.has(staff.id)) return;
-      notified.add(staff.id);
-      if (staff.lineUserId) {
-        enqueue({
-          type: "overstay-alert",
-          recipientStaffId: staff.id,
-          recipientLineUserId: staff.lineUserId,
-          channel: "line",
-          variables: baseVars,
-        });
-      }
-      if (staff.email) {
-        enqueue({
-          type: "overstay-alert",
-          recipientStaffId: staff.id,
-          recipientEmail: staff.email,
-          channel: "email",
-          variables: baseVars,
-        });
-      }
-    };
-
+    // ─── Officer side (creator + host + group fan-out) ───
     if (entry?.appointment) {
-      notifyStaff(entry.appointment.createdByStaff);
-      if (
-        entry.appointment.hostStaffId &&
-        entry.appointment.hostStaffId !== entry.appointment.createdByStaffId
-      ) {
-        notifyStaff(entry.appointment.hostStaff);
-      }
+      await fanOutAppointmentStaff(entry.appointment, "overstay-alert", baseVars);
     }
   } catch (error) {
     console.error("[NotificationService] sendOverstayAlert error:", error);
