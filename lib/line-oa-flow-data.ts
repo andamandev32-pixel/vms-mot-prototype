@@ -15,6 +15,7 @@ export type LineFlowStateId =
   | "visitor-booking"
   | "visitor-booking-confirmed"
   | "visitor-approval-result"
+  | "visitor-approval-rejected"
   | "visitor-auto-cancelled"
   | "visitor-reminder"
   | "visitor-checkin-kiosk"

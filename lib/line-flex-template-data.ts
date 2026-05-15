@@ -241,6 +241,34 @@ export const defaultFlexTemplates: FlexTemplateConfig[] = [
     availableVariables: ["bookingCode", "dateTime", "approverName", "approvedAt"],
   },
 
+  // ─── visitor-approval-rejected ───
+  {
+    stateId: "visitor-approval-rejected",
+    name: "แจ้งผลไม่อนุมัติ",
+    nameEn: "Approval Rejected",
+    type: "flex",
+    isActive: true,
+    headerTitle: "นัดหมายถูกปฏิเสธ ❌",
+    headerColor: "red",
+    headerVariant: "standard",
+    showStatusBadge: true,
+    statusBadgeText: "ปฏิเสธ",
+    statusBadgeType: "rejected",
+    rows: [
+      { id: "r1", label: "Booking", variable: "bookingCode", previewValue: "#eVMS-20260402-1042", enabled: true, sortOrder: 1 },
+      { id: "r2", label: "วันที่", variable: "dateTime", previewValue: "2 เม.ย. 2569 | 10:00 - 11:00 น.", enabled: true, sortOrder: 2 },
+      { id: "r3", label: "ผู้พิจารณา", variable: "approverName", previewValue: "คุณสมศรี รักษ์ดี", enabled: true, sortOrder: 3 },
+      { id: "r4", label: "เมื่อ", variable: "approvedAt", previewValue: "30 มี.ค. 2569 10:30 น.", enabled: true, sortOrder: 4 },
+      { id: "r5", label: "เหตุผล", variable: "rejectedReason", previewValue: "ผู้รับพบไม่ว่าง", enabled: true, sortOrder: 5 },
+    ],
+    buttons: [
+      { id: "b1", label: "สร้างนัดหมายใหม่", variant: "green", enabled: true, sortOrder: 1 },
+    ],
+    infoBox: { text: "หากต้องการเข้าพบ กรุณาสร้างนัดหมายใหม่", color: "orange", enabled: true },
+    showQrCode: false,
+    availableVariables: ["bookingCode", "dateTime", "approverName", "approvedAt", "rejectedReason"],
+  },
+
   // ─── visitor-auto-cancelled ───
   {
     stateId: "visitor-auto-cancelled",

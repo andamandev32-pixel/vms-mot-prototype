@@ -384,6 +384,54 @@ export async function sendApprovalNotification(params: {
   }
 }
 
+/** Notify visitor of approval/rejection result via LINE */
+export async function sendApprovalResultNotification(params: {
+  appointmentId: number;
+  approved: boolean;
+  approverName: string;
+  decidedAt: Date;
+  rejectedReason?: string;
+}) {
+  try {
+    const appointment = await prisma.appointment.findUnique({
+      where: { id: params.appointmentId },
+      include: {
+        visitor: { select: { id: true, lineUserId: true } },
+      },
+    });
+
+    if (!appointment) return;
+    if (!appointment.visitor?.lineUserId) return; // no LINE channel for visitor
+
+    const decidedAt = params.decidedAt.toLocaleString("th-TH", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    const dateTime = appointment.dateStart
+      ? `${appointment.dateStart.toLocaleDateString("th-TH")} | ${appointment.timeStart ?? ""} - ${appointment.timeEnd ?? ""}`
+      : "";
+
+    enqueue({
+      type: params.approved ? "booking-approved" : "booking-rejected",
+      recipientVisitorId: appointment.visitor.id,
+      recipientLineUserId: appointment.visitor.lineUserId,
+      channel: "line",
+      variables: {
+        bookingCode: appointment.bookingCode,
+        dateTime,
+        approverName: params.approverName,
+        approvedAt: decidedAt,
+        ...(params.rejectedReason ? { rejectedReason: params.rejectedReason } : {}),
+      },
+    });
+  } catch (error) {
+    console.error("[NotificationService] sendApprovalResultNotification error:", error);
+  }
+}
+
 /** Send overstay alert */
 export async function sendOverstayAlert(params: OverstayAlertParams) {
   enqueue({

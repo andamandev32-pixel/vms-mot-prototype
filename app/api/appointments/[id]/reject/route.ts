@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { verifyToken } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { sendApprovalResultNotification } from "@/lib/notification-service";
 
 const ok = (data: unknown) =>
   NextResponse.json({ success: true, data });
@@ -109,6 +110,17 @@ export async function POST(
         statusLogs: { orderBy: { createdAt: "desc" }, take: 1 },
       },
     });
+
+    // Notify visitor via LINE (fire-and-forget; failure must not block the API)
+    sendApprovalResultNotification({
+      appointmentId: appointment.id,
+      approved: false,
+      approverName: user.name || "เจ้าหน้าที่",
+      decidedAt: now,
+      rejectedReason: reason.trim(),
+    }).catch((e) =>
+      console.error("[reject] sendApprovalResultNotification error:", e)
+    );
 
     return ok({ appointment });
   } catch (error) {
