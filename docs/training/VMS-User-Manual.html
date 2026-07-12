@@ -1,0 +1,1631 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>คู่มือการใช้งานระบบ VMS — Visitor Management System</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700&family=Sarabun:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../design-system.css">
+<style>
+/* ================= Deck shell ================= */
+.stage{position:fixed;top:48px;bottom:54px;left:0;right:0;display:flex;align-items:center;justify-content:center;overflow:hidden;background:var(--shell)}
+.slide{width:1920px;height:1080px;background:var(--bg);position:absolute;display:none;flex-direction:column;padding:56px 76px 70px;transform-origin:center;box-shadow:0 24px 80px rgba(0,0,0,.4);overflow:hidden}
+.slide.active{display:flex}
+.marker{position:absolute;top:30px;right:46px;display:flex;align-items:center;gap:16px;z-index:5}
+.marker .mlogo{font-family:var(--font-head);font-weight:700;font-size:20px;color:var(--brand-d);background:#fff;padding:5px 13px;border-radius:8px;border:1px solid var(--line)}
+.marker .mpage{font-family:var(--font-head);font-size:17px;font-weight:600;color:var(--muted);letter-spacing:1.2px}
+
+/* ================= Cover ================= */
+#s-cover{padding:0;background:radial-gradient(1050px 700px at 82% 14%,#8b78f8 0%,#5e44d4 44%,#2a1f6e 100%);color:#fff;justify-content:center}
+#s-cover .cv{padding:0 110px;max-width:1560px}
+#s-cover .cv-emblem{display:flex;align-items:center;gap:28px;margin-bottom:40px}
+#s-cover .cv-emblem .badge{width:120px;height:120px;background:#fff;border-radius:26px;display:flex;align-items:center;justify-content:center;box-shadow:0 12px 36px rgba(0,0,0,.28)}
+#s-cover .cv-emblem .badge span{font-family:var(--font-head);font-weight:700;font-size:40px;color:var(--brand-d)}
+#s-cover .cv-emblem .org{font-family:var(--font-head);font-size:34px;font-weight:600;line-height:1.35}
+#s-cover .cv-emblem .org .en{display:block;font-size:22px;color:#dcd4f7;font-weight:400;margin-top:4px;letter-spacing:1px}
+#s-cover .cv-kicker{font-family:var(--font-head);font-size:22px;letter-spacing:5px;text-transform:uppercase;color:var(--brand-xl);font-weight:600;margin-bottom:18px}
+#s-cover h1{font-size:82px;font-weight:700;line-height:1.12;color:#fff}
+#s-cover h1 .hl{color:var(--brand-xl)}
+#s-cover .cv-sub{font-size:32px;color:#d4ccf6;margin-top:20px;font-weight:300}
+#s-cover .cv-meta{display:flex;gap:16px;margin-top:44px;flex-wrap:wrap}
+#s-cover .cv-meta span{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);border-radius:30px;padding:12px 26px;font-family:var(--font-head);font-size:22px;font-weight:500}
+#s-cover .cv-note{position:absolute;bottom:58px;left:110px;color:#c9bff2;font-size:20px;font-family:var(--font-head)}
+#s-cover .cv-emblem-tl{position:absolute;top:56px;left:80px;display:flex;align-items:center;gap:26px;z-index:6;max-width:1100px}
+#s-cover .cv-emblem-tl img{width:150px;height:150px;object-fit:contain;background:#fff;border-radius:50%;padding:8px;box-shadow:0 10px 28px rgba(0,0,0,.28);flex:none}
+#s-cover .cv-emblem-tl .org2{font-family:var(--font-head);font-size:52px;color:#fff;font-weight:600;line-height:1.25}
+#s-cover .cv-emblem-tl .org2 .en{display:block;font-size:26px;color:#dcd4f7;font-weight:400;letter-spacing:.5px;margin-top:5px}
+#s-cover .cv-logo-tr{position:absolute;bottom:56px;right:88px;z-index:6}
+#s-cover .cv-logo-tr img{height:110px;width:auto;object-fit:contain;background:#fff;border-radius:20px;padding:16px 20px;box-shadow:0 10px 28px rgba(0,0,0,.28)}
+
+/* ================= Section divider ================= */
+.divider{justify-content:center;background:radial-gradient(1000px 680px at 22% 30%,#8b78f8 0%,#5e44d4 48%,#2a1f6e 100%);color:#fff;padding-left:130px}
+.divider .dv-part{font-family:var(--font-head);font-size:26px;letter-spacing:6px;text-transform:uppercase;color:var(--brand-xl);font-weight:600;margin-bottom:16px}
+.divider h2{font-size:74px;font-weight:700;line-height:1.15;max-width:1300px}
+.divider .dv-sub{font-size:30px;color:#d8d0f7;margin-top:22px;font-weight:300;max-width:1200px;line-height:1.5}
+.divider .dv-list{display:flex;gap:14px;margin-top:38px;flex-wrap:wrap;max-width:1400px}
+.divider .dv-list span{background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.24);border-radius:14px;padding:14px 24px;font-family:var(--font-head);font-size:23px;font-weight:500}
+
+/* ================= Generic slide head ================= */
+.s-head .kicker{margin-bottom:10px}
+.s-head .title{font-size:46px;margin-bottom:6px}
+.s-head .s-sub{color:var(--muted);font-size:24px;line-height:1.4;margin-bottom:10px}
+.route{display:inline-flex;align-items:center;gap:9px;background:var(--brand-tint);border:1px solid var(--brand-l);color:var(--brand-d);font-family:var(--font-head);font-size:20px;font-weight:600;padding:7px 18px;border-radius:24px}
+.route code{font-family:'Prompt',monospace;font-size:19px;background:#fff;border:1px solid var(--brand-l);border-radius:6px;padding:1px 9px}
+
+/* ================= Screen + steps layout ================= */
+.s-body{display:grid;grid-template-columns:1.32fr 1fr;gap:40px;margin-top:22px;flex:1;min-height:0;align-items:start}
+.s-body.mobile{grid-template-columns:0.62fr 1fr}
+.shot{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:0 10px 30px rgba(28,23,64,.10);display:flex;flex-direction:column;min-height:0}
+.shot-bar{display:flex;align-items:center;gap:9px;padding:12px 18px;background:#f0edfb;border-bottom:1px solid var(--line);flex:none}
+.shot-bar i{width:13px;height:13px;border-radius:50%;background:#cfc7ee;display:block}
+.shot-bar i:nth-child(1){background:#f6a5a5}.shot-bar i:nth-child(2){background:#f7d08a}.shot-bar i:nth-child(3){background:#a9dfb4}
+.shot-bar em{margin-left:12px;font-style:normal;font-family:'Prompt',monospace;font-size:18px;color:var(--brand-d);font-weight:500}
+.shot-img{position:relative;display:block;background:#fff;cursor:zoom-in;overflow:hidden}
+.shot-img img{width:100%;height:auto;display:block}
+.shot-img .zhint{position:absolute;right:14px;bottom:14px;background:rgba(94,68,212,.92);color:#fff;font-family:var(--font-head);font-size:16px;font-weight:500;padding:6px 14px;border-radius:18px;display:inline-flex;align-items:center;gap:7px;opacity:0;transition:.18s;pointer-events:none}
+.shot-img:hover .zhint{opacity:1}
+.shot-img .zhint svg{width:14px;height:14px;fill:#fff}
+/* callout dots on image */
+.cdot{position:absolute;width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,var(--brand) 0%,var(--brand-d) 100%);color:#fff;display:flex;align-items:center;justify-content:center;font-family:var(--font-head);font-weight:700;font-size:23px;box-shadow:0 3px 0 rgba(58,42,143,.55),0 6px 16px rgba(94,68,212,.5);border:3px solid #fff;transform:translate(-50%,-50%);z-index:3}
+.shot.phone{background:transparent;border:none;box-shadow:none;align-items:center;justify-content:center}
+.shot.phone .frame{background:#1a1340;border-radius:34px;padding:12px;box-shadow:0 20px 50px rgba(28,23,64,.35);position:relative}
+.shot.phone .shot-img{border-radius:24px;cursor:zoom-in}
+.shot.phone .shot-img img{width:320px;height:auto;object-fit:contain}
+
+/* ================= Filmstrip (multi-screen storyboard) ================= */
+.filmstrip{display:flex;align-items:flex-start;justify-content:center;gap:6px;margin-top:20px;flex:1;min-height:0}
+.fs-cell{display:flex;flex-direction:column;align-items:center;gap:11px;flex:0 0 auto;max-width:230px}
+.fs-shot{position:relative;background:#0e0a28;border-radius:18px;padding:7px;box-shadow:0 12px 30px rgba(28,23,64,.24);cursor:zoom-in;transition:transform .15s}
+.fs-shot:hover{transform:translateY(-3px)}
+.fs-shot img{display:block;height:392px;width:auto;border-radius:11px}
+.fs-shot.land{background:#f0edfb;border:1px solid var(--line);border-radius:12px}
+.fs-shot.land img{height:auto;width:360px;border-radius:8px}
+.fs-num{position:absolute;top:-15px;left:-13px;width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,var(--brand) 0%,var(--brand-d) 100%);color:#fff;display:flex;align-items:center;justify-content:center;font-family:var(--font-head);font-weight:700;font-size:22px;border:3px solid var(--bg);box-shadow:0 4px 12px rgba(94,68,212,.4);z-index:3}
+.fs-cap{font-family:var(--font-head);font-size:21px;color:var(--ink);font-weight:600;text-align:center;line-height:1.25;max-width:210px}
+.fs-cap small{display:block;font-family:var(--font-body);font-size:17px;color:var(--muted);font-weight:400;margin-top:2px;line-height:1.35}
+.fs-arrow{display:flex;align-items:center;color:var(--brand-l);flex:0 0 auto;align-self:center;margin-top:170px}
+.fs-arrow svg{width:26px;height:26px;fill:currentColor}
+.fs-note{background:var(--brand-tint);border:1px solid var(--brand-l);border-radius:11px;padding:13px 20px;margin-top:16px;font-size:20px;color:var(--brand-d);display:flex;align-items:center;gap:13px;line-height:1.45}
+.fs-note svg{width:24px;height:24px;fill:var(--brand-d);flex:0 0 auto}
+.fs-note.amber{background:linear-gradient(135deg,#fff8e6,#fff3d4);border-color:var(--amber);color:#7c4a03}
+.fs-note.amber svg{fill:var(--amber)}
+/* category track cards (LINE overview) */
+.track2{display:grid;grid-template-columns:1fr 1fr;gap:26px;margin-top:20px;flex:1;min-height:0}
+.trackcard{background:#fff;border:1px solid var(--line);border-top:5px solid var(--brand);border-radius:14px;padding:24px 28px;display:flex;flex-direction:column}
+.trackcard.v{border-top-color:var(--brand)}
+.trackcard.o{border-top-color:var(--brand-d)}
+.trackcard .tc-h{display:flex;align-items:center;gap:14px;margin-bottom:6px}
+.trackcard .tc-ic{width:52px;height:52px;border-radius:13px;background:var(--brand-tint);color:var(--brand-d);display:flex;align-items:center;justify-content:center}
+.trackcard .tc-ic svg{width:30px;height:30px;fill:currentColor}
+.trackcard h3{font-family:var(--font-head);font-size:30px;color:var(--ink);font-weight:600}
+.trackcard .tc-sub{font-size:19px;color:var(--brand-d);font-weight:500;margin-bottom:14px}
+.trackcard .tc-steps{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px}
+.trackcard .tc-steps span{background:var(--bg);border:1px solid var(--line);border-radius:20px;padding:6px 15px;font-size:18px;color:var(--ink);font-family:var(--font-head);font-weight:500}
+.trackcard .tc-data{font-family:var(--font-head);font-size:19px;color:var(--brand-d);font-weight:600;margin-bottom:8px}
+.trackcard ul{list-style:none;padding:0;display:flex;flex-direction:column;gap:8px}
+.trackcard ul li{font-size:20px;color:var(--muted);line-height:1.4;padding-left:22px;position:relative}
+.trackcard ul li::before{content:"";width:8px;height:8px;background:var(--brand);border-radius:50%;position:absolute;left:2px;top:9px}
+.trackcard ul li b{color:var(--ink);font-weight:600}
+.flowchips{display:flex;align-items:center;gap:10px;margin-top:16px}
+.flowchips .fc{background:linear-gradient(135deg,var(--brand-d),var(--brand-xd));color:#fff;border-radius:12px;padding:13px 24px;font-family:var(--font-head);font-size:22px;font-weight:600;display:flex;align-items:center;gap:11px}
+.flowchips .fc .fcn{width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,.22);display:flex;align-items:center;justify-content:center;font-size:17px}
+.flowchips .fc-arr{color:var(--brand-l);display:flex}.flowchips .fc-arr svg{width:24px;height:24px;fill:currentColor}
+
+/* steps list */
+.steps{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:13px;overflow:hidden}
+.steps li{display:grid;grid-template-columns:46px 1fr;gap:16px;align-items:start;background:#fff;border:1px solid var(--line);border-left:5px solid var(--brand);border-radius:12px;padding:14px 18px}
+.steps li .snum{width:46px;height:46px;border-radius:50%;background:linear-gradient(135deg,var(--brand) 0%,var(--brand-d) 100%);color:#fff;display:flex;align-items:center;justify-content:center;font-family:var(--font-head);font-weight:700;font-size:23px;box-shadow:0 3px 9px rgba(94,68,212,.3)}
+.steps li b{font-family:var(--font-head);font-size:25px;color:var(--ink);font-weight:600;line-height:1.25;display:block;margin-bottom:2px}
+.steps li p{font-size:21px;color:var(--muted);line-height:1.45}
+.steps li p code{font-family:'Prompt',monospace;font-size:19px;background:var(--bg);border:1px solid var(--line);border-radius:5px;padding:1px 8px;color:var(--brand-d)}
+.steps li.tip{background:linear-gradient(135deg,#fff8e6 0%,#fff3d4 100%);border-color:var(--amber);border-left-color:var(--amber);grid-template-columns:46px 1fr}
+.steps li.tip .snum{background:var(--amber);box-shadow:none}
+.steps li.tip b{color:#7c4a03}.steps li.tip p{color:#8a5a12}
+.steps.tight li{padding:11px 16px;gap:14px}
+.steps.tight li b{font-size:23px}.steps.tight li p{font-size:20px}
+.steps.tight li .snum{width:42px;height:42px;font-size:21px}
+
+/* placeholder screen (for pages with data issues) */
+.shot-ph{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:repeating-linear-gradient(45deg,#faf9fe,#faf9fe 18px,#f3f0fc 18px,#f3f0fc 36px);color:var(--brand-d);text-align:center;padding:30px}
+.shot-ph .ph-ic{width:96px;height:96px;border-radius:24px;background:#fff;border:2px dashed var(--brand-l);display:flex;align-items:center;justify-content:center}
+.shot-ph .ph-ic svg{width:50px;height:50px;fill:var(--brand)}
+.shot-ph h4{font-family:var(--font-head);font-size:30px;color:var(--brand-d);font-weight:600}
+.shot-ph p{font-size:21px;color:var(--muted);max-width:520px;line-height:1.5}
+.shot-ph .ph-route{font-family:'Prompt',monospace;font-size:20px;background:#fff;border:1px solid var(--brand-l);border-radius:7px;padding:5px 14px;color:var(--brand-d);font-weight:600}
+
+/* ================= Overview / roles ================= */
+.two{display:grid;grid-template-columns:1fr 1fr;gap:30px;margin-top:22px;flex:1;min-height:0}
+.rolecard{background:#fff;border:1px solid var(--line);border-top:5px solid var(--brand);border-radius:13px;padding:22px 26px;display:flex;flex-direction:column;gap:8px}
+.rolecard .rc-top{display:flex;align-items:center;gap:14px}
+.rolecard .rc-badge{font-family:'Prompt',monospace;font-size:19px;font-weight:600;background:var(--brand-tint);color:var(--brand-d);border-radius:8px;padding:5px 13px}
+.rolecard h4{font-family:var(--font-head);font-size:27px;color:var(--ink);font-weight:600}
+.rolecard p{font-size:21px;color:var(--muted);line-height:1.45}
+.rolecard .scope{font-size:18px;color:var(--brand-d);font-weight:600;font-family:var(--font-head)}
+
+/* channels row */
+.chrow{display:flex;gap:16px;margin-top:16px}
+.chrow .ch{flex:1;background:#fff;border:1px solid var(--line);border-radius:12px;padding:18px;text-align:center;display:flex;flex-direction:column;gap:8px;align-items:center}
+.chrow .ch .ci{width:56px;height:56px;border-radius:14px;background:var(--brand-tint);display:flex;align-items:center;justify-content:center}
+.chrow .ch .ci svg{width:30px;height:30px;fill:var(--brand-d)}
+.chrow .ch h4{font-family:var(--font-head);font-size:24px;color:var(--ink);font-weight:600}
+.chrow .ch p{font-size:19px;color:var(--muted);line-height:1.4}
+
+/* flow steps (visitor journey) */
+.flowline{display:flex;align-items:stretch;gap:6px;margin-top:26px;flex:1;min-height:0}
+.fstep{flex:1;background:#fff;border:1px solid var(--line);border-top:5px solid var(--brand);border-radius:13px;padding:22px 18px;position:relative;display:flex;flex-direction:column;gap:10px}
+.fstep .fn{position:absolute;top:-18px;left:18px;width:40px;height:40px;border-radius:50%;background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:center;font-family:var(--font-head);font-weight:700;font-size:19px;border:3px solid var(--bg)}
+.fstep .fi{width:58px;height:58px;border-radius:13px;background:var(--brand-tint);display:flex;align-items:center;justify-content:center;margin-top:12px}
+.fstep .fi svg{width:32px;height:32px;fill:var(--brand-d)}
+.fstep h4{font-family:var(--font-head);font-size:25px;color:var(--ink);font-weight:600;line-height:1.2}
+.fstep p{font-size:20px;color:var(--muted);line-height:1.4}
+.farr{display:flex;align-items:center;color:var(--brand-l);flex:0 0 auto}
+.farr svg{width:26px;height:26px;fill:currentColor}
+
+/* ================= TOC ================= */
+#s-toc .title{font-size:50px}
+.toc-grid{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:22px;flex:1;min-height:0}
+.toc-col{display:flex;flex-direction:column;gap:12px}
+.toc-h{font-family:var(--font-head);font-size:24px;font-weight:700;color:var(--brand-d);letter-spacing:1px;padding:4px 2px 2px;border-bottom:2px solid var(--brand-l)}
+.toc-card{background:#fff;border:1px solid var(--line);border-left:5px solid var(--brand);border-radius:11px;padding:13px 18px;cursor:pointer;transition:.18s;display:flex;align-items:center;gap:14px}
+.toc-card:hover{background:var(--brand-tint);transform:translateX(3px)}
+.toc-card .tn{font-family:'Prompt',monospace;font-size:20px;font-weight:700;color:var(--brand-d);min-width:38px}
+.toc-card .tt{font-family:var(--font-head);font-size:23px;color:var(--ink);font-weight:500;line-height:1.25}
+.toc-card .tt small{display:block;font-family:var(--font-body);font-size:17px;color:var(--muted);font-weight:400;margin-top:1px}
+
+/* ================= Checklist / quickref ================= */
+.chk-two{display:grid;grid-template-columns:1fr 1fr;gap:26px;margin-top:22px;flex:1;min-height:0}
+.chkbox{background:#fff;border:1px solid var(--line);border-top:5px solid var(--brand);border-radius:13px;padding:24px 28px;display:flex;flex-direction:column;overflow:hidden}
+.chkbox h3{font-family:var(--font-head);font-size:28px;color:var(--brand-d);font-weight:600;margin-bottom:14px;display:flex;align-items:center;gap:12px}
+.chkbox h3 svg{width:28px;height:28px;fill:var(--brand-d)}
+.chklist{list-style:none;padding:0;margin:0;display:flex;flex-direction:column;gap:8px;overflow:hidden}
+.chklist li{display:flex;align-items:center;gap:13px;font-size:21px;color:var(--ink);line-height:1.4;padding:7px 0;border-bottom:1px dashed var(--line)}
+.chklist li:last-child{border-bottom:none}
+.chklist li .cbox{width:24px;height:24px;border-radius:6px;border:2px solid var(--brand-l);flex:0 0 auto}
+.chklist li .cnum{font-family:'Prompt',monospace;font-weight:700;color:var(--brand-d);min-width:26px;font-size:19px}
+.chklist li code{font-family:'Prompt',monospace;font-size:18px;color:var(--brand-d);background:var(--bg);border:1px solid var(--line);border-radius:5px;padding:1px 8px;margin-left:auto}
+.qtable{width:100%;background:#fff;border:1px solid var(--line);border-radius:12px;overflow:hidden;margin-top:6px}
+.qtable th{background:var(--brand-d);color:#fff;font-family:var(--font-head);font-weight:600;padding:13px 20px;text-align:left;font-size:23px}
+.qtable td{padding:12px 20px;border-top:1px solid var(--line);font-size:22px;color:var(--ink);line-height:1.4}
+.qtable td:first-child{font-weight:600;color:var(--ink)}
+.qtable td:last-child{color:var(--brand-d);font-family:var(--font-head);font-weight:600}
+.qtable tr:nth-child(even) td{background:#faf9fe}
+
+/* ================= Closing ================= */
+#s-closing{justify-content:center;background:radial-gradient(1000px 680px at 78% 28%,#8b78f8 0%,#5e44d4 48%,#2a1f6e 100%);color:#fff;padding-left:130px}
+#s-closing h2{font-size:66px;font-weight:700;line-height:1.15;max-width:1300px}
+#s-closing p{font-size:30px;color:#d8d0f7;margin-top:22px;font-weight:300;max-width:1150px;line-height:1.5}
+#s-closing .cl-cards{display:flex;gap:18px;margin-top:44px}
+#s-closing .cl-cards .cl{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.24);border-radius:14px;padding:22px 28px;max-width:420px}
+#s-closing .cl-cards .cl b{font-family:var(--font-head);font-size:25px;color:#fff;font-weight:600;display:block;margin-bottom:6px}
+#s-closing .cl-cards .cl span{font-size:20px;color:#d8d0f7;line-height:1.45}
+
+/* ================= Top bar & nav (reuse tokens) ================= */
+.topbar{position:fixed;top:0;left:0;right:0;height:48px;z-index:50;background:rgba(26,19,64,.96);border-bottom:1px solid rgba(176,150,243,.25);display:flex;align-items:center;justify-content:space-between;padding:0 22px}
+.topbar .tb-l{display:flex;align-items:center;gap:12px;color:#fff}
+.topbar .tb-l .dot{width:9px;height:9px;border-radius:50%;background:var(--brand)}
+.topbar .tb-l b{font-family:var(--font-head);font-weight:600;font-size:15px}
+.topbar .tb-l small{color:#b7abe6;font-size:13px}
+.topbar button{background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);color:#fff;padding:7px 16px;border-radius:8px;cursor:pointer;font-family:var(--font-head);font-size:13.5px;font-weight:500;display:inline-flex;align-items:center;gap:7px;transition:.15s}
+.topbar button:hover{background:var(--brand);border-color:var(--brand)}
+.topbar button svg{width:15px;height:15px;fill:currentColor}
+#nav{position:fixed;bottom:0;left:0;right:0;height:54px;display:flex;align-items:center;justify-content:center;gap:18px;background:var(--brand-d);z-index:50}
+#nav>button{background:rgba(255,255,255,.15);color:#fff;border:none;width:36px;height:36px;border-radius:9px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.15s}
+#nav>button:hover{background:rgba(255,255,255,.32)}#nav>button:disabled{opacity:.4;cursor:not-allowed}
+#nav>button svg{width:18px;height:18px;fill:#fff}
+#nav .home{position:absolute;left:14px;width:auto;padding:6px 14px;border-radius:8px;font-family:var(--font-head);font-size:13.5px;gap:7px}
+#dots{display:flex;gap:7px;align-items:center;max-width:60%;overflow:hidden;flex-wrap:wrap;justify-content:center}
+.dot{width:9px;height:9px;border-radius:50%;background:rgba(255,255,255,.32);cursor:pointer;transition:.2s}
+.dot.on{background:#fff;transform:scale(1.3)}
+#pageno{position:absolute;right:16px;color:#dcd4f7;font-size:14px;font-family:var(--font-head);min-width:90px;text-align:right}
+
+/* ================= Lightbox ================= */
+.lb{position:fixed;inset:0;background:rgba(15,8,40,.9);display:none;align-items:center;justify-content:center;z-index:9999;backdrop-filter:blur(6px)}
+.lb.open{display:flex}
+.lb-inner{position:relative;width:100%;height:100%;overflow:auto;display:flex;align-items:flex-start;justify-content:center;padding:30px}
+.lb img{display:block;border-radius:12px;background:#fff;box-shadow:0 30px 80px rgba(0,0,0,.6);height:calc(var(--z,1) * 88vh);width:auto;max-width:none}
+.lb-close{position:fixed;top:22px;right:28px;width:52px;height:52px;border-radius:50%;background:rgba(255,255,255,.16);border:1.5px solid rgba(255,255,255,.32);color:#fff;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:2;transition:.15s}
+.lb-close:hover{background:rgba(255,255,255,.3);transform:rotate(90deg)}.lb-close svg{width:26px;height:26px;fill:#fff}
+.lb-ctrl{position:fixed;top:22px;left:50%;transform:translateX(-50%);display:flex;gap:8px;align-items:center;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);padding:7px 12px;border-radius:30px;z-index:2}
+.lb-ctrl button{width:42px;height:42px;border-radius:50%;border:none;background:rgba(255,255,255,.14);color:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:.15s}
+.lb-ctrl button:hover:not(:disabled){background:rgba(255,255,255,.3)}.lb-ctrl button:disabled{opacity:.35;cursor:not-allowed}
+.lb-ctrl button svg{width:20px;height:20px;fill:#fff}
+.lb-ctrl .lvl{min-width:58px;text-align:center;color:#fff;font-family:var(--font-head);font-size:16px;font-weight:600}
+.lb-cap{position:fixed;bottom:26px;left:50%;transform:translateX(-50%);color:#fff;font-family:var(--font-head);font-size:17px;background:rgba(255,255,255,.12);padding:8px 20px;border-radius:24px;border:1px solid rgba(255,255,255,.2);z-index:2}
+
+/* ================= Print ================= */
+@media print{
+  @page{size:1920px 1080px;margin:0}
+  html,body{margin:0;padding:0;background:#fff;height:auto;overflow:visible}
+  .topbar,#nav,.lb,.modal-mask{display:none !important}
+  .stage{position:static !important;width:1920px;height:auto;display:block;background:#fff;overflow:visible;padding:0;margin:0}
+  .slide{display:flex !important;position:relative !important;width:1920px !important;height:1080px !important;transform:none !important;margin:0;box-shadow:none;page-break-after:always;break-after:page;overflow:hidden}
+  .slide.no-print{display:none !important}
+  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="tb-l"><span class="dot"></span><b>คู่มือการใช้งานระบบ VMS</b><small>Visitor Management System · กระทรวงการท่องเที่ยวและกีฬา</small></div>
+  <button id="btn-pdf"><svg viewBox="0 0 24 24"><path d="M5 20h14v-2H5v2zM19 9h-4V3H9v6H5l7 7 7-7z"/></svg>บันทึกเป็น PDF</button>
+</div>
+
+<div class="stage" id="stage">
+
+  <!-- ===== COVER ===== -->
+  <section class="slide" id="s-cover" data-title="หน้าปก">
+    <div class="cv-emblem-tl">
+      <img src="manual-assets/emblem-mots.png" alt="ตรากระทรวงการท่องเที่ยวและกีฬา">
+      <div class="org2">กระทรวงการท่องเที่ยวและกีฬา<span class="en">Ministry of Tourism and Sports</span></div>
+    </div>
+    <div class="cv-logo-tr"><img src="manual-assets/logo-dev.png" alt="โลโก้ผู้พัฒนา"></div>
+    <div class="cv">
+      <div class="cv-kicker">User Manual · คู่มือการใช้งาน</div>
+      <h1>ระบบบริหารจัดการ<br><span class="hl">ผู้มาติดต่อ</span> (VMS)</h1>
+      <div class="cv-sub">คู่มือการใช้งานแบบทีละขั้นตอน · พร้อมภาพหน้าจอจริง</div>
+      <div class="cv-meta">
+        <span>สำหรับ Admin / IT</span><span>สำหรับเจ้าหน้าที่ (host)</span><span>อ้างอิงตามหลักสูตรอบรม</span>
+      </div>
+      <div class="cv-note">Visitor Management System — eVMS · ปรับปรุงล่าสุด กรกฎาคม 2569</div>
+    </div>
+  </section>
+
+  <!-- ===== TABLE OF CONTENTS ===== -->
+  <section class="slide" id="s-toc" data-title="สารบัญ">
+    <div class="marker"><span class="mlogo">VMS</span><span class="mpage">สารบัญ</span></div>
+    <div class="s-head">
+      <div class="kicker">สารบัญ · Table of Contents</div>
+      <h2 class="title">เนื้อหาในคู่มือเล่มนี้</h2>
+    </div>
+    <div class="toc-grid" style="grid-template-columns:repeat(3,1fr)">
+      <div class="toc-col">
+        <div class="toc-h">ภาพรวม & ส่วนที่ 1 — Admin / IT</div>
+        <div class="toc-card" data-jump="s-overview"><span class="tn">00</span><span class="tt">ภาพรวมระบบและสิทธิ์ 5 ระดับ<small>Roles, ช่องทาง, flow ผู้มาเยือน</small></span></div>
+        <div class="toc-card" data-jump="s-users"><span class="tn">1.1</span><span class="tt">การจัดการผู้ใช้และสิทธิ์</span></div>
+        <div class="toc-card" data-jump="s-locations"><span class="tn">1.2</span><span class="tt">ตั้งค่า Master Data<small>สถานที่ · วัตถุประสงค์ · เอกสาร · พนักงาน · โซน</small></span></div>
+        <div class="toc-card" data-jump="s-approvers"><span class="tn">1.3</span><span class="tt">Workflow การอนุมัติ</span></div>
+        <div class="toc-card" data-jump="s-servicepoints"><span class="tn">1.4</span><span class="tt">อุปกรณ์และจุดบริการ · เวลาทำการ</span></div>
+        <div class="toc-card" data-jump="s-email"><span class="tn">1.5</span><span class="tt">การแจ้งเตือนและ Integration<small>Email · LINE OA · เทมเพลต</small></span></div>
+        <div class="toc-card" data-jump="s-pdpa"><span class="tn">1.6</span><span class="tt">PDPA และเทมเพลตบัตร/ใบนัด</span></div>
+      </div>
+      <div class="toc-col">
+        <div class="toc-h">ส่วนที่ 2 — User / host</div>
+        <div class="toc-card" data-jump="s-dashboard"><span class="tn">2.1</span><span class="tt">Dashboard · โปรไฟล์</span></div>
+        <div class="toc-card" data-jump="s-appointments"><span class="tn">2.2</span><span class="tt">การสร้างและจัดการนัดหมาย</span></div>
+        <div class="toc-card" data-jump="s-approvals"><span class="tn">2.3</span><span class="tt">การอนุมัติคำขอ (เว็บ + มือถือ)</span></div>
+        <div class="toc-card" data-jump="s-hospitality"><span class="tn">2.4</span><span class="tt">ดูแลผู้มาเยือนระหว่างวัน</span></div>
+        <div class="toc-card" data-jump="s-search"><span class="tn">2.5</span><span class="tt">ค้นหา ประวัติ และรายงาน</span></div>
+        <div class="toc-card" data-jump="s-blocklist"><span class="tn">2.6</span><span class="tt">Blocklist และข้อควรระวัง</span></div>
+        <div class="toc-h" style="margin-top:14px">ส่วนที่ 3 — เริ่มต้นผ่าน LINE</div>
+        <div class="toc-card" data-jump="s-v-onboard"><span class="tn">3.1</span><span class="tt">เส้นทางผู้มาติดต่อ (Visitor)</span></div>
+        <div class="toc-card" data-jump="s-o-onboard"><span class="tn">3.2</span><span class="tt">เส้นทางเจ้าหน้าที่ (Officer)</span></div>
+      </div>
+      <div class="toc-col">
+        <div class="toc-h">ส่วนที่ 4 — Kiosk & Counter</div>
+        <div class="toc-card" data-jump="s-kiosk-overview"><span class="tn">4.0</span><span class="tt">ภาพรวม 2 เส้นทาง · อุปกรณ์</span></div>
+        <div class="toc-card" data-jump="s-kiosk-walkin1"><span class="tn">4.1</span><span class="tt">Kiosk — Walk-in (ไม่มีนัด)</span></div>
+        <div class="toc-card" data-jump="s-kiosk-qr"><span class="tn">4.3</span><span class="tt">Kiosk — มีนัด (สแกน QR)</span></div>
+        <div class="toc-card" data-jump="s-counter"><span class="tn">4.4</span><span class="tt">Counter (จุดบริการ รปภ.)</span></div>
+        <div class="toc-card" data-jump="s-kiosk-settings"><span class="tn">4.5</span><span class="tt">ตั้งค่าเครื่อง Kiosk (IT)</span></div>
+        <div class="toc-h" style="margin-top:14px">ภาคผนวก</div>
+        <div class="toc-card" data-jump="s-checklist"><span class="tn">ก</span><span class="tt">Checklist สำหรับ IT</span></div>
+        <div class="toc-card" data-jump="s-quickref"><span class="tn">ข</span><span class="tt">Quick Reference สำหรับ User</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== OVERVIEW: roles ===== -->
+  <section class="slide" id="s-overview" data-title="ภาพรวมระบบและสิทธิ์">
+    <div class="marker"><span class="mlogo">VMS</span><span class="mpage">ภาพรวม</span></div>
+    <div class="s-head">
+      <div class="kicker">ภาพรวมระบบ · Overview</div>
+      <h2 class="title">สิทธิ์ผู้ใช้ 5 ระดับ และช่องทางการเข้าถึง</h2>
+      <p class="s-sub">ระบบ VMS รองรับหลายช่องทาง และแบ่งสิทธิ์ตามหน้าที่ (least privilege) — ให้สิทธิ์เท่าที่จำเป็น</p>
+    </div>
+    <div class="two">
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div class="rolecard"><div class="rc-top"><span class="rc-badge">visitor</span><h4>ผู้มาติดต่อ</h4><span class="scope" style="margin-left:auto">own</span></div><p>จองนัด · ดู QR · ติดตามสถานะของตนเอง</p></div>
+        <div class="rolecard"><div class="rc-top"><span class="rc-badge">staff</span><h4>เจ้าหน้าที่ (host)</h4><span class="scope" style="margin-left:auto">department</span></div><p>สร้างนัด · อนุมัติ · ดูแลผู้มาเยือนของแผนก</p></div>
+        <div class="rolecard"><div class="rc-top"><span class="rc-badge">supervisor</span><h4>หัวหน้า</h4><span class="scope" style="margin-left:auto">all</span></div><p>งานของ staff + จัดการ blocklist + รายงานรวม</p></div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:14px">
+        <div class="rolecard"><div class="rc-top"><span class="rc-badge">security</span><h4>เจ้าหน้าที่ รปภ.</h4><span class="scope" style="margin-left:auto">counter</span></div><p>check-in/out · พิมพ์บัตร · รับ walk-in ที่จุดบริการ</p></div>
+        <div class="rolecard"><div class="rc-top"><span class="rc-badge">admin</span><h4>ผู้ดูแลระบบ</h4><span class="scope" style="margin-left:auto">system</span></div><p>ตั้งค่าและจัดการระบบทั้งหมด (เมนู "ตั้งค่า")</p></div>
+        <div class="chrow">
+          <div class="ch"><div class="ci"><svg viewBox="0 0 24 24"><path d="M12 2a10 10 0 100 20 10 10 0 000-20zm0 3c1.7 0 3 2.2 3 5s-1.3 5-3 5-3-2.2-3-5 1.3-5 3-5z"/></svg></div><h4>LINE OA</h4><p>ผู้มาเยือนจองผ่านมือถือ</p></div>
+          <div class="ch"><div class="ci"><svg viewBox="0 0 24 24"><path d="M4 4h16v12H4zM2 18h20v2H2z"/></svg></div><h4>เว็บ</h4><p>เจ้าหน้าที่ / IT</p></div>
+          <div class="ch"><div class="ci"><svg viewBox="0 0 24 24"><path d="M7 2h10v20H7zM9 4v14h6V4z"/></svg></div><h4>Kiosk</h4><p>บริการตนเอง</p></div>
+          <div class="ch"><div class="ci"><svg viewBox="0 0 24 24"><path d="M3 5h18v10H3zM2 17h20v2H2z"/></svg></div><h4>Counter</h4><p>มี รปภ. ช่วย</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== OVERVIEW: visitor flow ===== -->
+  <section class="slide" id="s-flow" data-title="Flow ผู้มาเยือน">
+    <div class="marker"><span class="mlogo">VMS</span><span class="mpage">Flow</span></div>
+    <div class="s-head">
+      <div class="kicker">กระบวนการหลัก · Visitor Flow</div>
+      <h2 class="title">เส้นทางของผู้มาเยือน ตั้งแต่จองจนออกจากอาคาร</h2>
+    </div>
+    <div class="flowline">
+      <div class="fstep"><span class="fn">1</span><div class="fi"><svg viewBox="0 0 24 24"><path d="M7 2h10v3H7zM5 6h14v16H5zm3 4v2h8v-2zm0 4v2h8v-2z"/></svg></div><h4>จองนัด</h4><p>ผ่าน LINE หรือเว็บ ระบุวัตถุประสงค์และผู้พบ</p></div>
+      <div class="farr"><svg viewBox="0 0 24 24"><path d="M8 5l8 7-8 7z"/></svg></div>
+      <div class="fstep"><span class="fn">2</span><div class="fi"><svg viewBox="0 0 24 24"><path d="M9 16.2l-3.5-3.5L4 14.2 9 19l11-11-1.4-1.4z"/></svg></div><h4>เจ้าหน้าที่อนุมัติ</h4><p>กลุ่มผู้อนุมัติที่ผูกกับวัตถุประสงค์</p></div>
+      <div class="farr"><svg viewBox="0 0 24 24"><path d="M8 5l8 7-8 7z"/></svg></div>
+      <div class="fstep"><span class="fn">3</span><div class="fi"><svg viewBox="0 0 24 24"><path d="M3 3h8v8H3zm2 2v4h4V5zM13 3h8v8h-8zm2 2v4h4V5zM3 13h8v8H3zm2 2v4h4v-4zM19 13h2v2h-2zm-6 0h4v2h-4zm4 4h4v4h-4z"/></svg></div><h4>ได้รับ QR</h4><p>ระบบส่ง QR ให้ผู้มาเยือนทาง LINE/อีเมล</p></div>
+      <div class="farr"><svg viewBox="0 0 24 24"><path d="M8 5l8 7-8 7z"/></svg></div>
+      <div class="fstep"><span class="fn">4</span><div class="fi"><svg viewBox="0 0 24 24"><path d="M12 12a5 5 0 100-10 5 5 0 000 10zm0 2c-4 0-8 2-8 5v3h16v-3c0-3-4-5-8-5z"/></svg></div><h4>Check-in</h4><p>สแกน QR ที่ Kiosk/Counter รับบัตร</p></div>
+      <div class="farr"><svg viewBox="0 0 24 24"><path d="M8 5l8 7-8 7z"/></svg></div>
+      <div class="fstep"><span class="fn">5</span><div class="fi"><svg viewBox="0 0 24 24"><path d="M12 2a7 7 0 00-7 7c0 5 7 13 7 13s7-8 7-13a7 7 0 00-7-7zm0 9.5A2.5 2.5 0 1112 6a2.5 2.5 0 010 5.5z"/></svg></div><h4>อยู่ในอาคาร</h4><p>รับ WiFi · จัดการผู้ติดตาม · ติดตามเวลา</p></div>
+      <div class="farr"><svg viewBox="0 0 24 24"><path d="M8 5l8 7-8 7z"/></svg></div>
+      <div class="fstep"><span class="fn">6</span><div class="fi"><svg viewBox="0 0 24 24"><path d="M17 7l-1.4 1.4L18.2 11H8v2h10.2l-2.6 2.6L17 17l5-5zM4 5h8V3H4a2 2 0 00-2 2v14a2 2 0 002 2h8v-2H4z"/></svg></div><h4>Check-out</h4><p>ออกจากอาคาร ระบบบันทึกเวลาออก</p></div>
+    </div>
+  </section>
+
+  <!-- ===== PART 1 DIVIDER ===== -->
+  <section class="slide divider" id="s-p1" data-title="ส่วนที่ 1 — Admin/IT">
+    <div class="dv-part">ส่วนที่ 1 · Part 1</div>
+    <h2>สำหรับ Admin / IT<br>การ Setup และดูแลระบบ</h2>
+    <p class="dv-sub">เมนู "ตั้งค่า" (Settings) เข้าถึงได้เฉพาะสิทธิ์ <b>admin</b> — ตั้งค่าให้ครบตามลำดับก่อนเปิดใช้งานจริง</p>
+    <div class="dv-list">
+      <span>1.1 ผู้ใช้และสิทธิ์</span><span>1.2 Master Data</span><span>1.3 Workflow อนุมัติ</span><span>1.4 อุปกรณ์/จุดบริการ</span><span>1.5 แจ้งเตือน & Integration</span><span>1.6 PDPA & บัตร</span>
+    </div>
+  </section>
+
+  <!-- ===== 1.1 USERS ===== -->
+  <section class="slide" id="s-users" data-title="1.1 การจัดการผู้ใช้และสิทธิ์">
+    <div class="marker"><span class="mlogo">VMS</span><span class="mpage">1.1</span></div>
+    <div class="s-head">
+      <div class="kicker">ส่วนที่ 1 · Admin/IT</div>
+      <h2 class="title">1.1 การจัดการผู้ใช้และสิทธิ์</h2>
+      <p class="s-sub">สร้าง/แก้ไข/ระงับบัญชี · กำหนด role · reset รหัสผ่าน · ผูกบัญชี LINE</p>
+      <span class="route">เมนู: ตั้งค่า → จัดการผู้ใช้งาน · <code>settings/users</code></span>
+    </div>
+    <div class="s-body">
+      <div class="shot">
+        <div class="shot-bar"><i></i><i></i><i></i><em>/web/settings/users</em></div>
+        <div class="shot-img">
+          <img src="manual-assets/admin-users.png" alt="หน้าจัดการผู้ใช้งาน">
+          <span class="cdot" style="left:93%;top:15%">1</span>
+          <span class="cdot" style="left:24%;top:33%">2</span>
+          <span class="cdot" style="left:36%;top:42%">3</span>
+          <span class="cdot" style="left:64%;top:58%">4</span>
+          <span class="zhint"><svg viewBox="0 0 24 24"><path d="M15.5 14h-.8l-.3-.3a6.5 6.5 0 10-.7.7l.3.3v.8l5 5 1.5-1.5-5-5zm-6 0A4.5 4.5 0 1114 9.5 4.5 4.5 0 019.5 14z"/></svg>คลิกเพื่อขยาย</span>
+        </div>
+      </div>
+      <ol class="steps">
+        <li><span class="snum">1</span><div><b>เพิ่มผู้ใช้ใหม่</b><p>กดปุ่ม <b>+ เพิ่มผู้ใช้</b> กรอก username/email เลือก role และผูกกับพนักงานในทำเนียบ</p></div></li>
+        <li><span class="snum">2</span><div><b>กรองตามประเภท</b><p>ใช้แท็บ ทั้งหมด / เจ้าหน้าที่ / ผู้มาติดต่อ / ถูกล็อก เพื่อดูบัญชีแต่ละกลุ่ม</p></div></li>
+        <li><span class="snum">3</span><div><b>ค้นหาและกรองสิทธิ์</b><p>ค้นด้วยชื่อ/อีเมล/แผนก และเลือกกรองเฉพาะ role ที่ต้องการ</p></div></li>
+        <li><span class="snum">4</span><div><b>จัดการรายบัญชี</b><p>เปลี่ยน ROLE, ล็อก/ปลดล็อก, reset รหัสผ่าน ได้ที่คอลัมน์จัดการ (ปุ่ม …)</p></div></li>
+        <li class="tip"><span class="snum">!</span><div><b>หลัก least privilege</b><p>ให้สิทธิ์เท่าที่จำเป็น และจำกัดจำนวนบัญชี admin — ทบทวนสิทธิ์เป็นระยะ</p></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ===== 1.2 LOCATIONS ===== -->
+  <section class="slide" id="s-locations" data-title="1.2 สถานที่ (อาคาร/ชั้น/แผนก)">
+    <div class="marker"><span class="mlogo">VMS</span><span class="mpage">1.2.1</span></div>
+    <div class="s-head">
+      <div class="kicker">ส่วนที่ 1 · 1.2 Master Data</div>
+      <h2 class="title">1.2.1 สถานที่ — อาคาร / ชั้น / แผนก</h2>
+      <p class="s-sub">รากฐานของทั้งระบบ ตั้งก่อนเป็นอันดับแรก — ใช้อ้างอิงในนัดหมาย การกำหนดเจ้าหน้าที่ และรายงาน</p>
+      <span class="route">เมนู: ตั้งค่า → สถานที่และแผนก · <code>settings/locations</code></span>
+    </div>
+    <div class="s-body">
+      <div class="shot">
+        <div class="shot-bar"><i></i><i></i><i></i><em>/web/settings/locations</em></div>
+        <div class="shot-img">
+          <img src="manual-assets/admin-locations.png" alt="หน้าตั้งค่าสถานที่และแผนก">
+          <span class="cdot" style="left:92%;top:13%">1</span>
+          <span class="cdot" style="left:23%;top:44%">2</span>
+          <span class="cdot" style="left:28%;top:61%">3</span>
+          <span class="cdot" style="left:88%;top:72%">4</span>
+          <span class="zhint"><svg viewBox="0 0 24 24"><path d="M15.5 14h-.8l-.3-.3a6.5 6.5 0 10-.7.7l.3.3v.8l5 5 1.5-1.5-5-5zm-6 0A4.5 4.5 0 1114 9.5 4.5 4.5 0 019.5 14z"/></svg>คลิกเพื่อขยาย</span>
+        </div>
+      </div>
+      <ol class="steps">
+        <li><span class="snum">1</span><div><b>เพิ่มอาคาร</b><p>กด <b>+ เพิ่มอาคาร</b> เพื่อสร้างโครงสร้างลำดับชั้น อาคาร → ชั้น → แผนก</p></div></li>
+        <li><span class="snum">2</span><div><b>สลับมุมมอง</b><p>ใช้แท็บ อาคาร / แผนก–หน่วยงาน / ชั้น เพื่อจัดการแต่ละระดับ</p></div></li>
+        <li><span class="snum">3</span><div><b>ดูรายละเอียดในการ์ด</b><p>แต่ละอาคารแสดงจำนวนชั้นและแผนก กดขยายเพื่อดูรายชั้น</p></div></li>
+        <li><span class="snum">4</span><div><b>แก้ไข / ปิดใช้งาน</b><p>ปรับข้อมูลหรือปิดการใช้งานอาคารที่ไม่ใช้แล้วได้จากปุ่มในการ์ด</p></div></li>
+        <li class="tip"><span class="snum">!</span><div><b>มาตรฐานการตั้งชื่อ</b><p>ตั้งชื่อให้เป็นรูปแบบเดียวกันทั้งกรม เพื่อให้รายงานแยกแผนกอ่านง่าย</p></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ===== 1.2.2 VISIT PURPOSES ===== -->
+  <section class="slide" id="s-purposes" data-title="1.2.2 วัตถุประสงค์เข้าพบ">
+    <div class="marker"><span class="mlogo">VMS</span><span class="mpage">1.2.2</span></div>
+    <div class="s-head">
+      <div class="kicker">ส่วนที่ 1 · 1.2 Master Data</div>
+      <h2 class="title">1.2.2 วัตถุประสงค์เข้าพบ (Visit Purposes)</h2>
+      <p class="s-sub">กำหนดประเภทการเข้าพบ ช่องทางที่แสดง โหมดการลงทะเบียน และแผนกที่รับผิดชอบ</p>
+      <span class="route">เมนู: ตั้งค่า → วัตถุประสงค์เข้าพื้นที่ · <code>settings/visit-purposes</code></span>
+    </div>
+    <div class="s-body">
+      <div class="shot">
+        <div class="shot-bar"><i></i><i></i><i></i><em>/web/settings/visit-purposes</em></div>
+        <div class="shot-img">
+          <img src="manual-assets/admin-visit-purposes.png" alt="หน้าตั้งค่าวัตถุประสงค์">
+          <span class="cdot" style="left:91%;top:13%">1</span>
+          <span class="cdot" style="left:28%;top:42%">2</span>
+          <span class="cdot" style="left:57%;top:42%">3</span>
+          <span class="cdot" style="left:80%;top:42%">4</span>
+          <span class="zhint"><svg viewBox="0 0 24 24"><path d="M15.5 14h-.8l-.3-.3a6.5 6.5 0 10-.7.7l.3.3v.8l5 5 1.5-1.5-5-5zm-6 0A4.5 4.5 0 1114 9.5 4.5 4.5 0 019.5 14z"/></svg>คลิกเพื่อขยาย</span>
+        </div>
+      </div>
+      <ol class="steps tight">
+        <li><span class="snum">1</span><div><b>เพิ่มวัตถุประสงค์</b><p>กด <b>+ เพิ่มวัตถุประสงค์ใหม่</b> เช่น ติดต่อราชการ ประชุม ส่งของ ผู้รับเหมา</p></div></li>
+        <li><span class="snum">2</span><div><b>ผูกแผนก + เปิด/ปิด</b><p>เลือกแผนกที่รับผิดชอบ และสลับสถานะ เปิดใช้/ปิดใช้ ของแต่ละรายการ</p></div></li>
+        <li><span class="snum">3</span><div><b>ตั้งเงื่อนไข</b><p>กำหนดต้องอนุมัติกี่ขั้น เอกสารที่ต้องใช้ และบังคับถ่ายรูปหรือไม่</p></div></li>
+        <li><span class="snum">4</span><div><b>ช่องทางที่แสดง</b><p>เลือก <b>LINE / Web / Kiosk / Counter</b> ควบคุมว่าวัตถุประสงค์นี้จองผ่านช่องทางใดได้</p></div></li>
+        <li class="tip"><span class="snum">!</span><div><b>ส่งผลถึงผู้มาเยือน</b><p>การตั้งช่องทางที่นี่ กำหนดสิ่งที่ผู้มาเยือนเห็นบน LINE/Kiosk โดยตรง</p></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ===== 1.2.3 DOCUMENT TYPES ===== -->
+  <section class="slide" id="s-doctypes" data-title="1.2.3 ประเภทเอกสาร">
+    <div class="marker"><span class="mlogo">VMS</span><span class="mpage">1.2.3</span></div>
+    <div class="s-head">
+      <div class="kicker">ส่วนที่ 1 · 1.2 Master Data</div>
+      <h2 class="title">1.2.3 ประเภทเอกสารและการยืนยันตัวตน</h2>
+      <p class="s-sub">กำหนดว่าผู้เยี่ยมต้องแสดงเอกสารอะไรบ้าง ตามประเภทการเข้าพื้นที่</p>
+      <span class="route">เมนู: ตั้งค่า → ประเภทเอกสาร · <code>settings/document-types</code></span>
+    </div>
+    <div class="s-body">
+      <div class="shot">
+        <div class="shot-bar"><i></i><i></i><i></i><em>/web/settings/document-types</em></div>
+        <div class="shot-img">
+          <img src="manual-assets/admin-document-types.png" alt="หน้าประเภทเอกสาร">
+          <span class="cdot" style="left:91%;top:13%">1</span>
+          <span class="cdot" style="left:28%;top:50%">2</span>
+          <span class="cdot" style="left:69%;top:47%">3</span>
+          <span class="cdot" style="left:95%;top:47%">4</span>
+          <span class="zhint"><svg viewBox="0 0 24 24"><path d="M15.5 14h-.8l-.3-.3a6.5 6.5 0 10-.7.7l.3.3v.8l5 5 1.5-1.5-5-5zm-6 0A4.5 4.5 0 1114 9.5 4.5 4.5 0 019.5 14z"/></svg>คลิกเพื่อขยาย</span>
+        </div>
+      </div>
+      <ol class="steps">
+        <li><span class="snum">1</span><div><b>เพิ่มประเภทเอกสาร</b><p>กด <b>+ เพิ่มประเภทเอกสาร</b> เช่น บัตรประชาชน Passport Visa Work Permit</p></div></li>
+        <li><span class="snum">2</span><div><b>ดูรายการทั้งหมด</b><p>ตารางแสดงเอกสารพร้อมลำดับการแสดง (จัดเรียงได้)</p></div></li>
+        <li><span class="snum">3</span><div><b>เปิด/ปิดการใช้งาน</b><p>สลับสถานะ ใช้งาน ของเอกสารแต่ละประเภท</p></div></li>
+        <li><span class="snum">4</span><div><b>แก้ไขเงื่อนไข</b><p>ตั้งบังคับ/ไม่บังคับต่อวัตถุประสงค์ และกำหนดให้ต้องถ่ายรูปเอกสารหรือไม่</p></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ===== 1.2.4 STAFF ===== -->
+  <section class="slide" id="s-staff" data-title="1.2.4 ทำเนียบเจ้าหน้าที่">
+    <div class="marker"><span class="mlogo">VMS</span><span class="mpage">1.2.4</span></div>
+    <div class="s-head">
+      <div class="kicker">ส่วนที่ 1 · 1.2 Master Data</div>
+      <h2 class="title">1.2.4 ทำเนียบเจ้าหน้าที่ (Staff Directory)</h2>
+      <p class="s-sub">เจ้าหน้าที่ในทำเนียบคือ "ผู้ถูกนัดพบ (host)" ที่ผู้มาเยือนเลือกตอนจอง</p>
+      <span class="route">เมนู: ตั้งค่า → จัดการพนักงาน · <code>settings/staff</code></span>
+    </div>
+    <div class="s-body">
+      <div class="shot">
+        <div class="shot-bar"><i></i><i></i><i></i><em>/web/settings/staff</em></div>
+        <div class="shot-img">
+          <img src="manual-assets/admin-staff.png" alt="หน้าจัดการพนักงาน">
+          <span class="cdot" style="left:82%;top:13%">1</span>
+          <span class="cdot" style="left:93%;top:13%">2</span>
+          <span class="cdot" style="left:30%;top:47%">3</span>
+          <span class="cdot" style="left:74%;top:61%">4</span>
+          <span class="zhint"><svg viewBox="0 0 24 24"><path d="M15.5 14h-.8l-.3-.3a6.5 6.5 0 10-.7.7l.3.3v.8l5 5 1.5-1.5-5-5zm-6 0A4.5 4.5 0 1114 9.5 4.5 4.5 0 019.5 14z"/></svg>คลิกเพื่อขยาย</span>
+        </div>
+      </div>
+      <ol class="steps">
+        <li><span class="snum">1</span><div><b>นำเข้าจาก Excel</b><p>กด <b>นำเข้า Excel</b> เพิ่มพนักงานทีละหลายคน (สถานะ active อัตโนมัติ)</p></div></li>
+        <li><span class="snum">2</span><div><b>เพิ่มทีละคน</b><p>กด <b>+ เพิ่มพนักงาน</b> กรอกชื่อ แผนก ตำแหน่ง และผูกบัญชี LINE</p></div></li>
+        <li><span class="snum">3</span><div><b>ค้นหาและกรอง</b><p>กรองตามแผนกและสถานะ เพื่อหาพนักงานได้เร็ว</p></div></li>
+        <li><span class="snum">4</span><div><b>ดูการมอบหมาย</b><p>คอลัมน์การมอบหมายแสดงว่าอยู่กลุ่มผู้อนุมัติ/มีนัดหมายกี่รายการ</p></div></li>
+        <li class="tip"><span class="snum">!</span><div><b>พนักงานลาออก</b><p>ใช้ ปิดใช้งาน (inactive) แทนการลบ เพื่อรักษาประวัติการมอบหมาย</p></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ===== 1.2.5 ACCESS ZONES ===== -->
+  <section class="slide" id="s-zones" data-title="1.2.5 โซนการเข้าถึง">
+    <div class="marker"><span class="mlogo">VMS</span><span class="mpage">1.2.5</span></div>
+    <div class="s-head">
+      <div class="kicker">ส่วนที่ 1 · 1.2 Master Data</div>
+      <h2 class="title">1.2.5 โซนการเข้าถึง (Access Zones)</h2>
+      <p class="s-sub">กำหนดพื้นที่เข้าถึงทางกายภาพ และเชื่อมต่อระบบประตู Hikvision (access control)</p>
+      <span class="route">เมนู: ตั้งค่า → โซนเข้าพื้นที่ · <code>settings/access-zones</code></span>
+    </div>
+    <div class="s-body">
+      <div class="shot">
+        <div class="shot-bar"><i></i><i></i><i></i><em>/web/settings/access-zones</em></div>
+        <div class="shot-img">
+          <img src="manual-assets/admin-access-zones.png" alt="หน้าโซนการเข้าถึง">
+          <span class="cdot" style="left:91%;top:13%">1</span>
+          <span class="cdot" style="left:24%;top:52%">2</span>
+          <span class="cdot" style="left:40%;top:66%">3</span>
+          <span class="cdot" style="left:80%;top:62%">4</span>
+          <span class="zhint"><svg viewBox="0 0 24 24"><path d="M15.5 14h-.8l-.3-.3a6.5 6.5 0 10-.7.7l.3.3v.8l5 5 1.5-1.5-5-5zm-6 0A4.5 4.5 0 1114 9.5 4.5 4.5 0 019.5 14z"/></svg>คลิกเพื่อขยาย</span>
+        </div>
+      </div>
+      <ol class="steps">
+        <li><span class="snum">1</span><div><b>เพิ่ม Access Group</b><p>กด <b>+ เพิ่ม Access Group</b> รวมโซนที่ต้องการเข้าถึงเป็นกลุ่มเดียว</p></div></li>
+        <li><span class="snum">2</span><div><b>map อาคาร/ชั้น/โซน</b><p>ใช้แท็บเพื่อกำหนดโซนเข้ากับอาคาร-ชั้น และผูกหน่วยงานเข้ากับ Access Group</p></div></li>
+        <li><span class="snum">3</span><div><b>เชื่อม Hikvision</b><p>ระบุ Hikvision Door ID เพื่อให้ระบบสร้าง Person Group ควบคุมประตูจริง</p></div></li>
+        <li><span class="snum">4</span><div><b>เงื่อนไข QR</b><p>กำหนดจำนวนโซน หน่วยงาน และตารางเวลา/วันหมดอายุของ QR ตาม Access Group</p></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ===== 1.3 APPROVER GROUPS (placeholder — live page has a data issue) ===== -->
+  <section class="slide" id="s-approvers" data-title="1.3 Workflow การอนุมัติ">
+    <div class="marker"><span class="mlogo">VMS</span><span class="mpage">1.3</span></div>
+    <div class="s-head">
+      <div class="kicker">ส่วนที่ 1 · Admin/IT</div>
+      <h2 class="title">1.3 Workflow การอนุมัติ (กลุ่มผู้อนุมัติ)</h2>
+      <p class="s-sub">คำขอวิ่งไปหาผู้รับผิดชอบที่ถูกต้อง — สร้างกลุ่ม เพิ่มสมาชิก และผูกกับวัตถุประสงค์</p>
+      <span class="route">เมนู: ตั้งค่า → กลุ่มผู้อนุมัติ · <code>settings/approver-groups</code></span>
+    </div>
+    <div class="s-body">
+      <div class="shot">
+        <div class="shot-bar"><i></i><i></i><i></i><em>/web/settings/approver-groups</em></div>
+        <div class="shot-ph">
+          <div class="ph-ic"><svg viewBox="0 0 24 24"><path d="M12 12a5 5 0 100-10 5 5 0 000 10zm0 2c-4 0-8 2-8 5v3h16v-3c0-3-4-5-8-5z"/></svg></div>
+          <h4>หน้าจอ: กลุ่มผู้อนุมัติ</h4>
+          <p>เส้นทางคำขอ: ผู้มาเยือนจอง → ระบบส่งให้กลุ่มผู้อนุมัติที่ผูกกับวัตถุประสงค์ → อนุมัติ/ปฏิเสธ → แจ้งผู้มาเยือน</p>
+          <span class="ph-route">settings/approver-groups</span>
+        </div>
+      </div>
+      <ol class="steps">
+        <li><span class="snum">1</span><div><b>สร้างกลุ่มผู้อนุมัติ</b><p>ตั้งชื่อกลุ่มตามสายงาน/แผนกที่รับผิดชอบ</p></div></li>
+        <li><span class="snum">2</span><div><b>เพิ่มสมาชิก</b><p>เลือกสมาชิกจากทำเนียบเจ้าหน้าที่ และกำหนดสิทธิ์การอนุมัติของแต่ละคน</p></div></li>
+        <li><span class="snum">3</span><div><b>ผูกกับวัตถุประสงค์</b><p>จุดสำคัญที่สุด — ผูกกลุ่มเข้ากับวัตถุประสงค์ เพื่อให้คำขอวิ่งไปถูกคน</p></div></li>
+        <li><span class="snum">4</span><div><b>ช่องทางแจ้งเตือน</b><p>เลือกแจ้งผู้อนุมัติทาง Email / LINE / SMS</p></div></li>
+        <li class="tip"><span class="snum">!</span><div><b>ข้อแนะนำ</b><p>ใช้ LINE สำหรับการตอบสนองเร็ว และ Email สำหรับเก็บหลักฐาน</p></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ===== 1.4.1 SERVICE POINTS ===== -->
+  <section class="slide" id="s-servicepoints" data-title="1.4 อุปกรณ์และจุดบริการ">
+    <div class="marker"><span class="mlogo">VMS</span><span class="mpage">1.4.1</span></div>
+    <div class="s-head">
+      <div class="kicker">ส่วนที่ 1 · Admin/IT</div>
+      <h2 class="title">1.4.1 ลงทะเบียนเครื่อง Kiosk / Counter</h2>
+      <p class="s-sub"><b>Kiosk</b> = บริการตนเอง · <b>Counter</b> = มีเจ้าหน้าที่ รปภ. ช่วยดำเนินการ</p>
+      <span class="route">เมนู: ตั้งค่า → จุดให้บริการ Kiosk/Counter · <code>settings/service-points</code></span>
+    </div>
+    <div class="s-body">
+      <div class="shot">
+        <div class="shot-bar"><i></i><i></i><i></i><em>/web/settings/service-points</em></div>
+        <div class="shot-img">
+          <img src="manual-assets/admin-service-points.png" alt="หน้าจุดให้บริการ">
+          <span class="cdot" style="left:92%;top:13%">1</span>
+          <span class="cdot" style="left:33%;top:41%">2</span>
+          <span class="cdot" style="left:29%;top:57%">3</span>
+          <span class="cdot" style="left:85%;top:79%">4</span>
+          <span class="zhint"><svg viewBox="0 0 24 24"><path d="M15.5 14h-.8l-.3-.3a6.5 6.5 0 10-.7.7l.3.3v.8l5 5 1.5-1.5-5-5zm-6 0A4.5 4.5 0 1114 9.5 4.5 4.5 0 019.5 14z"/></svg>คลิกเพื่อขยาย</span>
+        </div>
+      </div>
+      <ol class="steps">
+        <li><span class="snum">1</span><div><b>เพิ่มจุดบริการ</b><p>กด <b>+ เพิ่มจุดบริการ</b> ระบุ IP, MAC, Serial number ของเครื่อง</p></div></li>
+        <li><span class="snum">2</span><div><b>กรองประเภท/สถานะ</b><p>เลือก Kiosk / Counter และดูออนไลน์ / ออฟไลน์ / ปิดปรับปรุง</p></div></li>
+        <li><span class="snum">3</span><div><b>ตั้งค่าเครื่อง</b><p>กำหนด WiFi credentials, PIN สำหรับ admin, และวัตถุประสงค์/เอกสารที่เปิดบริการ</p></div></li>
+        <li><span class="snum">4</span><div><b>สลับสถานะ / แก้ไข</b><p>เปิด-ปิดเครื่องชั่วคราว หรือแก้ไขค่าคอนฟิกได้จากการ์ดแต่ละเครื่อง</p></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ===== 1.4.3 BUSINESS HOURS ===== -->
+  <section class="slide" id="s-hours" data-title="1.4.3 เวลาทำการและวันหยุด">
+    <div class="marker"><span class="mlogo">VMS</span><span class="mpage">1.4.3</span></div>
+    <div class="s-head">
+      <div class="kicker">ส่วนที่ 1 · Admin/IT</div>
+      <h2 class="title">1.4.3 เวลาทำการและวันหยุด</h2>
+      <p class="s-sub">ควบคุมว่าระบบจะอนุญาต Walk-in และ Kiosk ในช่วงเวลาใด — กฎ "วันหยุด" จะ override "ปกติ"</p>
+      <span class="route">เมนู: ตั้งค่า → เวลาทำการ · <code>settings/business-hours</code></span>
+    </div>
+    <div class="s-body">
+      <div class="shot">
+        <div class="shot-bar"><i></i><i></i><i></i><em>/web/settings/business-hours</em></div>
+        <div class="shot-img">
+          <img src="manual-assets/admin-business-hours.png" alt="หน้าเวลาทำการ">
+          <span class="cdot" style="left:92%;top:13%">1</span>
+          <span class="cdot" style="left:30%;top:41%">2</span>
+          <span class="cdot" style="left:29%;top:55%">3</span>
+          <span class="cdot" style="left:76%;top:48%">4</span>
+          <span class="zhint"><svg viewBox="0 0 24 24"><path d="M15.5 14h-.8l-.3-.3a6.5 6.5 0 10-.7.7l.3.3v.8l5 5 1.5-1.5-5-5zm-6 0A4.5 4.5 0 1114 9.5 4.5 4.5 0 019.5 14z"/></svg>คลิกเพื่อขยาย</span>
+        </div>
+      </div>
+      <ol class="steps">
+        <li><span class="snum">1</span><div><b>เพิ่มกฎเวลา</b><p>กด <b>+ เพิ่มกฎเวลา</b> ตั้งเวลาเปิด-ปิด หรือกำหนดวันหยุด/วันหยุดนักขัตฤกษ์</p></div></li>
+        <li><span class="snum">2</span><div><b>กรองประเภทกฎ</b><p>ดูแยก ปกติ / พิเศษ / วันหยุด ได้จากตัวกรองด้านบน</p></div></li>
+        <li><span class="snum">3</span><div><b>วันหยุด = ปิดทั้งวัน</b><p>เช่น วันจักรี/สงกรานต์ ตั้งเป็นปิดทั้งวัน ระบบไม่รับ walk-in/Kiosk</p></div></li>
+        <li><span class="snum">4</span><div><b>คุม Walk-in / Kiosk</b><p>เปิด/ปิดการอนุญาต Walk-in และ Kiosk แยกรายวันได้</p></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ===== 1.5.1 EMAIL SYSTEM ===== -->
+  <section class="slide" id="s-email" data-title="1.5.1 ตั้งค่าอีเมล SMTP">
+    <div class="marker"><span class="mlogo">VMS</span><span class="mpage">1.5.1</span></div>
+    <div class="s-head">
+      <div class="kicker">ส่วนที่ 1 · 1.5 Integration</div>
+      <h2 class="title">1.5.1 ตั้งค่าอีเมล SMTP</h2>
+      <p class="s-sub">ตั้งค่าเซิร์ฟเวอร์ส่งอีเมลสำหรับการแจ้งเตือนอัตโนมัติ แล้วทดสอบส่งจริง</p>
+      <span class="route">เมนู: ตั้งค่า → อีเมลระบบ · <code>settings/email-system</code></span>
+    </div>
+    <div class="s-body">
+      <div class="shot">
+        <div class="shot-bar"><i></i><i></i><i></i><em>/web/settings/email-system</em></div>
+        <div class="shot-img">
+          <img src="manual-assets/admin-email-system.png" alt="หน้าตั้งค่าอีเมล SMTP">
+          <span class="cdot" style="left:38%;top:31%">1</span>
+          <span class="cdot" style="left:57%;top:40%">2</span>
+          <span class="cdot" style="left:38%;top:70%">3</span>
+          <span class="zhint"><svg viewBox="0 0 24 24"><path d="M15.5 14h-.8l-.3-.3a6.5 6.5 0 10-.7.7l.3.3v.8l5 5 1.5-1.5-5-5zm-6 0A4.5 4.5 0 1114 9.5 4.5 4.5 0 019.5 14z"/></svg>คลิกเพื่อขยาย</span>
+        </div>
+      </div>
+      <ol class="steps">
+        <li><span class="snum">1</span><div><b>SMTP Server</b><p>กรอก SMTP Host และ Port (เช่น 587) ตามค่าจากผู้ให้บริการอีเมล</p></div></li>
+        <li><span class="snum">2</span><div><b>Encryption</b><p>เลือกการเข้ารหัส TLS / SSL / None ให้ตรงกับเซิร์ฟเวอร์</p></div></li>
+        <li><span class="snum">3</span><div><b>ข้อมูลผู้ส่ง</b><p>กำหนด From Email, ชื่อผู้ส่ง และ Reply-To (ถ้ามี)</p></div></li>
+        <li class="tip"><span class="snum">!</span><div><b>ทดสอบส่งจริง</b><p>เลื่อนลงส่วน "สถานะและทดสอบ" เพื่อยืนยันการตั้งค่า — ระวัง port/firewall และ app password</p></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ===== 1.5.2 LINE OA CONFIG ===== -->
+  <section class="slide" id="s-lineoa" data-title="1.5.2 ตั้งค่า LINE OA">
+    <div class="marker"><span class="mlogo">VMS</span><span class="mpage">1.5.2</span></div>
+    <div class="s-head">
+      <div class="kicker">ส่วนที่ 1 · 1.5 Integration</div>
+      <h2 class="title">1.5.2 ตั้งค่า LINE Official Account</h2>
+      <p class="s-sub">เชื่อมต่อ LINE Messaging API, LIFF, Webhook และ Rich Menu สำหรับผู้มาเยือนบนมือถือ</p>
+      <span class="route">เมนู: ตั้งค่า → LINE OA · <code>settings/line-oa-config</code></span>
+    </div>
+    <div class="s-body">
+      <div class="shot">
+        <div class="shot-bar"><i></i><i></i><i></i><em>/web/settings/line-oa-config</em></div>
+        <div class="shot-img">
+          <img src="manual-assets/admin-line-oa-config.png" alt="หน้าตั้งค่า LINE OA">
+          <span class="cdot" style="left:40%;top:32%">1</span>
+          <span class="cdot" style="left:45%;top:50%">2</span>
+          <span class="cdot" style="left:40%;top:86%">3</span>
+          <span class="zhint"><svg viewBox="0 0 24 24"><path d="M15.5 14h-.8l-.3-.3a6.5 6.5 0 10-.7.7l.3.3v.8l5 5 1.5-1.5-5-5zm-6 0A4.5 4.5 0 1114 9.5 4.5 4.5 0 019.5 14z"/></svg>คลิกเพื่อขยาย</span>
+        </div>
+      </div>
+      <ol class="steps">
+        <li><span class="snum">1</span><div><b>Messaging API</b><p>กรอก Channel ID / Channel Secret / Access Token จาก LINE Developers Console</p></div></li>
+        <li><span class="snum">2</span><div><b>LIFF & Rich Menu</b><p>ตั้งค่า LIFF endpoint (หน้าจองบนมือถือ) และจัดการ rich menu</p></div></li>
+        <li><span class="snum">3</span><div><b>ตรวจ Bot Basic ID</b><p>ยืนยันบัญชี OA และ endpoint ให้ตรงก่อนเปิดใช้จริง</p></div></li>
+        <li class="tip"><span class="snum">!</span><div><b>ทดสอบ webhook</b><p>ยืนยันการเชื่อมต่อ webhook เพื่อให้ระบบรับข้อความจาก LINE ได้ครบ</p></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ===== 1.5.3 NOTIFICATION TEMPLATES ===== -->
+  <section class="slide" id="s-notiftpl" data-title="1.5.3 เทมเพลตข้อความแจ้งเตือน">
+    <div class="marker"><span class="mlogo">VMS</span><span class="mpage">1.5.3</span></div>
+    <div class="s-head">
+      <div class="kicker">ส่วนที่ 1 · 1.5 Integration</div>
+      <h2 class="title">1.5.3 เทมเพลตข้อความแจ้งเตือน</h2>
+      <p class="s-sub">กำหนดข้อความตาม event: สร้างนัด / อนุมัติ / ปฏิเสธ / check-in — รองรับ LINE, Email, SMS</p>
+      <span class="route">เมนู: ตั้งค่า → เทมเพลตแจ้งเตือน · <code>settings/notification-templates</code></span>
+    </div>
+    <div class="s-body">
+      <div class="shot">
+        <div class="shot-bar"><i></i><i></i><i></i><em>/web/settings/notification-templates</em></div>
+        <div class="shot-img">
+          <img src="manual-assets/admin-notification-templates.png" alt="หน้าเทมเพลตแจ้งเตือน">
+          <span class="cdot" style="left:92%;top:13%">1</span>
+          <span class="cdot" style="left:33%;top:41%">2</span>
+          <span class="cdot" style="left:63%;top:49%">3</span>
+          <span class="cdot" style="left:50%;top:22%">4</span>
+          <span class="zhint"><svg viewBox="0 0 24 24"><path d="M15.5 14h-.8l-.3-.3a6.5 6.5 0 10-.7.7l.3.3v.8l5 5 1.5-1.5-5-5zm-6 0A4.5 4.5 0 1114 9.5 4.5 4.5 0 019.5 14z"/></svg>คลิกเพื่อขยาย</span>
+        </div>
+      </div>
+      <ol class="steps">
+        <li><span class="snum">1</span><div><b>เพิ่มเทมเพลต</b><p>กด <b>+ เพิ่มเทมเพลต</b> สร้างข้อความสำหรับแต่ละ event</p></div></li>
+        <li><span class="snum">2</span><div><b>กรองช่องทาง</b><p>ดูแยก LINE / Email / SMS จากตัวกรองด้านบน</p></div></li>
+        <li><span class="snum">3</span><div><b>แก้ไขข้อความ</b><p>กดดินสอเพื่อแก้เนื้อหา รองรับ TH/EN และเปิด/ปิดการใช้งาน</p></div></li>
+        <li><span class="snum">4</span><div><b>ใช้ตัวแปร</b><p>ใส่ <code>{{variable}}</code> เช่น ชื่อผู้มาเยือน วันเวลานัด ระบบแทนค่าจริงเมื่อส่ง</p></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ===== 1.5.3b LINE MESSAGE / COMMUNICATION ===== -->
+  <section class="slide" id="s-linetpl" data-title="1.5.3 LINE Flex & การสื่อสาร">
+    <div class="marker"><span class="mlogo">VMS</span><span class="mpage">1.5.3</span></div>
+    <div class="s-head">
+      <div class="kicker">ส่วนที่ 1 · 1.5 Integration</div>
+      <h2 class="title">การสื่อสารและแจ้งเตือน (LINE Flex + Email รวมหน้าเดียว)</h2>
+      <p class="s-sub">หน้ารวมตั้งค่า LINE OA, LINE Flex Message และอีเมล — จัดการ webhook และ rich menu ในที่เดียว</p>
+      <span class="route">เมนู: ตั้งค่า → LINE OA & แจ้งเตือน · <code>settings/line-message-templates</code></span>
+    </div>
+    <div class="s-body">
+      <div class="shot">
+        <div class="shot-bar"><i></i><i></i><i></i><em>/web/settings/line-message-templates</em></div>
+        <div class="shot-img">
+          <img src="manual-assets/admin-line-message-templates.png" alt="หน้าการสื่อสารและแจ้งเตือน">
+          <span class="cdot" style="left:40%;top:11%">1</span>
+          <span class="cdot" style="left:30%;top:45%">2</span>
+          <span class="cdot" style="left:92%;top:52%">3</span>
+          <span class="cdot" style="left:93%;top:5%">4</span>
+          <span class="zhint"><svg viewBox="0 0 24 24"><path d="M15.5 14h-.8l-.3-.3a6.5 6.5 0 10-.7.7l.3.3v.8l5 5 1.5-1.5-5-5zm-6 0A4.5 4.5 0 1114 9.5 4.5 4.5 0 019.5 14z"/></svg>คลิกเพื่อขยาย</span>
+        </div>
+      </div>
+      <ol class="steps">
+        <li><span class="snum">1</span><div><b>สลับแท็บ</b><p>เลือก ตั้งค่า LINE OA / LINE Flex Message Templates / อีเมลและแจ้งเตือน</p></div></li>
+        <li><span class="snum">2</span><div><b>ค่าการเชื่อมต่อ</b><p>ตรวจ Channel/Token, LIFF และออกแบบ Flex message (หัวข้อ ปุ่ม ค่าตัวอย่าง)</p></div></li>
+        <li><span class="snum">3</span><div><b>Webhook Active</b><p>เปิดสวิตช์ Webhook และคัดลอก Webhook URL ไปตั้งใน LINE Developers</p></div></li>
+        <li><span class="snum">4</span><div><b>บันทึก</b><p>กด <b>บันทึก</b> มุมขวาบนทุกครั้งหลังแก้ไขค่า</p></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ===== 1.6.1 PDPA (placeholder — live page has a data issue) ===== -->
+  <section class="slide" id="s-pdpa" data-title="1.6.1 PDPA Consent">
+    <div class="marker"><span class="mlogo">VMS</span><span class="mpage">1.6.1</span></div>
+    <div class="s-head">
+      <div class="kicker">ส่วนที่ 1 · 1.6 PDPA & บัตร</div>
+      <h2 class="title">1.6.1 การจัดการความยินยอม PDPA</h2>
+      <p class="s-sub">กำหนดข้อความนโยบายความเป็นส่วนตัว ระยะเก็บข้อมูล และตรวจสอบ log การให้ความยินยอม</p>
+      <span class="route">เมนู: ตั้งค่า → PDPA / ข้อมูลส่วนบุคคล · <code>settings/pdpa-consent</code></span>
+    </div>
+    <div class="s-body">
+      <div class="shot">
+        <div class="shot-bar"><i></i><i></i><i></i><em>/web/settings/pdpa-consent</em></div>
+        <div class="shot-ph">
+          <div class="ph-ic"><svg viewBox="0 0 24 24"><path d="M12 1L3 5v6c0 5.6 3.8 10.7 9 12 5.2-1.3 9-6.4 9-12V5l-9-4zm0 10.9h7c-.5 4.1-3.3 7.8-7 8.9V12H5V6.3l7-3.1z"/></svg></div>
+          <h4>หน้าจอ: PDPA Consent</h4>
+          <p>กำหนดนโยบาย (TH/EN), บังคับเลื่อนอ่านจนจบก่อนยินยอม, จัดการเวอร์ชัน และตรวจ consent log ย้อนหลัง</p>
+          <span class="ph-route">settings/pdpa-consent</span>
+        </div>
+      </div>
+      <ol class="steps">
+        <li><span class="snum">1</span><div><b>ข้อความนโยบาย</b><p>กำหนดข้อความความเป็นส่วนตัว รองรับสองภาษา (TH/EN)</p></div></li>
+        <li><span class="snum">2</span><div><b>ระยะเก็บข้อมูล</b><p>ตั้ง data retention ตามนโยบายหน่วยงาน</p></div></li>
+        <li><span class="snum">3</span><div><b>บังคับอ่าน + เวอร์ชัน</b><p>บังคับให้เลื่อนอ่านจนจบก่อนกดยินยอม และจัดการเวอร์ชันของ consent</p></div></li>
+        <li><span class="snum">4</span><div><b>ตรวจ consent log</b><p>ดูบันทึกการให้ความยินยอม — สำคัญต่อการตรวจสอบย้อนหลัง</p></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ===== 1.6.2 VISIT SLIPS ===== -->
+  <section class="slide" id="s-slips" data-title="1.6.2 เทมเพลตบัตร/ใบนัด">
+    <div class="marker"><span class="mlogo">VMS</span><span class="mpage">1.6.2</span></div>
+    <div class="s-head">
+      <div class="kicker">ส่วนที่ 1 · 1.6 PDPA & บัตร</div>
+      <h2 class="title">1.6.2 เทมเพลตบัตร / ใบนัด (Visit Slip)</h2>
+      <p class="s-sub">ออกแบบบัตรผู้มาเยือนที่พิมพ์จาก Kiosk — เลือกส่วนที่แสดง และดู Live Preview ก่อนพิมพ์</p>
+      <span class="route">เมนู: ตั้งค่า → แบบฟอร์ม Visit Slip · <code>settings/visit-slips</code></span>
+    </div>
+    <div class="s-body">
+      <div class="shot">
+        <div class="shot-bar"><i></i><i></i><i></i><em>/web/settings/visit-slips</em></div>
+        <div class="shot-img">
+          <img src="manual-assets/admin-visit-slips.png" alt="หน้าออกแบบ Visit Slip">
+          <span class="cdot" style="left:92%;top:13%">1</span>
+          <span class="cdot" style="left:28%;top:45%">2</span>
+          <span class="cdot" style="left:30%;top:64%">3</span>
+          <span class="cdot" style="left:85%;top:55%">4</span>
+          <span class="zhint"><svg viewBox="0 0 24 24"><path d="M15.5 14h-.8l-.3-.3a6.5 6.5 0 10-.7.7l.3.3v.8l5 5 1.5-1.5-5-5zm-6 0A4.5 4.5 0 1114 9.5 4.5 4.5 0 019.5 14z"/></svg>คลิกเพื่อขยาย</span>
+        </div>
+      </div>
+      <ol class="steps">
+        <li><span class="snum">1</span><div><b>บันทึก / รีเซ็ต</b><p>เลือกขนาดกระดาษ (thermal 80mm / A4) และกด บันทึก เมื่อแก้ไขเสร็จ</p></div></li>
+        <li><span class="snum">2</span><div><b>โลโก้หน่วยงาน</b><p>อัปโหลดและปรับขนาดโลโก้ที่แสดงบนบัตร</p></div></li>
+        <li><span class="snum">3</span><div><b>เปิด/ปิดส่วนที่แสดง</b><p>เลือกแสดง ข้อมูลผู้มาเยือน, QR code, ชื่อ host เป็นราย section/field</p></div></li>
+        <li><span class="snum">4</span><div><b>Live Preview</b><p>ดูตัวอย่างบัตรจริงด้านขวาก่อนพิมพ์ใช้งาน</p></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- @@CONTENT@@ -->
+
+  <!-- ===== PART 2 DIVIDER ===== -->
+  <section class="slide divider" id="s-p2" data-title="ส่วนที่ 2 — User/host">
+    <div class="dv-part">ส่วนที่ 2 · Part 2</div>
+    <h2>สำหรับเจ้าหน้าที่ (host)<br>การใช้งานประจำวัน</h2>
+    <p class="dv-sub">ใช้งานผ่านเว็บและแอปมือถือ (officer) — สร้างนัด อนุมัติ ดูแลผู้มาเยือน และดูรายงาน</p>
+    <div class="dv-list">
+      <span>2.1 Dashboard & โปรไฟล์</span><span>2.2 นัดหมาย</span><span>2.3 อนุมัติคำขอ</span><span>2.4 ดูแลระหว่างวัน</span><span>2.5 ค้นหา & รายงาน</span><span>2.6 Blocklist</span>
+    </div>
+  </section>
+
+  <!-- ===== 2.1 DASHBOARD ===== -->
+  <section class="slide" id="s-dashboard" data-title="2.1 เข้าสู่ระบบ & Dashboard">
+    <div class="marker"><span class="mlogo">VMS</span><span class="mpage">2.1</span></div>
+    <div class="s-head">
+      <div class="kicker">ส่วนที่ 2 · User/host</div>
+      <h2 class="title">2.1 เข้าสู่ระบบ และอ่าน Dashboard</h2>
+      <p class="s-sub">อ่านค่าสรุปประจำวัน: ผู้มาเยือน · อยู่ในอาคาร · check-in/out · การแจ้งเตือนเกินเวลา (overstay)</p>
+      <span class="route">เมนู: ภาพรวม · <code>dashboard</code></span>
+    </div>
+    <div class="s-body">
+      <div class="shot">
+        <div class="shot-bar"><i></i><i></i><i></i><em>/web/dashboard</em></div>
+        <div class="shot-img">
+          <img src="manual-assets/admin-dashboard.png" alt="หน้า Dashboard ภาพรวม">
+          <span class="cdot" style="left:30%;top:28%">1</span>
+          <span class="cdot" style="left:38%;top:28%">2</span>
+          <span class="cdot" style="left:91%;top:28%">3</span>
+          <span class="cdot" style="left:30%;top:55%">4</span>
+          <span class="zhint"><svg viewBox="0 0 24 24"><path d="M15.5 14h-.8l-.3-.3a6.5 6.5 0 10-.7.7l.3.3v.8l5 5 1.5-1.5-5-5zm-6 0A4.5 4.5 0 1114 9.5 4.5 4.5 0 019.5 14z"/></svg>คลิกเพื่อขยาย</span>
+        </div>
+      </div>
+      <ol class="steps">
+        <li><span class="snum">1</span><div><b>KPI ประจำวัน</b><p>ผู้ติดต่อวันนี้ · รออนุมัติ · check-in แล้ว — ตัวเลขสรุปแถวบน</p></div></li>
+        <li><span class="snum">2</span><div><b>อยู่ในอาคารตอนนี้</b><p>จำนวนผู้มาเยือนที่กำลังอยู่ในอาคารขณะนี้</p></div></li>
+        <li><span class="snum">3</span><div><b>เกินเวลา (Overstay)</b><p>เฝ้าดูการ์ด "เกินเวลา" เพื่อติดตามผู้ที่อยู่นานเกินกำหนด</p></div></li>
+        <li><span class="snum">4</span><div><b>แยกตามประเภทการเข้า</b><p>ดูสัดส่วนพบเจ้าหน้าที่ / ประชุม / ส่งเอกสาร / ผู้รับเหมา ฯลฯ</p></div></li>
+        <li class="tip"><span class="snum">!</span><div><b>โปรไฟล์ & LINE</b><p>ที่มุมขวาบน → โปรไฟล์ เพื่อเปลี่ยนรหัสผ่านและผูกบัญชี LINE รับแจ้งเตือน</p></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ===== 2.1b PROFILE ===== -->
+  <section class="slide" id="s-profile" data-title="2.1 โปรไฟล์ & ผูก LINE">
+    <div class="marker"><span class="mlogo">VMS</span><span class="mpage">2.1</span></div>
+    <div class="s-head">
+      <div class="kicker">ส่วนที่ 2 · User/host</div>
+      <h2 class="title">2.1 จัดการโปรไฟล์ และผูกบัญชี LINE</h2>
+      <p class="s-sub">ผูก LINE เพื่อรับแจ้งเตือนนัดหมาย/อนุมัติ และรับ Visit Slip ผ่าน LINE โดยไม่ต้องพิมพ์กระดาษ</p>
+      <span class="route">เมนู: โปรไฟล์ของฉัน · <code>profile</code></span>
+    </div>
+    <div class="s-body">
+      <div class="shot">
+        <div class="shot-bar"><i></i><i></i><i></i><em>/web/profile</em></div>
+        <div class="shot-img">
+          <img src="manual-assets/user-profile.png" alt="หน้าโปรไฟล์ของฉัน">
+          <span class="cdot" style="left:25%;top:42%">1</span>
+          <span class="cdot" style="left:63%;top:52%">2</span>
+          <span class="cdot" style="left:70%;top:84%">3</span>
+          <span class="zhint"><svg viewBox="0 0 24 24"><path d="M15.5 14h-.8l-.3-.3a6.5 6.5 0 10-.7.7l.3.3v.8l5 5 1.5-1.5-5-5zm-6 0A4.5 4.5 0 1114 9.5 4.5 4.5 0 019.5 14z"/></svg>คลิกเพื่อขยาย</span>
+        </div>
+      </div>
+      <ol class="steps">
+        <li><span class="snum">1</span><div><b>ข้อมูลส่วนตัว</b><p>ตรวจสอบชื่อ อีเมล เบอร์โทร และแผนก/หน่วยงานของตนเอง</p></div></li>
+        <li><span class="snum">2</span><div><b>ผูกบัญชี LINE</b><p>กด <b>ผูกบัญชี LINE</b> เพื่อรับแจ้งเตือนและ Visit Slip ทาง LINE</p></div></li>
+        <li><span class="snum">3</span><div><b>เปลี่ยนรหัสผ่าน</b><p>ที่ส่วน "ความปลอดภัย" กด <b>เปลี่ยนรหัสผ่าน</b> ได้ทันที</p></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ===== 2.2 APPOINTMENTS ===== -->
+  <section class="slide" id="s-appointments" data-title="2.2 สร้างและจัดการนัดหมาย">
+    <div class="marker"><span class="mlogo">VMS</span><span class="mpage">2.2</span></div>
+    <div class="s-head">
+      <div class="kicker">ส่วนที่ 2 · User/host</div>
+      <h2 class="title">2.2 การสร้างและจัดการนัดหมาย</h2>
+      <p class="s-sub">สร้างนัดเดี่ยว หรือแบบกลุ่ม (คณะดูงาน) · แก้ไข/ยกเลิก · พิมพ์หรือส่ง QR ให้ผู้มาเยือน</p>
+      <span class="route">เมนู: การนัดหมาย · <code>appointments</code></span>
+    </div>
+    <div class="s-body">
+      <div class="shot">
+        <div class="shot-bar"><i></i><i></i><i></i><em>/web/appointments</em></div>
+        <div class="shot-img">
+          <img src="manual-assets/user-appointment-create.png" alt="หน้าการนัดหมาย + เมนูสร้าง">
+          <span class="cdot" style="left:90%;top:29%">1</span>
+          <span class="cdot" style="left:85%;top:36%">2</span>
+          <span class="cdot" style="left:85%;top:42%">3</span>
+          <span class="cdot" style="left:30%;top:20%">4</span>
+          <span class="zhint"><svg viewBox="0 0 24 24"><path d="M15.5 14h-.8l-.3-.3a6.5 6.5 0 10-.7.7l.3.3v.8l5 5 1.5-1.5-5-5zm-6 0A4.5 4.5 0 1114 9.5 4.5 4.5 0 019.5 14z"/></svg>คลิกเพื่อขยาย</span>
+        </div>
+      </div>
+      <ol class="steps">
+        <li><span class="snum">1</span><div><b>สร้างนัดหมาย</b><p>กด <b>+ สร้างนัดหมาย</b> จะมีเมนูให้เลือกโหมด</p></div></li>
+        <li><span class="snum">2</span><div><b>รายบุคคล</b><p>สำหรับผู้ติดต่อหลัก 1 คน + ผู้ติดตาม — กรอกข้อมูล ผู้พบ วัตถุประสงค์ วัน-เวลา</p></div></li>
+        <li><span class="snum">3</span><div><b>หมู่คณะ (Excel)</b><p>สำหรับคณะดูงานหลายคน — กำหนดรอบเวลา และนำเข้ารายชื่อจาก Excel</p></div></li>
+        <li><span class="snum">4</span><div><b>ค้นหา/กรอง/จัดการ</b><p>กรองตามสถานะ แก้ไข/ยกเลิกนัด และพิมพ์หรือส่ง QR ให้ผู้มาเยือน</p></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ===== 2.2b GROUPS ===== -->
+  <section class="slide" id="s-groups" data-title="2.2 นัดหมายแบบกลุ่ม">
+    <div class="marker"><span class="mlogo">VMS</span><span class="mpage">2.2</span></div>
+    <div class="s-head">
+      <div class="kicker">ส่วนที่ 2 · User/host</div>
+      <h2 class="title">2.2 นัดหมายแบบกลุ่ม — Arrival Dashboard</h2>
+      <p class="s-sub">ติดตามคณะดูงานทั้งกลุ่มในหน้าเดียว หลังสร้างนัดแบบ Batch จากหน้านัดหมาย</p>
+      <span class="route">เมนู: การนัดหมาย → กลุ่ม · <code>appointments/groups</code></span>
+    </div>
+    <div class="s-body">
+      <div class="shot">
+        <div class="shot-bar"><i></i><i></i><i></i><em>/web/appointments/groups</em></div>
+        <div class="shot-img">
+          <img src="manual-assets/user-appointments-groups.png" alt="หน้ากลุ่มนัดหมาย">
+          <span class="cdot" style="left:85%;top:12%">1</span>
+          <span class="cdot" style="left:58%;top:28%">2</span>
+          <span class="cdot" style="left:95%;top:12%">3</span>
+          <span class="zhint"><svg viewBox="0 0 24 24"><path d="M15.5 14h-.8l-.3-.3a6.5 6.5 0 10-.7.7l.3.3v.8l5 5 1.5-1.5-5-5zm-6 0A4.5 4.5 0 1114 9.5 4.5 4.5 0 019.5 14z"/></svg>คลิกเพื่อขยาย</span>
+        </div>
+      </div>
+      <ol class="steps">
+        <li><span class="snum">1</span><div><b>สร้างกิจกรรม</b><p>กด <b>สร้างกิจกรรม</b> เพื่อเริ่มกลุ่มนัดหมายใหม่สำหรับคณะดูงาน</p></div></li>
+        <li><span class="snum">2</span><div><b>รายการกลุ่ม</b><p>กลุ่มที่สร้างแล้วจะแสดงที่นี่ พร้อมสถานะการมาถึงของสมาชิก</p></div></li>
+        <li><span class="snum">3</span><div><b>รีเฟรช</b><p>กด <b>รีเฟรช</b> เพื่ออัปเดตสถานะการเช็คอินของคณะแบบเรียลไทม์</p></div></li>
+        <li class="tip"><span class="snum">!</span><div><b>นำเข้า Excel</b><p>สร้างกลุ่มได้จากหน้านัดหมาย → หมู่คณะ แล้วนำเข้ารายชื่อทั้งคณะจากไฟล์ Excel</p></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ===== 2.3 APPROVALS (web) ===== -->
+  <section class="slide" id="s-approvals" data-title="2.3 การอนุมัติคำขอ (เว็บ)">
+    <div class="marker"><span class="mlogo">VMS</span><span class="mpage">2.3</span></div>
+    <div class="s-head">
+      <div class="kicker">ส่วนที่ 2 · User/host</div>
+      <h2 class="title">2.3 การอนุมัติคำขอ (บนเว็บ)</h2>
+      <p class="s-sub">ดูคิวรออนุมัติ กรองตามสถานะ และอนุมัติ/ปฏิเสธพร้อมเหตุผล — ระบบแจ้งผู้มาเยือนอัตโนมัติ</p>
+      <span class="route">เมนู: อนุมัตินัดหมาย · <code>approvals</code></span>
+    </div>
+    <div class="s-body">
+      <div class="shot">
+        <div class="shot-bar"><i></i><i></i><i></i><em>/web/approvals</em></div>
+        <div class="shot-img">
+          <img src="manual-assets/user-approvals.png" alt="หน้าอนุมัตินัดหมาย">
+          <span class="cdot" style="left:25%;top:19%">1</span>
+          <span class="cdot" style="left:28%;top:28%">2</span>
+          <span class="cdot" style="left:30%;top:38%">3</span>
+          <span class="cdot" style="left:90%;top:60%">4</span>
+          <span class="zhint"><svg viewBox="0 0 24 24"><path d="M15.5 14h-.8l-.3-.3a6.5 6.5 0 10-.7.7l.3.3v.8l5 5 1.5-1.5-5-5zm-6 0A4.5 4.5 0 1114 9.5 4.5 4.5 0 019.5 14z"/></svg>คลิกเพื่อขยาย</span>
+        </div>
+      </div>
+      <ol class="steps tight">
+        <li><span class="snum">1</span><div><b>เลือกกลุ่ม</b><p>เลือกกลุ่มผู้อนุมัติที่รับผิดชอบ (admin เห็นทุกกลุ่ม)</p></div></li>
+        <li><span class="snum">2</span><div><b>อ่านค่าสรุป</b><p>รออนุมัติ · อนุมัติวันนี้ · ปฏิเสธ · อยู่ในพื้นที่</p></div></li>
+        <li><span class="snum">3</span><div><b>กรองตามสถานะ</b><p>ใช้แท็บ รออนุมัติ / อนุมัติแล้ว / ปฏิเสธ / อยู่ในพื้นที่</p></div></li>
+        <li><span class="snum">4</span><div><b>อนุมัติ / ปฏิเสธ</b><p>กดเครื่องหมายถูก (อนุมัติ) หรือกากบาท (ปฏิเสธพร้อมเหตุผล)</p></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ===== 2.3b APPROVALS (mobile officer) ===== -->
+  <section class="slide" id="s-mobile-req" data-title="2.3 อนุมัติผ่านมือถือ">
+    <div class="marker"><span class="mlogo">VMS</span><span class="mpage">2.3</span></div>
+    <div class="s-head">
+      <div class="kicker">ส่วนที่ 2 · User/host · แอป officer</div>
+      <h2 class="title">2.3 ดูคำขอและอนุมัติผ่านมือถือ</h2>
+      <p class="s-sub">อนุมัตินอกสถานที่ได้ทันทีจากแอป officer — เห็นรายการคำขอเข้าพบพร้อมสถานะ</p>
+      <span class="route">แอปมือถือ (officer) · <code>mobile/officer/requests</code></span>
+    </div>
+    <div class="s-body mobile">
+      <div class="shot phone">
+        <div class="frame">
+          <div class="shot-img">
+            <img src="manual-assets/mobile-officer-requests.png" alt="หน้ารายการคำขอบนมือถือ">
+            <span class="cdot" style="left:50%;top:14%">1</span>
+            <span class="cdot" style="left:80%;top:31%">2</span>
+            <span class="cdot" style="left:26%;top:42%">3</span>
+            <span class="zhint"><svg viewBox="0 0 24 24"><path d="M15.5 14h-.8l-.3-.3a6.5 6.5 0 10-.7.7l.3.3v.8l5 5 1.5-1.5-5-5zm-6 0A4.5 4.5 0 1114 9.5 4.5 4.5 0 019.5 14z"/></svg>คลิกเพื่อขยาย</span>
+          </div>
+        </div>
+      </div>
+      <ol class="steps">
+        <li><span class="snum">1</span><div><b>สลับมุมมอง</b><p>เลือก นัดหมาย / กำลังเข้าพบ / ประวัติทั้งหมด และค้นหาด้วยชื่อ/บริษัท</p></div></li>
+        <li><span class="snum">2</span><div><b>ดูสถานะคำขอ</b><p>ป้ายสี เช่น "รอดำเนินการ" (ส้ม) และ "อนุมัติ" (เขียว) บอกสถานะแต่ละรายการ</p></div></li>
+        <li><span class="snum">3</span><div><b>เปิดรายละเอียด</b><p>แตะการ์ดเพื่อดูรายละเอียดและกดอนุมัติ/ปฏิเสธได้ทันทีจากมือถือ</p></div></li>
+        <li class="tip"><span class="snum">!</span><div><b>ทางลัดด้านล่าง</b><p>ปุ่ม "ข้อมูลส่วนบุคคล" และ "บันทึกนัดหมาย" ช่วยทำงานได้เร็วขึ้น</p></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ===== 2.4 HOSPITALITY ===== -->
+  <section class="slide" id="s-hospitality" data-title="2.4 ดูแลผู้มาเยือนระหว่างวัน">
+    <div class="marker"><span class="mlogo">VMS</span><span class="mpage">2.4</span></div>
+    <div class="s-head">
+      <div class="kicker">ส่วนที่ 2 · User/host · แอป officer</div>
+      <h2 class="title">2.4 การดูแลผู้มาเยือนระหว่างวัน (Hospitality)</h2>
+      <p class="s-sub">ติดตามผู้ที่อยู่ในอาคาร จัดเตรียมการต้อนรับ (น้ำดื่ม/กาแฟ/ห้องประชุม) และจ่าย WiFi</p>
+      <span class="route">แอปมือถือ (officer) · <code>mobile/officer/hospitality</code></span>
+    </div>
+    <div class="s-body mobile">
+      <div class="shot phone">
+        <div class="frame">
+          <div class="shot-img">
+            <img src="manual-assets/mobile-officer-hospitality.png" alt="หน้าจัดเตรียมรับรองบนมือถือ">
+            <span class="cdot" style="left:50%;top:15%">1</span>
+            <span class="cdot" style="left:42%;top:46%">2</span>
+            <span class="cdot" style="left:50%;top:56%">3</span>
+            <span class="zhint"><svg viewBox="0 0 24 24"><path d="M15.5 14h-.8l-.3-.3a6.5 6.5 0 10-.7.7l.3.3v.8l5 5 1.5-1.5-5-5zm-6 0A4.5 4.5 0 1114 9.5 4.5 4.5 0 019.5 14z"/></svg>คลิกเพื่อขยาย</span>
+          </div>
+        </div>
+      </div>
+      <ol class="steps">
+        <li><span class="snum">1</span><div><b>สรุปการต้อนรับ</b><p>ดูจำนวน รอจัดเตรียม / เตรียมเสร็จ / ทั้งหมดวันนี้ ที่แถบบน</p></div></li>
+        <li><span class="snum">2</span><div><b>รายละเอียดแต่ละคณะ</b><p>เห็นห้องประชุม จำนวนคน และของต้อนรับ (น้ำดื่ม/กาแฟ) ที่ต้องเตรียม</p></div></li>
+        <li><span class="snum">3</span><div><b>ทำเครื่องหมายเสร็จ</b><p>กด <b>เตรียมเสร็จแล้ว</b> เมื่อจัดเตรียมครบ</p></div></li>
+        <li class="tip"><span class="snum">!</span><div><b>WiFi & check-in/out</b><p>จ่ายข้อมูล WiFi ให้ผู้มาเยือน และตรวจสอบเวลาเข้า-ออกได้จากที่นี่</p></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ===== 2.5 SEARCH ===== -->
+  <section class="slide" id="s-search" data-title="2.5 ค้นหาและประวัติ">
+    <div class="marker"><span class="mlogo">VMS</span><span class="mpage">2.5</span></div>
+    <div class="s-head">
+      <div class="kicker">ส่วนที่ 2 · User/host</div>
+      <h2 class="title">2.5 ค้นหาผู้มาเยือน และดูประวัติ</h2>
+      <p class="s-sub">ค้นด้วยชื่อ/เลขบัตร/บริษัท กรองตามประเภท/สถานะ/วัน และดูประวัติการเข้าออก</p>
+      <span class="route">เมนู: รายชื่อการติดต่อ · <code>search</code></span>
+    </div>
+    <div class="s-body">
+      <div class="shot">
+        <div class="shot-bar"><i></i><i></i><i></i><em>/web/search</em></div>
+        <div class="shot-img">
+          <img src="manual-assets/user-search.png" alt="หน้าค้นหาผู้มาติดต่อ">
+          <span class="cdot" style="left:28%;top:26%">1</span>
+          <span class="cdot" style="left:45%;top:32%">2</span>
+          <span class="cdot" style="left:77%;top:32%">3</span>
+          <span class="zhint"><svg viewBox="0 0 24 24"><path d="M15.5 14h-.8l-.3-.3a6.5 6.5 0 10-.7.7l.3.3v.8l5 5 1.5-1.5-5-5zm-6 0A4.5 4.5 0 1114 9.5 4.5 4.5 0 019.5 14z"/></svg>คลิกเพื่อขยาย</span>
+        </div>
+      </div>
+      <ol class="steps">
+        <li><span class="snum">1</span><div><b>เลือกมุมมอง</b><p>สลับ ทั้งหมด / นัดหมาย / การเข้าพื้นที่ ตามสิ่งที่ต้องการค้น</p></div></li>
+        <li><span class="snum">2</span><div><b>ค้นหา + กรอง</b><p>พิมพ์ชื่อ/บริษัท/รหัส และกรองตามประเภทและสถานะ</p></div></li>
+        <li><span class="snum">3</span><div><b>ขอบเขตวัน</b><p>ติ๊ก "วันนี้เท่านั้น" ออก เพื่อค้นย้อนหลังและดูประวัติการเข้าออก</p></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ===== 2.5b REPORTS ===== -->
+  <section class="slide" id="s-reports" data-title="2.5 รายงานสถิติ">
+    <div class="marker"><span class="mlogo">VMS</span><span class="mpage">2.5</span></div>
+    <div class="s-head">
+      <div class="kicker">ส่วนที่ 2 · User/host</div>
+      <h2 class="title">2.5 รายงานสถิติผู้มาติดต่อ</h2>
+      <p class="s-sub">ดูสถิติรายวัน/สัปดาห์/เดือน แยกตามประเภท แผนก และช่องทาง พร้อมส่งออกไฟล์</p>
+      <span class="route">เมนู: รายงาน · <code>reports</code></span>
+    </div>
+    <div class="s-body">
+      <div class="shot">
+        <div class="shot-bar"><i></i><i></i><i></i><em>/web/reports</em></div>
+        <div class="shot-img">
+          <img src="manual-assets/user-reports.png" alt="หน้ารายงานสถิติ">
+          <span class="cdot" style="left:82%;top:13%">1</span>
+          <span class="cdot" style="left:30%;top:25%">2</span>
+          <span class="cdot" style="left:40%;top:45%">3</span>
+          <span class="cdot" style="left:93%;top:13%">4</span>
+          <span class="zhint"><svg viewBox="0 0 24 24"><path d="M15.5 14h-.8l-.3-.3a6.5 6.5 0 10-.7.7l.3.3v.8l5 5 1.5-1.5-5-5zm-6 0A4.5 4.5 0 1114 9.5 4.5 4.5 0 019.5 14z"/></svg>คลิกเพื่อขยาย</span>
+        </div>
+      </div>
+      <ol class="steps">
+        <li><span class="snum">1</span><div><b>เลือกช่วงเวลา</b><p>สลับ วันนี้ / สัปดาห์ / เดือน เพื่อดูสถิติในช่วงที่ต้องการ</p></div></li>
+        <li><span class="snum">2</span><div><b>อ่านค่า KPI</b><p>ผู้มาติดต่อทั้งหมด · เข้าพื้นที่แล้ว · รอดำเนินการ · เกินเวลา พร้อมแนวโน้ม</p></div></li>
+        <li><span class="snum">3</span><div><b>วิเคราะห์กราฟ</b><p>ดูสัดส่วนตามประเภทการติดต่อ แผนก (Top 6) และช่องทาง</p></div></li>
+        <li><span class="snum">4</span><div><b>ส่งออก</b><p>กด <b>ส่งออก</b> เพื่อบันทึกรายงานเป็นไฟล์ (Excel)</p></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ===== 2.6 BLOCKLIST ===== -->
+  <section class="slide" id="s-blocklist" data-title="2.6 Blocklist และข้อควรระวัง">
+    <div class="marker"><span class="mlogo">VMS</span><span class="mpage">2.6</span></div>
+    <div class="s-head">
+      <div class="kicker">ส่วนที่ 2 · User/host · เฉพาะหัวหน้า/admin</div>
+      <h2 class="title">2.6 Blocklist และข้อควรระวัง</h2>
+      <p class="s-sub">เพิ่ม/ถอนรายชื่อพร้อมเหตุผลและวันหมดอายุ — ระบบตรวจสอบอัตโนมัติก่อนอนุญาตเข้าพื้นที่</p>
+      <span class="route">เมนู: Blocklist · <code>blocklist</code> <em>(เฉพาะ supervisor / admin)</em></span>
+    </div>
+    <div class="s-body">
+      <div class="shot">
+        <div class="shot-bar"><i></i><i></i><i></i><em>/web/blocklist</em></div>
+        <div class="shot-img">
+          <img src="manual-assets/user-blocklist.png" alt="หน้าจัดการ Blocklist">
+          <span class="cdot" style="left:92%;top:13%">1</span>
+          <span class="cdot" style="left:55%;top:20%">2</span>
+          <span class="cdot" style="left:45%;top:58%">3</span>
+          <span class="zhint"><svg viewBox="0 0 24 24"><path d="M15.5 14h-.8l-.3-.3a6.5 6.5 0 10-.7.7l.3.3v.8l5 5 1.5-1.5-5-5zm-6 0A4.5 4.5 0 1114 9.5 4.5 4.5 0 019.5 14z"/></svg>คลิกเพื่อขยาย</span>
+        </div>
+      </div>
+      <ol class="steps">
+        <li><span class="snum">1</span><div><b>เพิ่มรายชื่อ</b><p>กด <b>+ เพิ่มรายชื่อ</b> ระบุบุคคล เหตุผล และวันหมดอายุ (ถาวร/ชั่วคราว)</p></div></li>
+        <li><span class="snum">2</span><div><b>ดูสรุป</b><p>จำนวนทั้งหมด · แบบถาวร (Permanent) · แบบชั่วคราว (Temporary)</p></div></li>
+        <li><span class="snum">3</span><div><b>ตรวจสอบ/ถอนรายชื่อ</b><p>ดูเหตุผล ผู้เพิ่ม และวันที่ — ถอนรายชื่อเมื่อครบกำหนดหรือทบทวนแล้ว</p></div></li>
+        <li class="tip"><span class="snum">!</span><div><b>PDPA & ความลับ</b><p>รักษาความลับข้อมูลผู้มาเยือน และใช้ blocklist อย่างเป็นธรรมตามนโยบาย</p></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ===== PART 3 DIVIDER ===== -->
+  <section class="slide divider" id="s-p3" data-title="ส่วนที่ 3 — เริ่มต้นผ่าน LINE">
+    <div class="dv-part">ส่วนที่ 3 · Part 3</div>
+    <h2>การเริ่มต้นใช้งานผ่าน LINE OA<br>สำหรับผู้มาติดต่อ & เจ้าหน้าที่</h2>
+    <p class="dv-sub">ตั้งแต่เพิ่มเพื่อน LINE OA → ลงทะเบียนตามประเภท → เสร็จพร้อมใช้งาน (จองนัด / รับแจ้งเตือน)</p>
+    <div class="dv-list">
+      <span>3.1 เส้นทางผู้มาติดต่อ (Visitor)</span><span>3.2 เส้นทางเจ้าหน้าที่ (Officer)</span>
+    </div>
+  </section>
+
+  <!-- ===== 3.0 LINE OVERVIEW / CATEGORY ===== -->
+  <section class="slide" id="s-line-overview" data-title="3. ภาพรวมการลงทะเบียนผ่าน LINE">
+    <div class="marker"><span class="mlogo">VMS</span><span class="mpage">ส่วนที่ 3</span></div>
+    <div class="s-head">
+      <div class="kicker">ส่วนที่ 3 · ภาพรวม & จัดหมวดหมู่</div>
+      <h2 class="title">2 เส้นทางการลงทะเบียนผ่าน LINE</h2>
+      <p class="s-sub">ทุกเส้นทางเริ่มจาก "เพิ่มเพื่อน LINE OA" เหมือนกัน แล้วแยกตามประเภทผู้ใช้ — ข้อมูลที่กรอกต่างกัน</p>
+    </div>
+    <div class="flowchips">
+      <div class="fc"><span class="fcn">1</span>เพิ่มเพื่อน OA</div>
+      <div class="fc-arr"><svg viewBox="0 0 24 24"><path d="M8 5l8 7-8 7z"/></svg></div>
+      <div class="fc"><span class="fcn">2</span>เลือกประเภท + ลงทะเบียน</div>
+      <div class="fc-arr"><svg viewBox="0 0 24 24"><path d="M8 5l8 7-8 7z"/></svg></div>
+      <div class="fc"><span class="fcn">3</span>ลงทะเบียนสำเร็จ</div>
+      <div class="fc-arr"><svg viewBox="0 0 24 24"><path d="M8 5l8 7-8 7z"/></svg></div>
+      <div class="fc"><span class="fcn">4</span>พร้อมใช้งาน</div>
+    </div>
+    <div class="track2">
+      <div class="trackcard v">
+        <div class="tc-h"><div class="tc-ic"><svg viewBox="0 0 24 24"><path d="M12 12a5 5 0 100-10 5 5 0 000 10zm0 2c-4 0-8 2-8 5v3h16v-3c0-3-4-5-8-5z"/></svg></div><h3>ผู้มาติดต่อ (Visitor)</h3></div>
+        <div class="tc-sub">บุคคลภายนอกที่ต้องการเข้าพบเจ้าหน้าที่</div>
+        <div class="tc-steps"><span>เพิ่มเพื่อน</span><span>เลือก "ผู้มาติดต่อ"</span><span>กรอกข้อมูล</span><span>จองนัด</span><span>รับ QR</span></div>
+        <div class="tc-data">ข้อมูลที่กรอก:</div>
+        <ul>
+          <li><b>ชื่อ · นามสกุล</b> (ระบบดึงจากชื่อ LINE ให้อัตโนมัติ)</li>
+          <li><b>เบอร์โทร</b> (จำเป็น) · <b>อีเมล</b> · <b>บริษัท/หน่วยงาน</b></li>
+          <li>ยืนยันตัวตนด้วยบัญชี LINE — ไม่ต้องตั้งรหัสผ่าน</li>
+        </ul>
+      </div>
+      <div class="trackcard o">
+        <div class="tc-h"><div class="tc-ic"><svg viewBox="0 0 24 24"><path d="M10 4H4v6h6zM20 4h-6v6h6zM10 14H4v6h6zM20 14h-6v6h6z"/></svg></div><h3>เจ้าหน้าที่ (Officer)</h3></div>
+        <div class="tc-sub">เจ้าหน้าที่ กท.กก. รับแจ้งเตือนและอนุมัติรายการ</div>
+        <div class="tc-steps"><span>เพิ่มเพื่อน</span><span>เลือก "พนักงาน"</span><span>ค้นหารหัสพนักงาน</span><span>ยืนยัน+ผูก LINE</span></div>
+        <div class="tc-data">ข้อมูลที่กรอก:</div>
+        <ul>
+          <li><b>รหัสพนักงาน</b> หรือ <b>เลขบัตรประชาชน</b> เพื่อค้นหาในทำเนียบ</li>
+          <li>ระบบแสดง ชื่อ-สกุล · ตำแหน่ง · สังกัด · รหัส ให้ตรวจสอบ</li>
+          <li>กรอก <b>เบอร์โทร/อีเมล</b> แล้วกดยืนยันผูกบัญชี LINE</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 3.1 VISITOR ONBOARD (filmstrip) ===== -->
+  <section class="slide" id="s-v-onboard" data-title="3.1 ลงทะเบียนผู้มาติดต่อผ่าน LINE">
+    <div class="marker"><span class="mlogo">VMS</span><span class="mpage">3.1</span></div>
+    <div class="s-head">
+      <div class="kicker">ส่วนที่ 3 · เส้นทางผู้มาติดต่อ</div>
+      <h2 class="title">3.1 ลงทะเบียนผู้มาติดต่อผ่าน LINE</h2>
+      <p class="s-sub">เพิ่มเพื่อน → เลือกประเภท → กรอกข้อมูล → ลงทะเบียนสำเร็จ (ทำครั้งเดียว)</p>
+    </div>
+    <div class="filmstrip">
+      <div class="fs-cell"><div class="fs-shot"><span class="fs-num">1</span><img src="manual-assets/mobile-line-welcome.png" alt="เพิ่มเพื่อน LINE OA"></div><div class="fs-cap">เพิ่มเพื่อน OA<small>กดปุ่ม "Registration Now"</small></div></div>
+      <div class="fs-arrow"><svg viewBox="0 0 24 24"><path d="M8 5l8 7-8 7z"/></svg></div>
+      <div class="fs-cell"><div class="fs-shot"><span class="fs-num">2</span><img src="manual-assets/mobile-line-typeselect.png" alt="เลือกประเภทผู้ใช้"></div><div class="fs-cap">เลือกประเภท<small>แตะ "ผู้มาติดต่อ" → ดำเนินการต่อ</small></div></div>
+      <div class="fs-arrow"><svg viewBox="0 0 24 24"><path d="M8 5l8 7-8 7z"/></svg></div>
+      <div class="fs-cell"><div class="fs-shot"><span class="fs-num">3</span><img src="manual-assets/mobile-line-visitor-form.png" alt="กรอกข้อมูลผู้มาติดต่อ"></div><div class="fs-cap">กรอกข้อมูล<small>เบอร์โทร · อีเมล · บริษัท แล้วกดลงทะเบียน</small></div></div>
+      <div class="fs-arrow"><svg viewBox="0 0 24 24"><path d="M8 5l8 7-8 7z"/></svg></div>
+      <div class="fs-cell"><div class="fs-shot"><span class="fs-num">4</span><img src="manual-assets/mobile-line-visitor-done.png" alt="ลงทะเบียนสำเร็จ"></div><div class="fs-cap">สำเร็จ + เมนู<small>Rich Menu เปลี่ยนเป็นเมนูผู้มาเยือน</small></div></div>
+    </div>
+    <div class="fs-note"><svg viewBox="0 0 24 24"><path d="M11 7h2v2h-2zm0 4h2v6h-2zm1-9a10 10 0 100 20 10 10 0 000-20z"/></svg>ชื่อ-นามสกุลจะถูกดึงจากบัญชี LINE ให้อัตโนมัติ ผู้ใช้เพียงเติมเบอร์โทรและข้อมูลติดต่อ</div>
+  </section>
+
+  <!-- ===== 3.1 VISITOR READY (filmstrip) ===== -->
+  <section class="slide" id="s-v-ready" data-title="3.1 จองนัดและรับ QR ผ่าน LINE">
+    <div class="marker"><span class="mlogo">VMS</span><span class="mpage">3.1</span></div>
+    <div class="s-head">
+      <div class="kicker">ส่วนที่ 3 · เส้นทางผู้มาติดต่อ · พร้อมใช้งาน</div>
+      <h2 class="title">3.1 จองนัดและรับ QR ผ่าน LINE</h2>
+      <p class="s-sub">หลังลงทะเบียน ผู้มาติดต่อจองนัดเองผ่านเมนู LINE และรับ QR สำหรับ check-in ที่ Kiosk/Counter</p>
+    </div>
+    <div class="filmstrip">
+      <div class="fs-cell"><div class="fs-shot"><span class="fs-num">1</span><img src="manual-assets/mobile-line-booking.png" alt="จองนัดผ่าน LINE"></div><div class="fs-cap">จองนัด (4 ขั้น)<small>เลือกวัตถุประสงค์ → วันเวลา/ผู้พบ → รายละเอียด → ยืนยัน (PDPA)</small></div></div>
+      <div class="fs-arrow"><svg viewBox="0 0 24 24"><path d="M8 5l8 7-8 7z"/></svg></div>
+      <div class="fs-cell"><div class="fs-shot"><span class="fs-num">2</span><img src="manual-assets/mobile-line-qr.png" alt="รับ QR Code"></div><div class="fs-cap">รับ QR Code<small>เมื่ออนุมัติ ระบบส่ง QR + วันเวลา + ผู้พบ ทาง LINE</small></div></div>
+    </div>
+    <div class="fs-note"><svg viewBox="0 0 24 24"><path d="M11 7h2v2h-2zm0 4h2v6h-2zm1-9a10 10 0 100 20 10 10 0 000-20z"/></svg>นำ QR นี้ไปสแกนที่ Kiosk/Counter เพื่อ check-in ในวันนัด (ดูขั้นตอนที่ส่วนที่ 4)</div>
+  </section>
+
+  <!-- ===== 3.2 OFFICER ONBOARD (filmstrip) ===== -->
+  <section class="slide" id="s-o-onboard" data-title="3.2 ผูกบัญชีเจ้าหน้าที่กับ LINE">
+    <div class="marker"><span class="mlogo">VMS</span><span class="mpage">3.2</span></div>
+    <div class="s-head">
+      <div class="kicker">ส่วนที่ 3 · เส้นทางเจ้าหน้าที่</div>
+      <h2 class="title">3.2 ผูกบัญชีเจ้าหน้าที่ (Officer) กับ LINE</h2>
+      <p class="s-sub">เจ้าหน้าที่ผูก LINE กับบัญชีพนักงาน เพื่อรับแจ้งเตือนและอนุมัติรายการผ่านมือถือ</p>
+    </div>
+    <div class="filmstrip">
+      <div class="fs-cell"><div class="fs-shot"><span class="fs-num">1</span><img src="manual-assets/mobile-line-typeselect.png" alt="เลือกประเภทพนักงาน"></div><div class="fs-cap">เลือก "พนักงาน"<small>หลังเพิ่มเพื่อน → กด Registration</small></div></div>
+      <div class="fs-arrow"><svg viewBox="0 0 24 24"><path d="M8 5l8 7-8 7z"/></svg></div>
+      <div class="fs-cell"><div class="fs-shot"><span class="fs-num">2</span><img src="manual-assets/mobile-line-officer-form.png" alt="ค้นหารหัสพนักงาน"></div><div class="fs-cap">ค้นหาตัวตน<small>ป้อนรหัสพนักงานหรือเลขบัตรประชาชน</small></div></div>
+      <div class="fs-arrow"><svg viewBox="0 0 24 24"><path d="M8 5l8 7-8 7z"/></svg></div>
+      <div class="fs-cell"><div class="fs-shot"><span class="fs-num">3</span><img src="manual-assets/mobile-line-officer-confirm.png" alt="ยืนยันข้อมูลพนักงาน"></div><div class="fs-cap">ยืนยันข้อมูล<small>ตรวจชื่อ/ตำแหน่ง/สังกัด + เบอร์/อีเมล</small></div></div>
+      <div class="fs-arrow"><svg viewBox="0 0 24 24"><path d="M8 5l8 7-8 7z"/></svg></div>
+      <div class="fs-cell"><div class="fs-shot"><span class="fs-num">4</span><img src="manual-assets/mobile-line-officer-done.png" alt="ผูกบัญชีสำเร็จ"></div><div class="fs-cap">ผูกสำเร็จ<small>พร้อมรับแจ้งเตือน/อนุมัติ</small></div></div>
+    </div>
+    <div class="fs-note amber"><svg viewBox="0 0 24 24"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2zm0-4h-2v-4h2z"/></svg>คีย์ที่ใช้จับคู่จริงคือ <b style="margin:0 4px">รหัสพนักงาน (employeeId)</b> หรืออีเมลในทำเนียบ · จากนั้นอนุมัติผ่านแอป officer ได้ (ดูหัวข้อ 2.3)</div>
+  </section>
+
+  <!-- ===== PART 4 DIVIDER ===== -->
+  <section class="slide divider" id="s-p4" data-title="ส่วนที่ 4 — Kiosk & Counter">
+    <div class="dv-part">ส่วนที่ 4 · Part 4</div>
+    <h2>จุดบริการ Kiosk & Counter<br>การลงทะเบียนหน้างาน (self-service)</h2>
+    <p class="dv-sub">ผู้มาเยือน check-in เองที่เครื่อง Kiosk หรือให้เจ้าหน้าที่ รปภ. ช่วยที่ Counter — ตั้งแต่ยืนยันตัวตนจนรับบัตร</p>
+    <div class="dv-list">
+      <span>4.1–4.2 Kiosk: Walk-in</span><span>4.3 Kiosk: มีนัด (QR)</span><span>4.4 Counter (รปภ.)</span><span>4.5 ตั้งค่าเครื่อง (IT)</span>
+    </div>
+  </section>
+
+  <!-- ===== 4.0 KIOSK OVERVIEW ===== -->
+  <section class="slide" id="s-kiosk-overview" data-title="4. ภาพรวมจุดบริการ Kiosk & Counter">
+    <div class="marker"><span class="mlogo">VMS</span><span class="mpage">ส่วนที่ 4</span></div>
+    <div class="s-head">
+      <div class="kicker">ส่วนที่ 4 · ภาพรวม & จัดหมวดหมู่</div>
+      <h2 class="title">2 เส้นทางที่เครื่อง · Kiosk ต่างจาก Counter อย่างไร</h2>
+      <p class="s-sub">ทั้งสองเส้นทางเริ่มด้วยการยินยอม PDPA เหมือนกัน แล้วแยกตามว่ามีนัด (QR) หรือ Walk-in</p>
+    </div>
+    <div class="track2">
+      <div class="trackcard v">
+        <div class="tc-h"><div class="tc-ic"><svg viewBox="0 0 24 24"><path d="M3 3h8v8H3zm2 2v4h4V5zM13 3h8v8h-8zm2 2v4h4V5zM3 13h8v8H3zm2 2v4h4v-4zm12-2h4v2h-4zm-4 0h2v2h-2zm4 4h4v4h-4z"/></svg></div><h3>มีนัดล่วงหน้า (QR)</h3></div>
+        <div class="tc-sub">6 ขั้นตอน · สำหรับผู้ที่จองผ่าน LINE/เว็บแล้ว</div>
+        <div class="tc-steps"><span>PDPA</span><span>สแกน QR</span><span>ยืนยันนัด</span><span>ยืนยันตัวตน</span><span>ถ่ายรูป</span><span>รับบัตร</span></div>
+        <div class="tc-data">Walk-in (ไม่มีนัด) · 8 ขั้นตอน:</div>
+        <ul>
+          <li>PDPA → เลือกวัตถุประสงค์ + แผนก → เลือกผู้พบ</li>
+          <li>เลือกวิธียืนยันตัวตน → อ่านบัตร → ตรวจข้อมูล</li>
+          <li>ถ่ายรูปใบหน้า + WiFi → รับบัตร/สลิป</li>
+        </ul>
+      </div>
+      <div class="trackcard o">
+        <div class="tc-h"><div class="tc-ic"><svg viewBox="0 0 24 24"><path d="M3 5h18v10H3zM2 17h20v2H2z"/></svg></div><h3>Kiosk vs Counter</h3></div>
+        <div class="tc-sub">เลือกใช้ตามลักษณะจุดบริการ</div>
+        <ul>
+          <li><b>Kiosk</b> = บริการตนเอง (self-service) ผู้มาเยือนทำเองทุกขั้นบนจอสัมผัสแนวตั้ง</li>
+          <li><b>Counter</b> = มีเจ้าหน้าที่ รปภ. เป็นผู้คีย์/อ่านบัตรให้ บนเวิร์กสเตชันแนวนอน</li>
+        </ul>
+        <div class="tc-data" style="margin-top:14px">อุปกรณ์ต่อพ่วง:</div>
+        <div class="tc-steps"><span>เครื่องอ่านบัตรประชาชน</span><span>เครื่องอ่าน Passport</span><span>กล้องถ่ายใบหน้า</span><span>เครื่องพิมพ์ Thermal</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== 4.1 KIOSK WALK-IN part 1 (filmstrip) ===== -->
+  <section class="slide" id="s-kiosk-walkin1" data-title="4.1 Kiosk Walk-in — เริ่มต้น">
+    <div class="marker"><span class="mlogo">VMS</span><span class="mpage">4.1</span></div>
+    <div class="s-head">
+      <div class="kicker">ส่วนที่ 4 · Kiosk · Walk-in (ไม่มีนัด)</div>
+      <h2 class="title">4.1 เริ่มต้น — เลือกบริการจนถึงยืนยันตัวตน</h2>
+      <p class="s-sub">แตะเริ่ม → ยินยอม PDPA → เลือกวัตถุประสงค์และผู้พบ → เลือกวิธียืนยันตัวตน</p>
+    </div>
+    <div class="filmstrip">
+      <div class="fs-cell"><div class="fs-shot"><span class="fs-num">1</span><img src="manual-assets/kiosk-welcome.png" alt="หน้าต้อนรับ"></div><div class="fs-cap">แตะเริ่ม<small>เลือก "ไม่มีนัดหมาย / Walk-in"</small></div></div>
+      <div class="fs-arrow"><svg viewBox="0 0 24 24"><path d="M8 5l8 7-8 7z"/></svg></div>
+      <div class="fs-cell"><div class="fs-shot"><span class="fs-num">2</span><img src="manual-assets/kiosk-pdpa.png" alt="ยินยอม PDPA"></div><div class="fs-cap">ยินยอม PDPA<small>ติ๊กยอมรับ → ดำเนินการต่อ</small></div></div>
+      <div class="fs-arrow"><svg viewBox="0 0 24 24"><path d="M8 5l8 7-8 7z"/></svg></div>
+      <div class="fs-cell"><div class="fs-shot"><span class="fs-num">3</span><img src="manual-assets/kiosk-purpose.png" alt="เลือกวัตถุประสงค์"></div><div class="fs-cap">วัตถุประสงค์<small>เลือกประเภท + แผนกที่ติดต่อ</small></div></div>
+      <div class="fs-arrow"><svg viewBox="0 0 24 24"><path d="M8 5l8 7-8 7z"/></svg></div>
+      <div class="fs-cell"><div class="fs-shot"><span class="fs-num">4</span><img src="manual-assets/kiosk-host2.png" alt="เลือกผู้ที่ต้องการพบ"></div><div class="fs-cap">เลือกผู้พบ<small>ค้นหาเจ้าหน้าที่ (ข้ามได้บางกรณี)</small></div></div>
+      <div class="fs-arrow"><svg viewBox="0 0 24 24"><path d="M8 5l8 7-8 7z"/></svg></div>
+      <div class="fs-cell"><div class="fs-shot"><span class="fs-num">5</span><img src="manual-assets/kiosk-idmethod.png" alt="เลือกวิธียืนยันตัวตน"></div><div class="fs-cap">วิธียืนยันตัวตน<small>บัตรประชาชน / Passport / ThaiID</small></div></div>
+    </div>
+    <div class="fs-note"><svg viewBox="0 0 24 24"><path d="M11 7h2v2h-2zm0 4h2v6h-2zm1-9a10 10 0 100 20 10 10 0 000-20z"/></svg>ลำดับสำคัญ: ยินยอม PDPA มาก่อนเลือกวัตถุประสงค์เสมอ</div>
+  </section>
+
+  <!-- ===== 4.2 KIOSK WALK-IN part 2 (filmstrip) ===== -->
+  <section class="slide" id="s-kiosk-walkin2" data-title="4.2 Kiosk Walk-in — ยืนยันตัวตนจนรับบัตร">
+    <div class="marker"><span class="mlogo">VMS</span><span class="mpage">4.2</span></div>
+    <div class="s-head">
+      <div class="kicker">ส่วนที่ 4 · Kiosk · Walk-in (ไม่มีนัด)</div>
+      <h2 class="title">4.2 อ่านบัตร ถ่ายรูป จนรับบัตรผู้มาเยือน</h2>
+      <p class="s-sub">อ่านบัตร → ตรวจสอบข้อมูล (ตรวจ blocklist) → ถ่ายรูปใบหน้า + WiFi → พิมพ์บัตร/สลิป พร้อม QR</p>
+    </div>
+    <div class="filmstrip">
+      <div class="fs-cell"><div class="fs-shot"><span class="fs-num">6</span><img src="manual-assets/kiosk-idread.png" alt="อ่านบัตร"></div><div class="fs-cap">อ่านบัตร<small>เสียบบัตรที่เครื่องอ่าน</small></div></div>
+      <div class="fs-arrow"><svg viewBox="0 0 24 24"><path d="M8 5l8 7-8 7z"/></svg></div>
+      <div class="fs-cell"><div class="fs-shot"><span class="fs-num">7</span><img src="manual-assets/kiosk-preview.png" alt="ตรวจสอบข้อมูล"></div><div class="fs-cap">ตรวจสอบข้อมูล<small>ยืนยันชื่อ/เลขบัตร (ระบบเช็ค blocklist)</small></div></div>
+      <div class="fs-arrow"><svg viewBox="0 0 24 24"><path d="M8 5l8 7-8 7z"/></svg></div>
+      <div class="fs-cell"><div class="fs-shot"><span class="fs-num">8</span><img src="manual-assets/kiosk-face.png" alt="ถ่ายรูปใบหน้า"></div><div class="fs-cap">ถ่ายรูป + WiFi<small>มองกล้อง (มี WiFi ตามวัตถุประสงค์)</small></div></div>
+      <div class="fs-arrow"><svg viewBox="0 0 24 24"><path d="M8 5l8 7-8 7z"/></svg></div>
+      <div class="fs-cell"><div class="fs-shot land"><span class="fs-num">9</span><img src="manual-assets/kiosk-slip.png" alt="บัตรผู้มาเยือน" style="height:392px;width:auto"></div><div class="fs-cap">รับบัตร/สลิป<small>พิมพ์บัตร + QR สำหรับ check-out</small></div></div>
+    </div>
+    <div class="fs-note amber"><svg viewBox="0 0 24 24"><path d="M1 21h22L12 2 1 21zm12-3h-2v-2h2zm0-4h-2v-4h2z"/></svg>ถ้าตรวจพบชื่อใน blocklist ระบบจะเตือนและหยุดขั้นตอนทันที · ผู้ผูก LINE ไว้จะเลือก "รับผ่าน LINE" แทนพิมพ์กระดาษได้</div>
+  </section>
+
+  <!-- ===== 4.3 KIOSK QR (filmstrip) ===== -->
+  <section class="slide" id="s-kiosk-qr" data-title="4.3 Kiosk — เส้นทางมีนัด (QR)">
+    <div class="marker"><span class="mlogo">VMS</span><span class="mpage">4.3</span></div>
+    <div class="s-head">
+      <div class="kicker">ส่วนที่ 4 · Kiosk · มีนัดล่วงหน้า</div>
+      <h2 class="title">4.3 เส้นทางมีนัด — สแกน QR แล้ว check-in</h2>
+      <p class="s-sub">สำหรับผู้ที่จองผ่าน LINE/เว็บแล้ว — เร็วกว่าเพราะระบบมีข้อมูลนัดอยู่แล้ว</p>
+    </div>
+    <div class="filmstrip">
+      <div class="fs-cell"><div class="fs-shot"><span class="fs-num">1</span><img src="manual-assets/kiosk-welcome.png" alt="แตะมีนัด"></div><div class="fs-cap">แตะ "มีนัดล่วงหน้า"<small>แล้วยินยอม PDPA</small></div></div>
+      <div class="fs-arrow"><svg viewBox="0 0 24 24"><path d="M8 5l8 7-8 7z"/></svg></div>
+      <div class="fs-cell"><div class="fs-shot"><span class="fs-num">2</span><img src="manual-assets/kiosk-qrscan.png" alt="สแกน QR"></div><div class="fs-cap">สแกน QR<small>วาง QR จาก LINE/อีเมลที่เครื่องสแกน</small></div></div>
+      <div class="fs-arrow"><svg viewBox="0 0 24 24"><path d="M8 5l8 7-8 7z"/></svg></div>
+      <div class="fs-cell"><div class="fs-shot"><span class="fs-num">3</span><img src="manual-assets/kiosk-appt-preview.png" alt="ยืนยันนัดหมาย"></div><div class="fs-cap">ยืนยันนัด<small>ตรวจผู้พบ/สถานที่/เวลา → Check-in</small></div></div>
+      <div class="fs-arrow"><svg viewBox="0 0 24 24"><path d="M8 5l8 7-8 7z"/></svg></div>
+      <div class="fs-cell"><div class="fs-shot land"><span class="fs-num">4</span><img src="manual-assets/kiosk-slip.png" alt="รับบัตร" style="height:392px;width:auto"></div><div class="fs-cap">ยืนยันตัวตน + รับบัตร<small>ถ่ายรูป → รับบัตร/สลิป + WiFi</small></div></div>
+    </div>
+    <div class="fs-note"><svg viewBox="0 0 24 24"><path d="M11 7h2v2h-2zm0 4h2v6h-2zm1-9a10 10 0 100 20 10 10 0 000-20z"/></svg>ถ้าไม่มี QR สามารถกด "ไม่มี QR Code — ยืนยันตัวตนแทน" เพื่อจับคู่นัดด้วยบัตรประชาชนได้</div>
+  </section>
+
+  <!-- ===== 4.4 COUNTER (hero landscape) ===== -->
+  <section class="slide" id="s-counter" data-title="4.4 Counter (จุดบริการ รปภ.)">
+    <div class="marker"><span class="mlogo">VMS</span><span class="mpage">4.4</span></div>
+    <div class="s-head">
+      <div class="kicker">ส่วนที่ 4 · Counter</div>
+      <h2 class="title">4.4 จุดบริการ Counter (เจ้าหน้าที่ รปภ.)</h2>
+      <p class="s-sub">เวิร์กสเตชันหน้าเดียวที่เจ้าหน้าที่เป็นผู้ดำเนินการให้ — รับทั้ง Walk-in และผู้มีนัด พร้อม check-out</p>
+      <span class="route">แอป Counter · <code>counter/dashboard</code></span>
+    </div>
+    <div class="s-body">
+      <div class="shot">
+        <div class="shot-bar"><i></i><i></i><i></i><em>/counter/dashboard</em></div>
+        <div class="shot-img">
+          <img src="manual-assets/counter-dashboard.png" alt="หน้าจอ Counter workstation">
+          <span class="cdot" style="left:9%;top:11%">1</span>
+          <span class="cdot" style="left:40%;top:24%">2</span>
+          <span class="cdot" style="left:27%;top:54%">3</span>
+          <span class="cdot" style="left:10%;top:20%">4</span>
+          <span class="cdot" style="left:69%;top:86%">5</span>
+          <span class="zhint"><svg viewBox="0 0 24 24"><path d="M15.5 14h-.8l-.3-.3a6.5 6.5 0 10-.7.7l.3.3v.8l5 5 1.5-1.5-5-5zm-6 0A4.5 4.5 0 1114 9.5 4.5 4.5 0 019.5 14z"/></svg>คลิกเพื่อขยาย</span>
+        </div>
+      </div>
+      <ol class="steps tight">
+        <li><span class="snum">1</span><div><b>เลือกโหมด</b><p>สลับแท็บ Walk-in / นัดหมาย ตามผู้มาติดต่อ</p></div></li>
+        <li><span class="snum">2</span><div><b>ยืนยันตัวตน</b><p>อ่านบัตรประชาชน / Passport หรือคีย์ข้อมูลเอง</p></div></li>
+        <li><span class="snum">3</span><div><b>เลือกวัตถุประสงค์</b><p>ระบุวัตถุประสงค์ แผนก และผู้ที่มาพบ</p></div></li>
+        <li><span class="snum">4</span><div><b>Check-out</b><p>สแกน QR บัตร หรือกด "Out" จากรายชื่อผู้อยู่ในอาคาร</p></div></li>
+        <li><span class="snum">5</span><div><b>บันทึก & พิมพ์บัตร</b><p>ระบบเช็ค blocklist แล้วออกบัตร/สลิปให้</p></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- ===== 4.5 KIOSK DEVICE SETTINGS (hero portrait) ===== -->
+  <section class="slide" id="s-kiosk-settings" data-title="4.5 ตั้งค่าเครื่อง Kiosk (IT)">
+    <div class="marker"><span class="mlogo">VMS</span><span class="mpage">4.5</span></div>
+    <div class="s-head">
+      <div class="kicker">ส่วนที่ 4 · สำหรับ IT</div>
+      <h2 class="title">4.5 ตั้งค่าและตรวจสอบเครื่อง Kiosk</h2>
+      <p class="s-sub">แตะไอคอนเฟืองที่แถบล่างของจอ แล้วใส่ PIN ผู้ดูแล เพื่อดูสถานะและข้อมูลเครื่อง</p>
+      <span class="route">บนเครื่อง Kiosk → ไอคอนเฟือง · PIN ผู้ดูแล (ค่าเริ่มต้น <code>10210</code>)</span>
+    </div>
+    <div class="s-body mobile">
+      <div class="shot phone">
+        <div class="frame">
+          <div class="shot-img">
+            <img src="manual-assets/kiosk-settings.png" alt="หน้าตั้งค่าเครื่อง Kiosk">
+            <span class="cdot" style="left:50%;top:16%">1</span>
+            <span class="cdot" style="left:62%;top:42%">2</span>
+            <span class="cdot" style="left:42%;top:80%">3</span>
+            <span class="zhint"><svg viewBox="0 0 24 24"><path d="M15.5 14h-.8l-.3-.3a6.5 6.5 0 10-.7.7l.3.3v.8l5 5 1.5-1.5-5-5zm-6 0A4.5 4.5 0 1114 9.5 4.5 4.5 0 019.5 14z"/></svg>คลิกเพื่อขยาย</span>
+          </div>
+        </div>
+      </div>
+      <ol class="steps">
+        <li><span class="snum">1</span><div><b>เลือกจุดบริการ</b><p>ระบุว่าเครื่องนี้ผูกกับ service point ใด</p></div></li>
+        <li><span class="snum">2</span><div><b>ตรวจข้อมูลเครื่อง</b><p>ดู S/N, IP, สถานะออนไลน์, ตำแหน่ง และยอดใช้งานวันนี้</p></div></li>
+        <li><span class="snum">3</span><div><b>ตรวจเวลาทำการ/เอกสาร</b><p>ดูเวลาเปิด-ปิด, เอกสารที่รับ, WiFi และการตั้งค่าสลิป (อ่านอย่างเดียว)</p></div></li>
+        <li class="tip"><span class="snum">!</span><div><b>แก้ค่าจริงที่เว็บ</b><p>การตั้งค่าทั้งหมดจัดการที่ <code>settings/service-points</code> — บนเครื่องดูได้อย่างเดียว และมีช่องใส่ Device Token</p></div></li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- @@CONTENT2@@ -->
+
+  <!-- ===== APPENDIX A — IT checklist ===== -->
+  <section class="slide" id="s-checklist" data-title="ภาคผนวก ก — Checklist IT">
+    <div class="marker"><span class="mlogo">VMS</span><span class="mpage">ภาคผนวก ก</span></div>
+    <div class="s-head">
+      <div class="kicker">ภาคผนวก ก · Appendix A</div>
+      <h2 class="title">Checklist สำหรับ IT — ลำดับการตั้งค่าก่อนเปิดใช้งาน</h2>
+      <p class="s-sub">ตั้งค่าตามลำดับ เพราะข้อมูลอ้างอิงต่อกัน — เริ่มจากสถานที่และพนักงานก่อนเสมอ</p>
+    </div>
+    <div class="chk-two">
+      <div class="chkbox">
+        <h3><svg viewBox="0 0 24 24"><path d="M9 16.2l-3.5-3.5L4 14.2 9 19l11-11-1.4-1.4z"/></svg>ลำดับที่ 1–7</h3>
+        <ul class="chklist">
+          <li><span class="cbox"></span><span class="cnum">1</span>สถานที่ — อาคาร/ชั้น/แผนก <code>locations</code></li>
+          <li><span class="cbox"></span><span class="cnum">2</span>ทำเนียบเจ้าหน้าที่ <code>staff</code></li>
+          <li><span class="cbox"></span><span class="cnum">3</span>บัญชีผู้ใช้และ role <code>users</code></li>
+          <li><span class="cbox"></span><span class="cnum">4</span>วัตถุประสงค์ + ช่องทาง <code>visit-purposes</code></li>
+          <li><span class="cbox"></span><span class="cnum">5</span>ประเภทเอกสาร <code>document-types</code></li>
+          <li><span class="cbox"></span><span class="cnum">6</span>กลุ่มผู้อนุมัติ <code>approver-groups</code></li>
+          <li><span class="cbox"></span><span class="cnum">7</span>โซนการเข้าถึง / Hikvision <code>access-zones</code></li>
+        </ul>
+      </div>
+      <div class="chkbox">
+        <h3><svg viewBox="0 0 24 24"><path d="M9 16.2l-3.5-3.5L4 14.2 9 19l11-11-1.4-1.4z"/></svg>ลำดับที่ 8–14</h3>
+        <ul class="chklist">
+          <li><span class="cbox"></span><span class="cnum">8</span>เวลาทำการ / วันหยุด <code>business-hours</code></li>
+          <li><span class="cbox"></span><span class="cnum">9</span>จุดบริการ Kiosk / Counter <code>service-points</code></li>
+          <li><span class="cbox"></span><span class="cnum">10</span>อีเมล SMTP + ทดสอบส่ง <code>email-system</code></li>
+          <li><span class="cbox"></span><span class="cnum">11</span>LINE OA + ทดสอบ webhook <code>line-oa-config</code></li>
+          <li><span class="cbox"></span><span class="cnum">12</span>เทมเพลตแจ้งเตือน <code>notification-templates</code></li>
+          <li><span class="cbox"></span><span class="cnum">13</span>PDPA consent <code>pdpa-consent</code></li>
+          <li><span class="cbox"></span><span class="cnum">14</span>เทมเพลตบัตร / ใบนัด <code>visit-slips</code></li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===== APPENDIX B — User quick reference ===== -->
+  <section class="slide" id="s-quickref" data-title="ภาคผนวก ข — Quick Reference">
+    <div class="marker"><span class="mlogo">VMS</span><span class="mpage">ภาคผนวก ข</span></div>
+    <div class="s-head">
+      <div class="kicker">ภาคผนวก ข · Appendix B</div>
+      <h2 class="title">Quick Reference สำหรับเจ้าหน้าที่ (host)</h2>
+      <p class="s-sub">อยากทำอะไร ไปที่เมนูไหน — ตารางอ้างอิงเร็วสำหรับงานประจำวัน</p>
+    </div>
+    <table class="qtable">
+      <thead><tr><th style="width:52%">ต้องการทำ</th><th>ไปที่เมนู</th></tr></thead>
+      <tbody>
+        <tr><td>ดูสรุปประจำวัน (ผู้มาเยือน · อยู่ในอาคาร · เกินเวลา)</td><td>ภาพรวม (Dashboard)</td></tr>
+        <tr><td>สร้างนัดให้ผู้มาติดต่อรายเดียว</td><td>การนัดหมาย → สร้างนัดหมาย → รายบุคคล</td></tr>
+        <tr><td>รับคณะดูงานหลายคน (นำเข้า Excel)</td><td>การนัดหมาย → สร้างนัดหมาย → หมู่คณะ</td></tr>
+        <tr><td>อนุมัติ / ปฏิเสธคำขอ</td><td>อนุมัตินัดหมาย (เว็บ) หรือแอป officer</td></tr>
+        <tr><td>ดูใครอยู่ในอาคาร / จ่าย WiFi</td><td>แอป officer → Hospitality</td></tr>
+        <tr><td>ค้นหาผู้มาเยือน / ดูประวัติเข้าออก</td><td>รายชื่อการติดต่อ (ค้นหา)</td></tr>
+        <tr><td>ดูรายงานสถิติ / ส่งออก</td><td>รายงาน</td></tr>
+        <tr><td>จัดการ blocklist <em>(หัวหน้า)</em></td><td>Blocklist</td></tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- ===== CLOSING ===== -->
+  <section class="slide" id="s-closing" data-title="ปิดเล่ม">
+    <h2>พร้อมใช้งานระบบ VMS<br>ได้อย่างมั่นใจ</h2>
+    <p>คู่มือเล่มนี้ครอบคลุมงานตั้งค่าของ IT และงานประจำวันของเจ้าหน้าที่ ตามหลักสูตรอบรม พร้อมภาพหน้าจอจริงทุกขั้นตอน</p>
+    <div class="cl-cards">
+      <div class="cl"><b>ต้องการความช่วยเหลือ</b><span>ติดต่อผู้ดูแลระบบของหน่วยงาน (admin) หรือทีมผู้ให้บริการระบบ</span></div>
+      <div class="cl"><b>พิมพ์เป็นเล่ม</b><span>กดปุ่ม "บันทึกเป็น PDF" ด้านบน แล้วเลือกปลายทางเป็น "บันทึกเป็น PDF"</span></div>
+    </div>
+  </section>
+
+</div>
+
+<!-- ===== NAV ===== -->
+<div id="nav">
+  <button class="home" id="btn-home"><svg viewBox="0 0 24 24"><path d="M12 3l9 8h-3v9h-5v-6H11v6H6v-9H3z"/></svg>สารบัญ</button>
+  <button id="btn-prev"><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7z"/></svg></button>
+  <div id="dots"></div>
+  <button id="btn-next"><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7z"/></svg></button>
+  <div id="pageno"></div>
+</div>
+
+<!-- ===== LIGHTBOX ===== -->
+<div class="lb" id="lb">
+  <div class="lb-ctrl">
+    <button id="lb-out"><svg viewBox="0 0 24 24"><path d="M5 11h14v2H5z"/></svg></button>
+    <div class="lvl" id="lb-lvl">100%</div>
+    <button id="lb-in"><svg viewBox="0 0 24 24"><path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z"/></svg></button>
+  </div>
+  <div class="lb-inner" id="lb-inner"><img id="lb-img" src="" alt=""></div>
+  <button class="lb-close" id="lb-close"><svg viewBox="0 0 24 24"><path d="M19 6.4L17.6 5 12 10.6 6.4 5 5 6.4 10.6 12 5 17.6 6.4 19 12 13.4 17.6 19 19 17.6 13.4 12z"/></svg></button>
+  <div class="lb-cap" id="lb-cap">คลิกพื้นหลังหรือกด Esc เพื่อปิด · ใช้ + / − เพื่อซูม</div>
+</div>
+
+<!-- ===== PDF MODAL ===== -->
+<div class="modal-mask" id="pdf-modal">
+  <div class="modal">
+    <div class="modal-head"><h3><svg viewBox="0 0 24 24"><path d="M5 20h14v-2H5v2zM19 9h-4V3H9v6H5l7 7 7-7z"/></svg>บันทึกเป็น PDF</h3><button class="close" id="m-close"><svg viewBox="0 0 24 24"><path d="M19 6.4L17.6 5 12 10.6 6.4 5 5 6.4 10.6 12 5 17.6 6.4 19 12 13.4 17.6 19 19 17.6 13.4 12z"/></svg></button></div>
+    <div class="modal-body">
+      <p>ระบบจะเปิดหน้าต่างพิมพ์ของเบราว์เซอร์ — เลือกปลายทางเป็น <strong>"บันทึกเป็น PDF (Save as PDF)"</strong> และตั้งค่ากระดาษเป็น <strong>แนวนอน (Landscape)</strong></p>
+      <div class="modal-radio">
+        <label><input type="radio" name="pdf-mode" value="all" checked> พิมพ์ทั้งเล่ม (ทุกหน้า)</label>
+        <label><input type="radio" name="pdf-mode" value="select"> เลือกเฉพาะหน้าที่ต้องการ</label>
+      </div>
+      <div class="modal-checklist" id="pdf-checklist">
+        <div class="ctrl"><button id="chk-all">เลือกทั้งหมด</button><button id="chk-none">ล้างการเลือก</button></div>
+      </div>
+    </div>
+    <div class="modal-foot"><button class="btn-secondary" id="m-cancel">ยกเลิก</button><button class="btn-primary" id="m-print"><svg viewBox="0 0 24 24"><path d="M19 8H5a3 3 0 00-3 3v6h4v4h12v-4h4v-6a3 3 0 00-3-3zm-3 11H8v-5h8zm3-7a1 1 0 110-2 1 1 0 010 2zm-1-9H6v4h12z"/></svg>พิมพ์เป็น PDF</button></div>
+  </div>
+</div>
+
+<script>
+(() => {
+  const slides = Array.from(document.querySelectorAll('.slide'));
+  const TOTAL = slides.length;
+  const dotsBox = document.getElementById('dots');
+  const pageno = document.getElementById('pageno');
+  const btnPrev = document.getElementById('btn-prev'), btnNext = document.getElementById('btn-next'), btnHome = document.getElementById('btn-home');
+  let current = 0;
+
+  for (let i = 0; i < TOTAL; i++){
+    const d = document.createElement('div'); d.className='dot';
+    d.title = slides[i].dataset.title || ('หน้า '+i);
+    d.addEventListener('click', ()=>show(i)); dotsBox.appendChild(d);
+  }
+  const dots = dotsBox.querySelectorAll('.dot');
+
+  function fit(){
+    const sw = window.innerWidth, sh = window.innerHeight - 48 - 54;
+    const scale = Math.min(sw/1920, sh/1080);
+    slides.forEach(s=>{ s.style.transform = `scale(${scale})`; });
+  }
+  window.addEventListener('resize', fit);
+
+  function show(idx){
+    idx = Math.max(0, Math.min(TOTAL-1, idx));
+    current = idx;
+    slides.forEach((s,i)=>s.classList.toggle('active', i===idx));
+    dots.forEach((d,i)=>d.classList.toggle('on', i===idx));
+    pageno.textContent = (idx+1) + ' / ' + TOTAL;
+    btnPrev.disabled = idx===0; btnNext.disabled = idx===TOTAL-1;
+    const hash = '#'+slides[idx].id;
+    if (location.hash !== hash) history.replaceState(null,'',hash);
+  }
+  function fromHash(){
+    const h = location.hash; if(!h) return 0;
+    const el = document.getElementById(h.slice(1)); if(!el) return 0;
+    return slides.indexOf(el);
+  }
+  window.addEventListener('hashchange', ()=>show(fromHash()));
+
+  document.querySelectorAll('[data-jump]').forEach(c=>{
+    c.addEventListener('click', ()=>{ const el=document.getElementById(c.dataset.jump); if(el) show(slides.indexOf(el)); });
+  });
+  btnPrev.addEventListener('click', ()=>show(current-1));
+  btnNext.addEventListener('click', ()=>show(current+1));
+  btnHome.addEventListener('click', ()=>{ const el=document.getElementById('s-toc'); if(el) show(slides.indexOf(el)); });
+
+  /* ---- lightbox ---- */
+  const lb=document.getElementById('lb'), lbImg=document.getElementById('lb-img'), lbInner=document.getElementById('lb-inner');
+  const lbLvl=document.getElementById('lb-lvl'), lbIn=document.getElementById('lb-in'), lbOut=document.getElementById('lb-out'), lbClose=document.getElementById('lb-close');
+  const ZS=[.5,.75,1,1.25,1.5,2,2.5,3]; let zi=2;
+  function az(){ lb.style.setProperty('--z',ZS[zi]); lbLvl.textContent=Math.round(ZS[zi]*100)+'%'; lbOut.disabled=zi===0; lbIn.disabled=zi===ZS.length-1; }
+  function zt(i){ zi=Math.max(0,Math.min(ZS.length-1,i)); az(); }
+  function openLb(src,alt){ lbImg.src=src; lbImg.alt=alt||''; zi=2; az(); lb.classList.add('open'); lbInner.scrollTop=0; }
+  function closeLb(){ lb.classList.remove('open'); }
+  document.querySelectorAll('.shot-img, .fs-shot').forEach(si=>{
+    const img=si.querySelector('img'); if(!img) return;
+    si.addEventListener('click', ()=>openLb(img.src, img.alt));
+  });
+  lbClose.addEventListener('click', closeLb);
+  lb.addEventListener('click', e=>{ if(e.target===lb||e.target===lbInner) closeLb(); });
+  lbIn.addEventListener('click', e=>{ e.stopPropagation(); zt(zi+1); });
+  lbOut.addEventListener('click', e=>{ e.stopPropagation(); zt(zi-1); });
+
+  /* ---- PDF modal ---- */
+  const modal=document.getElementById('pdf-modal'), btnPdf=document.getElementById('btn-pdf');
+  const mClose=document.getElementById('m-close'), mCancel=document.getElementById('m-cancel'), mPrint=document.getElementById('m-print');
+  const checklist=document.getElementById('pdf-checklist'), chkAll=document.getElementById('chk-all'), chkNone=document.getElementById('chk-none');
+  slides.forEach((s,i)=>{
+    const row=document.createElement('div'); row.className='row';
+    row.innerHTML=`<input type="checkbox" id="ck${i}" data-i="${i}" checked><label for="ck${i}">${i+1}. ${s.dataset.title||s.id}</label>`;
+    checklist.appendChild(row);
+  });
+  function openM(){ modal.classList.add('open'); } function closeM(){ modal.classList.remove('open'); }
+  btnPdf.addEventListener('click', openM); mClose.addEventListener('click', closeM); mCancel.addEventListener('click', closeM);
+  modal.addEventListener('click', e=>{ if(e.target===modal) closeM(); });
+  document.querySelectorAll('input[name=pdf-mode]').forEach(r=>r.addEventListener('change', ()=>{
+    checklist.classList.toggle('show', document.querySelector('input[name=pdf-mode]:checked').value==='select');
+  }));
+  chkAll.addEventListener('click', ()=>checklist.querySelectorAll('input[type=checkbox]').forEach(c=>c.checked=true));
+  chkNone.addEventListener('click', ()=>checklist.querySelectorAll('input[type=checkbox]').forEach(c=>c.checked=false));
+  mPrint.addEventListener('click', ()=>{
+    const mode=document.querySelector('input[name=pdf-mode]:checked').value;
+    let sel;
+    if(mode==='all'){ sel=slides.map((_,i)=>i); }
+    else { sel=Array.from(checklist.querySelectorAll('input[type=checkbox]:checked')).map(c=>parseInt(c.dataset.i,10)); }
+    if(!sel.length){ alert('กรุณาเลือกอย่างน้อย 1 หน้า'); return; }
+    closeM();
+    slides.forEach((s,i)=>s.classList.toggle('no-print', !sel.includes(i)));
+    slides.forEach(s=>s.style.transform='');
+    setTimeout(()=>{ window.print(); setTimeout(()=>{ slides.forEach(s=>s.classList.remove('no-print')); fit(); }, 500); }, 120);
+  });
+
+  /* ---- keys ---- */
+  document.addEventListener('keydown', e=>{
+    if(lb.classList.contains('open')){ if(e.key==='Escape')closeLb(); else if(e.key==='+'||e.key==='=')zt(zi+1); else if(e.key==='-'||e.key==='_')zt(zi-1); else if(e.key==='0')zt(2); return; }
+    if(modal.classList.contains('open')){ if(e.key==='Escape')closeM(); return; }
+    if(e.target.tagName==='INPUT') return;
+    if(e.key==='ArrowRight'||e.key==='PageDown'||e.key===' '){ show(current+1); e.preventDefault(); }
+    else if(e.key==='ArrowLeft'||e.key==='PageUp'){ show(current-1); e.preventDefault(); }
+    else if(e.key==='Home'){ const el=document.getElementById('s-toc'); if(el) show(slides.indexOf(el)); }
+    else if(e.key==='End'){ show(TOTAL-1); }
+  });
+
+  show(fromHash()); fit();
+})();
+</script>
+</body>
+</html>
