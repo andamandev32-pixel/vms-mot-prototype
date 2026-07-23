@@ -327,7 +327,7 @@ const headerColors: { value: HeaderColor; label: string; bg: string }[] = [
 ];
 
 const headerVariants: { value: HeaderVariant; label: string }[] = [
-  { value: "standard", label: "Standard (eVMES Logo)" },
+  { value: "standard", label: "Standard (eVMS Logo)" },
   { value: "reminder", label: "Reminder (Bell)" },
   { value: "checkin", label: "Check-in (UserCheck)" },
   { value: "wifi", label: "WiFi" },
@@ -660,7 +660,7 @@ function EmailConfigTab({ saveRef }: { saveRef: MutableRefObject<(() => Promise<
   const [smtpUser, setSmtpUser] = useState("vms@mots.go.th");
   const [smtpPass, setSmtpPass] = useState("••••••••");
   const [fromEmail, setFromEmail] = useState("vms-noreply@mots.go.th");
-  const [fromName, setFromName] = useState("eVMES MOT");
+  const [fromName, setFromName] = useState("eVMS MOT");
   const [replyTo, setReplyTo] = useState("");
   const [emailActive, setEmailActive] = useState(true);
   const [showPass, setShowPass] = useState(false);

@@ -76,7 +76,7 @@ export function CardHeader({ title, subtitle, color = "primary" }: { title: stri
           <Shield size={14} className="text-white" />
         </div>
         <div className="text-left">
-          <p className="text-xs font-extrabold text-primary-800 leading-tight">eVMES MOT</p>
+          <p className="text-xs font-extrabold text-primary-800 leading-tight">eVMS MOT</p>
           <p className="text-[8px] text-text-muted leading-tight">Visitor Management System</p>
         </div>
       </div>
@@ -141,7 +141,7 @@ export function StatusBadge({ status }: { status: "pending" | "approved" | "reje
 export function WelcomeMessage() {
   return (
     <BotBubble time="09:00">
-      <TextBubble text={'ยินดีต้อนรับสู่ eVMES MOT 🙏\nระบบจัดการผู้มาติดต่อ\nกระทรวงการท่องเที่ยวและกีฬา\n\nกรุณากดปุ่ม "Registration Now" ด้านล่างเพื่อลงทะเบียนเข้าใช้งาน'} />
+      <TextBubble text={'ยินดีต้อนรับสู่ eVMS MOT 🙏\nระบบจัดการผู้มาติดต่อ\nกระทรวงการท่องเที่ยวและกีฬา\n\nกรุณากดปุ่ม "Registration Now" ด้านล่างเพื่อลงทะเบียนเข้าใช้งาน'} />
     </BotBubble>
   );
 }
@@ -343,7 +343,7 @@ export function VisitSlipLineCard() {
             <Shield size={14} className="text-white" />
           </div>
           <div className="text-left">
-            <p className="text-xs font-extrabold text-primary-800">eVMES MOT</p>
+            <p className="text-xs font-extrabold text-primary-800">eVMS MOT</p>
             <p className="text-[7px] text-text-muted">กระทรวงการท่องเที่ยวและกีฬา</p>
           </div>
         </div>

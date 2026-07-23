@@ -44,7 +44,7 @@ export default function FlexMessagePreview({ template, scale = 1 }: FlexMessageP
             </div>
             <div className="bg-white rounded-2xl rounded-bl-md px-3 py-2 shadow-sm max-w-[220px]">
               <p className="text-[10px] text-gray-800 whitespace-pre-line leading-relaxed">
-                {'ยินดีต้อนรับสู่ eVMES MOT 🙏\nระบบจัดการผู้มาติดต่อ\nกระทรวงการท่องเที่ยวและกีฬา\n\nกรุณากดปุ่ม "Registration Now" ด้านล่าง'}
+                {'ยินดีต้อนรับสู่ eVMS MOT 🙏\nระบบจัดการผู้มาติดต่อ\nกระทรวงการท่องเที่ยวและกีฬา\n\nกรุณากดปุ่ม "Registration Now" ด้านล่าง'}
               </p>
             </div>
           </div>
@@ -173,7 +173,7 @@ function StandardHeader({ title, subtitle, color = "primary" }: { title: string;
           <Shield size={10} className="text-white" />
         </div>
         <div className="text-left">
-          <p className="text-[9px] font-extrabold text-primary-800 leading-tight">eVMES MOT</p>
+          <p className="text-[9px] font-extrabold text-primary-800 leading-tight">eVMS MOT</p>
           <p className="text-[6px] text-text-muted leading-tight">Visitor Management System</p>
         </div>
       </div>

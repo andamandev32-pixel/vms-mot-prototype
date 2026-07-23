@@ -197,7 +197,7 @@ function CounterSelectionScreen({ onSelect }: { onSelect: (sp: ServicePoint) => 
         <div className="flex items-center justify-center gap-3 mb-4">
           <VmsLogo size={56} />
           <div className="text-left">
-            <h1 className="text-2xl font-bold text-primary">Visitor Management System</h1>
+            <h1 className="text-2xl font-bold text-primary">eVMS</h1>
             <p className="text-sm text-text-muted">ระบบลงทะเบียนผู้เยี่ยม — Counter Terminal</p>
           </div>
         </div>

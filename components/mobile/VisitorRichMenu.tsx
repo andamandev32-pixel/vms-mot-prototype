@@ -46,7 +46,7 @@ export default function VisitorRichMenu() {
                             <div className="w-6 h-6 bg-gradient-to-br from-primary-600 to-primary-800 rounded-md flex items-center justify-center">
                                 <span className="text-[8px] font-bold text-white">V</span>
                             </div>
-                            <span className="text-[11px] font-semibold text-primary-800">eVMES MOT</span>
+                            <span className="text-[11px] font-semibold text-primary-800">eVMS MOT</span>
                             <span className="text-[10px] text-text-muted">Visitor Management System</span>
                         </div>
 

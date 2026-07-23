@@ -57,6 +57,10 @@
 /* ================= Screen + steps layout ================= */
 .s-body{display:grid;grid-template-columns:1.32fr 1fr;gap:40px;margin-top:22px;flex:1;min-height:0;align-items:start}
 .s-body.mobile{grid-template-columns:0.62fr 1fr}
+/* 4.4 Counter — enlarged hero screenshot (fills toward bottom edge) */
+#s-counter{padding-bottom:34px}
+#s-counter .s-body{grid-template-columns:2.1fr 1fr;gap:34px;margin-top:16px}
+#s-counter .steps.tight{gap:11px}
 .shot{background:#fff;border:1px solid var(--line);border-radius:14px;overflow:hidden;box-shadow:0 10px 30px rgba(28,23,64,.10);display:flex;flex-direction:column;min-height:0}
 .shot-bar{display:flex;align-items:center;gap:9px;padding:12px 18px;background:#f0edfb;border-bottom:1px solid var(--line);flex:none}
 .shot-bar i{width:13px;height:13px;border-radius:50%;background:#cfc7ee;display:block}

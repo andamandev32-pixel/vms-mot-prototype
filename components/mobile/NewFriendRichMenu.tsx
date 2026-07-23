@@ -22,7 +22,7 @@ export default function NewFriendRichMenu({ onRegister }: { onRegister?: () => v
                 <Shield size={22} className="text-white" />
               </div>
               <div className="min-w-0">
-                <h3 className="text-sm font-extrabold text-primary-800 tracking-tight leading-tight">eVMES MOT</h3>
+                <h3 className="text-sm font-extrabold text-primary-800 tracking-tight leading-tight">eVMS MOT</h3>
                 <p className="text-[10px] text-text-muted leading-tight truncate">Visitor Management System</p>
               </div>
             </div>

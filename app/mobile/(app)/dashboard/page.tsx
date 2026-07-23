@@ -20,7 +20,7 @@ export default function MobileDashboard() {
                             <Shield size={24} className="text-white" />
                         </div>
                         <div>
-                            <p className="text-xs text-white/60 font-medium">eVMES MOT • LINE OA</p>
+                            <p className="text-xs text-white/60 font-medium">eVMS MOT • LINE OA</p>
                             <h1 className="text-lg font-bold">คุณพุทธิพงษ์ คาดสนิท</h1>
                         </div>
                     </div>

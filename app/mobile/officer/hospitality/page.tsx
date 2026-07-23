@@ -19,7 +19,7 @@ export default function HospitalityPage() {
                                 <Shield size={24} className="text-white" />
                             </div>
                             <div>
-                                <p className="text-xs text-white/60 font-medium">eVMES MOT • พนักงาน</p>
+                                <p className="text-xs text-white/60 font-medium">eVMS MOT • พนักงาน</p>
                                 <h1 className="text-lg font-bold">จัดเตรียมรับรอง</h1>
                             </div>
                         </div>

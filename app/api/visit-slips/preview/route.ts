@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
         phone: "08X-XXX-XXXX",
       },
       visit: {
-        bookingCode: "VMS-20260401-001",
+        bookingCode: "eVMS-20260401-001",
         purpose: "ประชุม / Meeting",
         hostName: "วิชัย รักงาน",
         department: "ฝ่ายเทคโนโลยีสารสนเทศ",
@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
         validUntil: "01/04/2026 17:00",
       },
       qrCode: {
-        data: "VMS-20260401-001",
+        data: "eVMS-20260401-001",
         label: "สแกน QR Code เพื่อตรวจสอบ",
       },
       footer: {

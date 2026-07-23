@@ -17,7 +17,7 @@ export default function ContactPage() {
                             <Shield size={24} className="text-white" />
                         </div>
                         <div>
-                            <p className="text-xs text-white/60 font-medium">eVMES MOT • LINE OA</p>
+                            <p className="text-xs text-white/60 font-medium">eVMS MOT • LINE OA</p>
                             <h1 className="text-lg font-bold">ติดต่อเรา</h1>
                         </div>
                     </div>
@@ -68,7 +68,7 @@ export default function ContactPage() {
                             </div>
                             <div>
                                 <h3 className="font-bold text-lg">LINE Official Account</h3>
-                                <p className="text-white/70 text-sm">@eVMES-MOTS</p>
+                                <p className="text-white/70 text-sm">@eVMS-MOTS</p>
                             </div>
                         </div>
                         <p className="text-white/80 text-sm mb-4">

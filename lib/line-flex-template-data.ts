@@ -16,7 +16,7 @@ import type {
 export type FlexTemplateType = "flex" | "text" | "liff";
 
 export type HeaderVariant =
-  | "standard"         // CardHeader with eVMES logo
+  | "standard"         // CardHeader with eVMS logo
   | "reminder"         // amber bg + Bell icon
   | "checkin"          // blue bg + UserCheck icon
   | "wifi"             // cyan bg + Wifi icon

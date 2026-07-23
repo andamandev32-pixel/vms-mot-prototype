@@ -7,7 +7,7 @@ import { Shield, UserCircle, Briefcase, ChevronRight, Check, X, Search, Loader2 
 import { useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import NewFriendRichMenu from "@/components/mobile/NewFriendRichMenu";
-import { lookupPersonnel, type PersonnelRecord } from "@/lib/mock-data";
+import { searchPersonnelByName, type PersonnelRecord } from "@/lib/mock-data";
 
 type UserType = "visitor" | "staff" | null;
 type ChatState = "new-friend" | "registering" | "registered";
@@ -36,7 +36,7 @@ export default function LineRegistrationPage() {
         {
             id: "welcome",
             type: "bot",
-            content: "ยินดีต้อนรับสู่ eVMES MOT 🙏\nระบบจัดการผู้มาติดต่อ\nกระทรวงการท่องเที่ยวและกีฬา\n\nกรุณากดปุ่ม \"Registration Now\" ด้านล่างเพื่อลงทะเบียนเข้าใช้งาน",
+            content: "ยินดีต้อนรับสู่ eVMS MOT 🙏\nระบบจัดการผู้มาติดต่อ\nกระทรวงการท่องเที่ยวและกีฬา\n\nกรุณากดปุ่ม \"Registration Now\" ด้านล่างเพื่อลงทะเบียนเข้าใช้งาน",
             time: "22:00",
         },
     ]);
@@ -108,7 +108,7 @@ export default function LineRegistrationPage() {
                     <Shield size={16} className="text-white" />
                 </div>
                 <div className="flex-1 min-w-0">
-                    <h1 className="text-sm font-bold leading-tight">eVMES MOT</h1>
+                    <h1 className="text-sm font-bold leading-tight">eVMS MOT</h1>
                 </div>
                 <div className="flex items-center gap-3.5 text-white/70">
                     <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
@@ -171,7 +171,7 @@ export default function LineRegistrationPage() {
                                                     <Shield size={18} className="text-white" />
                                                 </div>
                                                 <div className="text-left">
-                                                    <p className="text-sm font-extrabold text-primary-800 leading-tight">eVMES MOT</p>
+                                                    <p className="text-sm font-extrabold text-primary-800 leading-tight">eVMS MOT</p>
                                                     <p className="text-[9px] text-text-muted leading-tight">Visitor Management System</p>
                                                 </div>
                                             </div>
@@ -255,7 +255,7 @@ export default function LineRegistrationPage() {
                                 <div className="w-7 h-7 bg-gradient-to-br from-primary-600 to-primary-800 rounded-lg flex items-center justify-center">
                                     <Shield size={14} className="text-white" />
                                 </div>
-                                <span className="text-sm font-bold text-text-primary">eVMES MOT Registration</span>
+                                <span className="text-sm font-bold text-text-primary">eVMS MOT Registration</span>
                             </div>
                             <button
                                 onClick={() => setShowLiff(false)}
@@ -331,7 +331,7 @@ function VisitorPostRegRichMenu() {
                         <div className="w-6 h-6 bg-gradient-to-br from-primary-600 to-primary-800 rounded-md flex items-center justify-center">
                             <span className="text-[8px] font-bold text-white">V</span>
                         </div>
-                        <span className="text-[11px] font-semibold text-primary-800">eVMES MOT</span>
+                        <span className="text-[11px] font-semibold text-primary-800">eVMS MOT</span>
                         <span className="text-[10px] text-text-muted">Visitor Management System</span>
                     </div>
 
@@ -375,7 +375,7 @@ function StaffPostRegRichMenu() {
                         <div className="w-6 h-6 bg-gradient-to-br from-primary-600 to-primary-800 rounded-md flex items-center justify-center">
                             <span className="text-[8px] font-bold text-white">V</span>
                         </div>
-                        <span className="text-[11px] font-semibold text-primary-800">eVMES MOT</span>
+                        <span className="text-[11px] font-semibold text-primary-800">eVMS MOT</span>
                         <span className="text-[10px] text-text-muted">Visitor Management System</span>
                     </div>
 
@@ -485,6 +485,7 @@ function RegistrationForm({
     const isVisitor = userType === "visitor";
     const [staffQuery, setStaffQuery] = useState("");
     const [foundStaff, setFoundStaff] = useState<PersonnelRecord | null>(null);
+    const [staffCandidates, setStaffCandidates] = useState<PersonnelRecord[]>([]);
     const [lookupError, setLookupError] = useState("");
     const [isSearching, setIsSearching] = useState(false);
 
@@ -492,15 +493,17 @@ function RegistrationForm({
         if (!staffQuery.trim()) return;
         setIsSearching(true);
         setLookupError("");
-        // Simulate async lookup
+        setFoundStaff(null);
+        setStaffCandidates([]);
+        // Simulate async lookup (ค้นด้วยชื่อ-นามสกุล)
         setTimeout(() => {
-            const result = lookupPersonnel(staffQuery);
-            if (result) {
-                setFoundStaff(result);
-                setLookupError("");
+            const results = searchPersonnelByName(staffQuery);
+            if (results.length === 1) {
+                setFoundStaff(results[0]);
+            } else if (results.length > 1) {
+                setStaffCandidates(results);
             } else {
-                setFoundStaff(null);
-                setLookupError("ไม่พบข้อมูลพนักงาน กรุณาตรวจสอบรหัสอีกครั้ง");
+                setLookupError("ไม่พบข้อมูลพนักงาน กรุณาตรวจสอบชื่อ-นามสกุลอีกครั้ง");
             }
             setIsSearching(false);
         }, 800);
@@ -524,7 +527,7 @@ function RegistrationForm({
                         ลงทะเบียน{isVisitor ? "ผู้มาติดต่อ" : "พนักงาน"}
                     </h2>
                     <p className="text-xs text-text-secondary">
-                        {isVisitor ? "กรอกข้อมูลส่วนบุคคล" : "ป้อนรหัสพนักงานหรือเลขบัตรประชาชน"}
+                        {isVisitor ? "กรอกข้อมูลส่วนบุคคล" : "ป้อนชื่อ-นามสกุลเพื่อค้นหา"}
                     </p>
                 </div>
             </div>
@@ -554,16 +557,17 @@ function RegistrationForm({
                     {/* Step 1: Search by Employee ID or National ID */}
                     <div>
                         <label className="block text-sm font-medium text-text-primary mb-1.5">
-                            รหัสพนักงาน หรือ เลขบัตรประชาชน
+                            ชื่อ - นามสกุล
                         </label>
                         <div className="flex gap-2">
                             <Input
-                                placeholder="EMP-007 หรือ 1-XXXX-XXXXX-XX-X"
+                                placeholder="เช่น สมศรี รักงาน"
                                 value={staffQuery}
                                 onChange={(e) => {
                                     setStaffQuery(e.target.value);
-                                    if (foundStaff) {
+                                    if (foundStaff || staffCandidates.length > 0) {
                                         setFoundStaff(null);
+                                        setStaffCandidates([]);
                                         setLookupError("");
                                     }
                                 }}
@@ -588,6 +592,23 @@ function RegistrationForm({
                         )}
                     </div>
 
+                    {/* Step 1.5: multiple matches — pick one */}
+                    {staffCandidates.length > 0 && !foundStaff && (
+                        <div className="space-y-2">
+                            <p className="text-xs text-text-secondary">พบ {staffCandidates.length} คน — เลือกรายชื่อที่ถูกต้อง</p>
+                            {staffCandidates.map((c) => (
+                                <button
+                                    key={c.id}
+                                    onClick={() => { setFoundStaff(c); setStaffCandidates([]); }}
+                                    className="w-full text-left bg-white border border-gray-200 rounded-xl p-3 hover:border-primary transition-colors"
+                                >
+                                    <p className="text-sm font-semibold text-text-primary">{c.firstName} {c.lastName}</p>
+                                    <p className="text-xs text-text-muted mt-0.5">{c.position} · {c.departmentName}</p>
+                                </button>
+                            ))}
+                        </div>
+                    )}
+
                     {/* Step 2: Show found personnel data */}
                     {foundStaff && (
                         <>
@@ -606,12 +627,12 @@ function RegistrationForm({
                                         <span className="font-medium text-text-primary">{foundStaff.position}</span>
                                     </div>
                                     <div className="flex gap-2">
-                                        <span className="text-text-muted min-w-[80px]">สังกัด</span>
-                                        <span className="font-medium text-text-primary">{foundStaff.departmentName}</span>
+                                        <span className="text-text-muted min-w-[80px]">กลุ่มงาน</span>
+                                        <span className="font-medium text-text-primary">{foundStaff.workGroup}</span>
                                     </div>
                                     <div className="flex gap-2">
-                                        <span className="text-text-muted min-w-[80px]">รหัส</span>
-                                        <span className="font-medium text-text-primary">{foundStaff.employeeId}</span>
+                                        <span className="text-text-muted min-w-[80px]">สังกัด</span>
+                                        <span className="font-medium text-text-primary">{foundStaff.departmentName}</span>
                                     </div>
                                 </div>
                             </div>

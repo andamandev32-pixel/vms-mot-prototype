@@ -86,7 +86,7 @@ export default function Home() {
             <GitBranch className="h-5 w-5" />
           </div>
           <div className="text-left">
-            <p className="text-white font-semibold group-hover:text-accent transition-colors">VMS Flow Preview</p>
+            <p className="text-white font-semibold group-hover:text-accent transition-colors">eVMS Flow Preview</p>
             <p className="text-white/40 text-xs">ดูภาพรวม Flow ทั้งหมดของระบบ</p>
           </div>
         </a>
