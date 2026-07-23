@@ -759,6 +759,8 @@ const apiSpecs: KioskApiSpec[] = [
           "ถ้า requirePhoto = false (ตาม purpose config) → ข้ามถ่ายภาพได้",
           "faceMatchScore: เทียบกับรูปจากบัตร (optional, ถ้า ≥ 0.7 = pass)",
           "WiFi ถามในหน้าเดียวกัน — ถ้า purpose.wifiEnabled = false → ไม่แสดง",
+          "เส้นทางมีนัด: ถ้า appointment.wifiRequested = true → เลือก \"รับ WiFi\" ไว้ให้ (แก้ได้)",
+          "WiFi password generate ฝั่ง Kiosk ตาม pattern จาก config (mots{year} → mots2026) — ไม่ต้องเรียก API แยก",
         ],
         notesEn: [
           "Compress JPEG to 80% before upload",
@@ -798,57 +800,6 @@ const apiSpecs: KioskApiSpec[] = [
       "WiFi password: use pattern from config (e.g., mots{year} → mots2026)",
       "WiFi validity: until business hours close or fixedDurationMinutes",
       "GO_BACK → DATA_PREVIEW",
-    ],
-  },
-
-  // ─── WIFI_OFFER (Appointment flow) ───
-  {
-    stateType: "WIFI_OFFER",
-    title: "WiFi Offer (Appointment)",
-    titleEn: "WiFi Offer (Appointment)",
-    description: "เฉพาะ Appointment flow — ถาม WiFi หลังยืนยันตัวตน (ถ้าจองไว้ตอนนัดหมาย จะเลือกไว้ให้อัตโนมัติ)",
-    descriptionEn: "Appointment flow only — WiFi offer after ID verification (pre-selected if requested during booking)",
-    hasApi: true,
-    endpoints: [
-      {
-        method: "POST",
-        path: "/api/kiosk/wifi/generate",
-        summary: "สร้าง WiFi Credentials",
-        summaryEn: "Generate WiFi credentials",
-        tables: ["service_points", "visit_entries"],
-        request: {
-          visitorId: 15,
-          servicePointId: 1,
-          entryId: 42,
-          accepted: true,
-        },
-        response: {
-          ssid: "MOTS-Guest",
-          password: "mots2026",
-          validUntil: "2026-03-26T16:30:00+07:00",
-          validityDisplay: "ถึง 16:30 น. วันนี้",
-        },
-        notes: [
-          "ถ้า appointment.wifiRequested=true → pre-select \"รับ WiFi\" ไว้ให้ (แก้ได้)",
-          "Password generate ตาม pattern: mots{year} → mots2026",
-          "อาจ generate ฝั่ง Kiosk ตาม pattern จาก config — ไม่ต้องเรียก API",
-        ],
-        notesEn: [
-          "If appointment.wifiRequested=true → pre-select 'Accept WiFi' (editable)",
-          "Password generated from pattern: mots{year} → mots2026",
-          "Can generate on kiosk using pattern from config — no API needed",
-        ],
-      },
-    ],
-    configSources: [
-      {
-        settingsPage: "จุดให้บริการ (Service Points)",
-        settingsPageEn: "Service Points",
-        settingsPath: "/web/settings/service-points",
-        fields: ["service_points.wifi_config.*"],
-        usage: "WiFi SSID, password pattern, ระยะเวลาใช้งาน",
-        usageEn: "WiFi SSID, password pattern, validity duration",
-      },
     ],
   },
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Settings, X, Monitor, Clock, FileText, Target, Wifi, Printer, Shield, ChevronDown, Key } from "lucide-react";
+import { Settings, X, Monitor, Clock, FileText, Target, Wifi, Printer, Shield, ChevronDown, Key, Server, Plug } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useKioskAuth } from "@/lib/kiosk/kiosk-auth-context";
 import type { ResolvedKioskConfig } from "@/lib/kiosk/kiosk-config-resolver";
@@ -72,6 +72,10 @@ export default function KioskSettingsScreen({
   const th = locale === "th";
   const { isAuthenticated, deviceToken, setDeviceToken, clearDeviceToken } = useKioskAuth();
   const [tokenInput, setTokenInput] = useState("");
+  // ที่อยู่เซิร์ฟเวอร์ + ประเภทจุดบริการ (คู่มือ 4.5 ภาพ 2-3)
+  const [serverUrl, setServerUrl] = useState("https://vms.mots.go.th");
+  const [serverConnected, setServerConnected] = useState(true);
+  const [pointType, setPointType] = useState<"kiosk" | "counter">("kiosk");
 
   return (
     <div className="flex flex-col h-full bg-gradient-to-b from-slate-50 to-white overflow-hidden">
@@ -87,6 +91,56 @@ export default function KioskSettingsScreen({
         >
           <X size={12} />
         </button>
+      </div>
+
+      {/* Server URL — ผูกเครื่องกับเซิร์ฟเวอร์ระบบ */}
+      <div className="px-3 py-2 bg-[#2E3192]/5 border-b border-[#2E3192]/10">
+        <div className="flex items-center justify-between">
+          <label className="flex items-center gap-1 text-[8px] text-gray-400 uppercase tracking-wider font-semibold">
+            <Server size={9} />
+            {th ? "ที่อยู่เซิร์ฟเวอร์ (Server URL)" : "Server URL"}
+          </label>
+          {serverConnected && (
+            <span className="px-1.5 py-[1px] rounded-full bg-emerald-50 border border-emerald-200 text-[7px] font-bold text-emerald-600">
+              {th ? "✓ เชื่อมต่อแล้ว" : "✓ Connected"}
+            </span>
+          )}
+        </div>
+        <div className="flex gap-1 mt-1">
+          <input
+            type="text"
+            value={serverUrl}
+            onChange={(e) => { setServerUrl(e.target.value); setServerConnected(false); }}
+            placeholder="https://vms.mots.go.th"
+            className="flex-1 min-w-0 px-2 py-1.5 text-[9px] rounded-lg border border-[#2E3192]/20 bg-white text-[#1B2B5E] font-medium focus:border-[#2E3192] focus:outline-none"
+          />
+          <button
+            onClick={() => setServerConnected(!!serverUrl.trim())}
+            disabled={!serverUrl.trim()}
+            className="px-2 py-1.5 rounded-lg bg-[#1B2B5E] text-white text-[9px] font-bold flex items-center gap-1 disabled:opacity-40 hover:bg-[#2E3192] transition-colors shrink-0"
+          >
+            <Plug size={9} />
+            {th ? "เชื่อมต่อ" : "Connect"}
+          </button>
+        </div>
+      </div>
+
+      {/* Service Point Type */}
+      <div className="px-3 py-2 bg-[#2E3192]/5 border-b border-[#2E3192]/10">
+        <label className="text-[8px] text-gray-400 uppercase tracking-wider font-semibold">
+          {th ? "ประเภทจุดบริการ" : "Service Point Type"}
+        </label>
+        <div className="relative mt-1">
+          <select
+            value={pointType}
+            onChange={(e) => setPointType(e.target.value as "kiosk" | "counter")}
+            className="w-full px-2 py-1.5 text-[10px] rounded-lg border border-[#2E3192]/20 bg-white text-[#1B2B5E] font-bold appearance-none pr-6 focus:border-[#2E3192] focus:outline-none"
+          >
+            <option value="kiosk">Kiosk</option>
+            <option value="counter">Counter</option>
+          </select>
+          <ChevronDown size={10} className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+        </div>
       </div>
 
       {/* Kiosk Selector */}

@@ -16,9 +16,9 @@ export const staticDeviceMap: Partial<Record<KioskStateType, HardwareDevice | "a
   DATA_PREVIEW: null,
   SELECT_PURPOSE: null,
   FACE_CAPTURE: "camera",
-  WIFI_OFFER: null,
   SUCCESS: "printer",
   QR_SCAN: "qr-reader",
+  APPOINTMENT_LIST: null,
   APPOINTMENT_PREVIEW: null,
   APPOINTMENT_VERIFY_ID: "auto",  // depends on idMethod
   ERROR: null,

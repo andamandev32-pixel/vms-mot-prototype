@@ -8,10 +8,10 @@ import { cn } from "@/lib/utils";
 // State machine
 import { kioskReducer, initialKioskState } from "@/lib/kiosk/kiosk-state-machine";
 import { checkBlocklist, type BlocklistEntry } from "@/lib/mock-data";
-import { walkinSteps, appointmentSteps } from "@/lib/kiosk/kiosk-flow-config";
+import { walkinSteps, appointmentSteps, welcomeStep } from "@/lib/kiosk/kiosk-flow-config";
 import { getActiveDevice } from "@/lib/kiosk/kiosk-device-map";
 import { getAudioCue, speakText, stopSpeech } from "@/lib/kiosk/kiosk-audio-config";
-import { mockVisitorIdCard, mockVisitorPassport, mockVisitorThaiId, mockAppointment } from "@/lib/kiosk/kiosk-mock-data";
+import { mockVisitorIdCard, mockVisitorPassport, mockVisitorThaiId, mockAppointment, mockAppointmentList } from "@/lib/kiosk/kiosk-mock-data";
 import { resolveKioskConfig, getKioskServicePoints, resolveWifiPassword, resolveWifiValidity, getStateConfigInfo, isHostRequired, type ResolvedKioskConfig } from "@/lib/kiosk/kiosk-config-resolver";
 import type { KioskEvent, KioskLocale, StepInfo, IdMethod, SlipData, ThermalSection, HostStaffOption } from "@/lib/kiosk/kiosk-types";
 import { maskIdNumber } from "@/lib/kiosk/kiosk-mock-data";
@@ -30,10 +30,10 @@ import DataPreviewScreen from "@/components/kiosk/screens/DataPreviewScreen";
 import SelectPurposeScreen from "@/components/kiosk/screens/SelectPurposeScreen";
 import SelectHostScreen from "@/components/kiosk/screens/SelectHostScreen";
 import FaceCaptureScreen from "@/components/kiosk/screens/FaceCaptureScreen";
-import WifiOfferScreen from "@/components/kiosk/screens/WifiOfferScreen";
 import SuccessScreen from "@/components/kiosk/screens/SuccessScreen";
 import KioskSettingsScreen from "@/components/kiosk/screens/KioskSettingsScreen";
 import QrScanScreen from "@/components/kiosk/screens/QrScanScreen";
+import AppointmentListScreen from "@/components/kiosk/screens/AppointmentListScreen";
 import AppointmentPreviewScreen from "@/components/kiosk/screens/AppointmentPreviewScreen";
 import ErrorScreen from "@/components/kiosk/screens/ErrorScreen";
 import KioskApiDocModal from "@/components/kiosk/KioskApiDocModal";
@@ -237,12 +237,22 @@ export default function KioskDemoPage() {
   const steps = useMemo(() => getStepsForCase(selectedCase), [selectedCase]);
 
   // Find current step index based on state type
+  // -1 = ยังอยู่หน้าต้อนรับ (ไม่นับเป็นขั้นตอน ตามคู่มือ ส่วนที่ 4)
   const currentStepIndex = useMemo(() => {
-    const idx = steps.findIndex((s) => s.stateType === state.type);
-    return idx >= 0 ? idx : 0;
-  }, [steps, state.type]);
+    // เส้นทางมีนัดแบบไม่มี QR ใช้ state ร่วมกับ walk-in — จับคู่กลับเข้าขั้นตอนของนัดหมาย
+    const alias: Partial<Record<typeof state.type, typeof state.type>> =
+      selectedCase === "appointment"
+        ? {
+            SELECT_ID_METHOD: "APPOINTMENT_VERIFY_ID",
+            ID_VERIFICATION: "APPOINTMENT_VERIFY_ID",
+            APPOINTMENT_LIST: "APPOINTMENT_PREVIEW",
+          }
+        : {};
+    const target = alias[state.type] ?? state.type;
+    return steps.findIndex((s) => s.stateType === target);
+  }, [steps, state.type, selectedCase]);
 
-  const currentStep = steps[currentStepIndex];
+  const currentStep = currentStepIndex >= 0 ? steps[currentStepIndex] : welcomeStep;
 
   const activeDevice = getActiveDevice(state.type, state.idMethod);
 
@@ -380,7 +390,12 @@ export default function KioskDemoPage() {
             method={state.idMethod || "thai-id-card"}
             onDemoRead={() => {
               const visitor = getMockVisitor(state.idMethod);
-              fire({ type: "ID_READ_SUCCESS", visitorData: visitor });
+              fire({
+                type: "ID_READ_SUCCESS",
+                visitorData: visitor,
+                // เส้นทางมีนัดแต่ไม่มี QR → ระบบค้นนัดที่ผูกกับบัตรใบนี้
+                ...(state.case === "appointment" ? { appointmentOptions: mockAppointmentList } : {}),
+              });
             }}
             onBack={() => fire({ type: "GO_BACK" })}
             onTimeout={reset}
@@ -446,18 +461,10 @@ export default function KioskDemoPage() {
             onBack={() => fire({ type: "GO_BACK" })}
             wifiSsid={wifiSsid}
             wifiValidUntil={wifiValidUntil}
+            preSelectedWifi={state.appointmentData?.wifiRequested}
           />
         );
       }
-      case "WIFI_OFFER":
-        return (
-          <WifiOfferScreen
-            locale={locale}
-            onAccept={() => fire({ type: "ACCEPT_WIFI" })}
-            onDecline={() => fire({ type: "DECLINE_WIFI" })}
-            preSelected={state.appointmentData?.wifiRequested}
-          />
-        );
       case "SUCCESS":
         return (
           <SuccessScreen
@@ -490,6 +497,16 @@ export default function KioskDemoPage() {
             onDemoScan={() => fire({ type: "QR_SCANNED", appointmentData: mockAppointment })}
             onSkipToId={() => fire({ type: "NO_QR_CODE" })}
             onBack={() => fire({ type: "GO_BACK" })}
+          />
+        );
+      case "APPOINTMENT_LIST":
+        return (
+          <AppointmentListScreen
+            locale={locale}
+            appointments={state.appointmentOptions ?? mockAppointmentList}
+            onSelect={(appointment) => fire({ type: "SELECT_APPOINTMENT_ITEM", appointmentData: appointment })}
+            onBack={() => fire({ type: "GO_BACK" })}
+            onChangeLocale={toggleLocale}
           />
         );
       case "APPOINTMENT_PREVIEW":
@@ -669,6 +686,26 @@ export default function KioskDemoPage() {
         <div className="flex-1 overflow-y-auto px-3 py-3">
           <p className="text-[9px] uppercase tracking-wider text-gray-400 font-semibold mb-2 px-1">ขั้นตอน / Steps</p>
           <div className="flex flex-col gap-1">
+            {/* หน้าเริ่มต้น — ไม่นับเป็นขั้นตอน (คู่มือ ส่วนที่ 4) */}
+            <div
+              className={cn(
+                "flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-[11px] font-medium transition-colors",
+                currentStepIndex < 0
+                  ? "bg-[#C8A84E]/10 text-[#C8A84E] border border-[#C8A84E]/30"
+                  : "bg-emerald-50 text-emerald-600 border border-emerald-200"
+              )}
+            >
+              <span className={cn(
+                "w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0",
+                currentStepIndex < 0 ? "bg-[#C8A84E] text-white" : "bg-emerald-500 text-white"
+              )}>
+                {currentStepIndex < 0 ? "•" : "✓"}
+              </span>
+              <span className="leading-tight">
+                {locale === "th" ? welcomeStep.title : welcomeStep.titleEn}
+              </span>
+            </div>
+
             {steps.map((step, index) => {
               const isCurrent = index === currentStepIndex;
               const isPast = index < currentStepIndex;

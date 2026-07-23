@@ -10,7 +10,7 @@ const LINE_PUSH_URL = "https://api.line.me/v2/bot/message/push";
  * POST /api/liff/register-officer
  * Combined: ลงทะเบียน Officer ผ่าน LIFF
  * 1. Verify LINE access token → ได้ lineUserId
- * 2. Lookup staff จาก employeeId / nationalId
+ * 2. Lookup staff จาก employeeId (ผู้ใช้เลือกจากผลค้นหาด้วยชื่อ-นามสกุล)
  * 3. ผูก LINE กับ staff account
  * 4. Assign Rich Menu "officer"
  * 5. ส่ง Flex Message ยืนยัน
@@ -18,15 +18,15 @@ const LINE_PUSH_URL = "https://api.line.me/v2/bot/message/push";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { query, lineAccessToken } = body as {
-      query?: string;
+    const { employeeId, lineAccessToken } = body as {
+      employeeId?: string;
       lineAccessToken?: string;
     };
 
     // --- Validate ---
-    if (!query?.trim()) {
+    if (!employeeId?.trim()) {
       return NextResponse.json(
-        { success: false, error: { code: "MISSING_FIELDS", message: "กรุณากรอกรหัสพนักงาน หรือ เลขบัตรประชาชน" } },
+        { success: false, error: { code: "MISSING_FIELDS", message: "กรุณาเลือกเจ้าหน้าที่จากผลการค้นหา" } },
         { status: 400 }
       );
     }
@@ -54,15 +54,9 @@ export async function POST(request: NextRequest) {
       pictureUrl?: string;
     };
 
-    // --- 2. Lookup staff ---
-    const searchTerm = query.trim();
+    // --- 2. Lookup staff ด้วย employeeId ที่ผู้ใช้เลือก ---
     const staff = await prisma.staff.findFirst({
-      where: {
-        OR: [
-          { employeeId: searchTerm },
-          { email: searchTerm },
-        ],
-      },
+      where: { employeeId: employeeId.trim() },
       include: { department: true },
     });
 

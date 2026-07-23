@@ -1479,6 +1479,7 @@ export interface PersonnelRecord {
   firstNameEn: string;
   lastNameEn: string;
   position: string;
+  workGroup: string;
   departmentId: number;
   departmentName: string;
 }
@@ -1493,6 +1494,7 @@ export const personnelDatabase: PersonnelRecord[] = [
     firstNameEn: "Somsri",
     lastNameEn: "Rakngarn",
     position: "ผู้อำนวยการกองกิจการท่องเที่ยว",
+    workGroup: "กลุ่มส่งเสริมและพัฒนาการท่องเที่ยว",
     departmentId: 4,
     departmentName: "กองกิจการท่องเที่ยว",
   },
@@ -1505,6 +1507,7 @@ export const personnelDatabase: PersonnelRecord[] = [
     firstNameEn: "Prasert",
     lastNameEn: "Srivilo",
     position: "หัวหน้ากลุ่มงานบริหารทั่วไป",
+    workGroup: "กลุ่มงานบริหารทั่วไป",
     departmentId: 2,
     departmentName: "กองกลาง",
   },
@@ -1517,6 +1520,7 @@ export const personnelDatabase: PersonnelRecord[] = [
     firstNameEn: "Noppadon",
     lastNameEn: "Choochuay",
     position: "นักวิชาการท่องเที่ยวชำนาญการ",
+    workGroup: "กลุ่มวิชาการและมาตรฐานการท่องเที่ยว",
     departmentId: 4,
     departmentName: "กองกิจการท่องเที่ยว",
   },
@@ -1529,6 +1533,7 @@ export const personnelDatabase: PersonnelRecord[] = [
     firstNameEn: "Kamonporn",
     lastNameEn: "Wongsawad",
     position: "ผู้เชี่ยวชาญด้านต่างประเทศ",
+    workGroup: "กลุ่มความร่วมมือระหว่างประเทศ",
     departmentId: 3,
     departmentName: "กองการต่างประเทศ",
   },
@@ -1541,6 +1546,7 @@ export const personnelDatabase: PersonnelRecord[] = [
     firstNameEn: "Wipada",
     lastNameEn: "Chaimongkol",
     position: "นักวิเคราะห์นโยบายและแผน",
+    workGroup: "กลุ่มยุทธศาสตร์และแผนงาน",
     departmentId: 8,
     departmentName: "สำนักนโยบายและแผน",
   },
@@ -1551,6 +1557,31 @@ export function lookupPersonnel(query: string): PersonnelRecord | null {
   return personnelDatabase.find(
     (p) => p.employeeId.toLowerCase() === q.toLowerCase() || p.nationalId === q
   ) ?? null;
+}
+
+/**
+ * ค้นหาเจ้าหน้าที่ในทำเนียบด้วย "ชื่อ-นามสกุล" (ไทย/อังกฤษ, บางส่วนได้)
+ * รองรับพิมพ์เฉพาะชื่อ, เฉพาะนามสกุล, หรือ "ชื่อ นามสกุล" รวมกัน
+ * คืนค่าเป็นรายการผู้ที่ตรง (อาจมีหลายคนเมื่อชื่อซ้ำ) — ให้ผู้ใช้เลือก
+ */
+export function searchPersonnelByName(query: string): PersonnelRecord[] {
+  const q = query.trim().toLowerCase();
+  if (!q) return [];
+  const tokens = q.split(/\s+/).filter(Boolean);
+  return personnelDatabase.filter((p) => {
+    const full = `${p.firstName} ${p.lastName}`.toLowerCase();
+    const fullEn = `${p.firstNameEn} ${p.lastNameEn}`.toLowerCase();
+    // ทุก token ต้องปรากฏในชื่อ/นามสกุล (ไทยหรืออังกฤษ)
+    return tokens.every(
+      (t) =>
+        p.firstName.toLowerCase().includes(t) ||
+        p.lastName.toLowerCase().includes(t) ||
+        p.firstNameEn.toLowerCase().includes(t) ||
+        p.lastNameEn.toLowerCase().includes(t) ||
+        full.includes(t) ||
+        fullEn.includes(t)
+    );
+  });
 }
 
 // ===== IDENTITY DOCUMENT TYPES =====

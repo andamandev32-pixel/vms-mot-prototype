@@ -8,7 +8,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { cn } from "@/lib/utils";
-import type { PersonnelRecord } from "@/lib/mock-data";
+import type { StaffCandidate } from "@/lib/hooks/use-line-oa";
 
 type Lang = "th" | "en";
 
@@ -51,8 +51,8 @@ const i18n: Record<string, Record<Lang, string>> = {
     hasAccount: { th: "มีบัญชีแล้ว?", en: "Already have an account?" },
     login: { th: "เข้าสู่ระบบ", en: "Login" },
     // Staff lookup
-    staffSearchLabel: { th: "รหัสพนักงาน หรือ เลขบัตรประชาชน", en: "Employee ID or National ID" },
-    staffSearchPlaceholder: { th: "EMP-007 หรือ 1-XXXX-XXXXX-XX-X", en: "EMP-007 or 1-XXXX-XXXXX-XX-X" },
+    staffSearchLabel: { th: "ค้นหาพนักงาน", en: "Search Staff" },
+    staffSearchPlaceholder: { th: "ชื่อ-นามสกุล / รหัสพนักงาน / เลขบัตรประชาชน", en: "Name / Employee ID / National ID" },
     staffFound: { th: "พบข้อมูลพนักงาน", en: "Employee found" },
     staffName: { th: "ชื่อ-สกุล", en: "Name" },
     staffPosition: { th: "ตำแหน่ง", en: "Position" },
@@ -135,7 +135,8 @@ export default function RegisterPage() {
 
     // Staff lookup state
     const [staffQuery, setStaffQuery] = useState("");
-    const [foundStaff, setFoundStaff] = useState<PersonnelRecord | null>(null);
+    const [foundStaff, setFoundStaff] = useState<StaffCandidate | null>(null);
+    const [staffCandidates, setStaffCandidates] = useState<StaffCandidate[]>([]);
     const [staffHasAccount, setStaffHasAccount] = useState(false);
     const [lookupError, setLookupError] = useState("");
     const [isSearching, setIsSearching] = useState(false);
@@ -146,11 +147,24 @@ export default function RegisterPage() {
 
     const markTouched = (field: string) => setTouched((prev) => ({ ...prev, [field]: true }));
 
+    /** เลือกเจ้าหน้าที่ 1 คนจากผลค้นหา → เติมข้อมูลลงฟอร์ม */
+    const pickStaffCandidate = (p: StaffCandidate) => {
+        setFoundStaff(p);
+        setStaffHasAccount(p.hasAccount);
+        setStaffCandidates([]);
+        setFirstName(p.firstName);
+        setLastName(p.lastName);
+        setEmployeeId(p.employeeId);
+        setDepartment(departments[p.departmentId - 1] || "");
+        setPosition(p.position);
+    };
+
     const handleStaffLookup = async () => {
         if (!staffQuery.trim()) return;
         setIsSearching(true);
         setLookupError("");
         setFoundStaff(null);
+        setStaffCandidates([]);
         setStaffHasAccount(false);
         try {
             const res = await fetch("/api/auth/check-staff", {
@@ -159,16 +173,11 @@ export default function RegisterPage() {
                 body: JSON.stringify({ query: staffQuery.trim() }),
             });
             const json = await res.json();
-            if (json.success) {
-                const p = json.data.personnel;
-                setFoundStaff(p);
-                setStaffHasAccount(json.data.hasAccount);
-                // Pre-fill form fields
-                setFirstName(p.firstName);
-                setLastName(p.lastName);
-                setEmployeeId(p.employeeId);
-                setDepartment(departments[p.departmentId - 1] || "");
-                setPosition(p.position);
+            const candidates = (json?.data?.candidates ?? []) as StaffCandidate[];
+            if (json.success && candidates.length > 0) {
+                // พบคนเดียว → เติมให้เลย · หลายคน (ชื่อซ้ำ) → ให้ผู้ใช้เลือก
+                if (candidates.length === 1) pickStaffCandidate(candidates[0]);
+                else setStaffCandidates(candidates);
             } else {
                 setLookupError(json.error?.message || (lang === "th" ? "ไม่พบข้อมูลพนักงาน" : "Employee not found"));
             }
@@ -423,6 +432,7 @@ export default function RegisterPage() {
                                                         value={staffQuery}
                                                         onChange={(e) => {
                                                             setStaffQuery(e.target.value);
+                                                            setStaffCandidates([]);
                                                             if (foundStaff) {
                                                                 setFoundStaff(null);
                                                                 setStaffHasAccount(false);
@@ -450,6 +460,35 @@ export default function RegisterPage() {
                                                 </div>
                                                 {lookupError && <p className="text-xs text-error mt-1.5">{lookupError}</p>}
                                             </div>
+
+                                            {/* Step 1b: พบหลายรายการ (ชื่อซ้ำ) → ให้เลือก */}
+                                            {staffCandidates.length > 0 && (
+                                                <div className="space-y-2">
+                                                    <p className="text-sm font-medium text-text-primary">
+                                                        {lang === "th"
+                                                            ? `พบ ${staffCandidates.length} รายการ — กรุณาเลือกรายการของคุณ`
+                                                            : `${staffCandidates.length} results — please select yours`}
+                                                    </p>
+                                                    {staffCandidates.map((c) => (
+                                                        <button
+                                                            key={c.id}
+                                                            type="button"
+                                                            onClick={() => pickStaffCandidate(c)}
+                                                            className="w-full flex items-center gap-3 p-3 rounded-xl border border-border hover:border-primary hover:bg-primary/5 transition-colors text-left"
+                                                        >
+                                                            <div className="w-9 h-9 rounded-lg bg-gray-50 flex items-center justify-center flex-shrink-0">
+                                                                <Briefcase size={15} className="text-text-muted" />
+                                                            </div>
+                                                            <div className="flex-1 min-w-0">
+                                                                <p className="text-sm font-bold text-text-primary truncate">{c.firstName} {c.lastName}</p>
+                                                                <p className="text-xs text-text-secondary truncate">
+                                                                    {c.employeeId} • {c.position} • {c.departmentName}
+                                                                </p>
+                                                            </div>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            )}
 
                                             {/* Step 2: Show found personnel — already has account */}
                                             {foundStaff && staffHasAccount && (

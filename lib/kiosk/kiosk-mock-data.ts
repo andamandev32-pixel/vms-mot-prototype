@@ -32,7 +32,9 @@ export const mockVisitorIdCard: VisitorIdentity = {
   address: "123/45 ถ.รัชดาภิเษก แขวงดินแดง เขตดินแดง กรุงเทพฯ 10400",
   issueDate: "2565-01-10",
   expiryDate: "2574-05-14",
+  photo: "/images/demo-face.svg",
   documentType: "thai-id-card",
+  lineLinked: true, // ผูก LINE ไว้ → หน้า Success จะถามก่อนพิมพ์บัตร
 };
 
 /** Mock visitor data (simulated Passport read) */
@@ -43,7 +45,9 @@ export const mockVisitorPassport: VisitorIdentity = {
   dateOfBirth: "1990-03-20",
   issueDate: "2022-06-01",
   expiryDate: "2032-05-31",
+  photo: "/images/demo-face.svg",
   documentType: "passport",
+  lineLinked: false, // ไม่ได้ผูก LINE → พิมพ์บัตรอัตโนมัติ
 };
 
 /** Mock visitor data (simulated ThaiID read) */
@@ -52,7 +56,7 @@ export const mockVisitorThaiId: VisitorIdentity = {
   fullNameEn: "Mr. Putthipong Khadsnit",
   idNumber: "1-1234-56789-01-0",
   dateOfBirth: "2533-05-15",
-  photo: "/images/demo-face.jpg",
+  photo: "/images/demo-face.svg",
   documentType: "thai-id-app",
 };
 
@@ -75,6 +79,52 @@ export const mockAppointment: AppointmentData = {
   wifiRequested: true,
   lineLinked: true,
 };
+
+/**
+ * นัดหมายที่ผูกกับบัตรประชาชนใบเดียว — เส้นทาง "มีนัดแต่ไม่มี QR"
+ * ระบบค้นจากการยืนยันตัวตนแล้วให้ผู้มาเยือนเลือกนัดที่ถูกต้อง (คู่มือ 4.3.1)
+ */
+export const mockAppointmentList: AppointmentData[] = [
+  {
+    bookingCode: "eVMS-20260722-0117",
+    visitorName: "นายพุทธิพงษ์ คาดสนิท",
+    visitorCompany: "บริษัท ไอที โซลูชั่น จำกัด",
+    hostName: "อนุวัฒน์ จันทร์รัศมี",
+    hostDepartment: "ศูนย์เทคโนโลยีสารสนเทศและการสื่อสาร",
+    hostFloor: "ชั้น 7",
+    location: "ศูนย์เทคโนโลยีสารสนเทศและการสื่อสาร ชั้น 7",
+    locationEn: "ICT Center, 7th Floor",
+    date: "22 ก.ค. 2569",
+    dateEnd: "28 ก.ค. 2569",
+    entryMode: "period",
+    timeSlot: "08:30 — 16:30",
+    purposeName: "ติดต่อราชการ",
+    purposeNameEn: "Official Business",
+    purposeIcon: "🏛️",
+    status: "approved",
+    wifiRequested: true,
+    lineLinked: true,
+  },
+  {
+    bookingCode: "eVMS-20260722-0118",
+    visitorName: "นายพุทธิพงษ์ คาดสนิท",
+    visitorCompany: "บริษัท ไอที โซลูชั่น จำกัด",
+    hostName: "อนุวัฒน์ จันทร์รัศมี",
+    hostDepartment: "กลุ่มตรวจสอบภายใน",
+    hostFloor: "ชั้น 7",
+    location: "กลุ่มตรวจสอบภายใน ชั้น 7",
+    locationEn: "Internal Audit Group, 7th Floor",
+    date: "22 ก.ค. 2569",
+    entryMode: "single",
+    timeSlot: "11:30 — 12:00",
+    purposeName: "ติดต่อราชการ",
+    purposeNameEn: "Official Business",
+    purposeIcon: "🏛️",
+    status: "approved",
+    wifiRequested: false,
+    lineLinked: true,
+  },
+];
 
 /** Mock visit purposes for kiosk (filtered from visitPurposeConfigs where showOnKiosk = true) */
 export const mockKioskPurposes: VisitPurposeOption[] = [

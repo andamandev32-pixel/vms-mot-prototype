@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import { lookupPersonnel } from "@/lib/mock-data";
+import { lookupPersonnel, searchPersonnelByName } from "@/lib/mock-data";
 
 const ok = (data: unknown) => NextResponse.json({ success: true, data });
 const err = (code: string, msg: string, status = 400) =>
@@ -8,7 +8,7 @@ const err = (code: string, msg: string, status = 400) =>
 
 /**
  * GET /api/staff/lookup?query=xxx
- * ค้นหาข้อมูลพนักงานด้วยรหัสพนักงาน หรือ เลขบัตรประชาชน
+ * ค้นหาข้อมูลพนักงานด้วยชื่อ-นามสกุล (รองรับรหัสพนักงาน/เลขบัตรประชาชนแบบ legacy)
  * สำหรับ LIFF registration (ไม่ต้อง auth — เรียกจาก LIFF ก่อน login)
  */
 export async function GET(request: NextRequest) {
@@ -22,11 +22,13 @@ export async function GET(request: NextRequest) {
     const searchValue = query || employeeId || nationalId;
 
     if (!searchValue) {
-      return err("MISSING_FIELDS", "กรุณาระบุ query (รหัสพนักงาน หรือ เลขบัตรประชาชน)");
+      return err("MISSING_FIELDS", "กรุณาระบุ query (ชื่อ-นามสกุล)");
     }
 
-    // 1. Lookup from personnel database (mock — มี nationalId)
-    const personnel = lookupPersonnel(searchValue);
+    // 1. Lookup from personnel database — รหัส/เลขบัตร (legacy) ก่อน แล้วค่อยชื่อ-นามสกุล (ตรงคนเดียว)
+    const nameMatches = searchPersonnelByName(searchValue);
+    const personnel =
+      lookupPersonnel(searchValue) ?? (nameMatches.length === 1 ? nameMatches[0] : null);
 
     if (personnel) {
       // Found in personnel DB → check if already has user account

@@ -33,6 +33,8 @@ export interface VisitorIdentity {
   issueDate?: string;
   expiryDate?: string;
   documentType: IdMethod;
+  /** ผู้มาเยือนผูกบัญชี LINE ไว้แล้ว — เลือก "รับผ่าน LINE" แทนพิมพ์บัตรได้ (คู่มือ 4.2) */
+  lineLinked?: boolean;
 }
 
 /** Appointment data (from QR scan or lookup) */
@@ -146,7 +148,6 @@ export type KioskStateType =
   | "SELECT_ID_METHOD"
   | "ID_VERIFICATION"
   | "DATA_PREVIEW"
-  | "WIFI_OFFER"
   | "SUCCESS"
   // Walk-in specific
   | "SELECT_PURPOSE"
@@ -154,6 +155,7 @@ export type KioskStateType =
   | "FACE_CAPTURE"
   // Appointment specific
   | "QR_SCAN"
+  | "APPOINTMENT_LIST"
   | "APPOINTMENT_PREVIEW"
   | "APPOINTMENT_VERIFY_ID"
   // Approval (walk-in ที่ต้อง approve)
@@ -169,6 +171,8 @@ export interface KioskState {
   appointmentPath?: AppointmentPath;
   visitorData?: VisitorIdentity;
   appointmentData?: AppointmentData;
+  /** นัดหมายที่ผูกกับบัตรใบนี้ (เส้นทางไม่มี QR — อาจพบหลายรายการ) */
+  appointmentOptions?: AppointmentData[];
   selectedPurpose?: VisitPurposeOption;
   selectedDepartmentId?: number;
   /** ผู้ที่ต้องการพบ — null = ไม่ระบุ (ผู้ใช้กดข้าม) */
@@ -226,6 +230,7 @@ export type KioskEventType =
   | "QR_SCAN_FAILED"
   | "APPOINTMENT_FOUND"
   | "APPOINTMENT_NOT_FOUND"
+  | "SELECT_APPOINTMENT_ITEM"
   | "CONFIRM_CHECKIN"
   // Approval (walk-in ที่ต้อง approve)
   | "APPOINTMENT_APPROVED"
@@ -238,6 +243,8 @@ export interface KioskEvent {
   idMethod?: IdMethod;
   visitorData?: VisitorIdentity;
   appointmentData?: AppointmentData;
+  /** รายการนัดที่ค้นเจอจากบัตร (เส้นทางไม่มี QR) */
+  appointmentOptions?: AppointmentData[];
   purpose?: VisitPurposeOption;
   departmentId?: number;
   hostStaff?: HostStaffOption;

@@ -15,6 +15,9 @@ import { getMessagesForState } from "@/components/mobile/LineChatMessages";
 import NewFriendRichMenu from "@/components/mobile/NewFriendRichMenu";
 import { Input } from "@/components/ui/Input";
 import { ApiResponsePanel } from "@/components/mobile/ApiResponsePanel";
+import RegisterTypeSelector, { type RegisterUserType } from "@/components/mobile/registration/RegisterTypeSelector";
+import OfficerRegisterForm, { type OfficerRegisterPayload } from "@/components/mobile/registration/OfficerRegisterForm";
+import VisitorRegisterForm, { type VisitorRegisterPayload } from "@/components/mobile/registration/VisitorRegisterForm";
 import {
   useVisitorMe,
   useStaffMe,
@@ -313,7 +316,7 @@ export default function LineOaFlowPage() {
         <div className="border-t border-gray-100 px-3 py-2 flex items-center gap-2">
           <div className="w-7 h-7 rounded-md bg-[#06C755]/10 flex items-center justify-center"><Shield size={13} className="text-[#06C755]" /></div>
           <div className="flex-1 min-w-0">
-            <p className="text-[10px] font-bold text-[#06C755] truncate">eVMES MOT</p>
+            <p className="text-[10px] font-bold text-[#06C755] truncate">eVMS MOT</p>
             <p className="text-[8px] text-gray-400">LINE Official Account</p>
           </div>
         </div>
@@ -341,7 +344,7 @@ export default function LineOaFlowPage() {
                 <svg width="16" height="16" viewBox="0 0 20 20" fill="none"><path d="M13 4L7 10L13 16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></svg>
               </button>
               <div className="w-7 h-7 bg-gradient-to-br from-primary-600 to-primary-800 rounded-full flex items-center justify-center shadow"><Shield size={11} className="text-white" /></div>
-              <div className="flex-1"><h1 className="text-xs font-bold">eVMES MOT</h1></div>
+              <div className="flex-1"><h1 className="text-xs font-bold">eVMS MOT</h1></div>
               <div className="flex items-center gap-2 text-white/60">
                 <svg width="14" height="14" viewBox="0 0 18 18" fill="none"><circle cx="8" cy="8" r="5.5" stroke="currentColor" strokeWidth="1.5" /><path d="M12 12L15.5 15.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
                 <svg width="14" height="14" viewBox="0 0 18 18" fill="none"><path d="M3 5H15M3 9H15M3 13H15" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" /></svg>
@@ -620,7 +623,7 @@ function VisitorRichMenu({ isOpen, onToggle, onMenuAction }: { isOpen: boolean; 
       <button onClick={onToggle} className="w-full flex items-center justify-between px-3 py-1.5 bg-gradient-to-r from-primary-50 to-white border-b border-gray-100 hover:bg-gray-50 transition-colors">
         <div className="flex items-center gap-2">
           <div className="w-4 h-4 bg-gradient-to-br from-primary-600 to-primary-800 rounded-sm flex items-center justify-center"><span className="text-[6px] font-bold text-white">V</span></div>
-          <span className="text-[9px] font-semibold text-primary-800">eVMES MOT</span>
+          <span className="text-[9px] font-semibold text-primary-800">eVMS MOT</span>
           <span className="text-[8px] text-text-muted">Visitor Menu</span>
         </div>
         {isOpen ? <ChevronDown size={12} className="text-gray-400" /> : <ChevronUp size={12} className="text-gray-400" />}
@@ -653,7 +656,7 @@ function OfficerRichMenu({ isOpen, onToggle, onMenuAction }: { isOpen: boolean; 
       <button onClick={onToggle} className="w-full flex items-center justify-between px-3 py-1.5 bg-gradient-to-r from-primary-50 to-white border-b border-gray-100 hover:bg-gray-50 transition-colors">
         <div className="flex items-center gap-2">
           <div className="w-4 h-4 bg-gradient-to-br from-primary-600 to-primary-800 rounded-sm flex items-center justify-center"><span className="text-[6px] font-bold text-white">O</span></div>
-          <span className="text-[9px] font-semibold text-primary-800">eVMES MOT</span>
+          <span className="text-[9px] font-semibold text-primary-800">eVMS MOT</span>
           <span className="text-[8px] text-text-muted">Officer Menu</span>
         </div>
         {isOpen ? <ChevronDown size={12} className="text-gray-400" /> : <ChevronUp size={12} className="text-gray-400" />}
@@ -953,8 +956,8 @@ function BulletinScreen() {
 
 function LiffOverlay({ stateId, onSubmit, devMode, onApiLog }: { stateId: LineFlowStateId; onSubmit: () => void; devMode: boolean; onApiLog: (log: ApiCallLog) => void }) {
   switch (stateId) {
-    case "visitor-register": return <LiffVisitorRegister onSubmit={onSubmit} devMode={devMode} onApiLog={onApiLog} />;
-    case "officer-register": return <LiffOfficerRegister onSubmit={onSubmit} devMode={devMode} onApiLog={onApiLog} />;
+    case "visitor-register": return <LiffRegistration defaultType="visitor" onSubmit={onSubmit} devMode={devMode} onApiLog={onApiLog} />;
+    case "officer-register": return <LiffRegistration defaultType="officer" onSubmit={onSubmit} devMode={devMode} onApiLog={onApiLog} />;
     case "visitor-booking": return <LiffBooking onSubmit={onSubmit} devMode={devMode} onApiLog={onApiLog} />;
     case "officer-approve-action": return <LiffApproveAction onSubmit={onSubmit} devMode={devMode} onApiLog={onApiLog} />;
     default: return null;
@@ -973,30 +976,35 @@ function LiffHeader({ title, subtitle }: { title: string; subtitle: string }) {
   );
 }
 
-// ===== LIFF: Visitor Register — Real API =====
+// ===== LIFF: Registration (Visitor / Officer) — Real API =====
+// ลำดับตามคู่มือ 3.1-3.3: เลือกประเภทผู้ใช้งาน → กรอกข้อมูล → สร้างบัญชี
 
-function LiffVisitorRegister({ onSubmit, devMode, onApiLog }: { onSubmit: () => void; devMode: boolean; onApiLog: (log: ApiCallLog) => void }) {
-  const [form, setForm] = useState({ firstName: "", lastName: "", phone: "", email: "", company: "", idNumber: "", username: "", password: "" });
-  const [apiResult, setApiResult] = useState<{ success: boolean; message: string; log?: ApiCallLog } | null>(null);
+function LiffRegistration({
+  defaultType,
+  onSubmit,
+  devMode,
+  onApiLog,
+}: {
+  defaultType: RegisterUserType;
+  onSubmit: () => void;
+  devMode: boolean;
+  onApiLog: (log: ApiCallLog) => void;
+}) {
+  const [type, setType] = useState<RegisterUserType | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [apiResult, setApiResult] = useState<{ success: boolean; message: string; log?: ApiCallLog } | null>(null);
 
-  const handleSubmit = async () => {
+  // สลับ flow ที่แถบซ้าย (Visitor ↔ Officer) → กลับไปหน้าเลือกประเภทเสมอ
+  useEffect(() => {
+    setType(null);
     setApiResult(null);
+  }, [defaultType]);
+
+  /** ยิง /api/auth/register แล้วบันทึก log ให้แผง dev */
+  const register = async (requestBody: Record<string, unknown>, successMessage: string) => {
     setSubmitting(true);
+    setApiResult(null);
     const start = performance.now();
-    const requestBody = {
-      userType: "visitor",
-      username: form.username.trim() || undefined,
-      password: form.password,
-      firstName: form.firstName,
-      lastName: form.lastName,
-      phone: form.phone,
-      email: form.email,
-      company: form.company,
-      idNumber: form.idNumber,
-      idType: "thai-id",
-      lineAccessToken: "LIFF_DEMO",
-    };
     try {
       const res = await fetch("/api/auth/register", {
         method: "POST",
@@ -1004,69 +1012,104 @@ function LiffVisitorRegister({ onSubmit, devMode, onApiLog }: { onSubmit: () => 
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody),
       });
-      const latencyMs = Math.round(performance.now() - start);
       const json = await res.json();
       const log: ApiCallLog = {
-        id: `reg-${Date.now()}`, method: "POST", url: "/api/auth/register",
-        requestBody, responseStatus: res.status,
-        responseBody: json, latencyMs, timestamp: Date.now(),
+        id: `reg-${Date.now()}`,
+        method: "POST",
+        url: "/api/auth/register",
+        requestBody,
+        responseStatus: res.status,
+        responseBody: json,
+        latencyMs: Math.round(performance.now() - start),
+        timestamp: Date.now(),
       };
       onApiLog(log);
       if (json.success) {
-        setApiResult({ success: true, message: "ลงทะเบียนสำเร็จ! สามารถใช้ username/password เข้า Web App ได้", log });
+        setApiResult({ success: true, message: successMessage, log });
         setTimeout(() => onSubmit(), 1500);
       } else {
         setApiResult({ success: false, message: json.error?.message || "Registration failed", log });
       }
     } catch (err) {
-      const log: ApiCallLog = {
-        id: `reg-${Date.now()}`, method: "POST", url: "/api/auth/register",
-        requestBody, error: err instanceof Error ? err.message : "Network error",
-        latencyMs: Math.round(performance.now() - start), timestamp: Date.now(),
-      };
-      onApiLog(log);
-      setApiResult({ success: false, message: err instanceof Error ? err.message : "Network error", log });
+      setApiResult({ success: false, message: err instanceof Error ? err.message : "Network error" });
     } finally {
       setSubmitting(false);
     }
   };
 
-  const updateField = (field: string, value: string) => setForm((f) => ({ ...f, [field]: value }));
-  const canSubmit = form.firstName && form.lastName && form.phone && form.email && form.idNumber && form.password.length >= 8;
+  const handleVisitor = (data: VisitorRegisterPayload) => {
+    // ผู้มาติดต่อยืนยันตัวตนด้วย LINE — เดโมสร้าง username/password ให้เบื้องหลัง
+    const handle = (data.email.split("@")[0] || "visitor").replace(/[^a-zA-Z0-9]/g, "") || "visitor";
+    return register(
+      {
+        userType: "visitor",
+        username: `${handle}${Date.now().toString().slice(-4)}`,
+        password: `Liff@${Date.now().toString().slice(-6)}`,
+        firstName: data.firstName,
+        lastName: data.lastName || data.firstName,
+        phone: data.phone || `08${Date.now().toString().slice(-8)}`,
+        email: data.email,
+        company: data.company,
+        idNumber: data.idNumber,
+        idType: data.idType,
+        lineAccessToken: "LIFF_DEMO",
+      },
+      "ลงทะเบียนสำเร็จ! ผูกบัญชี LINE เรียบร้อย"
+    );
+  };
+
+  const handleOfficer = (data: OfficerRegisterPayload) =>
+    register(
+      {
+        userType: "staff",
+        username: data.username,
+        password: data.password,
+        role: data.role,
+        firstName: data.firstName,
+        lastName: data.lastName || data.firstName,
+        phone: data.phone || `08${Date.now().toString().slice(-8)}`,
+        email: data.email,
+        employeeId: data.candidate.employeeId,
+        departmentId: data.candidate.departmentId,
+        position: data.candidate.position,
+        lineAccessToken: "LIFF_DEMO",
+      },
+      "สร้างบัญชีสำเร็จ! ใช้ username/password เข้า Web App ได้ทันที"
+    );
+
+  const isOfficer = type === "officer";
 
   return (
     <>
-      <LiffHeader title="ลงทะเบียนผู้มาติดต่อ" subtitle="Visitor Registration" />
-      <div className="px-4 py-4 space-y-3">
-        <div className="flex items-center gap-3 p-3 bg-green-50 border border-green-200 rounded-xl">
-          <div className="w-10 h-10 rounded-xl bg-[#06C755] flex items-center justify-center"><UserCircle size={20} className="text-white" /></div>
-          <div><p className="text-sm font-bold">ผู้มาติดต่อ / Visitor</p><p className="text-[10px] text-text-muted">บุคคลภายนอก</p></div>
-          <Check size={18} className="text-[#06C755] ml-auto" />
-        </div>
-        <div className="grid grid-cols-2 gap-2">
-          <Input label="ชื่อ" placeholder="ชื่อจริง" value={form.firstName} onChange={(e) => updateField("firstName", e.target.value)} />
-          <Input label="นามสกุล" placeholder="นามสกุล" value={form.lastName} onChange={(e) => updateField("lastName", e.target.value)} />
-        </div>
-        <Input label="เลขบัตรประชาชน" placeholder="1-XXXX-XXXXX-XX-X" value={form.idNumber} onChange={(e) => updateField("idNumber", e.target.value)} />
-        <Input label="เบอร์โทรศัพท์" placeholder="0XX-XXX-XXXX" value={form.phone} onChange={(e) => updateField("phone", e.target.value)} />
-        <Input label="อีเมล" placeholder="email@example.com" value={form.email} onChange={(e) => updateField("email", e.target.value)} />
-        <Input label="บริษัท" placeholder="ชื่อบริษัท/หน่วยงาน" value={form.company} onChange={(e) => updateField("company", e.target.value)} />
+      <LiffHeader
+        title={type === null ? "ลงทะเบียนผู้ใช้งาน" : isOfficer ? "ลงทะเบียนพนักงาน" : "ลงทะเบียนผู้มาติดต่อ"}
+        subtitle={type === null ? "Registration" : isOfficer ? "Officer Registration" : "Visitor Registration"}
+      />
 
-        <div className="pt-1 border-t border-gray-100">
-          <p className="text-[10px] text-text-muted mb-2 font-medium">สำหรับเข้าสู่ระบบ Web App</p>
-          <Input label="ชื่อผู้ใช้ (Username)" placeholder="visitor_username" value={form.username} onChange={(e) => updateField("username", e.target.value)} />
-          <div className="mt-2">
-            <Input label="รหัสผ่าน (Password)" placeholder="อย่างน้อย 8 ตัวอักษร" type="password" value={form.password} onChange={(e) => updateField("password", e.target.value)} />
-            {form.password && form.password.length < 8 && (
-              <p className="text-[9px] text-red-500 mt-0.5">รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร</p>
-            )}
-          </div>
-        </div>
+      {type === null ? (
+        <RegisterTypeSelector onSelect={setType} />
+      ) : isOfficer ? (
+        <OfficerRegisterForm
+          onSubmit={handleOfficer}
+          onBack={() => setType(null)}
+          submitting={submitting}
+          errorMessage={apiResult && !apiResult.success ? apiResult.message : undefined}
+          onApiLog={onApiLog}
+        />
+      ) : (
+        <VisitorRegisterForm
+          onSubmit={handleVisitor}
+          onBack={() => setType(null)}
+          submitting={submitting}
+          errorMessage={apiResult && !apiResult.success ? apiResult.message : undefined}
+        />
+      )}
 
-        {apiResult && (
-          <div className={cn("p-2.5 rounded-xl text-[10px] border", apiResult.success ? "bg-green-50 border-green-200 text-green-700" : "bg-red-50 border-red-200 text-red-600")}>
+      <div className="px-4 pb-4 space-y-2">
+        {apiResult?.success && (
+          <div className="p-2.5 rounded-xl text-[10px] border bg-green-50 border-green-200 text-green-700">
             <div className="flex items-center gap-1.5">
-              {apiResult.success ? <CheckCircle2 size={12} /> : <XCircle size={12} />}
+              <CheckCircle2 size={12} />
               <span className="font-bold">{apiResult.message}</span>
             </div>
           </div>
@@ -1074,190 +1117,22 @@ function LiffVisitorRegister({ onSubmit, devMode, onApiLog }: { onSubmit: () => 
 
         {devMode && apiResult?.log && <ApiResponsePanel log={apiResult.log} />}
 
-        <button onClick={handleSubmit} disabled={submitting || !canSubmit}
-          className="w-full h-11 bg-[#06C755] text-white font-bold rounded-xl text-sm active:scale-[0.98] disabled:opacity-50">
-          {submitting ? <Loader2 size={16} className="animate-spin mx-auto" /> : "ลงทะเบียน"}
-        </button>
-
-        {devMode && (
+        {devMode && type !== null && (
           <div className="p-2 bg-purple-50 border border-purple-200 rounded-lg text-[9px]">
-            <p className="font-bold text-purple-700">POST /api/auth/register</p>
-            <p className="text-purple-600 font-mono mt-0.5">Body: {`{ userType, username, password, firstName, lastName, phone, email, company, idNumber, idType }`}</p>
-          </div>
-        )}
-      </div>
-    </>
-  );
-}
-
-// ===== LIFF: Officer Register — Real API =====
-
-function LiffOfficerRegister({ onSubmit, devMode, onApiLog }: { onSubmit: () => void; devMode: boolean; onApiLog: (log: ApiCallLog) => void }) {
-  const [query, setQuery] = useState("");
-  const [found, setFound] = useState<{ id: number; firstName: string; lastName: string; firstNameEn?: string; lastNameEn?: string; position: string; departmentId: number; departmentName: string; employeeId: string; email?: string } | null>(null);
-  const [searching, setSearching] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState("");
-  const [phone, setPhone] = useState("");
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [email, setEmail] = useState("");
-  const [apiResult, setApiResult] = useState<{ success: boolean; message: string; log?: ApiCallLog } | null>(null);
-  const checkStaff = useCheckStaff();
-
-  const handleSearch = async () => {
-    if (!query.trim()) return;
-    setSearching(true);
-    setError("");
-    setFound(null);
-    const start = performance.now();
-    try {
-      const res = await fetch("/api/auth/check-staff", {
-        method: "POST",
-        credentials: "same-origin",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ query: query.trim() }),
-      });
-      const latencyMs = Math.round(performance.now() - start);
-      const json = await res.json();
-      const log: ApiCallLog = {
-        id: `check-${Date.now()}`, method: "POST", url: "/api/auth/check-staff",
-        requestBody: { query: query.trim() }, responseStatus: res.status,
-        responseBody: json, latencyMs, timestamp: Date.now(),
-      };
-      onApiLog(log);
-      if (json.success && json.data?.personnel) {
-        const p = json.data.personnel;
-        setFound(p);
-        if (p.email) setEmail(p.email);
-        if (p.employeeId) setUsername(p.employeeId.toLowerCase().replace(/[^a-z0-9]/g, ""));
-      } else {
-        setError(json.error?.message || "ไม่พบข้อมูลพนักงาน");
-      }
-      if (devMode) setApiResult({ success: json.success, message: json.success ? "Found" : json.error?.message || "Not found", log });
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Network error");
-    } finally {
-      setSearching(false);
-    }
-  };
-
-  const handleRegister = async () => {
-    if (!found) return;
-    setSubmitting(true);
-    const start = performance.now();
-    const requestBody = {
-      userType: "staff",
-      username: username.trim() || undefined,
-      password,
-      firstName: found.firstName,
-      lastName: found.lastName,
-      phone,
-      email: email.trim(),
-      employeeId: found.employeeId,
-      departmentId: found.departmentId,
-      position: found.position,
-      lineAccessToken: "LIFF_DEMO",
-    };
-    try {
-      const res = await fetch("/api/auth/register", {
-        method: "POST",
-        credentials: "same-origin",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(requestBody),
-      });
-      const latencyMs = Math.round(performance.now() - start);
-      const json = await res.json();
-      const log: ApiCallLog = {
-        id: `officer-reg-${Date.now()}`, method: "POST", url: "/api/auth/register",
-        requestBody, responseStatus: res.status,
-        responseBody: json, latencyMs, timestamp: Date.now(),
-      };
-      onApiLog(log);
-      if (json.success) {
-        setApiResult({ success: true, message: "ลงทะเบียนสำเร็จ! สามารถใช้ username/password เข้า Web App ได้", log });
-        setTimeout(() => onSubmit(), 1500);
-      } else {
-        setApiResult({ success: false, message: json.error?.message || "Registration failed", log });
-      }
-    } catch (err) {
-      setApiResult({ success: false, message: err instanceof Error ? err.message : "Error" });
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const canRegister = found && phone && email && password.length >= 8;
-
-  return (
-    <>
-      <LiffHeader title="ลงทะเบียนพนักงาน" subtitle="Officer Registration" />
-      <div className="px-4 py-4 space-y-3">
-        <div className="flex items-center gap-3 p-3 bg-primary-50 border border-primary-200 rounded-xl">
-          <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center"><Briefcase size={20} className="text-white" /></div>
-          <div><p className="text-sm font-bold">พนักงาน / Officer</p><p className="text-[10px] text-text-muted">เจ้าหน้าที่ กท.กก.</p></div>
-          <Check size={18} className="text-primary ml-auto" />
-        </div>
-        <div>
-          <label className="block text-xs font-medium mb-1">รหัสพนักงาน / เลขบัตร</label>
-          <div className="flex gap-2">
-            <Input placeholder="EMP-007 / 1-XXXX-XXXXX-XX-X" value={query} onChange={(e) => { setQuery(e.target.value); setFound(null); setError(""); }}
-              onKeyDown={(e) => { if (e.key === "Enter") handleSearch(); }} className="flex-1" />
-            <button onClick={handleSearch} disabled={!query.trim() || searching}
-              className={cn("w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0",
-                query.trim() && !searching ? "bg-primary text-white" : "bg-gray-100 text-gray-400")}>
-              {searching ? <Loader2 size={16} className="animate-spin" /> : <Search size={16} />}
-            </button>
-          </div>
-          {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
-        </div>
-
-        {devMode && apiResult?.log && <ApiResponsePanel log={apiResult.log} compact />}
-
-        {found && (
-          <>
-            <div className="bg-primary-50 border border-primary-200 rounded-xl p-3 space-y-1">
-              <div className="flex items-center gap-2 mb-1"><Check size={14} className="text-[#06C755]" /><span className="text-xs font-bold text-[#06C755]">พบข้อมูล</span></div>
-              <p className="text-xs"><span className="text-text-muted">ชื่อ:</span> {found.firstName} {found.lastName}</p>
-              <p className="text-xs"><span className="text-text-muted">ตำแหน่ง:</span> {found.position}</p>
-              <p className="text-xs"><span className="text-text-muted">สังกัด:</span> {found.departmentName}</p>
-            </div>
-
-            <Input label="เบอร์โทร" placeholder="0XX-XXX-XXXX" value={phone} onChange={(e) => setPhone(e.target.value)} />
-            <Input label="อีเมล" placeholder="email@mots.go.th" value={email} onChange={(e) => setEmail(e.target.value)} />
-
-            <div className="pt-1 border-t border-gray-100">
-              <p className="text-[10px] text-text-muted mb-2 font-medium">สำหรับเข้าสู่ระบบ Web App</p>
-              <Input label="ชื่อผู้ใช้ (Username)" placeholder="officer_username" value={username} onChange={(e) => setUsername(e.target.value)} />
-              <div className="mt-2">
-                <Input label="รหัสผ่าน (Password)" placeholder="อย่างน้อย 8 ตัวอักษร" type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
-                {password && password.length < 8 && (
-                  <p className="text-[9px] text-red-500 mt-0.5">รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร</p>
-                )}
-              </div>
-            </div>
-
-            {apiResult && (
-              <div className={cn("p-2.5 rounded-xl text-[10px] border", apiResult.success ? "bg-green-50 border-green-200 text-green-700" : "bg-red-50 border-red-200 text-red-600")}>
-                <div className="flex items-center gap-1.5">
-                  {apiResult.success ? <CheckCircle2 size={12} /> : <XCircle size={12} />}
-                  <span className="font-bold">{apiResult.message}</span>
-                </div>
-              </div>
+            {isOfficer ? (
+              <>
+                <p className="font-bold text-purple-700">Step 1: POST /api/auth/check-staff</p>
+                <p className="text-purple-600 font-mono mt-0.5">{`{ query }`} — ค้นได้ทั้ง ชื่อ-นามสกุล / รหัสพนักงาน / เลขบัตร → ตอบ {`{ candidates[] }`}</p>
+                <p className="font-bold text-purple-700 mt-1">Step 2: POST /api/auth/register</p>
+                <p className="text-purple-600 font-mono mt-0.5">{`{ userType: "staff", role, username, password, employeeId, departmentId, position, ... }`}</p>
+              </>
+            ) : (
+              <>
+                <p className="font-bold text-purple-700">POST /api/auth/register</p>
+                <p className="text-purple-600 font-mono mt-0.5">{`{ userType: "visitor", firstName, lastName, idType, idNumber, company, email, phone }`}</p>
+                <p className="text-purple-500 mt-0.5">* ผู้มาติดต่อไม่ต้องตั้งรหัสผ่าน — เดโมสร้างให้เบื้องหลังเพื่อให้ API เดิมทำงานได้</p>
+              </>
             )}
-
-            <button onClick={handleRegister} disabled={submitting || !canRegister}
-              className="w-full h-11 bg-[#06C755] text-white font-bold rounded-xl text-sm active:scale-[0.98] disabled:opacity-50">
-              {submitting ? <Loader2 size={16} className="animate-spin mx-auto" /> : "ลงทะเบียน"}
-            </button>
-          </>
-        )}
-
-        {devMode && (
-          <div className="p-2 bg-purple-50 border border-purple-200 rounded-lg text-[9px]">
-            <p className="font-bold text-purple-700">Step 1: POST /api/auth/check-staff</p>
-            <p className="font-bold text-purple-700">Step 2: POST /api/auth/register</p>
-            <p className="text-purple-600 font-mono mt-0.5">Body: {`{ userType: "staff", username, password, employeeId, departmentId, position, ... }`}</p>
           </div>
         )}
       </div>

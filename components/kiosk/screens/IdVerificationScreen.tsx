@@ -1,6 +1,6 @@
 "use client";
 
-import { CreditCard, BookOpen, Smartphone, ChevronLeft, Loader2, QrCode, AlertTriangle, Timer } from "lucide-react";
+import { CreditCard, BookOpen, Smartphone, ChevronLeft, Loader2, QrCode, AlertTriangle, Timer, ArrowLeftRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { IdMethod } from "@/lib/kiosk/kiosk-types";
 import { useState, useEffect, useCallback } from "react";
@@ -91,7 +91,7 @@ export default function IdVerificationScreen({ locale, method, onDemoRead, onBac
       </header>
 
       {/* Main content */}
-      <main className="flex-1 flex flex-col items-center pt-3 px-3 gap-2.5">
+      <main className="relative flex-1 flex flex-col items-center pt-3 px-3 gap-2.5 overflow-hidden">
         {/* Expired overlay */}
         {isExpired ? (
           <div className="flex-1 flex flex-col items-center justify-center gap-3 text-center px-4">
@@ -110,16 +110,17 @@ export default function IdVerificationScreen({ locale, method, onDemoRead, onBac
           <>
             {/* Device icon */}
             <div className={cn(
-              "w-16 h-16 rounded-full border-2 flex items-center justify-center transition-colors",
+              "w-20 h-20 rounded-full border-2 flex items-center justify-center transition-colors shrink-0",
               isWarning ? "bg-amber-50 border-amber-300" : "bg-[#2E3192]/10 border-[#2E3192]/30"
             )}>
               {config.icon}
             </div>
 
-            {/* Title & subtitle */}
-            <div className="text-center space-y-0.5">
-              <h2 className="text-xs font-bold text-[#1B2B5E]">{config.title}</h2>
-              <p className="text-[9px] text-gray-400">{config.subtitle}</p>
+            {/* Title & subtitle. The orange "insert card" badge + arrows pointing to the
+                physical reader are rendered by KioskFrame's DeviceOverlay (activeDevice). */}
+            <div className="w-full flex flex-col items-center">
+              <h2 className="text-sm font-bold text-[#1B2B5E] text-center px-8 leading-tight">{config.title}</h2>
+              <p className="text-[9px] text-gray-400 text-center mt-0.5">{config.subtitle}</p>
             </div>
 
             {/* ThaiID shows QR */}
@@ -130,8 +131,8 @@ export default function IdVerificationScreen({ locale, method, onDemoRead, onBac
             )}
 
             {/* Progress bar with countdown */}
-            <div className="w-full max-w-[200px] space-y-1">
-              <div className="w-full h-1.5 bg-gray-100 rounded-full overflow-hidden">
+            <div className="w-full space-y-1 px-1">
+              <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
                 <div
                   className={cn(
                     "h-full rounded-full transition-all duration-1000 ease-linear",
@@ -151,7 +152,7 @@ export default function IdVerificationScreen({ locale, method, onDemoRead, onBac
 
             {/* Warning message */}
             {isWarning && (
-              <div className="w-full max-w-[220px] flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200">
+              <div className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-amber-50 border border-amber-200">
                 <AlertTriangle size={14} className="text-amber-500 shrink-0" />
                 <p className="text-[9px] text-amber-700 font-medium leading-tight">
                   {locale === "th"
@@ -161,19 +162,21 @@ export default function IdVerificationScreen({ locale, method, onDemoRead, onBac
               </div>
             )}
 
-            {/* Demo button */}
-            <button
-              onClick={onDemoRead}
-              className="px-4 py-2 rounded-xl bg-gradient-to-r from-[#2E3192] to-[#252880] text-white text-[11px] font-bold shadow-lg hover:shadow-xl active:scale-[0.98] transition-all"
-            >
-              {config.demoLabel}
-            </button>
-
+            {/* Change Method — primary full-width button */}
             <button
               onClick={onBack}
-              className="px-3 py-1 rounded-lg text-[9px] text-gray-400 hover:text-[#1B2B5E] hover:bg-gray-50 transition-colors"
+              className="w-full mt-0.5 px-4 py-2.5 rounded-xl bg-[#1B2B5E] text-white text-[11px] font-bold shadow-md hover:bg-[#24356e] active:scale-[0.98] transition-all flex items-center justify-center gap-1.5"
             >
+              <ArrowLeftRight size={13} />
               {locale === "th" ? "เปลี่ยนวิธี / Change Method" : "Change Method"}
+            </button>
+
+            {/* Prototype-only demo trigger — subtle link that simulates reading the card/document. */}
+            <button
+              onClick={onDemoRead}
+              className="px-3 py-1 rounded-lg text-[9px] text-gray-400 hover:text-[#2E3192] hover:bg-gray-50 transition-colors"
+            >
+              {config.demoLabel}
             </button>
           </>
         )}

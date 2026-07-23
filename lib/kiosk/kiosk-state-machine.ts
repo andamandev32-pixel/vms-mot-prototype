@@ -63,13 +63,26 @@ export function kioskReducer(state: KioskState, event: KioskEvent): KioskState {
             ...state,
             type: "DATA_PREVIEW",
             visitorData: event.visitorData,
+            // ผู้ที่ผูก LINE ไว้ → หน้า Success จะถามก่อนพิมพ์บัตร
+            lineLinked: event.visitorData.lineLinked,
           };
         }
-        // Appointment no-QR path: after ID read → search for appointment
+        // Appointment no-QR path: ค้นนัดจากบัตร — พบหลายรายการ → ให้เลือกก่อน
+        const options = event.appointmentOptions ?? [];
+        if (options.length > 1) {
+          return {
+            ...state,
+            type: "APPOINTMENT_LIST",
+            visitorData: event.visitorData,
+            appointmentOptions: options,
+            appointmentPath: "no-qr",
+          };
+        }
         return {
           ...state,
           type: "APPOINTMENT_PREVIEW",
           visitorData: event.visitorData,
+          appointmentData: options[0] ?? event.appointmentData ?? state.appointmentData,
           appointmentPath: "no-qr",
         };
       }
@@ -120,8 +133,6 @@ export function kioskReducer(state: KioskState, event: KioskEvent): KioskState {
 
     // ───────────── FACE CAPTURE (All flows) ─────────────
     case "FACE_CAPTURE":
-      if (event.type === "FACE_CAPTURED" && event.photo)
-        return { ...state, type: "WIFI_OFFER", capturedPhoto: event.photo };
       if (event.type === "FACE_CONFIRMED") {
         const wifi = event.wifiAccepted ?? false;
         return {
@@ -151,24 +162,6 @@ export function kioskReducer(state: KioskState, event: KioskEvent): KioskState {
           return { ...state, type: "APPOINTMENT_VERIFY_ID" };
         return { ...state, type: "DATA_PREVIEW" };
       }
-      if (event.type === "TIMEOUT") return { type: "TIMEOUT" };
-      break;
-
-    // ───────────── WIFI OFFER ─────────────
-    case "WIFI_OFFER":
-      if (event.type === "ACCEPT_WIFI")
-        return {
-          ...state,
-          type: "SUCCESS",
-          wifiAccepted: true,
-          wifiCredentials: {
-            ssid: "MOTS-Guest",
-            password: "mots" + new Date().getFullYear(),
-            validUntil: new Date().toISOString(),
-          },
-        };
-      if (event.type === "DECLINE_WIFI")
-        return { ...state, type: "SUCCESS", wifiAccepted: false };
       if (event.type === "TIMEOUT") return { type: "TIMEOUT" };
       break;
 
@@ -204,6 +197,26 @@ export function kioskReducer(state: KioskState, event: KioskEvent): KioskState {
       if (event.type === "TIMEOUT") return { type: "TIMEOUT" };
       break;
 
+    // ───────────── APPOINTMENT LIST (no-QR: พบหลายนัดจากบัตรใบเดียว) ─────────────
+    case "APPOINTMENT_LIST":
+      if (event.type === "SELECT_APPOINTMENT_ITEM" && event.appointmentData)
+        return {
+          ...state,
+          type: "APPOINTMENT_PREVIEW",
+          appointmentData: event.appointmentData,
+          lineLinked: event.appointmentData.lineLinked,
+        };
+      if (event.type === "APPOINTMENT_NOT_FOUND")
+        return {
+          type: "ERROR",
+          errorMessage: "ไม่พบนัดหมายที่ตรงกับข้อมูล",
+          retryState: { type: "QR_SCAN", case: "appointment" },
+        };
+      if (event.type === "GO_BACK")
+        return { ...state, type: "SELECT_ID_METHOD" };
+      if (event.type === "TIMEOUT") return { type: "TIMEOUT" };
+      break;
+
     // ───────────── APPOINTMENT PREVIEW ─────────────
     case "APPOINTMENT_PREVIEW":
       if (event.type === "CONFIRM_CHECKIN")
@@ -216,7 +229,11 @@ export function kioskReducer(state: KioskState, event: KioskEvent): KioskState {
         };
       if (event.type === "GO_BACK") {
         if (state.appointmentPath === "no-qr")
-          return { ...state, type: "SELECT_ID_METHOD" };
+          return {
+            ...state,
+            // มีหลายนัด → กลับไปหน้ารายการ · นัดเดียว → กลับไปยืนยันตัวตน
+            type: (state.appointmentOptions?.length ?? 0) > 1 ? "APPOINTMENT_LIST" : "SELECT_ID_METHOD",
+          };
         return { ...state, type: "QR_SCAN" };
       }
       if (event.type === "TIMEOUT") return { type: "TIMEOUT" };
@@ -295,22 +312,19 @@ export function getValidEvents(state: KioskState): KioskEvent["type"][] {
       events.push("SELECT_HOST_STAFF", "SKIP_HOST", "GO_BACK", "TIMEOUT");
       break;
     case "FACE_CAPTURE":
-      events.push("FACE_CAPTURED", "FACE_CAPTURE_FAILED", "SKIP_WIFI", "GO_BACK", "TIMEOUT");
-      break;
-    case "WIFI_OFFER":
-      events.push("ACCEPT_WIFI", "DECLINE_WIFI", "TIMEOUT");
+      events.push("FACE_CONFIRMED", "FACE_CAPTURE_FAILED", "GO_BACK", "TIMEOUT");
       break;
     case "SUCCESS":
       events.push("PRINT_COMPLETE", "CHOOSE_PRINT", "SKIP_PRINT", "TIMEOUT", "RESET");
-      break;
-    case "SUCCESS":
-      events.push("PRINT_COMPLETE", "RESET", "TIMEOUT");
       break;
     case "PDPA_CONSENT":
       events.push("ACCEPT_PDPA", "GO_BACK", "TIMEOUT");
       break;
     case "QR_SCAN":
       events.push("QR_SCANNED", "QR_SCAN_FAILED", "NO_QR_CODE", "GO_BACK", "TIMEOUT");
+      break;
+    case "APPOINTMENT_LIST":
+      events.push("SELECT_APPOINTMENT_ITEM", "APPOINTMENT_NOT_FOUND", "GO_BACK", "TIMEOUT");
       break;
     case "APPOINTMENT_PREVIEW":
       events.push("CONFIRM_CHECKIN", "APPOINTMENT_NOT_FOUND", "GO_BACK", "TIMEOUT");

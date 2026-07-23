@@ -12,14 +12,18 @@ interface FaceCaptureScreenProps {
   wifiSsid?: string;
   /** WiFi validity label from kiosk config */
   wifiValidUntil?: string;
+  /** ผู้จองขอ WiFi ไว้ตอนนัดหมาย → เลือกไว้ให้อัตโนมัติ (คู่มือ 4.3) */
+  preSelectedWifi?: boolean;
 }
 
-export default function FaceCaptureScreen({ locale, wifiEnabled, onConfirm, onBack, wifiSsid, wifiValidUntil }: FaceCaptureScreenProps) {
+export default function FaceCaptureScreen({ locale, wifiEnabled, onConfirm, onBack, wifiSsid, wifiValidUntil, preSelectedWifi }: FaceCaptureScreenProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  /** Demo portrait shown in the frame when no live webcam is available */
+  const DEMO_FACE = "/images/demo-face.svg";
   const [camState, setCamState] = useState<"idle" | "streaming" | "captured" | "no-face" | "error">("idle");
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
-  const [wifiAccepted, setWifiAccepted] = useState(true);
+  const [wifiAccepted, setWifiAccepted] = useState(preSelectedWifi ?? true);
   const streamRef = useRef<MediaStream | null>(null);
 
   const stopStream = useCallback(() => {
@@ -68,6 +72,13 @@ export default function FaceCaptureScreen({ locale, wifiEnabled, onConfirm, onBa
     stopStream();
   }, [stopStream]);
 
+  /** Simulate a successful capture using the demo portrait (no webcam needed) */
+  const simulateCapture = useCallback(() => {
+    setCapturedImage(DEMO_FACE);
+    setCamState("captured");
+    stopStream();
+  }, [stopStream]);
+
   /** Simulate "no face detected" scenario for demo */
   const simulateNoFace = useCallback(() => {
     setCamState("no-face");
@@ -104,7 +115,10 @@ export default function FaceCaptureScreen({ locale, wifiEnabled, onConfirm, onBa
             {isCaptured && capturedImage && (
               <img src={capturedImage} alt="Captured" className="w-full h-full object-cover" />
             )}
-            {(camState === "idle" || camState === "error") && (
+            {camState === "idle" && (
+              <img src={DEMO_FACE} alt="Face preview" className="w-full h-full object-cover" />
+            )}
+            {camState === "error" && (
               <User size={36} className="text-gray-600" />
             )}
             {camState === "no-face" && (
@@ -279,7 +293,7 @@ export default function FaceCaptureScreen({ locale, wifiEnabled, onConfirm, onBa
           {/* Demo fallback */}
           {!isCaptured && camState !== "no-face" && (
             <button
-              onClick={() => { stopStream(); onConfirm(wifiEnabled ? wifiAccepted : false); }}
+              onClick={simulateCapture}
               className="w-full py-1 rounded-xl text-[9px] text-gray-400 hover:text-gray-600 hover:bg-gray-50 transition-all"
             >
               {locale === "th" ? "จำลองถ่ายภาพ (Demo)" : "Simulate Capture (Demo)"}

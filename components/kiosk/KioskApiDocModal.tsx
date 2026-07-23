@@ -258,8 +258,8 @@ function StateApiSection({ spec, locale }: { spec: KioskApiSpec; locale: KioskLo
 
 export default function KioskApiDocModal({ open, onClose, locale }: KioskApiDocModalProps) {
   const allSpecs = getAllApiSpecs();
-  const walkinStates = ["WELCOME", "PDPA_CONSENT", "SELECT_PURPOSE", "SELECT_ID_METHOD", "ID_VERIFICATION", "DATA_PREVIEW", "FACE_CAPTURE", "SUCCESS"];
-  const appointmentStates = ["WELCOME", "PDPA_CONSENT", "QR_SCAN", "APPOINTMENT_PREVIEW", "APPOINTMENT_VERIFY_ID", "FACE_CAPTURE", "WIFI_OFFER", "SUCCESS"];
+  const walkinStates = ["WELCOME", "PDPA_CONSENT", "SELECT_PURPOSE", "SELECT_HOST", "SELECT_ID_METHOD", "ID_VERIFICATION", "DATA_PREVIEW", "FACE_CAPTURE", "SUCCESS"];
+  const appointmentStates = ["WELCOME", "PDPA_CONSENT", "QR_SCAN", "APPOINTMENT_LIST", "APPOINTMENT_PREVIEW", "APPOINTMENT_VERIFY_ID", "FACE_CAPTURE", "SUCCESS"];
   const systemStates = ["ERROR", "TIMEOUT"];
 
   const [activeTab, setActiveTab] = useState<"walkin" | "appointment" | "system" | "all">("all");

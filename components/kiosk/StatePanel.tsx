@@ -43,7 +43,8 @@ export default function StatePanel({ state, stepInfo, locale, currentStepIndex, 
             <span className="font-bold text-white text-sm">State Panel</span>
           </div>
           <span className="text-[10px] text-gray-500 font-mono">
-            Step {currentStepIndex + 1}/{totalSteps}
+            {/* หน้าต้อนรับไม่นับเป็นขั้นตอน (คู่มือ ส่วนที่ 4) */}
+            {currentStepIndex < 0 ? (locale === "th" ? "เริ่มต้น" : "Start") : `Step ${currentStepIndex + 1}/${totalSteps}`}
           </span>
         </div>
         {/* State badge */}

@@ -143,12 +143,32 @@ export function useVisitorRegister() {
   });
 }
 
+/**
+ * เจ้าหน้าที่ 1 รายที่ค้นเจอในทำเนียบ (ผลจาก POST /api/auth/check-staff)
+ * ใช้ร่วมกันทั้ง /line-oa, /liff/register และ /web/register
+ */
+export interface StaffCandidate {
+  id: number;
+  employeeId: string;
+  firstName: string;
+  lastName: string;
+  firstNameEn?: string;
+  lastNameEn?: string;
+  position: string;
+  workGroup: string;
+  departmentId: number;
+  departmentName: string;
+  email?: string | null;
+  phone?: string | null;
+  hasAccount: boolean;
+}
+
 export function useCheckStaff() {
   return useMutation({
     mutationFn: (data: { query: string }) =>
       apiPost<{
         found: boolean;
-        staff?: { id: number; firstName: string; lastName: string; position: string; departmentName: string };
+        candidates: StaffCandidate[];
       }>("/api/auth/check-staff", data),
   });
 }

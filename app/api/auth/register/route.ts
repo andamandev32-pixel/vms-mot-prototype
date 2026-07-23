@@ -22,6 +22,7 @@ export async function POST(request: NextRequest) {
       employeeId,
       departmentId,
       position,
+      role: requestedRole,
       // LINE LIFF fields
       lineAccessToken,
     } = body as {
@@ -38,6 +39,7 @@ export async function POST(request: NextRequest) {
       employeeId?: string;
       departmentId?: number;
       position?: string;
+      role?: string;
       lineAccessToken?: string;
     };
 
@@ -116,7 +118,12 @@ export async function POST(request: NextRequest) {
     // ===== Create records based on userType =====
     let refId: number;
     let departmentName: string | null = null;
-    const role = userType; // default role = userType
+    // สิทธิ์ (ROLE): staff เลือกได้ในฟอร์มลงทะเบียน (LIFF) — visitor คงเป็น visitor เสมอ
+    const STAFF_ROLES = ["staff", "supervisor", "security"];
+    const role =
+      userType === "staff" && requestedRole && STAFF_ROLES.includes(requestedRole)
+        ? requestedRole
+        : userType;
 
     if (userType === "visitor") {
       // Create Visitor record first

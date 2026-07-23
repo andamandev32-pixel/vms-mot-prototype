@@ -7,25 +7,27 @@
 
 import type { StepInfo, KioskStateType } from "./kiosk-types";
 
-// ===== WALK-IN FLOW: 8 Steps =====
-// ลำดับ: PDPA → Purpose+Dept → Host (optional) → ID Method → ID Verify → Preview → Face+WiFi
+// ===== WELCOME — หน้าเริ่มต้น (ไม่นับเป็นขั้นตอน ตามคู่มือ ส่วนที่ 4) =====
+export const welcomeStep: StepInfo = {
+  id: "w0",
+  stateType: "WELCOME",
+  title: "หน้าต้อนรับ",
+  titleEn: "Welcome",
+  description: "เลือก \"ไม่มีนัดหมาย/ผู้มาติดต่อ\" หรือ \"มีนัดล่วงหน้า\" เพื่อเริ่ม",
+  descriptionEn: "Tap 'Walk-in / No Appointment' or 'Appointment' to begin",
+  activeDevice: null,
+  conditions: ["Kiosk ต้องอยู่ในสถานะ online", "อยู่ในเวลาทำการ"],
+  conditionsEn: ["Kiosk must be online", "Within business hours"],
+  possibleTransitions: [
+    { event: "SELECT_WALKIN", targetState: "PDPA_CONSENT", description: "กดปุ่มไม่มีนัดหมาย" },
+    { event: "SELECT_APPOINTMENT", targetState: "PDPA_CONSENT", description: "กดปุ่มมีนัดล่วงหน้า" },
+  ],
+  flutterHint: { bloc: "KioskBloc", state: "WelcomeState" },
+};
+
+// ===== WALK-IN FLOW: 8 Steps (คู่มือ 4.0) =====
+// PDPA → Purpose+Dept → Host (optional) → ID Method → ID Read → Preview → Face+WiFi → รับบัตร/สลิป
 export const walkinSteps: StepInfo[] = [
-  {
-    id: "w1",
-    stateType: "WELCOME",
-    title: "หน้าต้อนรับ",
-    titleEn: "Welcome",
-    description: "เลือก \"ไม่มีนัดหมาย/ผู้มาติดต่อ\" เพื่อเริ่ม walk-in",
-    descriptionEn: "Tap 'Walk-in / No Appointment' to begin",
-    activeDevice: null,
-    conditions: ["Kiosk ต้องอยู่ในสถานะ online", "อยู่ในเวลาทำการ"],
-    conditionsEn: ["Kiosk must be online", "Within business hours"],
-    possibleTransitions: [
-      { event: "SELECT_WALKIN", targetState: "PDPA_CONSENT", description: "กดปุ่มไม่มีนัดหมาย" },
-      { event: "SELECT_APPOINTMENT", targetState: "PDPA_CONSENT", description: "กดปุ่มมีนัดล่วงหน้า" },
-    ],
-    flutterHint: { bloc: "KioskBloc", state: "WelcomeState" },
-  },
   {
     id: "w1b",
     stateType: "PDPA_CONSENT",
@@ -160,25 +162,29 @@ export const walkinSteps: StepInfo[] = [
     flutterHint: { bloc: "KioskBloc", state: "FaceCaptureState", device: "USB Camera", plugin: "camera / google_mlkit_face_detection" },
     timeoutSeconds: 60,
   },
+  {
+    id: "w7",
+    stateType: "SUCCESS",
+    title: "รับบัตร/สลิป",
+    titleEn: "Receive Badge / Slip",
+    description: "พิมพ์บัตรผู้มาเยือน + QR สำหรับ check-out (ผู้ผูก LINE เลือกรับผ่าน LINE แทนได้)",
+    descriptionEn: "Print visitor badge + QR for check-out (LINE-linked visitors may skip printing)",
+    activeDevice: "printer",
+    audioCue: { th: "ทำรายการเสร็จเรียบร้อยค่ะ", en: "Registration completed successfully." },
+    conditions: ["พิมพ์บัตร/สลิปพร้อม QR", "ถ้าผูก LINE → ถามก่อนพิมพ์ (รับผ่าน LINE ได้)", "กลับหน้าแรกอัตโนมัติเมื่อครบเวลา"],
+    conditionsEn: ["Print badge/slip with QR", "If LINE-linked → ask before printing", "Auto-return to welcome after timeout"],
+    possibleTransitions: [
+      { event: "CHOOSE_PRINT", targetState: "SUCCESS", description: "เลือกพิมพ์บัตร" },
+      { event: "SKIP_PRINT", targetState: "SUCCESS", description: "ไม่พิมพ์ — รับผ่าน LINE" },
+      { event: "PRINT_COMPLETE", targetState: "WELCOME", description: "พิมพ์เสร็จ → กลับหน้าแรก" },
+    ],
+    flutterHint: { bloc: "KioskBloc", state: "SuccessState", device: "Thermal Printer (80mm)", plugin: "esc_pos_printer" },
+    timeoutSeconds: 30,
+  },
 ];
 
 // ===== APPOINTMENT FLOW: 6 Steps =====
 export const appointmentSteps: StepInfo[] = [
-  {
-    id: "a1",
-    stateType: "WELCOME",
-    title: "หน้าต้อนรับ",
-    titleEn: "Welcome",
-    description: "กดปุ่ม \"มีนัดล่วงหน้า\"",
-    descriptionEn: "Tap 'Appointment / Scan QR'",
-    activeDevice: null,
-    conditions: ["Kiosk ต้อง online"],
-    conditionsEn: ["Kiosk must be online"],
-    possibleTransitions: [
-      { event: "SELECT_APPOINTMENT", targetState: "PDPA_CONSENT", description: "กดปุ่มมีนัดล่วงหน้า" },
-    ],
-    flutterHint: { bloc: "KioskBloc", state: "WelcomeState" },
-  },
   {
     id: "a1b",
     stateType: "PDPA_CONSENT",
@@ -243,7 +249,7 @@ export const appointmentSteps: StepInfo[] = [
     conditions: ["เลือกวิธียืนยัน → อ่านข้อมูลอัตโนมัติ"],
     conditionsEn: ["Select method → auto-read data"],
     possibleTransitions: [
-      { event: "ID_READ_SUCCESS", targetState: "WIFI_OFFER", description: "ยืนยันสำเร็จ → WiFi" },
+      { event: "ID_READ_SUCCESS", targetState: "FACE_CAPTURE", description: "ยืนยันสำเร็จ → ถ่ายภาพ" },
       { event: "GO_BACK", targetState: "APPOINTMENT_PREVIEW", description: "กลับ" },
     ],
     flutterHint: { bloc: "KioskBloc", state: "AppointmentVerifyIdState" },
@@ -252,15 +258,15 @@ export const appointmentSteps: StepInfo[] = [
   {
     id: "a4b",
     stateType: "FACE_CAPTURE",
-    title: "ถ่ายภาพใบหน้า",
-    titleEn: "Face Photo",
-    description: "ถ่ายภาพใบหน้าด้วยกล้อง Kiosk",
-    descriptionEn: "Capture face photo via kiosk camera",
+    title: "ถ่ายภาพ + WiFi",
+    titleEn: "Face Photo + WiFi",
+    description: "ถ่ายภาพใบหน้า → ตรวจภาพและรับ WiFi (ถ้าขอไว้ตอนนัดหมายจะเลือกไว้ให้)",
+    descriptionEn: "Capture face photo → review photo and WiFi (pre-selected if requested during booking)",
     activeDevice: "camera",
-    conditions: ["กล้องต้องพร้อมใช้งาน", "ตรวจจับใบหน้าอัตโนมัติ"],
-    conditionsEn: ["Camera must be available", "Auto face detection"],
+    conditions: ["กล้องต้องพร้อมใช้งาน", "ตรวจจับใบหน้าอัตโนมัติ", "ถ้าขอ WiFi ไว้ตอนนัดหมาย → เลือกไว้ให้อัตโนมัติ"],
+    conditionsEn: ["Camera must be available", "Auto face detection", "If WiFi requested during booking → pre-selected"],
     possibleTransitions: [
-      { event: "FACE_CAPTURED", targetState: "WIFI_OFFER", description: "ถ่ายสำเร็จ" },
+      { event: "FACE_CONFIRMED", targetState: "SUCCESS", description: "ยืนยันภาพ+WiFi → รับบัตร" },
       { event: "FACE_CAPTURE_FAILED", targetState: "ERROR", description: "ถ่ายไม่สำเร็จ" },
       { event: "GO_BACK", targetState: "APPOINTMENT_VERIFY_ID", description: "กลับ" },
     ],
@@ -269,21 +275,22 @@ export const appointmentSteps: StepInfo[] = [
   },
   {
     id: "a5",
-    stateType: "WIFI_OFFER",
-    title: "WiFi + สำเร็จ",
-    titleEn: "WiFi + Done",
-    description: "ถาม WiFi (ถ้าขอไว้ตอนนัดหมายจะเลือกไว้ให้ แก้ไขได้) → พิมพ์ Visit Slip (ถ้าผูก LINE จะถามก่อนพิมพ์)",
-    descriptionEn: "Offer WiFi (pre-selected if requested during booking, editable) → print Visit Slip (LINE-linked visitors can skip print)",
+    stateType: "SUCCESS",
+    title: "รับบัตร/สลิป",
+    titleEn: "Receive Badge / Slip",
+    description: "พิมพ์บัตรผู้มาเยือน + ส่ง QR ทาง LINE อัตโนมัติ (ถ้าผูก LINE จะถามก่อนพิมพ์)",
+    descriptionEn: "Print visitor badge + auto-send QR via LINE (LINE-linked visitors are asked before printing)",
     activeDevice: "printer",
     audioCue: { th: "ทำรายการเสร็จเรียบร้อยค่ะ", en: "Registration completed successfully." },
-    conditions: ["พิมพ์ Visit Slip", "ถ้าขอ WiFi ไว้ตอนนัดหมาย → เลือกไว้ให้อัตโนมัติ", "ถ้าผูก LINE → ถามก่อนพิมพ์ slip"],
-    conditionsEn: ["Print Visit Slip", "If WiFi requested during booking → pre-select", "If LINE-linked → ask before printing slip"],
+    conditions: ["พิมพ์ Visit Slip พร้อม QR", "ถ้าผูก LINE → ถามก่อนพิมพ์ slip", "กลับหน้าแรกอัตโนมัติเมื่อครบเวลา"],
+    conditionsEn: ["Print Visit Slip with QR", "If LINE-linked → ask before printing slip", "Auto-return to welcome after timeout"],
     possibleTransitions: [
-      { event: "ACCEPT_WIFI", targetState: "SUCCESS", description: "รับ WiFi" },
-      { event: "DECLINE_WIFI", targetState: "SUCCESS", description: "ไม่รับ WiFi" },
+      { event: "CHOOSE_PRINT", targetState: "SUCCESS", description: "เลือกพิมพ์บัตร" },
+      { event: "SKIP_PRINT", targetState: "SUCCESS", description: "ไม่พิมพ์ — รับผ่าน LINE" },
+      { event: "PRINT_COMPLETE", targetState: "WELCOME", description: "พิมพ์เสร็จ → กลับหน้าแรก" },
     ],
-    flutterHint: { bloc: "KioskBloc", state: "WifiOfferState", device: "Thermal Printer (80mm)", plugin: "esc_pos_printer" },
-    timeoutSeconds: 15,
+    flutterHint: { bloc: "KioskBloc", state: "SuccessState", device: "Thermal Printer (80mm)", plugin: "esc_pos_printer" },
+    timeoutSeconds: 30,
   },
 ];
 
